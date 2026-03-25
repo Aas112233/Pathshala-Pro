@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId           String             @unique
+  name               String
+  address            String
+  subscriptionStatus String             @default("TRIAL")
+  fiscalYearStart    Int                @default(1)
+  logoUrl            String?
+  phone              String?
+  email              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  users              User[]
+  studentProfiles    StudentProfile[]
+  academicYears      AcademicYear[]
+  feeVouchers        FeeVoucher[]
+  transactions       Transaction[]
+  staffProfiles      StaffProfile[]
+  salaryLedgers      SalaryLedger[]
+  attendances        Attendance[]
+  examResults        ExamResult[]
+}
+
+model User {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String
+  email          String
+  name           String
+  role           String       @default("CLERK")
+  hash           String
+  isActive       Boolean      @default(true)
+  staffProfileId String?      @db.ObjectId
+  lastLoginAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant         Tenant       @relation(fields: [tenantId], references: [tenantId])
+  transactions   Transaction[]
+  attendances    Attendance[] @relation("MarkedBy")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model StudentProfile {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String
+  studentId       String
+  rollNumber      String
+  firstName       String
+  lastName        String
+  guardianName    String
+  guardianContact String
+  guardianEmail   String?
+  dateOfBirth     DateTime?
+  gender          String?
+  address         String?
+  classId         String?
+  sectionId       String?
+  status          String       @default("ACTIVE")
+  admissionDate   DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tenant          Tenant       @relation(fields: [tenantId], references: [tenantId])
+  feeVouchers     FeeVoucher[]
+  attendances     Attendance[]
+  examResults     ExamResult[]
+
+  @@unique([tenantId, studentId])
+  @@index([tenantId, rollNumber])
+  @@index([tenantId, status])
+}
+
+model AcademicYear {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  yearId        String
+  label         String
+  startDate     DateTime
+  endDate       DateTime
+  isClosed      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
+  feeVouchers   FeeVoucher[]
+  salaryLedgers SalaryLedger[]
+  examResults   ExamResult[]
+
+  @@unique([tenantId, yearId])
+  @@index([tenantId])
+}
+
+model FeeVoucher {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String
+  voucherId        String
+  studentProfileId String        @db.ObjectId
+  academicYearId   String        @db.ObjectId
+  feeType          String
+  baseAmount       Float
+  discountAmount   Float         @default(0)
+  arrears          Float         @default(0)
+  totalDue         Float
+  amountPaid       Float         @default(0)
+  balance          Float
+  dueDate          DateTime
+  status           String        @default("PENDING")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  tenant           Tenant        @relation(fields: [tenantId], references: [tenantId])
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
+  academicYear     AcademicYear  @relation(fields: [academicYearId], references: [id])
+  transactions     Transaction[]
+
+  @@unique([tenantId, voucherId])
+  @@index([tenantId, studentProfileId])
+  @@index([tenantId, status])
+  @@index([dueDate])
+}
+
+model Transaction {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  transactionId String
+  feeVoucherId  String     @db.ObjectId
+  amountPaid    Float
+  paymentMethod String
+  receiptNumber String
+  collectedById String     @db.ObjectId
+  note          String?
+  timestamp     DateTime   @default(now())
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  tenant        Tenant     @relation(fields: [tenantId], references: [tenantId])
+  feeVoucher    FeeVoucher @relation(fields: [feeVoucherId], references: [id])
+  collectedBy   User       @relation(fields: [collectedById], references: [id])
+
+  @@unique([tenantId, transactionId])
+  @@index([tenantId])
+  @@index([timestamp])
+}
+
+model StaffProfile {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  staffId       String
+  userId        String?        @db.ObjectId
+  firstName     String
+  lastName      String
+  department    String
+  designation   String
+  baseSalary    Float
+  hireDate      DateTime
+  phone         String?
+  email         String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
+  salaryLedgers SalaryLedger[]
+  attendances   Attendance[]
+
+  @@unique([tenantId, staffId])
+  @@index([tenantId])
+}
+
+model SalaryLedger {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String
+  staffProfileId String       @db.ObjectId
+  academicYearId String       @db.ObjectId
+  month          Int
+  year           Int
+  baseSalary     Float
+  deductions     Float        @default(0)
+  advances       Float        @default(0)
+  netPayable     Float
+  paidAmount     Float        @default(0)
+  status         String       @default("PENDING")
+  paidAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant         Tenant       @relation(fields: [tenantId], references: [tenantId])
+  staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id])
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@index([tenantId, staffProfileId])
+  @@index([tenantId, month, year])
+}
+
+model Attendance {
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String
+  studentProfileId String?         @db.ObjectId
+  staffProfileId   String?         @db.ObjectId
+  date             DateTime
+  status           String
+  note             String?
+  markedById       String          @db.ObjectId
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant           Tenant          @relation(fields: [tenantId], references: [tenantId])
+  studentProfile   StudentProfile? @relation(fields: [studentProfileId], references: [id])
+  staffProfile     StaffProfile?   @relation(fields: [staffProfileId], references: [id])
+  markedBy         User            @relation("MarkedBy", fields: [markedById], references: [id])
+
+  @@index([tenantId, date])
+  @@index([tenantId, studentProfileId])
+}
+
+model ExamResult {
+  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String
+  studentProfileId String         @db.ObjectId
+  academicYearId   String         @db.ObjectId
+  examName         String
+  subject          String
+  maxMarks         Float
+  obtainedMarks    Float
+  grade            String?
+  remarks          String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  tenant           Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
+  academicYear     AcademicYear   @relation(fields: [academicYearId], references: [id])
+
+  @@index([tenantId, studentProfileId])
+  @@index([tenantId, examName])
+}
