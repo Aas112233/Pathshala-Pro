@@ -9,6 +9,19 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+/.yarn/cache
+/.yarn/install-state.gz
+/.yarn/unplugged
+/.yarn/link
+/.yarn/build-state.yml
+/.yarn/plugins/
+/.yarn/releases/
+/.yarn/versions/
+/.yarn/patches/
+/.yarn/unplugged/
+/.yarn/build-state.yml
+
+
 
 # testing
 /coverage
@@ -16,13 +29,21 @@
 # next.js
 /.next/
 /out/
+/public/static/
+/public/uploads/
+/.next/cache
+/.next/data
 
 # production
 /build
-
+/dist
+/dist
+/.next/server/pages/
 # misc
 .DS_Store
 *.pem
+.env
+.env.local
 
 # debug
 npm-debug.log*
@@ -32,10 +53,23 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.env.local
+.env.local.example
+.env.example
+.env.production
+.env.production.local
+.env.staging
+.env.staging.local
 
 # vercel
 .vercel
+.output
+.next/cache/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+tsconfig.json
+tsconfig.tsbuildinfo
+tsconfig.node.json
+tsconfig.json

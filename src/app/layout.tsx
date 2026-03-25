@@ -3,6 +3,7 @@ import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
+import { Toaster } from "sonner";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,10 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <QueryProvider>
-            <ErrorBoundary>{children}</ErrorBoundary>
+            <ErrorBoundary>
+              {children}
+              <Toaster richColors position="top-right" />
+            </ErrorBoundary>
           </QueryProvider>
         </ThemeProvider>
       </body>

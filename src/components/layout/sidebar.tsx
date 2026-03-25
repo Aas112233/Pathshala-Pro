@@ -1,18 +1,35 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV, APP_NAME } from "@/lib/constants";
-import {
-  ChevronLeft,
-  GraduationCap,
-} from "lucide-react";
+import { ChevronLeft, GraduationCap } from "lucide-react";
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+const translations: Record<string, string> = {
+  "nav.dashboard": "Dashboard",
+  "nav.students": "Students",
+  "nav.staff": "Staff",
+  "nav.academicYear": "Academic Year",
+  "nav.finance": "Finance",
+  "nav.feeVouchers": "Fee Vouchers",
+  "nav.transactions": "Transactions",
+  "nav.salaryPayroll": "Salary",
+  "nav.settings": "Settings",
+  "nav.academics": "Academics",
+  "nav.communication": "Communication",
+  "nav.exams": "Exams",
+  "nav.attendance": "Attendance",
+  "nav.users": "Users",
+};
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <aside
@@ -34,7 +51,7 @@ export function Sidebar() {
           )}
         </Link>
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={onToggle}
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <ChevronLeft
@@ -49,10 +66,10 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {SIDEBAR_NAV.map((group) => (
-          <div key={group.label} className="mb-4">
+          <div key={group.labelKey} className="mb-4">
             {!collapsed && (
               <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
-                {group.label}
+                {translations[group.labelKey] || group.labelKey}
               </p>
             )}
             <div className="space-y-0.5">
@@ -60,6 +77,7 @@ export function Sidebar() {
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/" && pathname.startsWith(item.href));
+                const label = translations[item.titleKey] || item.titleKey;
 
                 return (
                   <Link
@@ -71,7 +89,7 @@ export function Sidebar() {
                         ? "bg-primary/10 text-primary"
                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     )}
-                    title={collapsed ? item.title : undefined}
+                    title={collapsed ? label : undefined}
                   >
                     <item.icon
                       className={cn(
@@ -81,7 +99,7 @@ export function Sidebar() {
                           : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
                       )}
                     />
-                    {!collapsed && <span>{item.title}</span>}
+                    {!collapsed && <span>{label}</span>}
                     {!collapsed && item.badge && (
                       <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                         {item.badge}
@@ -98,9 +116,7 @@ export function Sidebar() {
       {/* Footer */}
       <div className="border-t border-sidebar-border p-3">
         {!collapsed && (
-          <p className="text-xs text-sidebar-foreground/40">
-            v0.1.0
-          </p>
+          <p className="text-xs text-sidebar-foreground/40">v0.1.0</p>
         )}
       </div>
     </aside>

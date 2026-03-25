@@ -15,14 +15,14 @@ import {
 } from "lucide-react";
 
 export interface NavItem {
-  title: string;
+  titleKey: string;
   href: string;
   icon: LucideIcon;
   badge?: string;
 }
 
 export interface NavGroup {
-  label: string;
+  labelKey: string;
   items: NavItem[];
 }
 
@@ -38,85 +38,85 @@ export const ROLES = {
 
 export const SIDEBAR_NAV: NavGroup[] = [
   {
-    label: "Overview",
+    labelKey: "nav.overview",
     items: [
       {
-        title: "Dashboard",
+        titleKey: "nav.dashboard",
         href: "/",
         icon: LayoutDashboard,
       },
     ],
   },
   {
-    label: "Academic",
+    labelKey: "nav.academic",
     items: [
       {
-        title: "Students",
+        titleKey: "nav.students",
         href: "/students",
         icon: GraduationCap,
       },
       {
-        title: "Attendance",
+        titleKey: "nav.attendance",
         href: "/attendance",
         icon: CalendarCheck,
       },
       {
-        title: "Exams",
+        titleKey: "nav.exams",
         href: "/exams",
         icon: BookOpen,
       },
       {
-        title: "Academic Year",
+        titleKey: "nav.academicYear",
         href: "/academic-year",
         icon: CalendarRange,
       },
     ],
   },
   {
-    label: "Finance",
+    labelKey: "nav.finance",
     items: [
       {
-        title: "Fee Vouchers",
+        titleKey: "nav.feeVouchers",
         href: "/fees",
         icon: Receipt,
       },
       {
-        title: "Fee Collection",
+        titleKey: "nav.feeCollection",
         href: "/fees/collection",
         icon: CreditCard,
       },
       {
-        title: "Transactions",
+        titleKey: "nav.transactions",
         href: "/transactions",
         icon: ArrowLeftRight,
       },
     ],
   },
   {
-    label: "HR",
+    labelKey: "nav.hr",
     items: [
       {
-        title: "Staff",
+        titleKey: "nav.staff",
         href: "/staff",
         icon: Users,
       },
       {
-        title: "Salary / Payroll",
+        titleKey: "nav.salaryPayroll",
         href: "/salary",
         icon: Wallet,
       },
     ],
   },
   {
-    label: "Administration",
+    labelKey: "nav.administration",
     items: [
       {
-        title: "Users",
+        titleKey: "nav.users",
         href: "/users",
         icon: UserCheck,
       },
       {
-        title: "Settings",
+        titleKey: "nav.settings",
         href: "/settings",
         icon: Settings,
       },
@@ -128,21 +128,21 @@ export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
 export const PAYMENT_METHODS = [
-  { value: "CASH", label: "Cash" },
-  { value: "DIGITAL", label: "Digital" },
+  { value: "CASH", labelKey: "collection.cash" },
+  { value: "DIGITAL", labelKey: "collection.digital" },
 ] as const;
 
 export const VOUCHER_STATUSES = [
-  { value: "PENDING", label: "Pending" },
-  { value: "PARTIAL", label: "Partial" },
-  { value: "PAID", label: "Paid" },
-  { value: "OVERDUE", label: "Overdue" },
-  { value: "CANCELLED", label: "Cancelled" },
+  { value: "PENDING", labelKey: "fees.pending" },
+  { value: "PARTIAL", labelKey: "fees.partial" },
+  { value: "PAID", labelKey: "fees.paid" },
+  { value: "OVERDUE", labelKey: "fees.overdue" },
+  { value: "CANCELLED", labelKey: "common.cancel" },
 ] as const;
 
 export const STUDENT_STATUSES = [
-  { value: "ACTIVE", label: "Active" },
-  { value: "INACTIVE", label: "Inactive" },
-  { value: "GRADUATED", label: "Graduated" },
-  { value: "TRANSFERRED", label: "Transferred" },
+  { value: "ACTIVE", labelKey: "common.active" },
+  { value: "INACTIVE", labelKey: "common.inactive" },
+  { value: "GRADUATED", labelKey: "students.graduated" },
+  { value: "TRANSFERRED", labelKey: "students.transferred" },
 ] as const;
