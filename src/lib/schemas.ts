@@ -14,6 +14,8 @@ export const createUserSchema = z.object({
   tenantId: z.string().optional(),
 });
 
+export const updateUserSchema = createUserSchema.partial();
+
 // Student schemas
 export const createStudentSchema = z.object({
   studentId: z.string().optional(),
@@ -44,6 +46,8 @@ export const createFeeVoucherSchema = z.object({
   arrears: z.number().min(0).default(0),
 });
 
+export const updateFeeVoucherSchema = createFeeVoucherSchema.partial();
+
 // Transaction schemas
 export const createTransactionSchema = z.object({
   feeVoucherId: z.string().min(1, "Fee voucher is required"),
@@ -67,6 +71,8 @@ export const createStaffSchema = z.object({
   qualification: z.string().optional(),
 });
 
+export const updateStaffSchema = createStaffSchema.partial();
+
 // Academic Year schemas
 export const createAcademicYearSchema = z.object({
   yearId: z.string().min(1, "Year ID is required"),
@@ -74,6 +80,8 @@ export const createAcademicYearSchema = z.object({
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
 });
+
+export const updateAcademicYearSchema = createAcademicYearSchema.partial();
 
 // Attendance schemas
 export const createAttendanceSchema = z.object({
@@ -83,6 +91,8 @@ export const createAttendanceSchema = z.object({
   status: z.enum(["PRESENT", "ABSENT", "LATE", "LEAVE"]),
   note: z.string().optional(),
 });
+
+export const updateAttendanceSchema = createAttendanceSchema.partial();
 
 // Exam result schemas
 export const createExamResultSchema = z.object({
@@ -96,6 +106,8 @@ export const createExamResultSchema = z.object({
   remarks: z.string().optional(),
 });
 
+export const updateExamResultSchema = createExamResultSchema.partial();
+
 // Salary ledger schemas
 export const createSalaryLedgerSchema = z.object({
   staffProfileId: z.string().min(1, "Staff is required"),
@@ -106,3 +118,5 @@ export const createSalaryLedgerSchema = z.object({
   advances: z.number().min(0).default(0),
   status: z.enum(["PENDING", "PARTIAL", "PAID"]).default("PENDING"),
 });
+
+export const updateSalaryLedgerSchema = createSalaryLedgerSchema.partial();
