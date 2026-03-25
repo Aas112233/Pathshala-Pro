@@ -11,6 +11,10 @@ import {
   BookOpen,
   CalendarRange,
   Settings,
+  School,
+  Layers,
+  ClipboardList,
+  FilePlus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,6 +52,16 @@ export const SIDEBAR_NAV: NavGroup[] = [
     ],
   },
   {
+    labelKey: "nav.admissions",
+    items: [
+      {
+        titleKey: "nav.createAdmission",
+        href: "/admissions",
+        icon: FilePlus,
+      },
+    ],
+  },
+  {
     labelKey: "nav.academic",
     items: [
       {
@@ -69,6 +83,26 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.academicYear",
         href: "/academic-year",
         icon: CalendarRange,
+      },
+    ],
+  },
+  {
+    labelKey: "nav.academicSettings",
+    items: [
+      {
+        titleKey: "nav.classes",
+        href: "/academic/classes",
+        icon: School,
+      },
+      {
+        titleKey: "nav.groups",
+        href: "/academic/groups",
+        icon: Layers,
+      },
+      {
+        titleKey: "nav.sections",
+        href: "/academic/sections",
+        icon: ClipboardList,
       },
     ],
   },

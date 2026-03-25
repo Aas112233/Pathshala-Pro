@@ -27,7 +27,7 @@ async function main() {
       email: "admin@demohighschool.edu",
       name: "Admin User",
       role: "ADMIN",
-      hash: "4efca114c142a23cb56363fabb69946990809981b7b9385a86506b54d7f2d2d95", // Equivalent to password123 with our dev hash
+      hash: "4efca114c142a23cb56363fabb6994699080981b7b9385a86506b54d7f2d2d95", // Equivalent to password123 with our dev hash
       isActive: true,
     },
   });

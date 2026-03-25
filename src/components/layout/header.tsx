@@ -1,11 +1,12 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Moon, Sun, Globe } from "lucide-react";
+import { Bell, Search, Moon, Sun, Globe, LogOut, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { locales, localeNames, type Locale } from "@/i18n/config";
-import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 function getBreadcrumbKey(pathname: string): string {
   if (pathname === "/") return "nav.dashboard";
@@ -44,8 +45,11 @@ const translations: Record<string, string> = {
 export function Header() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [localeOpen, setLocaleOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -54,6 +58,12 @@ export function Header() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setLocaleOpen(false);
+      }
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setUserMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -125,9 +135,33 @@ export function Header() {
         </button>
 
         {/* User Avatar */}
-        <button className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-          A
-        </button>
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
+            title={user?.name || "User"}
+          >
+            {user?.name?.charAt(0) || "U"}
+          </button>
+          {userMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-popover p-1 shadow-lg">
+              <div className="border-b border-border px-3 py-2">
+                <p className="text-sm font-medium text-foreground">{user?.name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </div>
+              <button
+                onClick={() => {
+                  logout();
+                  setUserMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Log out</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

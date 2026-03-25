@@ -29,6 +29,9 @@ model Tenant {
   salaryLedgers      SalaryLedger[]
   attendances        Attendance[]
   examResults        ExamResult[]
+  classes            Class[]
+  groups             Group[]
+  sections           Section[]
 }
 
 model User {
@@ -57,6 +60,7 @@ model StudentProfile {
   tenantId        String
   studentId       String
   rollNumber      String
+  profilePictureUrl String?
   firstName       String
   lastName        String
   guardianName    String
@@ -65,14 +69,18 @@ model StudentProfile {
   dateOfBirth     DateTime?
   gender          String?
   address         String?
-  classId         String?
-  sectionId       String?
-  status          String       @default("ACTIVE")
-  admissionDate   DateTime     @default(now())
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  classId         String?    @db.ObjectId
+  groupId         String?    @db.ObjectId
+  sectionId       String?    @db.ObjectId
+  status          String     @default("ACTIVE")
+  admissionDate   DateTime   @default(now())
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  tenant          Tenant       @relation(fields: [tenantId], references: [tenantId])
+  tenant          Tenant     @relation(fields: [tenantId], references: [tenantId])
+  class           Class?     @relation(fields: [classId], references: [id])
+  group           Group?     @relation(fields: [groupId], references: [id])
+  section         Section?   @relation(fields: [sectionId], references: [id])
   feeVouchers     FeeVoucher[]
   attendances     Attendance[]
   examResults     ExamResult[]
@@ -80,6 +88,7 @@ model StudentProfile {
   @@unique([tenantId, studentId])
   @@index([tenantId, rollNumber])
   @@index([tenantId, status])
+  @@index([tenantId, classId])
 }
 
 model AcademicYear {
@@ -245,4 +254,70 @@ model ExamResult {
 
   @@index([tenantId, studentProfileId])
   @@index([tenantId, examName])
+}
+
+// Academic Management Models
+model Class {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  classId       String
+  name          String
+  classNumber   Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [tenantId])
+  groups        Group[]
+  sections      Section[]
+  studentProfiles StudentProfile[]
+
+  @@unique([tenantId, classId])
+  @@unique([tenantId, classNumber])
+  @@index([tenantId])
+}
+
+model Group {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  groupId       String
+  classId       String    @db.ObjectId
+  name          String
+  shortName     String
+  subjects      String[]
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [tenantId])
+  class         Class     @relation(fields: [classId], references: [id])
+  sections      Section[]
+  studentProfiles StudentProfile[]
+
+  @@unique([tenantId, groupId])
+  @@index([tenantId, classId])
+}
+
+model Section {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  sectionId     String
+  classId       String    @db.ObjectId
+  groupId       String?   @db.ObjectId
+  name          String
+  shortName     String
+  capacity      Int?
+  roomNumber    String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [tenantId])
+  class         Class     @relation(fields: [classId], references: [id])
+  group         Group?    @relation(fields: [groupId], references: [id])
+  studentProfiles StudentProfile[]
+
+  @@unique([tenantId, sectionId])
+  @@index([tenantId, classId])
+  @@index([tenantId, groupId])
 }

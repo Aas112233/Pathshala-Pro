@@ -1,0 +1,24 @@
+▲ Next.js 16.2.1 (Turbopack)
+- Environments: .env
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./src/app/api/academic-years/[id]/route.ts:11:1
+Export updateAcademicYearSchema doesn't exist in target module
+   9 |   badRequest,
+  10 | } from "@/lib/api-response";
+> 11 | import { updateAcademicYearSchema } from "@/lib/schemas";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  12 | import { getAuthContext } from "@/lib/auth";
+  13 |
+  14 | /**
+
+The export updateAcademicYearSchema was not found in module [project]/src/lib/schemas.ts [app-route] (ecmascript).
+Did you mean to import createAcademicYearSchema?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+
+    at <unknown> (./src/app/api/academic-years/[id]/route.ts:11:1)

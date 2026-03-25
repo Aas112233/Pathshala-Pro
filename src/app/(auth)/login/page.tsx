@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLogin } from "@/hooks/use-queries";
-import { api } from "@/lib/api-client";
+import { useAuth } from "@/components/providers/auth-provider";
 import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
   const loginMutation = useLogin();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -21,16 +22,10 @@ export default function LoginPage() {
 
     try {
       const result = await loginMutation.mutateAsync({ email, password });
-      
+
       if (!result.error) {
-        // Store auth info
-        api.setAuth(result.data.token, result.data.user.tenantId);
-        localStorage.setItem("auth_token", result.data.token);
-        localStorage.setItem("tenant_id", result.data.user.tenantId);
-        localStorage.setItem("user", JSON.stringify(result.data.user));
-        
-        // Ensure middleware can read the auth_token during navigation
-        document.cookie = `auth_token=${result.data.token}; path=/; max-age=86400`;
+        // Use auth context login - this will persist to localStorage
+        login(result.data.token, result.data.user.tenantId, result.data.user);
 
         toast.success("Login successful!");
         router.push("/");

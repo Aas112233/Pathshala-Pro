@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { AuthProvider } from "@/components/providers/auth-provider";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { Toaster } from "sonner";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: "Pathshala Pro - School Management ERP",
@@ -30,12 +31,14 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <QueryProvider>
-            <ErrorBoundary>
-              {children}
-              <Toaster richColors position="top-right" />
-            </ErrorBoundary>
-          </QueryProvider>
+          <AuthProvider>
+            <QueryProvider>
+              <ErrorBoundary>
+                {children}
+                <Toaster richColors position="top-right" />
+              </ErrorBoundary>
+            </QueryProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

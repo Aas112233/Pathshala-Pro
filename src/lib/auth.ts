@@ -36,6 +36,12 @@ export async function getAuthContext(request: NextRequest): Promise<AuthContext 
       try {
         const decoded = Buffer.from(token, "base64").toString("utf-8");
         const parsed = JSON.parse(decoded);
+        
+        // Check for token expiration
+        if (parsed.exp && Date.now() > parsed.exp) {
+          return null; // Token expired
+        }
+        
         userId = parsed.userId;
         tenantId = parsed.tenantId;
       } catch {

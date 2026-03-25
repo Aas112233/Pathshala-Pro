@@ -26,6 +26,16 @@ const translations: Record<string, string> = {
   "nav.exams": "Exams",
   "nav.attendance": "Attendance",
   "nav.users": "Users",
+  "nav.overview": "Overview",
+  "nav.admissions": "Admissions",
+  "nav.createAdmission": "Create Admission",
+  "nav.academic": "Academics",
+  "nav.academicSettings": "Academic Settings",
+  "nav.classes": "Classes",
+  "nav.groups": "Groups",
+  "nav.sections": "Sections",
+  "nav.hr": "HR & Staff",
+  "nav.administration": "Administration",
 };
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {

@@ -53,9 +53,12 @@ export interface StudentProfile {
   gender?: string;
   address?: string;
   classId?: string;
+  groupId?: string;
   sectionId?: string;
   status: StudentStatus;
   admissionDate: Date;
+  profilePictureUrl?: string;
+  driveFileId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

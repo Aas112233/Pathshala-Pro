@@ -97,9 +97,16 @@ export async function PUT(
     const { id } = await params;
 
     const body = await request.json();
-    const validation = updateStudentSchema.safeParse(body);
+
+    // Log the request body for debugging
+    console.log('[PUT /api/students/:id] Request body:', body);
+
+    // For updates, we don't require studentId in the body
+    const updateDataSchema = updateStudentSchema.omit({ studentId: true });
+    const validation = updateDataSchema.safeParse(body);
 
     if (!validation.success) {
+      console.error('[PUT /api/students/:id] Validation error:', validation.error.errors);
       const errors = validation.error.errors.map((err) => ({
         field: err.path.join("."),
         code: err.code,
@@ -109,6 +116,25 @@ export async function PUT(
     }
 
     const data = validation.data;
+    console.log('[PUT /api/students/:id] Validated data:', data);
+
+    // Convert date strings to Date objects if present
+    const prismaData: any = { ...data };
+
+    // Only include dateOfBirth if it has a valid value
+    if (prismaData.dateOfBirth && prismaData.dateOfBirth.trim() !== '') {
+      prismaData.dateOfBirth = new Date(prismaData.dateOfBirth);
+    } else {
+      delete prismaData.dateOfBirth; // Remove empty date
+    }
+
+    if (prismaData.admissionDate) {
+      prismaData.admissionDate = new Date(prismaData.admissionDate);
+    }
+
+    // Remove fields that shouldn't be updated or don't exist in DB
+    delete prismaData.admissionDate; // Don't allow changing admission date
+    delete prismaData.driveFileId; // This is not a DB field, only used for temp file tracking
 
     // Check if student exists
     const existingStudent = await prisma.studentProfile.findUnique({
@@ -147,7 +173,7 @@ export async function PUT(
 
     const updatedStudent = await prisma.studentProfile.update({
       where: { id },
-      data,
+      data: prismaData,
       select: {
         id: true,
         studentId: true,
@@ -156,6 +182,10 @@ export async function PUT(
         lastName: true,
         guardianName: true,
         guardianContact: true,
+        guardianEmail: true,
+        gender: true,
+        address: true,
+        profilePictureUrl: true,
         status: true,
         updatedAt: true,
       },
