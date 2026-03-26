@@ -7,7 +7,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // We need to mark Prisma as external so the edge logic works correctly
   serverExternalPackages: ["@prisma/client"],
-  allowedDevOrigins: ["*.trycloudflare.com"],
+  // Disable ESLint during build to avoid memory issues
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Output standalone for Cloudflare Workers
+  output: "standalone",
 };
 
 export default withNextIntl(nextConfig);

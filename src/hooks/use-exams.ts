@@ -240,7 +240,7 @@ export function useExam(id: string) {
     queryKey: ["exam", id],
     queryFn: async () => {
       const response = await api.get<Exam>(`/api/exams/${id}`);
-      return response.data;
+      return response.data as Exam;
     },
     enabled: !!id,
   });

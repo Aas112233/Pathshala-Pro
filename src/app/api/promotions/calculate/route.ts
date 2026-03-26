@@ -9,6 +9,17 @@ import {
 } from "@/lib/api-response";
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import type { StudentProfile as BaseStudentProfile } from "@/types/entities";
+import type { ExamResult as PrismaExamResult, Subject, Class } from "@prisma/client";
+
+interface StudentProfileWithClass extends BaseStudentProfile {
+  class?: { classId: string; name: string; classNumber: number } | null;
+}
+
+interface ExamResultWithRelations extends PrismaExamResult {
+  exam: { name: string; type: string };
+  subject: Subject;
+}
 
 /**
  * GET /api/promotions/calculate
@@ -69,10 +80,10 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-    });
+    }) as StudentProfileWithClass[];
 
     const promotionEligibility = await Promise.all(
-      students.map(async (student) => {
+      students.map(async (student: StudentProfileWithClass) => {
         // Get all exam results for this student in the academic year
         const results = await prisma.examResult.findMany({
           where: {
@@ -97,13 +108,13 @@ export async function GET(request: NextRequest) {
         });
 
         // Group results by exam
-        const examGroups = results.reduce((acc, result) => {
+        const examGroups = results.reduce((acc: Record<string, ExamResultWithRelations[]>, result: ExamResultWithRelations) => {
           if (!acc[result.examId]) {
             acc[result.examId] = [];
           }
           acc[result.examId].push(result);
           return acc;
-        }, {} as Record<string, typeof results>);
+        }, {} as Record<string, ExamResultWithRelations[]>);
 
         // Calculate overall performance (use final exam or average all)
         let totalPercentage = 0;
@@ -117,8 +128,8 @@ export async function GET(request: NextRequest) {
         }> = [];
 
         // Use the most recent exam results for each subject
-        const latestResults = new Map<string, typeof results[0]>();
-        results.forEach((result) => {
+        const latestResults = new Map<string, ExamResultWithRelations>();
+        results.forEach((result: ExamResultWithRelations) => {
           const existing = latestResults.get(result.subjectId);
           if (!existing || new Date(result.createdAt) > new Date(existing.createdAt)) {
             latestResults.set(result.subjectId, result);

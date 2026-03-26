@@ -14,22 +14,24 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+interface StudentInfo {
+  id: string;
+  name: string;
+  admissionNumber: string;
+  rollNumber: string;
+  className: string;
+  section: string;
+  dateOfBirth: string;
+  gender: string;
+  bloodGroup?: string;
+  photoUrl?: string;
+  guardianName: string;
+  guardianContact: string;
+}
+
 interface StudentIDCardGeneratorProps {
-  student?: {
-    id: string;
-    name: string;
-    admissionNumber: string;
-    rollNumber: string;
-    className: string;
-    section: string;
-    dateOfBirth: string;
-    gender: string;
-    bloodGroup?: string;
-    photoUrl?: string;
-    guardianName: string;
-    guardianContact: string;
-  };
-  students?: typeof student[];
+  student?: StudentInfo;
+  students?: StudentInfo[];
   school: {
     name: string;
     address: string;
@@ -52,7 +54,7 @@ export function StudentIDCardGenerator({
 
   const handleGenerateSingle = async () => {
     if (!student) return;
-    
+
     setIsGenerating(true);
     try {
       const result = await exportStudentIDCard(
@@ -87,7 +89,7 @@ export function StudentIDCardGenerator({
 
   const handleGenerateBulk = async () => {
     if (!students || students.length === 0) return;
-    
+
     setIsGenerating(true);
     try {
       const results = await exportBulkIDCards(
@@ -134,8 +136,8 @@ export function StudentIDCardGenerator({
         </DialogHeader>
         <div className="flex flex-col gap-3 py-4">
           {student && (
-            <Button 
-              onClick={handleGenerateSingle} 
+            <Button
+              onClick={handleGenerateSingle}
               disabled={isGenerating}
               className="w-full"
             >
@@ -144,8 +146,8 @@ export function StudentIDCardGenerator({
             </Button>
           )}
           {students && students.length > 0 && (
-            <Button 
-              onClick={handleGenerateBulk} 
+            <Button
+              onClick={handleGenerateBulk}
               disabled={isGenerating}
               variant="secondary"
               className="w-full"

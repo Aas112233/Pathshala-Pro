@@ -91,14 +91,14 @@ export async function POST(request: NextRequest) {
         id: true,
         subjectId: true,
       },
-    });
+    }) as Array<{ id: string; subjectId: string }>;
 
     if (existingSubjects.length !== subjectIds.length) {
       return badRequest("One or more subjects not found");
     }
 
     // Create a map of subjectId to MongoDB id
-    const subjectIdMap = new Map(existingSubjects.map(s => [s.subjectId, s.id]));
+    const subjectIdMap = new Map(existingSubjects.map((s: { id: string; subjectId: string }) => [s.subjectId, s.id]));
 
     // Remove existing subject assignments for this class
     await prisma.classSubject.deleteMany({

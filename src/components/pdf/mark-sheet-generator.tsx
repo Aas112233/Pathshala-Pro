@@ -28,6 +28,7 @@ interface Mark {
   obtainedMarks: number;
   passMarks: number;
   grade: string;
+  gradePoint: number;
   remarks?: string;
 }
 
@@ -40,6 +41,7 @@ interface MarkSheetGeneratorProps {
     className: string;
     section: string;
     dateOfBirth: string;
+    gender?: string;
     guardianName: string;
     guardianContact: string;
   };
@@ -96,6 +98,7 @@ export function MarkSheetGenerator({
           className: student.className,
           section: student.section,
           dateOfBirth: student.dateOfBirth,
+          gender: student.gender || "Not specified",
           guardianName: student.guardianName,
           guardianContact: student.guardianContact,
         },
@@ -153,8 +156,8 @@ export function MarkSheetGenerator({
               </SelectContent>
             </Select>
           </div>
-          <Button 
-            onClick={handleGenerate} 
+          <Button
+            onClick={handleGenerate}
             disabled={isGenerating || !selectedExamId}
             className="w-full"
           >

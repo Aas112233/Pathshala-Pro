@@ -472,30 +472,27 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
             <View style={reportCardStyles.marksTable}>
               {/* Table Header */}
               <View style={reportCardStyles.tableHeader}>
-                <Text style={reportCardStyles.headerCell} fixed width={40}>Code</Text>
-                <Text style={reportCardStyles.headerCell} fixed flex={2}>Subject</Text>
-                <Text style={reportCardStyles.headerCell} fixed width={35}>Max</Text>
-                <Text style={reportCardStyles.headerCell} fixed width={35}>Obt</Text>
-                <Text style={reportCardStyles.headerCell} fixed width={30}>Grade</Text>
-                <Text style={reportCardStyles.headerCell} fixed width={35}>GP</Text>
-                <Text style={reportCardStyles.headerCell} fixed flex={1}>Remarks</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 40 }]} fixed>Code</Text>
+                <Text style={[reportCardStyles.headerCell, { flex: 2 }]} fixed>Subject</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>Max</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>Obt</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 30 }]} fixed>Grade</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>GP</Text>
+                <Text style={[reportCardStyles.headerCell, { flex: 1 }]} fixed>Remarks</Text>
               </View>
               {/* Table Rows */}
               {term.subjects.map((subject, subjIndex) => (
-                <View 
+                <View
                   key={subjIndex}
-                  style={[
-                    reportCardStyles.tableRow,
-                    subjIndex % 2 === 1 ? reportCardStyles.tableRowAlt : null
-                  ]}
+                  style={subjIndex % 2 === 1 ? [reportCardStyles.tableRow, reportCardStyles.tableRowAlt] : [reportCardStyles.tableRow]}
                 >
-                  <Text style={reportCardStyles.tableCell} fixed width={40}>{subject.subjectCode}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed flex={2}>{subject.subject}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed width={35}>{subject.maxMarks}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed width={35}>{subject.obtainedMarks}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed width={30}>{subject.grade}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed width={35}>{subject.gradePoint.toFixed(1)}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed flex={1}>{subject.remarks || "-"}</Text>
+                  <Text style={[reportCardStyles.tableCell, { width: 40 }]} fixed>{subject.subjectCode}</Text>
+                  <Text style={[reportCardStyles.tableCell, { flex: 2 }]} fixed>{subject.subject}</Text>
+                  <Text style={[reportCardStyles.tableCell, { width: 35 }]} fixed>{subject.maxMarks}</Text>
+                  <Text style={[reportCardStyles.tableCell, { width: 35 }]} fixed>{subject.obtainedMarks}</Text>
+                  <Text style={[reportCardStyles.tableCell, { width: 30 }]} fixed>{subject.grade}</Text>
+                  <Text style={[reportCardStyles.tableCell, { width: 35 }]} fixed>{subject.gradePoint.toFixed(1)}</Text>
+                  <Text style={[reportCardStyles.tableCell, { flex: 1 }]} fixed>{subject.remarks || "-"}</Text>
                 </View>
               ))}
             </View>
@@ -514,8 +511,8 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
           </View>
           <View style={reportCardStyles.summaryItem}>
             <Text style={reportCardStyles.summaryLabel}>Final Result</Text>
-            <Text style={[reportCardStyles.summaryValue, { 
-              color: allPassed ? "#15803D" : "#DC2626" 
+            <Text style={[reportCardStyles.summaryValue, {
+              color: allPassed ? "#15803D" : "#DC2626"
             }]}>
               {allPassed ? "PASS" : "FAIL"}
             </Text>
@@ -532,8 +529,8 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
                 <Text style={reportCardStyles.attendanceValue}>
                   {month.present}/{month.total}
                 </Text>
-                <Text style={{ fontSize: 5, color: month.present/month.total >= 0.75 ? "#22C55E" : "#EF4444" }}>
-                  {((month.present/month.total) * 100).toFixed(0)}%
+                <Text style={{ fontSize: 5, color: month.present / month.total >= 0.75 ? "#22C55E" : "#EF4444" }}>
+                  {((month.present / month.total) * 100).toFixed(0)}%
                 </Text>
               </View>
             ))}
@@ -546,13 +543,10 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
             <Text style={reportCardStyles.sectionTitle}>Co-Curricular Activities</Text>
             <View style={reportCardStyles.coCurricularTable}>
               {coCurricular.map((activity, index) => (
-                <View key={index} style={[
-                  reportCardStyles.tableRow,
-                  index % 2 === 1 ? reportCardStyles.tableRowAlt : null
-                ]}>
-                  <Text style={reportCardStyles.tableCell} fixed flex={2}>{activity.activity}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed width={50}>Grade: {activity.grade}</Text>
-                  <Text style={reportCardStyles.tableCell} fixed flex={2}>{activity.remarks || "-"}</Text>
+                <View key={index} style={index % 2 === 1 ? [reportCardStyles.tableRow, reportCardStyles.tableRowAlt] : [reportCardStyles.tableRow]}>
+                  <Text style={[reportCardStyles.tableCell, { flex: 2 }]} fixed>{activity.activity}</Text>
+                  <Text style={[reportCardStyles.tableCell, { width: 50 }]} fixed>Grade: {activity.grade}</Text>
+                  <Text style={[reportCardStyles.tableCell, { flex: 2 }]} fixed>{activity.remarks || "-"}</Text>
                 </View>
               ))}
             </View>

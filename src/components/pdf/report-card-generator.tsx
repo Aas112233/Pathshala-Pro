@@ -28,6 +28,7 @@ interface SubjectResult {
   subjectCode: string;
   maxMarks: number;
   obtainedMarks: number;
+  passMarks: number;
   grade: string;
   gradePoint: number;
   remarks?: string;
@@ -198,8 +199,8 @@ export function ReportCardGenerator({
           </div>
 
           <div className="flex gap-2">
-            <Button 
-              onClick={handleGenerate} 
+            <Button
+              onClick={handleGenerate}
               disabled={isGenerating || !selectedYear}
               className="flex-1"
             >

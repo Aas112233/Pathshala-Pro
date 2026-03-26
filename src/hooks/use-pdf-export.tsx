@@ -24,7 +24,7 @@ interface StudentInfo {
   className: string;
   section: string;
   dateOfBirth: string;
-  gender?: string;
+  gender: string;
   bloodGroup?: string;
   guardianName: string;
   guardianContact: string;
@@ -39,6 +39,7 @@ interface Mark {
   obtainedMarks: number;
   passMarks: number;
   grade: string;
+  gradePoint: number;
   remarks?: string;
 }
 

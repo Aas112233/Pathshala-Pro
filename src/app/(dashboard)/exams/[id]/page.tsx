@@ -277,6 +277,7 @@ export default function EditExamPage() {
         id: examId!,
         data: {
           ...formData,
+          type: formData.type as "MID_TERM" | "FINAL" | "UNIT_TEST" | "ANNUAL" | undefined,
           subjects: subjects.length > 0 ? subjects : undefined
         }
       },

@@ -222,11 +222,11 @@ const markSheetStyles = StyleSheet.create({
   },
 });
 
-export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({ 
-  student, 
-  exam, 
-  marks, 
-  school 
+export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
+  student,
+  exam,
+  marks,
+  school
 }) => {
   const totalMaxMarks = marks.reduce((sum, m) => sum + m.maxMarks, 0);
   const totalObtained = marks.reduce((sum, m) => sum + m.obtainedMarks, 0);
@@ -295,43 +295,40 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
         <View style={markSheetStyles.table}>
           {/* Table Header */}
           <View style={markSheetStyles.tableHeader}>
-            <Text style={markSheetStyles.headerCell} fixed width={60}>Code</Text>
-            <Text style={markSheetStyles.headerCell} fixed flex={2}>Subject</Text>
-            <Text style={markSheetStyles.headerCell} fixed width={50}>Max</Text>
-            <Text style={markSheetStyles.headerCell} fixed width={50}>Obt</Text>
-            <Text style={markSheetStyles.headerCell} fixed width={40}>Pass</Text>
-            <Text style={markSheetStyles.headerCell} fixed width={40}>Grade</Text>
-            <Text style={markSheetStyles.headerCell} fixed flex={1}>Remarks</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 60 }]} fixed>Code</Text>
+            <Text style={[markSheetStyles.headerCell, { flex: 2 }]} fixed>Subject</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 50 }]} fixed>Max</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 50 }]} fixed>Obt</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 40 }]} fixed>Pass</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 40 }]} fixed>Grade</Text>
+            <Text style={[markSheetStyles.headerCell, { flex: 1 }]} fixed>Remarks</Text>
           </View>
 
           {/* Table Rows */}
           {marks.map((mark, index) => (
-            <View 
-              key={index} 
-              style={[
-                markSheetStyles.tableRow,
-                index % 2 === 1 ? markSheetStyles.tableRowAlt : null
-              ]}
+            <View
+              key={index}
+              style={index % 2 === 1 ? [markSheetStyles.tableRow, markSheetStyles.tableRowAlt] : [markSheetStyles.tableRow]}
             >
-              <Text style={markSheetStyles.tableCell} fixed width={60}>{mark.subjectCode}</Text>
-              <Text style={markSheetStyles.tableCell} fixed flex={2}>{mark.subject}</Text>
-              <Text style={markSheetStyles.tableCell} fixed width={50}>{mark.maxMarks}</Text>
-              <Text style={markSheetStyles.tableCell} fixed width={50}>{mark.obtainedMarks}</Text>
-              <Text style={markSheetStyles.tableCell} fixed width={40}>{mark.passMarks}</Text>
-              <Text style={markSheetStyles.tableCell} fixed width={40}>{mark.grade}</Text>
-              <Text style={markSheetStyles.tableCell} fixed flex={1}>{mark.remarks || "-"}</Text>
+              <Text style={[markSheetStyles.tableCell, { width: 60 }]} fixed>{mark.subjectCode}</Text>
+              <Text style={[markSheetStyles.tableCell, { flex: 2 }]} fixed>{mark.subject}</Text>
+              <Text style={[markSheetStyles.tableCell, { width: 50 }]} fixed>{mark.maxMarks}</Text>
+              <Text style={[markSheetStyles.tableCell, { width: 50 }]} fixed>{mark.obtainedMarks}</Text>
+              <Text style={[markSheetStyles.tableCell, { width: 40 }]} fixed>{mark.passMarks}</Text>
+              <Text style={[markSheetStyles.tableCell, { width: 40 }]} fixed>{mark.grade}</Text>
+              <Text style={[markSheetStyles.tableCell, { flex: 1 }]} fixed>{mark.remarks || "-"}</Text>
             </View>
           ))}
 
           {/* Table Footer - Totals */}
           <View style={markSheetStyles.tableFooter}>
-            <Text style={markSheetStyles.tableCell} fixed width={60}></Text>
-            <Text style={markSheetStyles.tableCell} fixed flex={2} fontWeight={700}>TOTAL</Text>
-            <Text style={markSheetStyles.tableCell} fixed width={50} fontWeight={700}>{totalMaxMarks}</Text>
-            <Text style={markSheetStyles.tableCell} fixed width={50} fontWeight={700}>{totalObtained}</Text>
-            <Text style={markSheetStyles.tableCell} fixed width={40}></Text>
-            <Text style={markSheetStyles.tableCell} fixed width={40}></Text>
-            <Text style={markSheetStyles.tableCell} fixed flex={1}></Text>
+            <Text style={[markSheetStyles.tableCell, { width: 60 }]} fixed></Text>
+            <Text style={[markSheetStyles.tableCell, { flex: 2, fontWeight: 700 }]} fixed>TOTAL</Text>
+            <Text style={[markSheetStyles.tableCell, { width: 50, fontWeight: 700 }]} fixed>{totalMaxMarks}</Text>
+            <Text style={[markSheetStyles.tableCell, { width: 50, fontWeight: 700 }]} fixed>{totalObtained}</Text>
+            <Text style={[markSheetStyles.tableCell, { width: 40 }]} fixed></Text>
+            <Text style={[markSheetStyles.tableCell, { width: 40 }]} fixed></Text>
+            <Text style={[markSheetStyles.tableCell, { flex: 1 }]} fixed></Text>
           </View>
         </View>
 
@@ -348,8 +345,8 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
             </View>
             <View style={markSheetStyles.resultItem}>
               <Text style={markSheetStyles.resultLabel}>Result</Text>
-              <Text style={[markSheetStyles.resultValue, { 
-                color: result === "PASS" ? "#15803D" : "#DC2626" 
+              <Text style={[markSheetStyles.resultValue, {
+                color: result === "PASS" ? "#15803D" : "#DC2626"
               }]}>
                 {result}
               </Text>
