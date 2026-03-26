@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Output standalone for Cloudflare Workers
-  output: "standalone",
+  // Vercel handles deployment automatically
+  output: undefined,
 };
 
 export default withNextIntl(nextConfig);

@@ -14,8 +14,6 @@ import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { z } from "zod";
 
-export const runtime = 'edge';
-
 const createGroupSchema = z.object({
   classId: z.string().min(1, "Class is required"),
   name: z.string().min(2, "Group name must be at least 2 characters"),

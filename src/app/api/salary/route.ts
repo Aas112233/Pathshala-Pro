@@ -13,8 +13,6 @@ import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { hasPermission } from "@/lib/permissions";
 
-export const runtime = 'edge';
-
 /**
  * GET /api/salary
  * Get all salary ledgers with pagination

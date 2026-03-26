@@ -9,8 +9,6 @@ import {
 } from "@/lib/api-response";
 import { getAuthContext } from "@/lib/auth";
 
-export const runtime = 'edge';
-
 // Grading scale configuration
 const GRADING_SCALE = [
   { minPercentage: 80, grade: "A+", point: 5.0, remark: "Excellent" },

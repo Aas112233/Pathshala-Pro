@@ -9,8 +9,6 @@ import {
 import { loginSchema, createUserSchema } from "@/lib/schemas";
 import { hashPassword, verifyPassword, generateAuthToken } from "@/lib/auth";
 
-export const runtime = 'edge';
-
 /**
  * POST /api/auth/login
  * Authenticate user and return auth token

@@ -10,8 +10,6 @@ import { loginSchema } from "@/lib/schemas";
 import { verifyPassword, generateAuthToken } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 
-export const runtime = 'edge';
-
 /**
  * POST /api/auth/login
  * Authenticate user and return auth token

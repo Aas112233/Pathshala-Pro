@@ -9,8 +9,6 @@ import {
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
-export const runtime = 'edge';
-
 /**
  * GET /api/transactions/[id]
  * Get a single transaction by ID

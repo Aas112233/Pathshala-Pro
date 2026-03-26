@@ -10,8 +10,6 @@ import {
 import { createExamSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 
-export const runtime = 'edge';
-
 async function generateUniqueExamId(tenantId: string) {
   const latestExam = await prisma.exam.findFirst({
     where: {

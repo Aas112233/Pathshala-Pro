@@ -12,8 +12,6 @@ import {
 import { getAuthContext } from "@/lib/auth";
 import { z } from "zod";
 
-export const runtime = 'edge';
-
 const updateSectionSchema = z.object({
   classId: z.string().min(1, "Class is required").optional(),
   groupId: z.string().optional(),

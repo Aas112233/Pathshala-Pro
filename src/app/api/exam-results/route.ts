@@ -13,8 +13,6 @@ import { createExamResultNewSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
-export const runtime = 'edge';
-
 // Grading scale configuration
 const GRADING_SCALE = [
   { minPercentage: 80, grade: "A+", point: 5.0, remark: "Excellent" },

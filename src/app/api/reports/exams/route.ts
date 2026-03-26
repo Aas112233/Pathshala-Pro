@@ -5,8 +5,6 @@ import { forbidden } from "next/navigation";
 
 const prisma = new PrismaClient();
 
-export const runtime = 'edge';
-
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext(request);

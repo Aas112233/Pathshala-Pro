@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, unauthorized } from "@/lib/api-response";
 import { jwtVerify } from "jose";
 
-export const runtime = 'edge';
-
 /**
  * GET /api/tenants
  * List all tenants for System Admin

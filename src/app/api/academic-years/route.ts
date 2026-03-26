@@ -14,8 +14,6 @@ import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { hasPermission } from "@/lib/permissions";
 
-export const runtime = 'edge';
-
 /**
  * GET /api/academic-years
  * Get all academic years with pagination

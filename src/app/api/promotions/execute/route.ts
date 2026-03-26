@@ -11,8 +11,6 @@ import { createClassPromotionSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
-export const runtime = 'edge';
-
 /**
  * POST /api/promotions/execute
  * Execute promotions for students (bulk or individual)

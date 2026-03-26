@@ -12,8 +12,6 @@ import { updateUserSchema } from "@/lib/schemas";
 import { getAuthContext, hashPassword } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
-export const runtime = 'edge';
-
 /**
  * GET /api/users/[id]
  * Get a single user by ID
