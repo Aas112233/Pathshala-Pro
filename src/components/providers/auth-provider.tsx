@@ -63,7 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
 
           // Also set cookie for middleware
-          document.cookie = `auth_token=${token}; path=/; max-age=86400`;
+          const isSecure = window.location.protocol === 'https:';
+          document.cookie = `auth_token=${token}; path=/; max-age=86400${isSecure ? '; Secure; SameSite=None' : '; SameSite=Lax'}`;
         } else {
           setAuthState({
             user: null,
@@ -105,7 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("user", JSON.stringify(user));
 
     // Set cookie for middleware
-    document.cookie = `auth_token=${token}; path=/; max-age=86400`;
+    const isSecure = window.location.protocol === 'https:';
+    document.cookie = `auth_token=${token}; path=/; max-age=86400${isSecure ? '; Secure; SameSite=None' : '; SameSite=Lax'}`;
 
     // Set auth in API client
     api.setAuth(token, tenantId);

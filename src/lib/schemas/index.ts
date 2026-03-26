@@ -52,6 +52,8 @@ export const createStudentSchema = z.object({
   rollNumber: z.string().min(1, "Roll number is required"),
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(1, "Last name is required"),
+  firstNameBn: z.string().optional(),
+  lastNameBn: z.string().optional(),
   guardianName: z.string().min(2, "Guardian name is required"),
   guardianContact: z.string().min(10, "Valid contact number is required"),
   guardianEmail: z.string().email().optional(),

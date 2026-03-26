@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ImagePreviewModal } from "@/components/shared/image-preview-modal";
 import { StudentStatusBadge } from "./student-status-badge";
 import { User, Phone, Mail, Calendar, MapPin, Hash, IdCard, ZoomIn } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatStudentName } from "@/lib/utils";
 import type { StudentProfile } from "@/types/entities";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
@@ -28,7 +28,7 @@ export function StudentDetailsModal({
 
   if (!student) return null;
 
-  const fullName = `${student.firstName} ${student.lastName}`;
+  const fullName = formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn);
   const initials = `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`;
   const hasImage = !!student.profilePictureUrl;
 

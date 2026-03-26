@@ -7,6 +7,7 @@ import { StudentStatusBadge } from "./student-status-badge";
 import { StudentActionsDropdown } from "./student-actions-dropdown";
 import { ImagePreviewModal } from "@/components/shared/image-preview-modal";
 import type { StudentProfile } from "@/types/entities";
+import { formatStudentName } from "@/lib/utils";
 
 interface StudentCardProps {
   student: StudentProfile;
@@ -24,7 +25,7 @@ export function StudentCard({
   className,
 }: StudentCardProps) {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
-  const fullName = `${student.firstName} ${student.lastName}`;
+  const fullName = formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn);
   const initials = `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`;
   const hasImage = !!student.profilePictureUrl;
 

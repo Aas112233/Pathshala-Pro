@@ -21,6 +21,7 @@ import { StudentsEmptyState } from "@/components/students/students-empty-state";
 import { StudentStatusBadge } from "@/components/students/student-status-badge";
 import { StudentActionsDropdown } from "@/components/students/student-actions-dropdown";
 import type { StudentProfile, StudentStatus } from "@/types/entities";
+import { formatStudentName } from "@/lib/utils";
 
 type StudentRow = StudentProfile & {
   class?: {
@@ -57,6 +58,8 @@ export default function StudentsPage() {
       rollNumber: student.rollNumber,
       firstName: student.firstName,
       lastName: student.lastName,
+      firstNameBn: student.firstNameBn,
+      lastNameBn: student.lastNameBn,
       guardianName: student.guardianName,
       guardianContact: student.guardianContact,
       guardianEmail: student.guardianEmail,
@@ -126,7 +129,7 @@ export default function StudentsPage() {
       header: t('tableColumns.name'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span>{`${row.original.firstName} ${row.original.lastName}`}</span>
+          <span>{formatStudentName(row.original.firstName, row.original.lastName, row.original.firstNameBn, row.original.lastNameBn)}</span>
         </div>
       ),
     },

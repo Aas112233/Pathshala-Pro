@@ -27,7 +27,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatStudentName } from "@/lib/utils";
 
 interface StudentResult {
   studentId: string;
@@ -81,7 +81,7 @@ export default function ExamResultsPage() {
 
     const initialResults: StudentResult[] = students.map((student: any) => ({
       studentId: student.id,
-      studentName: `${student.firstName} ${student.lastName}`,
+      studentName: formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn),
       rollNumber: student.rollNumber,
       marks: 0,
       status: "ABSENT",

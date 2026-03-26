@@ -191,6 +191,8 @@ export async function PUT(
         rollNumber: true,
         firstName: true,
         lastName: true,
+        firstNameBn: true,
+        lastNameBn: true,
         guardianName: true,
         guardianContact: true,
         guardianEmail: true,

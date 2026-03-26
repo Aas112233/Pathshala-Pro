@@ -136,17 +136,31 @@ export function DataTable<TData>({
           <div className="flex items-center gap-1">
             <button
               onClick={() => onPageChange?.(pagination.currentPage - 1)}
-              disabled={!pagination.hasPreviousPage}
+              disabled={!pagination.hasPreviousPage || isLoading}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ChevronLeft className="h-4 w-4" />
+              {isLoading && pagination.hasPreviousPage ? (
+                <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
             </button>
             <button
               onClick={() => onPageChange?.(pagination.currentPage + 1)}
-              disabled={!pagination.hasNextPage}
+              disabled={!pagination.hasNextPage || isLoading}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ChevronRight className="h-4 w-4" />
+              {isLoading && pagination.hasNextPage ? (
+                <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>

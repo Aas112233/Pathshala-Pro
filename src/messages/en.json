@@ -61,6 +61,7 @@
     "promotions": "Promotions",
     "promotionRules": "Promotion Rules",
     "subjects": "Subjects",
+    "examResults": "Exam Results",
     "reports": "Reports"
   },
   "auth": {
@@ -118,6 +119,9 @@
     "students": "Students",
     "addStudentsForAdmission": "Add students for admission",
     "addStudents": "Add Students",
+    "addOldStudent": "Add Old Student",
+    "createNewStudent": "Create New Student",
+    "studentCreatedAndAdded": "Student created and added to admission",
     "noStudentsAdded": "No students added yet",
     "clickToAddStudents": "Click \"Add Students\" to select students",
     "additionalNotes": "Additional Notes",
@@ -137,7 +141,13 @@
     "name": "Name",
     "admissionDate": "Admission Date",
     "status": "Status",
-    "searchPlaceholder": "Search by name, ID, or roll number..."
+    "searchPlaceholder": "Search by name, ID, or roll number...",
+    "actions": "Actions",
+    "editAdmission": "Edit Admission",
+    "editAdmissionDescription": "Update class, group, and section for",
+    "admissionUpdated": "Admission updated successfully!",
+    "updateFailed": "Failed to update admission",
+    "saveChanges": "Save Changes"
   },
   "students": {
     "title": "Students",
@@ -147,6 +157,8 @@
     "studentProfile": "Student Profile",
     "firstName": "First Name",
     "lastName": "Last Name",
+    "firstNameBn": "First Name (বাংলা)",
+    "lastNameBn": "Last Name (বাংলা)",
     "rollNumber": "Roll Number",
     "class": "Class",
     "section": "Section",
@@ -294,16 +306,6 @@
     "printReceipt": "Print Receipt",
     "paymentSuccess": "Payment collected successfully"
   },
-  "transactions": {
-    "title": "Transactions",
-    "description": "View and manage all financial transactions.",
-    "transactionId": "Transaction ID",
-    "date": "Date",
-    "amount": "Amount",
-    "method": "Method",
-    "receivedBy": "Received By",
-    "dailySummary": "Daily Summary"
-  },
   "staff": {
     "title": "Staff",
     "description": "Manage staff profiles and employment records.",
@@ -432,7 +434,22 @@
     "markAllFail": "Mark All Fail",
     "markAllAbsent": "Mark All Absent",
     "saveResults": "Save Results",
-    "loadStudentList": "Load Student List"
+    "loadStudentList": "Load Student List",
+    "subjectsRequired": "Select at least one subject",
+    "editExam": "Edit Exam",
+    "editExamDescription": "Update exam information and subjects",
+    "editExamFormDescription": "Make changes to the exam details below",
+    "back": "Back",
+    "backToExams": "Back to Exams",
+    "saveChanges": "Save Changes",
+    "saving": "Saving...",
+    "examUpdatedSuccessfully": "Exam updated successfully",
+    "examUpdateFailed": "Failed to update exam",
+    "loadingExam": "Loading exam...",
+    "examNotFound": "Exam Not Found",
+    "examNotFoundDescription": "The exam you're looking for doesn't exist or has been deleted",
+    "fillRequiredFields": "Please fill in all required fields",
+    "passMarks": "Pass Marks"
   },
   "salary": {
     "title": "Salary / Payroll",
@@ -539,7 +556,6 @@
     "saving": "Saving...",
     "cancel": "Cancel"
   },
-
   "academicYear": {
     "title": "Academic Year",
     "description": "Manage academic years, sessions, and terms.",
@@ -649,7 +665,6 @@
     "datePreview": "Date Preview",
     "currentDate": "Current Date"
   },
-
   "transactions": {
     "title": "Transactions",
     "description": "View and manage all payment transactions.",
@@ -679,7 +694,6 @@
     "deleteError": "Failed to delete transaction",
     "rollbackPayment": "Rollback Payment"
   },
-
   "subjects": {
     "title": "Subjects",
     "description": "Manage subjects and configure for classes",
@@ -733,7 +747,6 @@
     "presets50Marks": "50 Marks (40% pass)",
     "pleaseFillRequired": "Please fill in all required fields"
   },
-
   "classes": {
     "title": "Classes",
     "description": "Manage school classes and grades.",
@@ -785,14 +798,21 @@
       "delete": "Delete"
     }
   },
-
   "results": {
     "title": "Exam Results",
     "description": "Enter and manage examination results",
+    "enterResults": "Enter Results",
     "selectExam": "Select Exam",
+    "selectClass": "Select Class",
     "selectSubject": "Select Subject",
+    "examDetails": "Exam & Class Details",
+    "selectExamFirst": "Select an exam to get started",
+    "selectClassToLoad": "Select a class to load students",
+    "selectSubjectToEnter": "Select a subject to enter marks",
     "studentName": "Student Name",
     "rollNumber": "Roll Number",
+    "obtainedMarks": "Obtained Marks",
+    "maxMarks": "Max Marks",
     "marks": "Marks",
     "grade": "Grade",
     "status": "Status",
@@ -801,7 +821,32 @@
     "absent": "Absent",
     "totalStudents": "Total Students",
     "passed": "Passed",
-    "failed": "Failed"
+    "failed": "Failed",
+    "noStudentsInClass": "No students found in this class",
+    "loadingStudents": "Loading students...",
+    "marksEntry": "Marks Entry",
+    "enterMarksForStudents": "Enter marks for each student",
+    "saveResults": "Save Results",
+    "saving": "Saving...",
+    "saveSuccess": "Exam results saved successfully!",
+    "saveError": "Failed to save exam results",
+    "fillAllMarks": "Please fill marks for all students",
+    "summary": "Summary",
+    "examName": "Exam",
+    "className": "Class",
+    "subjectName": "Subject",
+    "studentsLoaded": "Students",
+    "back": "Back",
+    "pleaseSelectAll": "Please select exam, class, and subject first",
+    "searchPlaceholder": "Search by student name, exam, or subject...",
+    "filterAllExams": "All Exams",
+    "filterAllSubjects": "All Subjects",
+    "filterAllStatus": "All Status",
+    "clearFilters": "Clear Filters",
+    "actions": "Actions",
+    "editResult": "Edit Result",
+    "updateSuccess": "Exam result updated successfully!",
+    "updateError": "Failed to update exam result"
   },
   "promotions": {
     "title": "Promotions",
@@ -827,42 +872,6 @@
     "reExamAllowed": "Re-exam Allowed",
     "reExamRequired": "Re-exam Required"
   },
-  "subjects": {
-    "title": "Subjects",
-    "description": "Manage subjects and configure for classes",
-    "addSubject": "Add Subject",
-    "editSubject": "Edit Subject",
-    "subjectId": "Subject ID",
-    "subjectCode": "Subject Code",
-    "subjectName": "Subject Name",
-    "category": "Category",
-    "compulsory": "Compulsory",
-    "elective": "Elective",
-    "optional": "Optional",
-    "maxMarks": "Maximum Marks",
-    "passMarks": "Passing Marks",
-    "active": "Active",
-    "inactive": "Inactive",
-    "searchPlaceholder": "Search by name, code, or ID...",
-    "filterByCategory": "Filter by category",
-    "allCategories": "All Categories",
-    "totalSubjects": "Total Subjects",
-    "quickPresets": "Quick Presets",
-    "marks100": "100 Marks (33% pass)",
-    "marks50": "50 Marks (40% pass)",
-    "assignToClass": "Assign to Class",
-    "classSubjects": "Class Subjects",
-    "selectSubjects": "Select Subjects",
-    "selected": "selected",
-    "selectedSubjects": "Selected Subjects",
-    "noSubjectsSelected": "No subjects selected",
-    "subject(s)WillBeAssigned": "subject(s) will be assigned to this class",
-    "saveClassAndSubjects": "Save Class & Subjects",
-    "classDetails": "Class Details",
-    "saving": "Saving...",
-    "classNumberHint": "Enter a unique class number (e.g., 1 for Class 1, 10 for Class 10)"
-  },
-
   "groups": {
     "title": "Groups",
     "description": "Manage student groups (Science, Commerce, Arts, etc.)",
@@ -894,11 +903,9 @@
     "update": "Update",
     "saving": "Saving..."
   },
-
   "actions": {
     "subjects": "Subjects"
   },
-
   "sections": {
     "title": "Sections",
     "description": "Manage class sections (A, B, C, etc.)",
@@ -938,7 +945,6 @@
     "update": "Update",
     "saving": "Saving..."
   },
-
   "systemAdmin": {
     "management": "Platform Management",
     "tenants": "Manage Schools",
@@ -958,15 +964,10 @@
       "trial": "Trial"
     }
   },
-
   "reports": {
     "title": "Reports",
     "description": "Generate and analyze reports across all modules",
     "overview": "Report Overview",
-    "feeReport": "Fee Report",
-    "attendanceReport": "Attendance Report",
-    "studentReport": "Student Report",
-    "examReport": "Exam Report",
     "filters": {
       "dateRange": "Date Range",
       "fromDate": "From Date",

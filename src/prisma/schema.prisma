@@ -93,6 +93,8 @@ model StudentProfile {
   profilePictureUrl String?
   firstName       String
   lastName        String
+  firstNameBn     String?
+  lastNameBn      String?
   guardianName    String
   guardianContact String
   guardianEmail   String?

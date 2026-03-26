@@ -10,6 +10,7 @@ import { useTransactions, useDeleteTransaction } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { formatStudentName } from "@/lib/utils";
 
 export default function TransactionsPage() {
   const t = useTranslations('transactions');
@@ -59,7 +60,7 @@ export default function TransactionsPage() {
         const voucher = row.original.feeVoucher;
         const student = voucher?.studentProfile;
         return student ? (
-          <span>{`${student.firstName} ${student.lastName}`}</span>
+          <span>{formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn)}</span>
         ) : (
           <span>-</span>
         );

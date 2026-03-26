@@ -47,6 +47,8 @@ export function StudentFormModal({
     rollNumber: "",
     firstName: "",
     lastName: "",
+    firstNameBn: "",
+    lastNameBn: "",
     guardianName: "",
     guardianContact: "",
     guardianEmail: "",
@@ -66,6 +68,8 @@ export function StudentFormModal({
         rollNumber: initialData.rollNumber || "",
         firstName: initialData.firstName || "",
         lastName: initialData.lastName || "",
+        firstNameBn: initialData.firstNameBn || "",
+        lastNameBn: initialData.lastNameBn || "",
         guardianName: initialData.guardianName || "",
         guardianContact: initialData.guardianContact || "",
         guardianEmail: initialData.guardianEmail || "",
@@ -82,6 +86,8 @@ export function StudentFormModal({
         rollNumber: "",
         firstName: "",
         lastName: "",
+        firstNameBn: "",
+        lastNameBn: "",
         guardianName: "",
         guardianContact: "",
         guardianEmail: "",
@@ -249,6 +255,8 @@ export function StudentFormModal({
         rollNumber: "",
         firstName: "",
         lastName: "",
+        firstNameBn: "",
+        lastNameBn: "",
         guardianName: "",
         guardianContact: "",
         guardianEmail: "",
@@ -427,6 +435,32 @@ export function StudentFormModal({
                     className={clsx(inputClass, errors.lastName && "border-destructive focus:ring-destructive")}
                   />
                   {errors.lastName && <p className={errorClass}>{errors.lastName}</p>}
+                </div>
+              </div>
+
+              {/* Bengali Name Fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className={labelClass}>First Name (বাংলা)</label>
+                  <input
+                    name="firstNameBn"
+                    value={formData.firstNameBn}
+                    onChange={handleChange}
+                    placeholder="প্রথম নাম"
+                    disabled={isLoading || isUploading}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClass}>Last Name (বাংলা)</label>
+                  <input
+                    name="lastNameBn"
+                    value={formData.lastNameBn}
+                    onChange={handleChange}
+                    placeholder="শেষ নাম"
+                    disabled={isLoading || isUploading}
+                    className={inputClass}
+                  />
                 </div>
               </div>
 

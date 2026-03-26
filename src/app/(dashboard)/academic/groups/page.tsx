@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { AppModal } from "@/components/ui/app-modal";
-import { Layers, Plus, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Layers, Plus, Pencil, Trash2, CheckCircle, XCircle, X, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -28,12 +28,22 @@ interface GroupData {
   };
 }
 
+interface SubjectData {
+  id: string;
+  subjectId: string;
+  name: string;
+  code: string;
+  category: string;
+  isActive: boolean;
+}
+
 export default function GroupsPage() {
   const t = useTranslations('groups');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupData | null>(null);
+  const [subjectSearch, setSubjectSearch] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -52,6 +62,28 @@ export default function GroupsPage() {
       return res.json();
     },
   });
+
+  // Fetch all subjects from API
+  const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
+    queryKey: ["subjects-all"],
+    queryFn: async () => {
+      const token = localStorage.getItem("auth_token");
+      const tenantId = localStorage.getItem("tenant_id");
+      const res = await fetch("/api/subjects?isActive=true", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Tenant-ID": tenantId || "",
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch subjects");
+      return res.json();
+    },
+  });
+
+  const allSubjects: SubjectData[] = useMemo(() => {
+    if (!subjectsData) return [];
+    return ("data" in subjectsData) ? subjectsData.data : [];
+  }, [subjectsData]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["groups", { page, search }],
@@ -156,7 +188,7 @@ export default function GroupsPage() {
     classId: "",
     name: "",
     shortName: "",
-    subjects: "",
+    selectedSubjects: [] as string[],
     isActive: true,
   });
 
@@ -165,16 +197,20 @@ export default function GroupsPage() {
       classId: "",
       name: "",
       shortName: "",
-      subjects: "",
+      selectedSubjects: [],
       isActive: true,
     });
+    setSubjectSearch("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const data = {
-      ...formData,
-      subjects: formData.subjects.split(",").map((s) => s.trim()).filter(Boolean),
+      classId: formData.classId,
+      name: formData.name,
+      shortName: formData.shortName,
+      subjects: formData.selectedSubjects,
+      isActive: formData.isActive,
     };
     if (editingGroup) {
       updateMutation.mutate({ id: editingGroup.id, data });
@@ -189,9 +225,10 @@ export default function GroupsPage() {
       classId: group.classId || "",
       name: group.name,
       shortName: group.shortName,
-      subjects: group.subjects?.join(", ") || "",
+      selectedSubjects: group.subjects || [],
       isActive: group.isActive,
     });
+    setSubjectSearch("");
     setIsModalOpen(true);
   };
 
@@ -199,6 +236,32 @@ export default function GroupsPage() {
     if (!confirm(t('confirmDelete'))) return;
     deleteMutation.mutate(id);
   };
+
+  const toggleSubject = (subjectName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedSubjects: prev.selectedSubjects.includes(subjectName)
+        ? prev.selectedSubjects.filter(s => s !== subjectName)
+        : [...prev.selectedSubjects, subjectName],
+    }));
+  };
+
+  const removeSubject = (subjectName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedSubjects: prev.selectedSubjects.filter(s => s !== subjectName),
+    }));
+  };
+
+  // Filter subjects based on search
+  const filteredSubjects = useMemo(() => {
+    if (!subjectSearch.trim()) return allSubjects;
+    const q = subjectSearch.toLowerCase();
+    return allSubjects.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.code.toLowerCase().includes(q)
+    );
+  }, [allSubjects, subjectSearch]);
 
   const classes = ("data" in (classesData || {})) ? (classesData as any).data : [];
   const classOptions = classes.map((c: any) => ({
@@ -377,14 +440,86 @@ export default function GroupsPage() {
             />
           </div>
 
+          {/* Subject Multi-Select from API */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('subjects')} ({t('subjects').toLowerCase()})</label>
-            <input
-              value={formData.subjects}
-              onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
-              placeholder={t('subjectsHint')}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
-            />
+            <label className="text-sm font-medium">
+              {t('subjects')}
+              {formData.selectedSubjects.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  ({formData.selectedSubjects.length} selected)
+                </span>
+              )}
+            </label>
+
+            {/* Selected subjects as chips */}
+            {formData.selectedSubjects.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pb-1">
+                {formData.selectedSubjects.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
+                  >
+                    {name}
+                    <button
+                      type="button"
+                      onClick={() => removeSubject(name)}
+                      className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Search + subject list */}
+            <div className="rounded-md border border-input overflow-hidden">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={subjectSearch}
+                  onChange={(e) => setSubjectSearch(e.target.value)}
+                  placeholder={t('subjectsHint')}
+                  className="w-full bg-muted/30 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground/60 border-b border-input"
+                />
+              </div>
+              <div className="max-h-40 overflow-y-auto">
+                {subjectsLoading ? (
+                  <p className="p-3 text-xs text-muted-foreground text-center">Loading subjects...</p>
+                ) : filteredSubjects.length === 0 ? (
+                  <p className="p-3 text-xs text-muted-foreground text-center">No subjects found</p>
+                ) : (
+                  filteredSubjects.map((subject) => {
+                    const isSelected = formData.selectedSubjects.includes(subject.name);
+                    return (
+                      <label
+                        key={subject.id}
+                        className={`flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-muted/50 ${
+                          isSelected ? "bg-primary/5" : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSubject(subject.name)}
+                          className="h-3.5 w-3.5 rounded border-input accent-primary"
+                        />
+                        <span className="flex-1 truncate">{subject.name}</span>
+                        <span className="text-xs text-muted-foreground">{subject.code}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                          subject.category === "COMPULSORY"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {subject.category === "COMPULSORY" ? "C" : "E"}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -420,3 +555,4 @@ export default function GroupsPage() {
     </div>
   );
 }
+

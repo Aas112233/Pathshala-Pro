@@ -52,6 +52,8 @@ export interface CreateStudentDTO {
   rollNumber: string;
   firstName: string;
   lastName: string;
+  firstNameBn?: string;
+  lastNameBn?: string;
   guardianName: string;
   guardianContact: string;
   guardianEmail?: string;

@@ -10,6 +10,7 @@ import { useFees, useDeleteFee } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { formatStudentName } from "@/lib/utils";
 
 export default function FeesPage() {
   const t = useTranslations('fees');
@@ -54,7 +55,7 @@ export default function FeesPage() {
       cell: ({ row }) => {
         const student = row.original.studentProfile;
         return student ? (
-          <span>{`${student.firstName} ${student.lastName}`}</span>
+          <span>{formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn)}</span>
         ) : (
           <span>-</span>
         );

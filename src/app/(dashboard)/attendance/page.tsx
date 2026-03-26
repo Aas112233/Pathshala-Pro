@@ -23,7 +23,7 @@ import {
 import { useAttendance, useDeleteAttendance } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatStudentName } from "@/lib/utils";
 import { MarkAttendanceModal } from "@/components/attendance/mark-attendance-modal";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
@@ -96,7 +96,7 @@ export default function AttendancePage() {
         const student = row.original.studentProfile;
         const staff = row.original.staffProfile;
         const name = student
-          ? `${student.firstName} ${student.lastName}`
+          ? formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn)
           : staff
           ? `${staff.firstName} ${staff.lastName}`
           : "-";

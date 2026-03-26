@@ -16,9 +16,11 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :%PORT% ^| findstr LISTENING'
     )
 )
 
-echo Checking for existing Node.js processes related to this project...
-powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -like '*Pathshala-Pro*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; Write-Host \"Killed Node.js process: $($_.ProcessId)\" }"
+echo Cleaning up old Node.js ghost processes...
+taskkill /F /IM node.exe >nul 2>&1
+taskkill /F /IM next-router-worker.exe >nul 2>&1
 
 echo Starting Next.js dev server on port %PORT%...
 set PORT=%PORT%
+set NODE_OPTIONS=--max_old_space_size=4096
 npm run dev

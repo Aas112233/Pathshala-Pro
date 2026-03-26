@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Search, UserCheck, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
+import { cn, formatStudentName } from "@/lib/utils";
 
 interface Student {
   id: string;
@@ -14,10 +14,24 @@ interface Student {
   rollNumber: string;
   firstName: string;
   lastName: string;
+  firstNameBn?: string;
+  lastNameBn?: string;
   guardianName: string;
   gender?: string;
   status: string;
   profilePictureUrl?: string;
+  class?: {
+    id: string;
+    name: string;
+  } | null;
+  group?: {
+    id: string;
+    name: string;
+  } | null;
+  section?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface StudentSelectorModalProps {
@@ -189,7 +203,7 @@ export function StudentSelectorModal({
       isOpen={isOpen}
       onClose={handleReset}
       title="Select Students"
-      description="Search and select students for admission"
+      description="Search and select existing students for admission. Their current class information is shown below their name."
       maxWidth="4xl"
       className="max-h-[90vh]"
     >
@@ -263,7 +277,7 @@ export function StudentSelectorModal({
             <div className="divide-y divide-border">
               {students.map((student: Student) => {
                 const selected = isSelected(student);
-                const fullName = `${student.firstName} ${student.lastName}`;
+                const fullName = formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn);
                 const initials = `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`;
 
                 return (
@@ -293,6 +307,13 @@ export function StudentSelectorModal({
                       <p className="text-xs text-muted-foreground">
                         Roll: {student.rollNumber} • {student.studentId}
                       </p>
+                      {student.class && (
+                        <p className="text-xs text-primary font-medium mt-1">
+                          Class: {student.class.name}
+                          {student.group && ` • ${student.group.name}`}
+                          {student.section && ` • ${student.section.name}`}
+                        </p>
+                      )}
                     </div>
 
                     {/* Guardian */}

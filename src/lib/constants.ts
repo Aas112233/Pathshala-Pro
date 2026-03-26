@@ -14,6 +14,7 @@ import {
   School,
   Layers,
   ClipboardList,
+  ClipboardCheck,
   FilePlus,
   TrendingUp,
   BarChart3,
@@ -128,6 +129,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.exams",
         href: "/exams",
         icon: BookOpen,
+      },
+      {
+        titleKey: "nav.examResults",
+        href: "/exam-results",
+        icon: ClipboardCheck,
       },
       {
         titleKey: "nav.promotions",

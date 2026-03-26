@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
     const gender = searchParams.get("gender") || "";
+    const classId = searchParams.get("classId") || "";
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
@@ -45,6 +46,8 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { firstName: { contains: search, mode: "insensitive" } },
         { lastName: { contains: search, mode: "insensitive" } },
+        { firstNameBn: { contains: search, mode: "insensitive" } },
+        { lastNameBn: { contains: search, mode: "insensitive" } },
         { studentId: { contains: search, mode: "insensitive" } },
         { rollNumber: { contains: search, mode: "insensitive" } },
         { guardianName: { contains: search, mode: "insensitive" } },
@@ -57,6 +60,10 @@ export async function GET(request: NextRequest) {
 
     if (gender) {
       where.gender = gender;
+    }
+
+    if (classId) {
+      where.classId = classId;
     }
 
     // Get total count
@@ -74,6 +81,8 @@ export async function GET(request: NextRequest) {
         rollNumber: true,
         firstName: true,
         lastName: true,
+        firstNameBn: true,
+        lastNameBn: true,
         guardianName: true,
         guardianContact: true,
         guardianEmail: true,
@@ -81,8 +90,17 @@ export async function GET(request: NextRequest) {
         status: true,
         profilePictureUrl: true,
         admissionDate: true,
+        classId: true,
+        groupId: true,
+        sectionId: true,
         createdAt: true,
         class: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        group: {
           select: {
             id: true,
             name: true,
@@ -252,6 +270,8 @@ export async function POST(request: NextRequest) {
         rollNumber: true,
         firstName: true,
         lastName: true,
+        firstNameBn: true,
+        lastNameBn: true,
         guardianName: true,
         guardianContact: true,
         status: true,

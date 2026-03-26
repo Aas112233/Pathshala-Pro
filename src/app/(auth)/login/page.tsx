@@ -28,7 +28,8 @@ export default function LoginPage() {
         login(result.data.token, result.data.user.tenantId, result.data.user);
 
         toast.success("Login successful!");
-        router.push("/");
+        // Use full page navigation to ensure cookie is sent to middleware
+        window.location.href = "/";
       }
     } catch (error: any) {
       toast.error(error.message || "Login failed. Please check your credentials.");

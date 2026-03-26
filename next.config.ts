@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin();
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["@prisma/client"],
+  allowedDevOrigins: ["*.trycloudflare.com"],
 };
 
 export default withNextIntl(nextConfig);

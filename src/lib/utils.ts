@@ -60,3 +60,18 @@ export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + "...";
 }
+
+/**
+ * Format student name with optional second-language (Bengali) name.
+ * Output: "Abdul Karim - আব্দুল করিম" or just "Abdul Karim" if no Bn name exists.
+ */
+export function formatStudentName(
+  firstName: string,
+  lastName: string,
+  firstNameBn?: string | null,
+  lastNameBn?: string | null
+): string {
+  const enName = `${firstName} ${lastName}`.trim();
+  const bnName = [firstNameBn, lastNameBn].filter(Boolean).join(" ").trim();
+  return bnName ? `${enName} - ${bnName}` : enName;
+}

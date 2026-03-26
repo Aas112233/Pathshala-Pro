@@ -45,7 +45,9 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
   // Initialize attendance list when type changes
   useEffect(() => {
     const list: AttendanceEntry[] = [];
-    const people = attendanceType === "student" ? students : staff;
+    const currentStudents = (studentsData as any)?.data || [];
+    const currentStaff = (staffData as any)?.data || [];
+    const people = attendanceType === "student" ? currentStudents : currentStaff;
 
     people.forEach((person: any) => {
       list.push({
@@ -59,7 +61,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
     });
 
     setAttendanceList(list);
-  }, [attendanceType, students, staff]);
+  }, [attendanceType, studentsData, staffData]);
 
   const handleStatusChange = (id: string, status: AttendanceStatus) => {
     setAttendanceList(prev =>

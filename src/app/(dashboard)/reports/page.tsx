@@ -26,29 +26,29 @@ export default function ReportsOverviewPage() {
 
   const reportCards: ReportCard[] = [
     {
-      title: t("feeReport"),
-      description: t("feeReport.title"),
+      title: t("feeReport.title"),
+      description: t("feeReport.description"),
       icon: Receipt,
       href: "/reports/fees",
       color: "bg-green-500",
     },
     {
-      title: t("attendanceReport"),
-      description: t("attendanceReport.title"),
+      title: t("attendanceReport.title"),
+      description: t("attendanceReport.description"),
       icon: CalendarCheck,
       href: "/reports/attendance",
       color: "bg-blue-500",
     },
     {
-      title: t("studentReport"),
-      description: t("studentReport.title"),
+      title: t("studentReport.title"),
+      description: t("studentReport.description"),
       icon: GraduationCap,
       href: "/reports/students",
       color: "bg-purple-500",
     },
     {
-      title: t("examReport"),
-      description: t("examReport.title"),
+      title: t("examReport.title"),
+      description: t("examReport.description"),
       icon: BookOpen,
       href: "/reports/exams",
       color: "bg-orange-500",

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
+  paginatedResponse,
   errorResponse,
   unauthorized,
   notFound,
@@ -36,7 +37,7 @@ function calculateGrade(marks: number, maxMarks: number) {
 
 /**
  * GET /api/exam-results
- * Get exam results
+ * Get exam results with pagination, search, and filters
  */
 export async function GET(request: NextRequest) {
   try {
@@ -47,52 +48,96 @@ export async function GET(request: NextRequest) {
 
     const { tenantId } = authContext;
     const { searchParams } = new URL(request.url);
+
+    // Pagination params
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
+    const skip = (page - 1) * limit;
+
+    // Filter params
     const examId = searchParams.get("examId");
+    const subjectId = searchParams.get("subjectId");
     const studentProfileId = searchParams.get("studentProfileId");
     const academicYearId = searchParams.get("academicYearId");
+    const status = searchParams.get("status");
+    const search = searchParams.get("search");
 
     const where: any = { tenantId };
 
     if (examId) where.examId = examId;
+    if (subjectId) where.subjectId = subjectId;
     if (studentProfileId) where.studentProfileId = studentProfileId;
     if (academicYearId) where.academicYearId = academicYearId;
+    if (status) where.status = status;
 
-    const results = await prisma.examResult.findMany({
-      where,
-      include: {
-        studentProfile: {
-          select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            rollNumber: true,
+    // Text search on student name / studentId
+    if (search && search.trim()) {
+      where.studentProfile = {
+        OR: [
+          { firstName: { contains: search.trim(), mode: "insensitive" } },
+          { lastName: { contains: search.trim(), mode: "insensitive" } },
+          { firstNameBn: { contains: search.trim(), mode: "insensitive" } },
+          { lastNameBn: { contains: search.trim(), mode: "insensitive" } },
+          { studentId: { contains: search.trim(), mode: "insensitive" } },
+        ],
+      };
+    }
+
+    const [results, totalCount] = await Promise.all([
+      prisma.examResult.findMany({
+        where,
+        include: {
+          studentProfile: {
+            select: {
+              studentId: true,
+              firstName: true,
+              lastName: true,
+              firstNameBn: true,
+              lastNameBn: true,
+              rollNumber: true,
+              classId: true,
+            },
+          },
+          exam: {
+            select: {
+              id: true,
+              examId: true,
+              name: true,
+              type: true,
+            },
+          },
+          subject: {
+            select: {
+              id: true,
+              subjectId: true,
+              name: true,
+              code: true,
+            },
+          },
+          academicYear: {
+            select: {
+              yearId: true,
+              label: true,
+            },
           },
         },
-        exam: {
-          select: {
-            examId: true,
-            name: true,
-            type: true,
-          },
-        },
-        subject: {
-          select: {
-            subjectId: true,
-            name: true,
-            code: true,
-          },
-        },
-        academicYear: {
-          select: {
-            yearId: true,
-            label: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.examResult.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return paginatedResponse(results, {
+      totalCount,
+      currentPage: page,
+      pageSize: limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
     });
-
-    return successResponse(results, "Exam results retrieved successfully");
   } catch (error) {
     console.error("Get exam results error:", error);
     return errorResponse("Internal server error", 500);
@@ -261,6 +306,140 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Create exam results error:", error);
+    return errorResponse("Internal server error", 500);
+  }
+}
+
+/**
+ * PUT /api/exam-results
+ * Bulk upsert exam results — create or update
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const authContext = await getAuthContext(request);
+    if (!authContext) {
+      return unauthorized("Authentication required");
+    }
+
+    const { tenantId } = authContext;
+    const body = await request.json();
+
+    const resultsData = Array.isArray(body) ? body : [body];
+
+    if (resultsData.length === 0) {
+      return badRequest("No results provided");
+    }
+
+    const errors: Array<{ field?: string; code: string; message: string }> = [];
+    const upsertedResults = [];
+
+    for (const [index, resultData] of resultsData.entries()) {
+      const validation = createExamResultNewSchema.safeParse(resultData);
+
+      if (!validation.success) {
+        const resultErrors = validation.error.errors.map((err) => ({
+          field: `results[${index}].${err.path.join(".")}`,
+          code: err.code,
+          message: err.message,
+        }));
+        errors.push(...resultErrors);
+        continue;
+      }
+
+      const data = validation.data;
+
+      // Calculate grade and status
+      const { grade, gradePoint, percentage, status } = calculateGrade(
+        data.obtainedMarks,
+        data.maxMarks
+      );
+
+      // Check if result already exists
+      const existingResult = await prisma.examResult.findFirst({
+        where: {
+          tenantId,
+          studentProfileId: data.studentProfileId,
+          examId: data.examId,
+          subjectId: data.subjectId,
+        },
+      });
+
+      if (existingResult) {
+        // Update existing result
+        const updated = await prisma.examResult.update({
+          where: { id: existingResult.id },
+          data: {
+            obtainedMarks: data.obtainedMarks,
+            maxMarks: data.maxMarks,
+            percentage,
+            grade,
+            gradePoint,
+            status,
+            reExamAllowed: data.reExamAllowed && status === "FAIL",
+          },
+          include: {
+            studentProfile: {
+              select: {
+                studentId: true,
+                firstName: true,
+                lastName: true,
+                rollNumber: true,
+                classId: true,
+              },
+            },
+            subject: {
+              select: {
+                name: true,
+                code: true,
+              },
+            },
+          },
+        });
+        upsertedResults.push(updated);
+      } else {
+        // Create new result
+        const created = await prisma.examResult.create({
+          data: {
+            tenantId,
+            ...data,
+            percentage,
+            grade,
+            gradePoint,
+            status,
+            reExamAllowed: data.reExamAllowed && status === "FAIL",
+          },
+          include: {
+            studentProfile: {
+              select: {
+                studentId: true,
+                firstName: true,
+                lastName: true,
+                rollNumber: true,
+                classId: true,
+              },
+            },
+            subject: {
+              select: {
+                name: true,
+                code: true,
+              },
+            },
+          },
+        });
+        upsertedResults.push(created);
+      }
+    }
+
+    if (errors.length > 0) {
+      return validationError(errors);
+    }
+
+    return successResponse(
+      upsertedResults,
+      `Successfully saved ${upsertedResults.length} exam result(s)`
+    );
+  } catch (error) {
+    console.error("Upsert exam results error:", error);
     return errorResponse("Internal server error", 500);
   }
 }
