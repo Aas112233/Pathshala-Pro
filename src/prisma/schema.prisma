@@ -17,6 +17,28 @@ model Tenant {
   logoUrl            String?
   phone              String?
   email              String?
+
+  // School Settings
+  schoolCode         String?
+  establishedYear    Int?
+  motto              String?
+  website            String?
+
+  // Financial Settings
+  currency           String             @default("BDT")
+  currencySymbol     String             @default("৳")
+  taxRate            Float              @default(0)
+
+  // Date & Time Settings
+  dateFormat         String             @default("DD/MM/YYYY")
+  timeFormat         String             @default("24h")
+  timezone           String             @default("Asia/Dhaka")
+  firstDayOfWeek     String             @default("sunday")
+
+  // Academic Settings
+  academicYearStart  String             @default("january")
+  gradingSystem      String             @default("GPA")
+
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -32,6 +54,12 @@ model Tenant {
   classes            Class[]
   groups             Group[]
   sections           Section[]
+  subjects           Subject[]
+  exams              Exam[]
+  examSubjects       ExamSubject[]
+  promotionRules     PromotionRule[]
+  classPromotions    ClassPromotion[]
+  classSubjects      ClassSubject[]
 }
 
 model User {
@@ -40,6 +68,7 @@ model User {
   email          String
   name           String
   role           String       @default("CLERK")
+  permissions    Json?
   hash           String
   isActive       Boolean      @default(true)
   staffProfileId String?      @db.ObjectId
@@ -50,6 +79,7 @@ model User {
   tenant         Tenant       @relation(fields: [tenantId], references: [tenantId])
   transactions   Transaction[]
   attendances    Attendance[] @relation("MarkedBy")
+  decidedPromotions ClassPromotion[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -84,6 +114,7 @@ model StudentProfile {
   feeVouchers     FeeVoucher[]
   attendances     Attendance[]
   examResults     ExamResult[]
+  promotions      ClassPromotion[]
 
   @@unique([tenantId, studentId])
   @@index([tenantId, rollNumber])
@@ -92,20 +123,24 @@ model StudentProfile {
 }
 
 model AcademicYear {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  yearId        String
-  label         String
-  startDate     DateTime
-  endDate       DateTime
-  isClosed      Boolean        @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                       String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId                 String
+  yearId                   String
+  label                    String
+  startDate                DateTime
+  endDate                  DateTime
+  isClosed                 Boolean        @default(false)
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
-  feeVouchers   FeeVoucher[]
-  salaryLedgers SalaryLedger[]
-  examResults   ExamResult[]
+  tenant                   Tenant         @relation(fields: [tenantId], references: [tenantId])
+  feeVouchers              FeeVoucher[]
+  salaryLedgers            SalaryLedger[]
+  examResults              ExamResult[]
+  exams                    Exam[]
+  promotionRules           PromotionRule[]
+  fromAcademicYearPromotions ClassPromotion[] @relation("FromAcademicYearPromotions")
+  toAcademicYearPromotions ClassPromotion[] @relation("ToAcademicYearPromotions")
 
   @@unique([tenantId, yearId])
   @@index([tenantId])
@@ -234,27 +269,180 @@ model Attendance {
   @@index([tenantId, studentProfileId])
 }
 
+// Exam & Subject Models
+model Subject {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  subjectId     String
+  name          String
+  code          String
+  category      String         // "COMPULSORY", "ELECTIVE", "OPTIONAL"
+  maxMarks      Float          @default(100)
+  passMarks     Float          @default(33)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
+  examResults   ExamResult[]
+  examSubjects  ExamSubject[]
+  classSubjects ClassSubject[]
+
+  @@unique([tenantId, subjectId])
+  @@index([tenantId])
+}
+
+// Class-Subject Mapping
+model ClassSubject {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  classId       String         @db.ObjectId
+  subjectId     String         @db.ObjectId
+  isCompulsory  Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
+  class         Class          @relation(fields: [classId], references: [id])
+  subject       Subject        @relation(fields: [subjectId], references: [id])
+
+  @@unique([tenantId, classId, subjectId])
+  @@index([tenantId, classId])
+  @@index([tenantId, subjectId])
+}
+
+model Exam {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String
+  examId          String
+  academicYearId  String         @db.ObjectId
+  name            String         // "Mid-Term", "Final", "Unit Test"
+  type            String         // "MID_TERM", "FINAL", "UNIT_TEST", "ANNUAL"
+  startDate       DateTime
+  endDate         DateTime
+  isPublished     Boolean        @default(false)
+  totalMarks      Float          @default(100)
+  passPercentage  Float          @default(33)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [tenantId])
+  academicYear    AcademicYear   @relation(fields: [academicYearId], references: [id])
+  subjects        ExamSubject[]
+  results         ExamResult[]
+
+  @@unique([tenantId, examId])
+  @@index([tenantId, academicYearId])
+  @@index([tenantId, type])
+}
+
+model ExamSubject {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String
+  examId        String         @db.ObjectId
+  subjectId     String         @db.ObjectId
+  maxMarks      Float
+  passMarks     Float
+  createdAt     DateTime       @default(now())
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
+  exam          Exam           @relation(fields: [examId], references: [id])
+  subject       Subject        @relation(fields: [subjectId], references: [id])
+
+  @@unique([tenantId, examId, subjectId])
+  @@index([tenantId, examId])
+  @@index([tenantId, subjectId])
+}
+
 model ExamResult {
   id               String         @id @default(auto()) @map("_id") @db.ObjectId
   tenantId         String
   studentProfileId String         @db.ObjectId
   academicYearId   String         @db.ObjectId
-  examName         String
-  subject          String
+  examId           String         @db.ObjectId
+  subjectId        String         @db.ObjectId
   maxMarks         Float
   obtainedMarks    Float
-  grade            String?
+  percentage       Float
+  grade            String
+  gradePoint       Float
+  status           String         // "PASS", "FAIL", "ABSENT"
   remarks          String?
+  reExamAllowed    Boolean        @default(false)
+  reExamMarks      Float?
+  reExamGrade      String?
+  reExamStatus     String?        // "PASS", "FAIL"
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
   tenant           Tenant         @relation(fields: [tenantId], references: [tenantId])
   studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
   academicYear     AcademicYear   @relation(fields: [academicYearId], references: [id])
+  exam             Exam           @relation(fields: [examId], references: [id])
+  subject          Subject        @relation(fields: [subjectId], references: [id])
 
   @@index([tenantId, studentProfileId])
-  @@index([tenantId, examName])
+  @@index([tenantId, examId])
+  @@index([tenantId, academicYearId])
+  @@unique([tenantId, studentProfileId, examId, subjectId])
 }
+
+// Promotion Models
+model PromotionRule {
+  id                      String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId                String
+  academicYearId          String         @db.ObjectId
+  classId                 String         @db.ObjectId
+  minimumAttendance       Float          @default(75)
+  minimumOverallPercentage Float         @default(40)
+  minimumPerSubject       Float          @default(33)
+  maxFailedSubjects       Int            @default(0)
+  allowConditionalPromotion Boolean      @default(false)
+  autoPromote             Boolean        @default(true)
+  nextClassId             String?        @db.ObjectId
+  isActive                Boolean        @default(true)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  tenant                  Tenant         @relation(fields: [tenantId], references: [tenantId])
+  academicYear            AcademicYear   @relation(fields: [academicYearId], references: [id])
+  class                   Class          @relation(fields: [classId], references: [id])
+
+  @@unique([tenantId, academicYearId, classId])
+  @@index([tenantId, classId])
+}
+
+model ClassPromotion {
+  id                     String         @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId               String
+  studentProfileId       String         @db.ObjectId
+  fromAcademicYearId     String         @db.ObjectId
+  toAcademicYearId       String         @db.ObjectId
+  fromClassId            String         @db.ObjectId
+  toClassId              String         @db.ObjectId
+  status                 String         // "PROMOTED", "RETAINED", "CONDITIONAL_PROMOTED"
+  reason                 String?
+  reExamRequired         Boolean        @default(false)
+  reExamCompleted        Boolean        @default(false)
+  reExamPassed           Boolean?
+  decidedBy              String         @db.ObjectId
+  decidedAt              DateTime       @default(now())
+  createdAt              DateTime       @default(now())
+
+  tenant                 Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile         StudentProfile @relation(fields: [studentProfileId], references: [id])
+  fromAcademicYear       AcademicYear   @relation("FromAcademicYearPromotions", fields: [fromAcademicYearId], references: [id])
+  toAcademicYear         AcademicYear   @relation("ToAcademicYearPromotions", fields: [toAcademicYearId], references: [id])
+  fromClass              Class          @relation("FromClassPromotions", fields: [fromClassId], references: [id])
+  toClass                Class          @relation("ToClassPromotions", fields: [toClassId], references: [id])
+  decidedByUser          User           @relation(fields: [decidedBy], references: [id])
+
+  @@index([tenantId, studentProfileId])
+  @@index([tenantId, fromAcademicYearId])
+  @@index([tenantId, toAcademicYearId])
+}
+
+// Add relations to existing models
 
 // Academic Management Models
 model Class {
@@ -271,6 +459,10 @@ model Class {
   groups        Group[]
   sections      Section[]
   studentProfiles StudentProfile[]
+  promotionRules           PromotionRule[]
+  fromClassPromotions      ClassPromotion[] @relation("FromClassPromotions")
+  toClassPromotions        ClassPromotion[] @relation("ToClassPromotions")
+  classSubjects            ClassSubject[]
 
   @@unique([tenantId, classId])
   @@unique([tenantId, classNumber])

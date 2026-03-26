@@ -8,6 +8,7 @@ import { StudentStatusBadge } from "./student-status-badge";
 import { User, Phone, Mail, Calendar, MapPin, Hash, IdCard, ZoomIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StudentProfile } from "@/types/entities";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 interface StudentDetailsModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export function StudentDetailsModal({
   onEdit,
 }: StudentDetailsModalProps) {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const { formatDate } = useTenantFormatting();
 
   if (!student) return null;
 
@@ -135,7 +137,7 @@ export function StudentDetailsModal({
                 <DetailRow
                   icon={Calendar}
                   label="Date of Birth"
-                  value={student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : null}
+                  value={student.dateOfBirth ? formatDate(student.dateOfBirth) : null}
                 />
                 <DetailRow
                   icon={MapPin}
@@ -175,7 +177,7 @@ export function StudentDetailsModal({
               <DetailRow
                 icon={Calendar}
                 label="Admission Date"
-                value={student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : null}
+                value={student.admissionDate ? formatDate(student.admissionDate) : null}
               />
               <DetailRow
                 icon={User}

@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-response";
 import { loginSchema } from "@/lib/schemas";
 import { verifyPassword, generateAuthToken } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/login
@@ -28,6 +29,17 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = validation.data;
+
+    // Apply IP-based Rate Limiting (5 attempts per IP in a window)
+    const ip = request.headers.get("x-forwarded-for") || "unknown_ip";
+
+    // Using IP + Email limits brute force specific to a single login target over the same IP range
+    const limitKey = `LOGIN_${ip}_${email}`;
+    const rateCheck = rateLimit(limitKey, 5, 15 * 60 * 1000); 
+
+    if (!rateCheck.success) {
+      return errorResponse("Too many login attempts. Please try again after 15 minutes.", 429);
+    }
 
     // Find user by email
     const user = await prisma.user.findFirst({
@@ -55,8 +67,8 @@ export async function POST(request: NextRequest) {
       data: { lastLoginAt: new Date() },
     });
 
-    // Generate auth token
-    const token = generateAuthToken(user.id, user.tenantId);
+    // Generate cryptographically signed JWT NextAuth token
+    const token = await generateAuthToken(user.id, user.tenantId, user.role);
 
     return successResponse(
       {
@@ -65,8 +77,10 @@ export async function POST(request: NextRequest) {
           email: user.email,
           name: user.name,
           role: user.role,
+          isActive: user.isActive,
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
+          permissions: (user as any).permissions,
         },
         token,
       },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 
 export default function StaffPage() {
+  const t = useTranslations('staff');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("");
@@ -24,14 +26,14 @@ export default function StaffPage() {
   const deleteMutation = useDeleteStaff();
 
   const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this staff member?")) return;
+    if (!confirm(t('confirmDelete'))) return;
     
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        toast.success("Staff member deleted successfully");
+        toast.success(t('deleteSuccess'));
       },
       onError: (err) => {
-        toast.error(err.message || "Failed to delete staff member");
+        toast.error(err.message || t('deleteError'));
       },
     });
   };
@@ -39,37 +41,37 @@ export default function StaffPage() {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "staffId",
-      header: "Staff ID",
+      header: t('tableColumns.staffId'),
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue<string>()}</span>
       ),
     },
     {
       accessorKey: "name",
-      header: "Name",
+      header: t('tableColumns.name'),
       cell: ({ row }) => (
         <span>{`${row.original.firstName} ${row.original.lastName}`}</span>
       ),
     },
     {
       accessorKey: "department",
-      header: "Department",
+      header: t('tableColumns.department'),
     },
     {
       accessorKey: "designation",
-      header: "Designation",
+      header: t('tableColumns.designation'),
     },
     {
       accessorKey: "email",
-      header: "Email",
+      header: t('tableColumns.email'),
     },
     {
       accessorKey: "phone",
-      header: "Phone",
+      header: t('tableColumns.phone'),
     },
     {
       accessorKey: "isActive",
-      header: "Status",
+      header: t('tableColumns.status'),
       cell: ({ getValue }) => (
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -78,13 +80,13 @@ export default function StaffPage() {
               : "bg-gray-100 text-gray-800"
           }`}
         >
-          {getValue<boolean>() ? "Active" : "Inactive"}
+          {getValue<boolean>() ? t('status.active') : t('status.inactive')}
         </span>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
@@ -109,13 +111,13 @@ export default function StaffPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Staff"
-        description="Manage staff profiles, departments, and records."
+        title={t('title')}
+        description={t('description')}
         icon={Users}
       >
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Add Staff
+          {t('addStaff')}
         </Button>
       </PageHeader>
 
@@ -126,7 +128,7 @@ export default function StaffPage() {
         onPageChange={setPage}
         onSearch={setSearch}
         isLoading={isLoading}
-        searchPlaceholder="Search by name, ID, or department..."
+        searchPlaceholder={t('searchPlaceholder')}
       />
     </div>
   );

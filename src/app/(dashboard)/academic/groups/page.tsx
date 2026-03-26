@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface GroupData {
 }
 
 export default function GroupsPage() {
+  const t = useTranslations('groups');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -194,7 +196,7 @@ export default function GroupsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this group?")) return;
+    if (!confirm(t('confirmDelete'))) return;
     deleteMutation.mutate(id);
   };
 
@@ -207,7 +209,7 @@ export default function GroupsPage() {
   const columns: ColumnDef<GroupData>[] = [
     {
       accessorKey: "name",
-      header: "Group Name",
+      header: t('tableColumns.groupName'),
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.name}</p>
@@ -217,18 +219,18 @@ export default function GroupsPage() {
     },
     {
       accessorKey: "class",
-      header: "Class",
+      header: t('tableColumns.class'),
       cell: ({ row }) => (
         <span>{row.original.class?.name || "N/A"}</span>
       ),
     },
     {
       accessorKey: "shortName",
-      header: "Short Name",
+      header: t('tableColumns.shortName'),
     },
     {
       accessorKey: "subjects",
-      header: "Subjects",
+      header: t('tableColumns.subjects'),
       cell: ({ getValue }) => {
         const subjects = getValue<string[]>() || [];
         return (
@@ -247,7 +249,7 @@ export default function GroupsPage() {
     },
     {
       accessorKey: "isActive",
-      header: "Status",
+      header: t('tableColumns.status'),
       cell: ({ getValue }) => (
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${getValue<boolean>()
@@ -257,11 +259,11 @@ export default function GroupsPage() {
         >
           {getValue<boolean>() ? (
             <>
-              <CheckCircle className="h-3 w-3" /> Active
+              <CheckCircle className="h-3 w-3" /> {t('active')}
             </>
           ) : (
             <>
-              <XCircle className="h-3 w-3" /> Inactive
+              <XCircle className="h-3 w-3" /> {t('inactive')}
             </>
           )}
         </span>
@@ -269,16 +271,16 @@ export default function GroupsPage() {
     },
     {
       id: "stats",
-      header: "Sections",
+      header: t('tableColumns.sections'),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {row.original._count?.sections || 0} section(s)
+          {row.original._count?.sections || 0} {t('sections').toLowerCase()}
         </span>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Button
@@ -306,13 +308,13 @@ export default function GroupsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Groups"
-        description="Manage student groups (Science, Commerce, Arts, etc.)"
+        title={t('title')}
+        description={t('description')}
         icon={Layers}
       >
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Group
+          {t('addGroup')}
         </Button>
       </PageHeader>
 
@@ -323,7 +325,7 @@ export default function GroupsPage() {
         onPageChange={setPage}
         onSearch={setSearch}
         isLoading={isLoading}
-        searchPlaceholder="Search groups..."
+        searchPlaceholder={t('searchPlaceholder')}
       />
 
       {/* Add/Edit Modal */}
@@ -334,27 +336,27 @@ export default function GroupsPage() {
           setEditingGroup(null);
           resetForm();
         }}
-        title={editingGroup ? "Edit Group" : "Add New Group"}
-        description={editingGroup ? "Update group information" : "Create a new group"}
+        title={editingGroup ? t('editGroup') : t('addGroup')}
+        description={editingGroup ? t('update') : t('description')}
         maxWidth="md"
       >
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Class</label>
+            <label className="text-sm font-medium">{t('class')}</label>
             <AppDropdown
               value={formData.classId}
               onChange={(val) => setFormData({ ...formData, classId: val })}
               options={[
-                { value: "", label: "Select Class" },
+                { value: "", label: t('selectClass') },
                 ...classOptions,
               ]}
-              placeholder="Select Class"
+              placeholder={t('selectClass')}
               searchable
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Group Name</label>
+            <label className="text-sm font-medium">{t('groupName')}</label>
             <input
               required
               value={formData.name}
@@ -365,7 +367,7 @@ export default function GroupsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Short Name</label>
+            <label className="text-sm font-medium">{t('shortName')}</label>
             <input
               required
               value={formData.shortName}
@@ -376,23 +378,23 @@ export default function GroupsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Subjects (comma separated)</label>
+            <label className="text-sm font-medium">{t('subjects')} ({t('subjects').toLowerCase()})</label>
             <input
               value={formData.subjects}
               onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
-              placeholder="e.g., Physics, Chemistry, Biology"
+              placeholder={t('subjectsHint')}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Status</label>
+            <label className="text-sm font-medium">{t('status')}</label>
             <AppDropdown
               value={formData.isActive ? "ACTIVE" : "INACTIVE"}
               onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
               options={[
-                { value: "ACTIVE", label: "Active" },
-                { value: "INACTIVE", label: "Inactive" },
+                { value: "ACTIVE", label: t('active') },
+                { value: "INACTIVE", label: t('inactive') },
               ]}
             />
           </div>
@@ -407,10 +409,10 @@ export default function GroupsPage() {
                 resetForm();
               }}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingGroup ? "Update" : "Create"}
+              {createMutation.isPending || updateMutation.isPending ? t('saving') : editingGroup ? t('update') : t('create')}
             </Button>
           </div>
         </form>

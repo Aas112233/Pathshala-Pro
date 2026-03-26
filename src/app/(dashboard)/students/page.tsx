@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Plus, Pencil, Trash2, Eye } from "lucide-react";
-import { toast } from "sonner";
+import { GraduationCap, Plus } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 // View Model
@@ -20,8 +20,17 @@ import { StudentFiltersBar } from "@/components/students/student-filters-bar";
 import { StudentsEmptyState } from "@/components/students/students-empty-state";
 import { StudentStatusBadge } from "@/components/students/student-status-badge";
 import { StudentActionsDropdown } from "@/components/students/student-actions-dropdown";
+import type { StudentProfile, StudentStatus } from "@/types/entities";
+
+type StudentRow = StudentProfile & {
+  class?: {
+    id: string;
+    name: string;
+  } | null;
+};
 
 export default function StudentsPage() {
+  const t = useTranslations('students');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<CreateStudentDTO & { id?: string } | null>(null);
@@ -42,7 +51,7 @@ export default function StudentsPage() {
     deleteStudent,
   } = useStudentViewModel();
 
-  const handleEdit = useCallback((student: any) => {
+  const handleEdit = useCallback((student: StudentRow) => {
     setEditingStudent({
       id: student.id,
       rollNumber: student.rollNumber,
@@ -51,7 +60,7 @@ export default function StudentsPage() {
       guardianName: student.guardianName,
       guardianContact: student.guardianContact,
       guardianEmail: student.guardianEmail,
-      gender: student.gender,
+      gender: student.gender || "",
       status: student.status,
       profilePictureUrl: student.profilePictureUrl,
       driveFileId: student.driveFileId,
@@ -61,19 +70,19 @@ export default function StudentsPage() {
     setIsFormOpen(true);
   }, []);
 
-  const handleView = useCallback((student: any) => {
+  const handleView = useCallback((student: StudentRow) => {
     setSelectedStudent(student);
     setIsDetailsOpen(true);
   }, [setSelectedStudent]);
 
-  const handleDelete = useCallback(async (student: any) => {
-    if (!confirm("Are you sure you want to delete this student?")) return;
+  const handleDelete = useCallback(async (student: StudentRow) => {
+    if (!confirm(t('actions.confirmDelete'))) return;
     try {
       await deleteStudent(student.id);
-    } catch (err: any) {
+    } catch {
       // Error handled by view model
     }
-  }, [deleteStudent]);
+  }, [deleteStudent, t]);
 
   const handleSubmit = useCallback(async (data: CreateStudentDTO) => {
     if (editingStudent?.id) {
@@ -100,21 +109,21 @@ export default function StudentsPage() {
 
   const hasActiveFilters = !!filters.search || filters.status !== "ALL" || filters.gender !== "ALL";
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ColumnDef<StudentRow>[] = [
     {
       accessorKey: "studentId",
-      header: "Student ID",
+      header: t('tableColumns.studentId'),
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue<string>()}</span>
       ),
     },
     {
       accessorKey: "rollNumber",
-      header: "Roll Number",
+      header: t('tableColumns.rollNumber'),
     },
     {
       accessorKey: "firstName",
-      header: "Name",
+      header: t('tableColumns.name'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <span>{`${row.original.firstName} ${row.original.lastName}`}</span>
@@ -123,22 +132,27 @@ export default function StudentsPage() {
     },
     {
       accessorKey: "guardianName",
-      header: "Guardian",
+      header: t('tableColumns.guardian'),
     },
     {
       accessorKey: "guardianContact",
-      header: "Contact",
+      header: t('tableColumns.contact'),
+    },
+    {
+      id: "currentClass",
+      header: t('tableColumns.class'),
+      cell: ({ row }) => row.original.class?.name || "N/A",
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: t('tableColumns.status'),
       cell: ({ getValue }) => (
-        <StudentStatusBadge status={getValue<string>() as any} />
+        <StudentStatusBadge status={getValue<StudentStatus>()} />
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <StudentActionsDropdown
           student={row.original}
@@ -154,15 +168,15 @@ export default function StudentsPage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title="Students"
-        description="Manage student profiles, enrollment, and records."
+        title={t('title')}
+        description={t('description')}
         icon={GraduationCap}
       >
         <div className="flex items-center gap-2">
           <StudentViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
           <Button onClick={() => setIsFormOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Student
+            {t('addStudent')}
           </Button>
         </div>
       </PageHeader>
@@ -191,7 +205,7 @@ export default function StudentsPage() {
           onPageChange={setPage}
           onSearch={(search) => setFilters({ search })}
           isLoading={isLoading}
-          searchPlaceholder="Search by name, ID, or roll number..."
+          searchPlaceholder={t('searchPlaceholder')}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

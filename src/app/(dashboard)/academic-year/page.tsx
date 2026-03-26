@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,13 @@ import { CalendarRange, Plus, Pencil, Trash2 } from "lucide-react";
 import { useAcademicYears, useDeleteAcademicYear } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 export default function AcademicYearPage() {
+  const t = useTranslations('academicYear');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const { formatDate } = useTenantFormatting();
 
   const { data, isLoading } = useAcademicYears({
     page,
@@ -22,14 +26,14 @@ export default function AcademicYearPage() {
   const deleteMutation = useDeleteAcademicYear();
 
   const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this academic year?")) return;
+    if (!confirm(t('confirmDelete'))) return;
     
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        toast.success("Academic year deleted successfully");
+        toast.success(t('deleteSuccess'));
       },
       onError: (err) => {
-        toast.error(err.message || "Failed to delete academic year");
+        toast.error(err.message || t('deleteError'));
       },
     });
   };
@@ -37,28 +41,28 @@ export default function AcademicYearPage() {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "yearId",
-      header: "Year ID",
+      header: t('tableColumns.yearId'),
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue<string>()}</span>
       ),
     },
     {
       accessorKey: "label",
-      header: "Label",
+      header: t('tableColumns.label'),
     },
     {
       accessorKey: "startDate",
-      header: "Start Date",
-      cell: ({ getValue }) => new Date(getValue<string>()).toLocaleDateString(),
+      header: t('tableColumns.startDate'),
+      cell: ({ getValue }) => formatDate(getValue<string>()),
     },
     {
       accessorKey: "endDate",
-      header: "End Date",
-      cell: ({ getValue }) => new Date(getValue<string>()).toLocaleDateString(),
+      header: t('tableColumns.endDate'),
+      cell: ({ getValue }) => formatDate(getValue<string>()),
     },
     {
       accessorKey: "isClosed",
-      header: "Status",
+      header: t('tableColumns.status'),
       cell: ({ getValue }) => (
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -67,13 +71,13 @@ export default function AcademicYearPage() {
               : "bg-green-100 text-green-800"
           }`}
         >
-          {getValue<boolean>() ? "Closed" : "Active"}
+          {getValue<boolean>() ? t('status.closed') : t('status.active')}
         </span>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
@@ -98,13 +102,13 @@ export default function AcademicYearPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Academic Year"
-        description="Configure academic year periods and lock completed sessions."
+        title={t('title')}
+        description={t('description')}
         icon={CalendarRange}
       >
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Add Academic Year
+          {t('addAcademicYear')}
         </Button>
       </PageHeader>
 
@@ -115,7 +119,7 @@ export default function AcademicYearPage() {
         onPageChange={setPage}
         onSearch={setSearch}
         isLoading={isLoading}
-        searchPlaceholder="Search by year ID or label..."
+        searchPlaceholder={t('searchPlaceholder')}
       />
     </div>
   );

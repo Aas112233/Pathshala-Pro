@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-response";
 import { updateUserSchema } from "@/lib/schemas";
 import { getAuthContext, hashPassword } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/users/[id]
@@ -28,8 +29,8 @@ export async function GET(
     const { user: currentUser, tenantId } = authContext;
 
     // Check permission
-    if (!["ADMIN", "SUPER_ADMIN"].includes(currentUser.role)) {
-      return forbidden("Insufficient permissions");
+    if (currentUser.role !== "SUPER_ADMIN" && !hasPermission(currentUser.permissions, "users", "read")) {
+      return forbidden("Insufficient read permissions for users module");
     }
 
     const { id } = await params;
@@ -41,6 +42,7 @@ export async function GET(
         email: true,
         name: true,
         role: true,
+        permissions: true,
         isActive: true,
         staffProfileId: true,
         lastLoginAt: true,
@@ -77,8 +79,8 @@ export async function PUT(
     const { user: currentUser, tenantId } = authContext;
 
     // Check permission
-    if (!["ADMIN", "SUPER_ADMIN"].includes(currentUser.role)) {
-      return forbidden("Insufficient permissions");
+    if (currentUser.role !== "SUPER_ADMIN" && !hasPermission(currentUser.permissions, "users", "write")) {
+      return forbidden("Insufficient write permissions for users module");
     }
 
     const { id } = await params;
@@ -133,6 +135,7 @@ export async function PUT(
         email: true,
         name: true,
         role: true,
+        permissions: true,
         isActive: true,
         updatedAt: true,
       },
@@ -162,8 +165,8 @@ export async function DELETE(
     const { user: currentUser, tenantId } = authContext;
 
     // Check permission
-    if (!["ADMIN", "SUPER_ADMIN"].includes(currentUser.role)) {
-      return forbidden("Insufficient permissions");
+    if (currentUser.role !== "SUPER_ADMIN" && !hasPermission(currentUser.permissions, "users", "manage")) {
+      return forbidden("Insufficient manage permissions for users module");
     }
 
     const { id } = await params;

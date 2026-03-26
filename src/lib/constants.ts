@@ -15,6 +15,8 @@ import {
   Layers,
   ClipboardList,
   FilePlus,
+  TrendingUp,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,7 +40,55 @@ export const ROLES = {
   ADMIN: "ADMIN",
   TEACHER: "TEACHER",
   CLERK: "CLERK",
+  STUDENT: "STUDENT",
+  PRINCIPAL: "PRINCIPAL",
+  MANAGER: "MANAGER",
+  AUDITOR: "AUDITOR",
+  SYSTEM_ADMIN: "SYSTEM_ADMIN",
 } as const;
+
+export const SYSTEM_ADMIN_NAV: NavGroup[] = [
+  {
+    labelKey: "nav.overview",
+    items: [
+      {
+        titleKey: "nav.dashboard",
+        href: "/system-admin",
+        icon: LayoutDashboard,
+      },
+    ],
+  },
+  {
+    labelKey: "systemAdmin.management",
+    items: [
+      {
+        titleKey: "systemAdmin.tenants",
+        href: "/system-admin/tenants",
+        icon: School,
+      },
+      {
+        titleKey: "systemAdmin.billing",
+        href: "/system-admin/billing",
+        icon: Receipt,
+      },
+    ],
+  },
+  {
+    labelKey: "systemAdmin.system",
+    items: [
+      {
+        titleKey: "nav.users",
+        href: "/system-admin/users",
+        icon: UserCheck,
+      },
+      {
+        titleKey: "nav.settings",
+        href: "/system-admin/settings",
+        icon: Settings,
+      },
+    ],
+  },
+];
 
 export const SIDEBAR_NAV: NavGroup[] = [
   {
@@ -80,6 +130,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: BookOpen,
       },
       {
+        titleKey: "nav.promotions",
+        href: "/promotions/calculate",
+        icon: TrendingUp,
+      },
+      {
         titleKey: "nav.academicYear",
         href: "/academic-year",
         icon: CalendarRange,
@@ -95,6 +150,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: School,
       },
       {
+        titleKey: "nav.subjects",
+        href: "/subjects",
+        icon: BookOpen,
+      },
+      {
         titleKey: "nav.groups",
         href: "/academic/groups",
         icon: Layers,
@@ -103,6 +163,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.sections",
         href: "/academic/sections",
         icon: ClipboardList,
+      },
+      {
+        titleKey: "nav.promotionRules",
+        href: "/promotions/rules",
+        icon: Settings,
       },
     ],
   },
@@ -153,6 +218,36 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.settings",
         href: "/settings",
         icon: Settings,
+      },
+    ],
+  },
+  {
+    labelKey: "nav.reports",
+    items: [
+      {
+        titleKey: "reports.overview",
+        href: "/reports",
+        icon: BarChart3,
+      },
+      {
+        titleKey: "reports.feeReport.title",
+        href: "/reports/fees",
+        icon: Receipt,
+      },
+      {
+        titleKey: "reports.attendanceReport.title",
+        href: "/reports/attendance",
+        icon: CalendarCheck,
+      },
+      {
+        titleKey: "reports.studentReport.title",
+        href: "/reports/students",
+        icon: GraduationCap,
+      },
+      {
+        titleKey: "reports.examReport.title",
+        href: "/reports/exams",
+        icon: BookOpen,
       },
     ],
   },

@@ -11,6 +11,7 @@ import {
 import { createFeeVoucherSchema, updateFeeVoucherSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/fees
@@ -164,8 +165,15 @@ export async function POST(request: NextRequest) {
     const feeVoucher = await prisma.feeVoucher.create({
       data: {
         tenantId,
-        ...data,
+        voucherId: data.voucherId,
+        baseAmount: data.baseAmount,
+        discountAmount: data.discountAmount,
+        studentProfileId: data.studentProfileId,
+        academicYearId: data.academicYearId,
+        feeType: data.feeType,
         totalDue,
+        dueDate: data.dueDate,
+        arrears: data.arrears,
         balance: totalDue, // Initially, balance equals total due
       },
       include: {

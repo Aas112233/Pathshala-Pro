@@ -7,6 +7,7 @@ import {
   notFound,
 } from "@/lib/api-response";
 import { getAuthContext } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/transactions/[id]

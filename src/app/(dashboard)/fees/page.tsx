@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
@@ -8,11 +9,14 @@ import { Receipt, Plus, Pencil, Trash2 } from "lucide-react";
 import { useFees, useDeleteFee } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 export default function FeesPage() {
+  const t = useTranslations('fees');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const { formatCurrency, formatDate } = useTenantFormatting();
 
   const { data, isLoading } = useFees({
     page,
@@ -24,14 +28,14 @@ export default function FeesPage() {
   const deleteMutation = useDeleteFee();
 
   const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this fee voucher?")) return;
+    if (!confirm(t('confirmDelete'))) return;
     
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        toast.success("Fee voucher deleted successfully");
+        toast.success(t('deleteSuccess'));
       },
       onError: (err) => {
-        toast.error(err.message || "Failed to delete fee voucher");
+        toast.error(err.message || t('deleteError'));
       },
     });
   };
@@ -39,14 +43,14 @@ export default function FeesPage() {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "voucherId",
-      header: "Voucher ID",
+      header: t('tableColumns.voucherId'),
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue<string>()}</span>
       ),
     },
     {
       accessorKey: "student",
-      header: "Student",
+      header: t('tableColumns.student'),
       cell: ({ row }) => {
         const student = row.original.studentProfile;
         return student ? (
@@ -58,7 +62,7 @@ export default function FeesPage() {
     },
     {
       accessorKey: "academicYear",
-      header: "Academic Year",
+      header: t('tableColumns.academicYear'),
       cell: ({ row }) => {
         const year = row.original.academicYear;
         return year?.label || "-";
@@ -66,33 +70,33 @@ export default function FeesPage() {
     },
     {
       accessorKey: "feeType",
-      header: "Fee Type",
+      header: t('tableColumns.feeType'),
     },
     {
       accessorKey: "totalDue",
-      header: "Total Due",
-      cell: ({ getValue }) => `৳${getValue<number>().toLocaleString()}`,
+      header: t('tableColumns.totalDue'),
+      cell: ({ getValue }) => formatCurrency(getValue<number>()),
     },
     {
       accessorKey: "amountPaid",
-      header: "Paid",
-      cell: ({ getValue }) => `৳${getValue<number>().toLocaleString()}`,
+      header: t('tableColumns.paid'),
+      cell: ({ getValue }) => formatCurrency(getValue<number>()),
     },
     {
       accessorKey: "balance",
-      header: "Balance",
+      header: t('tableColumns.balance'),
       cell: ({ row }) => {
         const balance = row.original.balance;
         return (
           <span className={balance > 0 ? "text-destructive" : "text-green-600"}>
-            ৳{balance.toLocaleString()}
+            {formatCurrency(balance)}
           </span>
         );
       },
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: t('tableColumns.status'),
       cell: ({ getValue }) => (
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -111,12 +115,12 @@ export default function FeesPage() {
     },
     {
       accessorKey: "dueDate",
-      header: "Due Date",
-      cell: ({ getValue }) => new Date(getValue<string>()).toLocaleDateString(),
+      header: t('tableColumns.dueDate'),
+      cell: ({ getValue }) => formatDate(getValue<string>()),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
@@ -141,13 +145,13 @@ export default function FeesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Fee Vouchers"
-        description="Create, manage, and track fee vouchers for students."
+        title={t('title')}
+        description={t('description')}
         icon={Receipt}
       >
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Create Voucher
+          {t('createVoucher')}
         </Button>
       </PageHeader>
 
@@ -158,7 +162,7 @@ export default function FeesPage() {
         onPageChange={setPage}
         onSearch={setSearch}
         isLoading={isLoading}
-        searchPlaceholder="Search by voucher ID, student name..."
+        searchPlaceholder={t('searchPlaceholder')}
       />
     </div>
   );

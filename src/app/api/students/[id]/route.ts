@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-response";
 import { updateStudentSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/students/[id]
@@ -57,12 +58,22 @@ export async function GET(
           take: 5,
           orderBy: { createdAt: "desc" },
           select: {
-            examName: true,
-            subject: true,
+            exam: {
+              select: {
+                name: true,
+                type: true,
+              },
+            },
+            subject: {
+              select: {
+                name: true,
+                code: true,
+              },
+            },
             maxMarks: true,
             obtainedMarks: true,
             grade: true,
-            remarks: true,
+            status: true,
           },
         },
       },
@@ -146,9 +157,9 @@ export async function PUT(
     }
 
     // Check student ID uniqueness if changing
-    if (data.studentId && data.studentId !== existingStudent.studentId) {
+    if ((data as any).studentId && (data as any).studentId !== existingStudent.studentId) {
       const idExists = await prisma.studentProfile.findFirst({
-        where: { tenantId, studentId: data.studentId, id: { not: id } },
+        where: { tenantId, studentId: (data as any).studentId, id: { not: id } },
       });
 
       if (idExists) {

@@ -11,6 +11,7 @@ interface User {
   name: string;
   role: string;
   isActive: boolean;
+  permissions?: Record<string, any> | null;
 }
 
 interface AuthContextType {
@@ -82,10 +83,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Protect routes
   useEffect(() => {
-    if (!authState.isLoading && !authState.user) {
-      // Allow access to auth pages without login
-      if (!pathname.startsWith("/login") && !pathname.startsWith("/register")) {
-        router.push("/login");
+    if (!authState.isLoading) {
+      if (!authState.user) {
+        // Allow access to auth pages without login
+        if (!pathname.startsWith("/login") && !pathname.startsWith("/register")) {
+          router.push("/login");
+        }
+      } else {
+        // If user is logged in, restrict access to auth pages
+        if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
+          router.push("/");
+        }
       }
     }
   }, [authState.user, authState.isLoading, pathname, router]);

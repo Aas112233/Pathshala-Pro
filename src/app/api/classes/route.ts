@@ -1,3 +1,4 @@
+import { hasPermission } from "@/lib/permissions";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
             groups: true,
             sections: true,
             studentProfiles: true,
+            classSubjects: true,
           },
         },
       },

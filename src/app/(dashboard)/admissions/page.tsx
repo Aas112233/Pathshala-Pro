@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
@@ -9,6 +10,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { StudentSelectorModal } from "@/components/admissions/student-selector-modal";
+import { DataTable } from "@/components/shared/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useStudentViewModel } from "@/viewmodels/students/use-student-view-model";
+import { StudentStatusBadge } from "@/components/students/student-status-badge";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 interface Student {
   id: string;
@@ -30,11 +36,23 @@ interface AdmissionItem {
 }
 
 export default function AdmissionsPage() {
+  const t = useTranslations();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [showStudentSelector, setShowStudentSelector] = useState(false);
   const [admissionItems, setAdmissionItems] = useState<AdmissionItem[]>([]);
   const [notes, setNotes] = useState("");
+  const { formatDate } = useTenantFormatting();
+
+  const {
+    students,
+    isLoading: isStudentsLoading,
+    pagination,
+    filters,
+    setFilters,
+    setPage,
+  } = useStudentViewModel();
 
   // Form state
   const [selectedClass, setSelectedClass] = useState("");
@@ -140,22 +158,22 @@ export default function AdmissionsPage() {
   );
 
   const classOptions = [
-    { value: "", label: "Select Class *" },
+    { value: "", label: t('admissions.selectClass') },
     ...classes.map((c: any) => ({ value: c.id, label: c.name })),
   ];
 
   const groupOptions = [
-    { value: "", label: "No Group (General)" },
+    { value: "", label: t('admissions.noGroupGeneral') },
     ...groups.map((g: any) => ({ value: g.id, label: g.name })),
   ];
 
   const sectionOptions = [
-    { value: "", label: "Select Section" },
+    { value: "", label: t('admissions.selectSection') },
     ...sections.map((s: any) => ({ value: s.id, label: s.name })),
   ];
 
   const academicYearOptions = [
-    { value: "", label: "Select Academic Year *" },
+    { value: "", label: t('admissions.selectAcademicYear') },
     ...academicYears.map((ay: any) => ({ value: ay.id, label: ay.label })),
   ];
 
@@ -163,7 +181,7 @@ export default function AdmissionsPage() {
 
   const handleOpenStudentSelector = () => {
     if (!canAddStudents) {
-      toast.error("Please select class and academic year first");
+      toast.error(t('admissions.pleaseSelectClassAndYear'));
       return;
     }
     setShowStudentSelector(true);
@@ -178,7 +196,7 @@ export default function AdmissionsPage() {
     }));
 
     setAdmissionItems([...admissionItems, ...newItems]);
-    toast.success(`Added ${students.length} student(s)`);
+    toast.success(t('admissions.addStudentsSuccess').replace('{count}', students.length.toString()));
   };
 
   const handleRemoveStudent = (index: number) => {
@@ -213,37 +231,113 @@ export default function AdmissionsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      toast.success(`Admission completed for ${admissionItems.length} student(s)!`);
-      router.push("/students");
+      toast.success(t('admissions.admissionCompleted').replace('{count}', admissionItems.length.toString()));
+      setIsFormOpen(false);
+      setAdmissionItems([]);
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to process admissions");
+      toast.error(t('admissions.failedToProcess'));
     },
   });
 
   const handleSubmit = () => {
     if (admissionItems.length === 0) {
-      toast.error("No students added");
+      toast.error(t('admissions.noStudentsAddedError'));
       return;
     }
     if (!selectedClass) {
-      toast.error("Please select a class");
+      toast.error(t('admissions.pleaseSelectClass'));
       return;
     }
 
     createAdmissionMutation.mutate(admissionItems);
   };
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: "studentId",
+      header: t('admissions.studentId'),
+      cell: ({ getValue }) => (
+        <span className="font-medium">{getValue<string>()}</span>
+      ),
+    },
+    {
+      accessorKey: "rollNumber",
+      header: t('admissions.rollNumber'),
+    },
+    {
+      accessorKey: "firstName",
+      header: t('admissions.name'),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span>{`${row.original.firstName} ${row.original.lastName}`}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "class",
+      header: t('admissions.class'),
+      cell: ({ row }) => <span>{row.original.class?.name || "-"}</span>,
+    },
+    {
+      accessorKey: "section",
+      header: t('admissions.section'),
+      cell: ({ row }) => <span>{row.original.section?.name || "-"}</span>,
+    },
+    {
+      accessorKey: "admissionDate",
+      header: t('admissions.admissionDate'),
+      cell: ({ getValue }) => {
+        const date = getValue<string>();
+        return <span>{date ? formatDate(date) : "-"}</span>;
+      },
+    },
+    {
+      accessorKey: "status",
+      header: t('admissions.status'),
+      cell: ({ getValue }) => (
+        <StudentStatusBadge status={getValue<string>() as any} />
+      ),
+    },
+  ];
+
+  if (!isFormOpen) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={t('admissions.title')}
+          description={t('admissions.description')}
+          icon={FilePlus}
+        >
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('admissions.addAdmission')}
+          </Button>
+        </PageHeader>
+
+        <DataTable
+          columns={columns}
+          data={students}
+          pagination={pagination || undefined}
+          onPageChange={setPage}
+          onSearch={(search) => setFilters({ search })}
+          isLoading={isStudentsLoading}
+          searchPlaceholder={t('admissions.searchPlaceholder')}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Create Admission"
-        description="Enroll students to classes"
+        title={t('admissions.createTitle')}
+        description={t('admissions.createDescription')}
         icon={FilePlus}
       >
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={() => setIsFormOpen(false)}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
+          {t('admissions.back')}
         </Button>
       </PageHeader>
 
@@ -253,55 +347,55 @@ export default function AdmissionsPage() {
           {/* Academic Details Card */}
           <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">
-              Academic Details
+              {t('admissions.academicDetails')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Academic Year
+                  {t('admissions.academicYear')}
                 </label>
                 <AppDropdown
                   value={selectedAcademicYear}
                   onChange={setSelectedAcademicYear}
                   options={academicYearOptions}
-                  placeholder="Select Academic Year"
+                  placeholder={t('admissions.selectAcademicYear')}
                   searchable
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Class
+                  {t('admissions.class')}
                 </label>
                 <AppDropdown
                   value={selectedClass}
                   onChange={setSelectedClass}
                   options={classOptions}
-                  placeholder="Select Class"
+                  placeholder={t('admissions.selectClass')}
                   searchable
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Group
+                  {t('admissions.group')}
                 </label>
                 <AppDropdown
                   value={selectedGroup}
                   onChange={setSelectedGroup}
                   options={groupOptions}
-                  placeholder="Select Group"
+                  placeholder={t('admissions.selectGroup')}
                   searchable
                   disabled={!selectedClass}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Section
+                  {t('admissions.section')}
                 </label>
                 <AppDropdown
                   value={selectedSection}
                   onChange={setSelectedSection}
                   options={sectionOptions}
-                  placeholder="Select Section"
+                  placeholder={t('admissions.selectSection')}
                   searchable
                   disabled={!selectedClass}
                 />
@@ -314,10 +408,10 @@ export default function AdmissionsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
-                  Students
+                  {t('admissions.students')}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Add students for admission
+                  {t('admissions.addStudentsForAdmission')}
                 </p>
               </div>
               <Button
@@ -325,7 +419,7 @@ export default function AdmissionsPage() {
                 disabled={!canAddStudents}
                 className="flex items-center gap-2"
               >
-                <Plus className="h-4 w-4" /> Add Students
+                <Plus className="h-4 w-4" /> {t('admissions.addStudents')}
               </Button>
             </div>
 
@@ -333,10 +427,10 @@ export default function AdmissionsPage() {
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <FilePlus className="h-12 w-12 text-muted-foreground/50 mb-3" />
                 <p className="text-sm text-muted-foreground">
-                  No students added yet
+                  {t('admissions.noStudentsAdded')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Click "Add Students" to select students
+                  {t('admissions.clickToAddStudents')}
                 </p>
               </div>
             ) : (
@@ -379,12 +473,12 @@ export default function AdmissionsPage() {
           {/* Notes */}
           <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
             <label className="block text-sm font-medium text-foreground mb-2">
-              Additional Notes
+              {t('admissions.additionalNotes')}
             </label>
             <textarea
               rows={3}
               className="w-full px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-primary outline-none text-sm"
-              placeholder="Add any internal remarks..."
+              placeholder={t('admissions.internalRemarks')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -395,16 +489,16 @@ export default function AdmissionsPage() {
         <div className="space-y-6">
           <div className="bg-card rounded-xl border border-border p-6 shadow-sm sticky top-6">
             <h2 className="text-lg font-bold text-foreground mb-6 font-mono uppercase tracking-tighter text-center">
-              Summary
+              {t('admissions.summary')}
             </h2>
             <div className="space-y-4">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Students</span>
+                <span className="text-muted-foreground">{t('admissions.totalStudents')}</span>
                 <span className="font-bold text-2xl">{admissionItems.length}</span>
               </div>
               <div className="pt-4 border-t border-dashed">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-foreground">Class</span>
+                  <span className="font-bold text-foreground">{t('admissions.class')}</span>
                   <span className="text-primary font-semibold">
                     {classes.find((c: any) => c.id === selectedClass)?.name || "-"}
                   </span>
@@ -417,7 +511,7 @@ export default function AdmissionsPage() {
               className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shadow-lg"
             >
               <Save className="h-4 w-4" />{" "}
-              {createAdmissionMutation.isPending ? "Processing..." : "Complete Admission"}
+              {createAdmissionMutation.isPending ? t('admissions.processing') : t('admissions.completeAdmission')}
             </Button>
           </div>
         </div>

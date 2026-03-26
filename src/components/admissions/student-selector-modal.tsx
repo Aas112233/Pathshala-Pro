@@ -51,9 +51,9 @@ export function StudentSelectorModal({
       const params = new URLSearchParams({
         limit: "100",
         ...(search && { search }),
-        ...(selectedClass && { filters: { classId: selectedClass } }),
-        ...(selectedGroup && { filters: { groupId: selectedGroup } }),
-        ...(selectedSection && { filters: { sectionId: selectedSection } }),
+        ...(selectedClass && { classId: selectedClass }),
+        ...(selectedGroup && { groupId: selectedGroup }),
+        ...(selectedSection && { sectionId: selectedSection }),
       });
       const res = await fetch(`/api/students?${params}`, {
         headers: {

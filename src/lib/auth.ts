@@ -1,15 +1,22 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { User } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { SignJWT, jwtVerify } from "jose";
 
 export interface AuthContext {
   user: User;
   tenantId: string;
 }
 
+const getJwtSecretKey = () => {
+  const secret = process.env.JWT_SECRET || "default_super_secret_key_for_jwt_2026_fallback";
+  return new TextEncoder().encode(secret);
+};
+
 /**
  * Extract and validate user from request headers
- * In production, this should validate JWT tokens from NextAuth
+ * In production, this validates JWT tokens from the Authorization header using jose
  */
 export async function getAuthContext(request: NextRequest): Promise<AuthContext | null> {
   try {
@@ -22,29 +29,23 @@ export async function getAuthContext(request: NextRequest): Promise<AuthContext 
 
     const token = authHeader.substring(7);
     
-    // For development: decode user info from token
-    // In production: verify JWT token with NextAuth
+    // For development/production: verify user info from standard JWT token
     let userId: string | null = null;
     let tenantId: string | null = null;
 
-    // Try to get from header (for internal requests)
+    // Try to get from header (for internal microservices / test requests)
     userId = request.headers.get("x-user-id");
     tenantId = request.headers.get("x-tenant-id");
 
-    // If not in headers, decode from token (simplified for dev)
+    // If not in headers, cryptographically decode and verify from token using jose
     if (!userId || !tenantId) {
       try {
-        const decoded = Buffer.from(token, "base64").toString("utf-8");
-        const parsed = JSON.parse(decoded);
-        
-        // Check for token expiration
-        if (parsed.exp && Date.now() > parsed.exp) {
-          return null; // Token expired
-        }
-        
-        userId = parsed.userId;
-        tenantId = parsed.tenantId;
-      } catch {
+        const { payload } = await jwtVerify(token, getJwtSecretKey());
+
+        userId = payload.userId as string;
+        tenantId = payload.tenantId as string;
+      } catch (error) {
+        console.warn("Invalid or expired JWT token");
         return null;
       }
     }
@@ -96,32 +97,31 @@ export async function getTenantFromRequest(request: NextRequest): Promise<string
 }
 
 /**
- * Generate a simple auth token (for development)
- * In production, use NextAuth's JWT tokens
+ * Generate a cryptographically signed JWT token using Jose
  */
-export function generateAuthToken(userId: string, tenantId: string): string {
-  return Buffer.from(
-    JSON.stringify({ userId, tenantId, exp: Date.now() + 24 * 60 * 60 * 1000 })
-  ).toString("base64");
+export async function generateAuthToken(userId: string, tenantId: string, role?: string): Promise<string> {
+  const iat = Math.floor(Date.now() / 1000);
+  const exp = iat + 24 * 60 * 60; // 24 hours
+
+  return new SignJWT({ userId, tenantId, role })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setExpirationTime(exp)
+    .setIssuedAt(iat)
+    .setNotBefore(iat)
+    .sign(getJwtSecretKey());
 }
 
 /**
- * Hash password (simple implementation for dev)
- * In production, use bcrypt
+ * Hash password securely using bcryptjs for production
  */
 export async function hashPassword(password: string): Promise<string> {
-  // Simple hash for development - use bcrypt in production
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + "pathshala-pro-salt-2026");
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
 }
 
 /**
- * Verify password
+ * Verify password securely using bcryptjs
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const computedHash = await hashPassword(password);
-  return computedHash === hash;
+  return bcrypt.compare(password, hash);
 }

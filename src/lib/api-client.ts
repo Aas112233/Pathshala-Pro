@@ -43,6 +43,20 @@ export class ApiClient {
       ...(customHeaders as Record<string, string> || {}),
     };
 
+    // Try to auto-hydrate auth from localStorage if it wasn't set yet (handles hard reloads before AuthProvider finishes useEffect)
+    if (!this.token && typeof window !== "undefined") {
+      try {
+        const storedToken = localStorage.getItem("auth_token");
+        const storedTenant = localStorage.getItem("tenant_id");
+        if (storedToken && storedTenant) {
+          this.token = storedToken;
+          this.tenantId = storedTenant;
+        }
+      } catch (e) {
+        // Ignore localStorage errors
+      }
+    }
+
     // Add auth headers
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
@@ -109,8 +123,8 @@ export class ApiClient {
     if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
 
     // Handle filters object
-    if (params.filters && typeof params.filters === 'object') {
-      Object.entries(params.filters).forEach(([key, value]) => {
+    if ((params as any).filters && typeof (params as any).filters === 'object') {
+      Object.entries((params as any).filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           searchParams.set(key, String(value));
         }

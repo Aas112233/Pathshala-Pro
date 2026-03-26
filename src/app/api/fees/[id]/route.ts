@@ -9,6 +9,7 @@ import {
 } from "@/lib/api-response";
 import { updateFeeVoucherSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/fees/[id]
@@ -121,8 +122,8 @@ export async function PUT(
     }
 
     // Calculate new totals if amounts are being updated
-    const baseAmount = data.baseAmount ?? existingVoucher.baseAmount;
-    const discountAmount = data.discountAmount ?? existingVoucher.discountAmount;
+    const baseAmount = (data as any).baseAmount ?? existingVoucher.baseAmount;
+    const discountAmount = (data as any).discountAmount ?? existingVoucher.discountAmount;
     const arrears = data.arrears ?? existingVoucher.arrears;
     const amountPaid = existingVoucher.amountPaid;
 

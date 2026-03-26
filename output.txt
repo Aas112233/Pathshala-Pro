@@ -1,24 +1,31 @@
-▲ Next.js 16.2.1 (Turbopack)
-- Environments: .env
-
-⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-  Creating an optimized production build ...
-
-> Build error occurred
-Error: Turbopack build failed with 1 errors:
-./src/app/api/academic-years/[id]/route.ts:11:1
-Export updateAcademicYearSchema doesn't exist in target module
-   9 |   badRequest,
-  10 | } from "@/lib/api-response";
-> 11 | import { updateAcademicYearSchema } from "@/lib/schemas";
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  12 | import { getAuthContext } from "@/lib/auth";
-  13 |
-  14 | /**
-
-The export updateAcademicYearSchema was not found in module [project]/src/lib/schemas.ts [app-route] (ecmascript).
-Did you mean to import createAcademicYearSchema?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-
-    at <unknown> (./src/app/api/academic-years/[id]/route.ts:11:1)
+src/app/api/fees/[id]/route.ts(124,29): error TS2339: Property 'baseAmount' does not exist on type '{ studentProfileId?: string | undefined; academicYearId?: string | undefined; feeType?: string | undefined; arrears?: number | undefined; totalDue?: number | undefined; dueDate?: string | undefined; discount?: number | undefined; }'.
+src/app/api/fees/[id]/route.ts(125,33): error TS2339: Property 'discountAmount' does not exist on type '{ studentProfileId?: string | undefined; academicYearId?: string | undefined; feeType?: string | undefined; arrears?: number | undefined; totalDue?: number | undefined; dueDate?: string | undefined; discount?: number | undefined; }'.
+src/app/api/fees/route.ts(133,42): error TS2339: Property 'voucherId' does not exist on type '{ studentProfileId: string; academicYearId: string; feeType: string; arrears: number; totalDue: number; dueDate: string; discount: number; }'.
+src/app/api/fees/route.ts(161,27): error TS2339: Property 'baseAmount' does not exist on type '{ studentProfileId: string; academicYearId: string; feeType: string; arrears: number; totalDue: number; dueDate: string; discount: number; }'.
+src/app/api/fees/route.ts(161,45): error TS2339: Property 'discountAmount' does not exist on type '{ studentProfileId: string; academicYearId: string; feeType: string; arrears: number; totalDue: number; dueDate: string; discount: number; }'.
+src/app/api/fees/route.ts(165,7): error TS2322: Type '{ totalDue: number; balance: number; studentProfileId: string; academicYearId: string; feeType: string; arrears: number; dueDate: string; discount: number; tenantId: string; }' is not assignable to type '(Without<FeeVoucherCreateInput, FeeVoucherUncheckedCreateInput> & FeeVoucherUncheckedCreateInput) | (Without<...> & FeeVoucherCreateInput)'.
+  Type '{ totalDue: number; balance: number; studentProfileId: string; academicYearId: string; feeType: string; arrears: number; dueDate: string; discount: number; tenantId: string; }' is not assignable to type 'Without<FeeVoucherCreateInput, FeeVoucherUncheckedCreateInput> & FeeVoucherUncheckedCreateInput'.
+    Type '{ totalDue: number; balance: number; studentProfileId: string; academicYearId: string; feeType: string; arrears: number; dueDate: string; discount: number; tenantId: string; }' is missing the following properties from type 'FeeVoucherUncheckedCreateInput': voucherId, baseAmount
+src/app/api/salary/route.ts(136,25): error TS2339: Property 'academicYearId' does not exist on type '{ staffProfileId: string; status: "PENDING" | "PARTIAL" | "PAID"; baseSalary: number; month: number; year: number; deductions: number; advances: number; }'.
+src/app/api/salary/route.ts(167,7): error TS2322: Type '{ netPayable: number; staffProfileId: string; status: "PENDING" | "PARTIAL" | "PAID"; baseSalary: number; month: number; year: number; deductions: number; advances: number; tenantId: string; }' is not assignable to type '(Without<SalaryLedgerCreateInput, SalaryLedgerUncheckedCreateInput> & SalaryLedgerUncheckedCreateInput) | (Without<...> & SalaryLedgerCreateInput)'.
+  Type '{ netPayable: number; staffProfileId: string; status: "PENDING" | "PARTIAL" | "PAID"; baseSalary: number; month: number; year: number; deductions: number; advances: number; tenantId: string; }' is not assignable to type 'Without<SalaryLedgerCreateInput, SalaryLedgerUncheckedCreateInput> & SalaryLedgerUncheckedCreateInput'.
+    Property 'academicYearId' is missing in type '{ netPayable: number; staffProfileId: string; status: "PENDING" | "PARTIAL" | "PAID"; baseSalary: number; month: number; year: number; deductions: number; advances: number; tenantId: string; }' but required in type 'SalaryLedgerUncheckedCreateInput'.
+src/app/api/staff/route.ts(136,7): error TS2322: Type '{ firstName: string; lastName: string; staffId: string; phone?: string | undefined; email?: string | undefined; department?: string | undefined; designation?: string | undefined; salary?: number | undefined; joiningDate?: string | undefined; qualification?: string | undefined; tenantId: string; }' is not assignable to type '(Without<StaffProfileCreateInput, StaffProfileUncheckedCreateInput> & StaffProfileUncheckedCreateInput) | (Without<...> & StaffProfileCreateInput)'.
+  Type '{ firstName: string; lastName: string; staffId: string; phone?: string | undefined; email?: string | undefined; department?: string | undefined; designation?: string | undefined; salary?: number | undefined; joiningDate?: string | undefined; qualification?: string | undefined; tenantId: string; }' is not assignable to type 'Without<StaffProfileCreateInput, StaffProfileUncheckedCreateInput> & StaffProfileUncheckedCreateInput'.
+    Type '{ firstName: string; lastName: string; staffId: string; phone?: string | undefined; email?: string | undefined; department?: string | undefined; designation?: string | undefined; salary?: number | undefined; joiningDate?: string | undefined; qualification?: string | undefined; tenantId: string; }' is missing the following properties from type 'StaffProfileUncheckedCreateInput': baseSalary, hireDate
+src/app/api/students/[id]/route.ts(149,14): error TS2339: Property 'studentId' does not exist on type '{ address?: string | undefined; rollNumber?: string | undefined; profilePictureUrl?: string | undefined; firstName?: string | undefined; lastName?: string | undefined; guardianName?: string | undefined; ... 5 more ...; bloodGroup?: string | undefined; }'.
+src/app/api/students/[id]/route.ts(149,32): error TS2339: Property 'studentId' does not exist on type '{ address?: string | undefined; rollNumber?: string | undefined; profilePictureUrl?: string | undefined; firstName?: string | undefined; lastName?: string | undefined; guardianName?: string | undefined; ... 5 more ...; bloodGroup?: string | undefined; }'.
+src/app/api/students/[id]/route.ts(151,44): error TS2339: Property 'studentId' does not exist on type '{ address?: string | undefined; rollNumber?: string | undefined; profilePictureUrl?: string | undefined; firstName?: string | undefined; lastName?: string | undefined; guardianName?: string | undefined; ... 5 more ...; bloodGroup?: string | undefined; }'.
+src/app/api/students/route.ts(230,26): error TS2339: Property 'admissionDate' does not exist on type '{ rollNumber: string; firstName: string; lastName: string; guardianName: string; guardianContact: string; status: "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED"; address?: string | undefined; ... 5 more ...; bloodGroup?: string | undefined; }'.
+src/app/api/transactions/route.ts(12,35): error TS2724: '"@/lib/schemas"' has no exported member named 'updateTransactionSchema'. Did you mean 'createTransactionSchema'?
+src/app/api/transactions/route.ts(138,46): error TS2339: Property 'transactionId' does not exist on type '{ amountPaid: number; feeVoucherId: string; paymentMethod: "CASH" | "DIGITAL"; receiptNumber?: string | undefined; note?: string | undefined; }'.
+src/app/api/transactions/route.ts(178,31): error TS2339: Property 'transactionId' does not exist on type '{ amountPaid: number; feeVoucherId: string; paymentMethod: "CASH" | "DIGITAL"; receiptNumber?: string | undefined; note?: string | undefined; }'.
+src/app/api/transactions/route.ts(182,11): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/users/route.ts(125,42): error TS2339: Property 'staffProfileId' does not exist on type '{ name: string; email: string; role: "SUPER_ADMIN" | "ADMIN" | "TEACHER" | "CLERK"; password: string; tenantId?: string | undefined; }'.
+src/app/api/users/route.ts(125,58): error TS2339: Property 'isActive' does not exist on type '{ name: string; email: string; role: "SUPER_ADMIN" | "ADMIN" | "TEACHER" | "CLERK"; password: string; tenantId?: string | undefined; }'.
+src/components/admissions/student-selector-modal.tsx(51,42): error TS2345: Argument of type '{ filters?: { classId: string; } | { groupId: string; } | { sectionId: string; } | undefined; search?: string | undefined; limit: string; }' is not assignable to parameter of type 'string | URLSearchParams | Record<string, string> | string[][] | undefined'.
+  Type '{ filters?: { classId: string; } | { groupId: string; } | { sectionId: string; } | undefined; search?: string | undefined; limit: string; }' is not assignable to type 'undefined'.
+src/lib/api-client.ts(112,16): error TS2339: Property 'filters' does not exist on type 'PaginationParams'.
+src/lib/api-client.ts(112,41): error TS2339: Property 'filters' does not exist on type 'PaginationParams'.
+src/lib/api-client.ts(113,29): error TS2339: Property 'filters' does not exist on type 'PaginationParams'.

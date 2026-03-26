@@ -12,6 +12,7 @@ import {
 import { createStudentSchema, updateStudentSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/students
@@ -81,6 +82,18 @@ export async function GET(request: NextRequest) {
         profilePictureUrl: true,
         admissionDate: true,
         createdAt: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        section: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
       },
     });
 
@@ -215,7 +228,7 @@ export async function POST(request: NextRequest) {
 
     // Strip driveFileId and admissionDate before passing to Prisma
     // admissionDate should not be set manually - createdAt is auto-set by DB
-    const { driveFileId, admissionDate, ...prismaData } = data;
+    const { driveFileId, admissionDate, ...prismaData } = data as any;
 
     // Convert dateOfBirth string to Date object if present
     const prismaDataWithDates: any = { ...prismaData };

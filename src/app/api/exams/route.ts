@@ -2,19 +2,47 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
-  paginatedResponse,
   errorResponse,
-  badRequest,
   unauthorized,
+  badRequest,
   validationError,
 } from "@/lib/api-response";
-import { createExamResultSchema, updateExamResultSchema } from "@/lib/schemas";
+import { createExamSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
-import { MAX_PAGE_SIZE } from "@/lib/constants";
+
+async function generateUniqueExamId(tenantId: string) {
+  const latestExam = await prisma.exam.findFirst({
+    where: {
+      tenantId,
+      examId: {
+        startsWith: "EXAM-",
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { examId: true },
+  });
+
+  const latestSequence = latestExam?.examId.match(/^EXAM-(\d+)$/)?.[1];
+  let nextNumber = latestSequence ? Number.parseInt(latestSequence, 10) + 1 : 1;
+
+  while (true) {
+    const candidate = `EXAM-${nextNumber.toString().padStart(4, "0")}`;
+    const existingExam = await prisma.exam.findFirst({
+      where: { tenantId, examId: candidate },
+      select: { id: true },
+    });
+
+    if (!existingExam) {
+      return candidate;
+    }
+
+    nextNumber += 1;
+  }
+}
 
 /**
  * GET /api/exams
- * Get all exam results with pagination
+ * Get all exams
  */
 export async function GET(request: NextRequest) {
   try {
@@ -24,87 +52,64 @@ export async function GET(request: NextRequest) {
     }
 
     const { tenantId } = authContext;
-
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = Math.min(parseInt(searchParams.get("limit") || "20"), MAX_PAGE_SIZE);
-    const search = searchParams.get("search") || "";
-    const examName = searchParams.get("examName") || "";
-    const subject = searchParams.get("subject") || "";
-    const studentId = searchParams.get("studentId") || "";
-    const academicYearId = searchParams.get("academicYearId") || "";
+    const academicYearId = searchParams.get("academicYearId");
+    const type = searchParams.get("type");
+    const isPublished = searchParams.get("isPublished");
 
-    const skip = (page - 1) * limit;
-
-    const where: any = { tenantId };
-
-    if (search) {
-      where.OR = [
-        { examName: { contains: search, mode: "insensitive" } },
-        { subject: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    if (examName) {
-      where.examName = examName;
-    }
-
-    if (subject) {
-      where.subject = subject;
-    }
-
-    if (studentId) {
-      where.studentProfileId = studentId;
-    }
+    const where: {
+      tenantId: string;
+      academicYearId?: string;
+      type?: string;
+      isPublished?: boolean;
+    } = { tenantId };
 
     if (academicYearId) {
       where.academicYearId = academicYearId;
     }
 
-    const totalCount = await prisma.examResult.count({ where });
+    if (type) {
+      where.type = type;
+    }
 
-    const examResults = await prisma.examResult.findMany({
+    if (isPublished !== null) {
+      where.isPublished = isPublished === "true";
+    }
+
+    const exams = await prisma.exam.findMany({
       where,
-      skip,
-      take: limit,
-      orderBy: { createdAt: "desc" },
       include: {
-        studentProfile: {
-          select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            rollNumber: true,
-          },
-        },
         academicYear: {
           select: {
             yearId: true,
             label: true,
           },
         },
+        subjects: {
+          include: {
+            subject: {
+              select: {
+                subjectId: true,
+                name: true,
+                code: true,
+              },
+            },
+          },
+        },
       },
+      orderBy: { startDate: "desc" },
     });
 
-    const totalPages = Math.ceil(totalCount / limit);
-
-    return paginatedResponse(examResults, {
-      totalCount,
-      currentPage: page,
-      pageSize: limit,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    });
+    return successResponse(exams, "Exams retrieved successfully");
   } catch (error) {
-    console.error("Get exam results error:", error);
+    console.error("Get exams error:", error);
     return errorResponse("Internal server error", 500);
   }
 }
 
 /**
  * POST /api/exams
- * Create a new exam result
+ * Create a new exam
  */
 export async function POST(request: NextRequest) {
   try {
@@ -114,9 +119,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { tenantId } = authContext;
-
     const body = await request.json();
-    const validation = createExamResultSchema.safeParse(body);
+    const validation = createExamSchema.safeParse(body);
 
     if (!validation.success) {
       const errors = validation.error.errors.map((err) => ({
@@ -128,14 +132,12 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
+    const uniqueSubjectIds = new Set(data.subjects.map((subject) => subject.subjectId));
 
-    // Verify student exists
-    const student = await prisma.studentProfile.findUnique({
-      where: { id: data.studentProfileId, tenantId },
-    });
-
-    if (!student) {
-      return badRequest("Student not found");
+    if (uniqueSubjectIds.size !== data.subjects.length) {
+      return badRequest("Duplicate subjects are not allowed", [
+        { field: "subjects", code: "duplicate", message: "Duplicate subjects are not allowed" },
+      ]);
     }
 
     // Verify academic year exists
@@ -147,56 +149,68 @@ export async function POST(request: NextRequest) {
       return badRequest("Academic year not found");
     }
 
-    // Auto-calculate grade if not provided
-    const percentage = (data.obtainedMarks / data.maxMarks) * 100;
-    let grade = data.grade;
-    
-    if (!grade) {
-      if (percentage >= 80) grade = "A+";
-      else if (percentage >= 70) grade = "A";
-      else if (percentage >= 60) grade = "B";
-      else if (percentage >= 50) grade = "C";
-      else if (percentage >= 40) grade = "D";
-      else grade = "F";
+    const subjectIds = data.subjects.map((subject) => subject.subjectId);
+    const existingSubjects = await prisma.subject.findMany({
+      where: {
+        tenantId,
+        id: { in: subjectIds },
+      },
+      select: { id: true },
+    });
+
+    if (existingSubjects.length !== subjectIds.length) {
+      return badRequest("One or more selected subjects were not found", [
+        { field: "subjects", code: "not_found", message: "One or more selected subjects were not found" },
+      ]);
     }
 
-    // Auto-generate remarks if not provided
-    let remarks = data.remarks;
-    if (!remarks) {
-      if (percentage >= 80) remarks = "Excellent";
-      else if (percentage >= 60) remarks = "Good";
-      else if (percentage >= 40) remarks = "Satisfactory";
-      else remarks = "Needs Improvement";
-    }
+    const examId = await generateUniqueExamId(tenantId);
 
-    const examResult = await prisma.examResult.create({
+    const exam = await prisma.exam.create({
       data: {
         tenantId,
-        ...data,
-        grade,
-        remarks,
+        examId,
+        academicYearId: data.academicYearId,
+        name: data.name,
+        type: data.type,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        totalMarks: data.totalMarks,
+        passPercentage: data.passPercentage,
+        isPublished: data.isPublished,
+        subjects: {
+          create: data.subjects.map((subject) => ({
+            tenantId,
+            subjectId: subject.subjectId,
+            maxMarks: subject.maxMarks,
+            passMarks: subject.passMarks,
+          })),
+        },
       },
       include: {
-        studentProfile: {
-          select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            rollNumber: true,
-          },
-        },
         academicYear: {
           select: {
             yearId: true,
             label: true,
           },
         },
+        subjects: {
+          include: {
+            subject: {
+              select: {
+                subjectId: true,
+                name: true,
+                code: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    return successResponse(examResult, "Exam result created successfully", 201);
+    return successResponse(exam, "Exam created successfully", 201);
   } catch (error) {
-    console.error("Create exam result error:", error);
+    console.error("Create exam error:", error);
     return errorResponse("Internal server error", 500);
   }
 }

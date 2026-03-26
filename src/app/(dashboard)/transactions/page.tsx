@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
@@ -8,11 +9,14 @@ import { ArrowLeftRight, Trash2 } from "lucide-react";
 import { useTransactions, useDeleteTransaction } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 export default function TransactionsPage() {
+  const t = useTranslations('transactions');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const { formatCurrency, formatDate } = useTenantFormatting();
 
   const { data, isLoading } = useTransactions({
     page,
@@ -24,14 +28,14 @@ export default function TransactionsPage() {
   const deleteMutation = useDeleteTransaction();
 
   const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this transaction? This will rollback the payment.")) return;
+    if (!confirm(t('confirmDelete'))) return;
     
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        toast.success("Transaction deleted and balance rolled back");
+        toast.success(t('deleteSuccess'));
       },
       onError: (err) => {
-        toast.error(err.message || "Failed to delete transaction");
+        toast.error(err.message || t('deleteError'));
       },
     });
   };
@@ -39,18 +43,18 @@ export default function TransactionsPage() {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "transactionId",
-      header: "Transaction ID",
+      header: t('tableColumns.transactionId'),
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue<string>()}</span>
       ),
     },
     {
       accessorKey: "receiptNumber",
-      header: "Receipt #",
+      header: t('tableColumns.receiptNumber'),
     },
     {
       accessorKey: "student",
-      header: "Student",
+      header: t('tableColumns.student'),
       cell: ({ row }) => {
         const voucher = row.original.feeVoucher;
         const student = voucher?.studentProfile;
@@ -63,36 +67,36 @@ export default function TransactionsPage() {
     },
     {
       accessorKey: "feeType",
-      header: "Fee Type",
+      header: t('tableColumns.feeType'),
       cell: ({ row }) => row.original.feeVoucher?.feeType || "-",
     },
     {
       accessorKey: "amountPaid",
-      header: "Amount",
+      header: t('tableColumns.amount'),
       cell: ({ getValue }) => (
-        <span className="font-medium">৳{getValue<number>().toLocaleString()}</span>
+        <span className="font-medium">{formatCurrency(getValue<number>())}</span>
       ),
     },
     {
       accessorKey: "paymentMethod",
-      header: "Payment Method",
+      header: t('tableColumns.paymentMethod'),
       cell: ({ getValue }) => (
         <span className="capitalize">{getValue<string>().toLowerCase()}</span>
       ),
     },
     {
       accessorKey: "collectedBy",
-      header: "Collected By",
+      header: t('tableColumns.collectedBy'),
       cell: ({ row }) => row.original.collectedBy?.name || "-",
     },
     {
       accessorKey: "timestamp",
-      header: "Date",
-      cell: ({ getValue }) => new Date(getValue<string>()).toLocaleDateString(),
+      header: t('tableColumns.date'),
+      cell: ({ getValue }) => formatDate(getValue<string>()),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <Button
           variant="ghost"
@@ -112,8 +116,8 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Transactions"
-        description="View and manage all payment transactions."
+        title={t('title')}
+        description={t('description')}
         icon={ArrowLeftRight}
       />
 
@@ -124,7 +128,7 @@ export default function TransactionsPage() {
         onPageChange={setPage}
         onSearch={setSearch}
         isLoading={isLoading}
-        searchPlaceholder="Search by transaction ID or receipt..."
+        searchPlaceholder={t('searchPlaceholder')}
       />
     </div>
   );

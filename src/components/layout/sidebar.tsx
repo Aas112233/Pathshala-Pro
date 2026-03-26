@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV, APP_NAME } from "@/lib/constants";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getModuleForPath } from "@/lib/permissions";
 import { ChevronLeft, GraduationCap } from "lucide-react";
 
 interface SidebarProps {
@@ -11,35 +14,10 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-const translations: Record<string, string> = {
-  "nav.dashboard": "Dashboard",
-  "nav.students": "Students",
-  "nav.staff": "Staff",
-  "nav.academicYear": "Academic Year",
-  "nav.finance": "Finance",
-  "nav.feeVouchers": "Fee Vouchers",
-  "nav.transactions": "Transactions",
-  "nav.salaryPayroll": "Salary",
-  "nav.settings": "Settings",
-  "nav.academics": "Academics",
-  "nav.communication": "Communication",
-  "nav.exams": "Exams",
-  "nav.attendance": "Attendance",
-  "nav.users": "Users",
-  "nav.overview": "Overview",
-  "nav.admissions": "Admissions",
-  "nav.createAdmission": "Create Admission",
-  "nav.academic": "Academics",
-  "nav.academicSettings": "Academic Settings",
-  "nav.classes": "Classes",
-  "nav.groups": "Groups",
-  "nav.sections": "Sections",
-  "nav.hr": "HR & Staff",
-  "nav.administration": "Administration",
-};
-
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations();
+  const { user, isLoading } = useAuth();
 
   return (
     <aside
@@ -75,52 +53,73 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {SIDEBAR_NAV.map((group) => (
-          <div key={group.labelKey} className="mb-4">
-            {!collapsed && (
-              <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
-                {translations[group.labelKey] || group.labelKey}
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/" && pathname.startsWith(item.href));
-                const label = translations[item.titleKey] || item.titleKey;
+        {SIDEBAR_NAV.map((group) => {
+          // Filter items based on permissions
+          const allowedItems = group.items.filter((item) => {
+            // Assume true during loading to prevent SSR hydration errors
+            if (isLoading) return true;
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                    )}
-                    title={collapsed ? label : undefined}
-                  >
-                    <item.icon
+            if (!user) return false;
+            // Super admins see everything
+            if (user.role === "SUPER_ADMIN") return true;
+            
+            // Check specific route requirements
+            const moduleName = getModuleForPath(item.href);
+            if (!moduleName) return true; // public modules (e.g. dashboard)
+            
+            return hasPermission(user.permissions, moduleName, "read");
+          });
+
+          // Don't render empty groups
+          if (allowedItems.length === 0) return null;
+
+          return (
+            <div key={group.labelKey} className="mb-4">
+              {!collapsed && (
+                <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
+                  {t(group.labelKey as any) || group.labelKey}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {allowedItems.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/" && pathname.startsWith(item.href));
+                  const label = t(item.titleKey as any);
+  
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
                       className={cn(
-                        "h-4 w-4 shrink-0 transition-colors",
+                        "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
                         isActive
-                          ? "text-primary"
-                          : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
+                          ? "bg-primary/10 text-primary"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       )}
-                    />
-                    {!collapsed && <span>{label}</span>}
-                    {!collapsed && item.badge && (
-                      <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+                      title={collapsed ? label : undefined}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-colors",
+                          isActive
+                            ? "text-primary"
+                            : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
+                        )}
+                      />
+                      {!collapsed && <span>{label}</span>}
+                      {!collapsed && item.badge && (
+                        <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Footer */}

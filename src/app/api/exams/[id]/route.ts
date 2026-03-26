@@ -6,13 +6,14 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  validationError,
 } from "@/lib/api-response";
-import { updateExamResultSchema } from "@/lib/schemas";
+import { updateExamSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 
 /**
  * GET /api/exams/[id]
- * Get a single exam result by ID
+ * Get a single exam by ID
  */
 export async function GET(
   request: NextRequest,
@@ -27,20 +28,9 @@ export async function GET(
     const { tenantId } = authContext;
     const { id } = await params;
 
-    const examResult = await prisma.examResult.findUnique({
+    const exam = await prisma.exam.findUnique({
       where: { id, tenantId },
       include: {
-        studentProfile: {
-          select: {
-            id: true,
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            rollNumber: true,
-            guardianName: true,
-            guardianContact: true,
-          },
-        },
         academicYear: {
           select: {
             yearId: true,
@@ -49,23 +39,54 @@ export async function GET(
             endDate: true,
           },
         },
+        subjects: {
+          include: {
+            subject: {
+              select: {
+                subjectId: true,
+                name: true,
+                code: true,
+                maxMarks: true,
+                passMarks: true,
+              },
+            },
+          },
+        },
+        results: {
+          include: {
+            studentProfile: {
+              select: {
+                studentId: true,
+                firstName: true,
+                lastName: true,
+                rollNumber: true,
+              },
+            },
+            subject: {
+              select: {
+                name: true,
+                code: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    if (!examResult) {
-      return notFound("Exam result not found");
+    if (!exam) {
+      return notFound("Exam not found");
     }
 
-    return successResponse(examResult);
+    return successResponse(exam, "Exam retrieved successfully");
   } catch (error) {
-    console.error("Get exam result error:", error);
+    console.error("Get exam error:", error);
     return errorResponse("Internal server error", 500);
   }
 }
 
 /**
  * PUT /api/exams/[id]
- * Update an exam result
+ * Update an exam
  */
 export async function PUT(
   request: NextRequest,
@@ -79,90 +100,80 @@ export async function PUT(
 
     const { tenantId } = authContext;
     const { id } = await params;
-
     const body = await request.json();
-    const validation = updateExamResultSchema.safeParse(body);
+    const validation = updateExamSchema.safeParse(body);
 
     if (!validation.success) {
-      const errors = validation.error.errors.map((err: any) => ({
+      const errors = validation.error.errors.map((err) => ({
         field: err.path.join("."),
         code: err.code,
         message: err.message,
       }));
-      return badRequest("Invalid input", errors);
+      return validationError(errors);
     }
 
-    const data = validation.data;
+    const data = { ...validation.data };
+    delete data.subjects;
 
-    const existingResult = await prisma.examResult.findUnique({
+    const existingExam = await prisma.exam.findUnique({
       where: { id, tenantId },
     });
 
-    if (!existingResult) {
-      return notFound("Exam result not found");
+    if (!existingExam) {
+      return notFound("Exam not found");
     }
 
-    // Validate marks if both are provided
-    if (data.obtainedMarks !== undefined && data.maxMarks !== undefined) {
-      if (data.obtainedMarks > data.maxMarks) {
-        return badRequest("Obtained marks cannot exceed max marks", [
-          {
-            field: "obtainedMarks",
-            code: "invalid",
-            message: "Obtained marks must be less than or equal to max marks",
-          },
+    // Check exam ID uniqueness if changing
+    if (data.examId && data.examId !== existingExam.examId) {
+      const idExists = await prisma.exam.findFirst({
+        where: { tenantId, examId: data.examId, id: { not: id } },
+      });
+
+      if (idExists) {
+        return badRequest("Exam ID already in use", [
+          { field: "examId", code: "duplicate", message: "Exam ID already exists" },
         ]);
       }
     }
 
-    // Auto-calculate grade if marks are being updated
-    const obtainedMarks = data.obtainedMarks ?? existingResult.obtainedMarks;
-    const maxMarks = data.maxMarks ?? existingResult.maxMarks;
-    const percentage = (obtainedMarks / maxMarks) * 100;
+    // Verify academic year exists if changing
+    if (data.academicYearId) {
+      const academicYear = await prisma.academicYear.findUnique({
+        where: { id: data.academicYearId, tenantId },
+      });
 
-    const updateData: any = { ...data };
-
-    if (!data.grade) {
-      if (percentage >= 80) updateData.grade = "A+";
-      else if (percentage >= 70) updateData.grade = "A";
-      else if (percentage >= 60) updateData.grade = "B";
-      else if (percentage >= 50) updateData.grade = "C";
-      else if (percentage >= 40) updateData.grade = "D";
-      else updateData.grade = "F";
+      if (!academicYear) {
+        return badRequest("Academic year not found");
+      }
     }
 
-    if (!data.remarks) {
-      if (percentage >= 80) updateData.remarks = "Excellent";
-      else if (percentage >= 60) updateData.remarks = "Good";
-      else if (percentage >= 40) updateData.remarks = "Satisfactory";
-      else updateData.remarks = "Needs Improvement";
-    }
-
-    const updatedResult = await prisma.examResult.update({
+    const updatedExam = await prisma.exam.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...data,
+        startDate: data.startDate ? new Date(data.startDate) : undefined,
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+      },
       include: {
-        studentProfile: {
+        academicYear: {
           select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            rollNumber: true,
+            yearId: true,
+            label: true,
           },
         },
       },
     });
 
-    return successResponse(updatedResult, "Exam result updated successfully");
+    return successResponse(updatedExam, "Exam updated successfully");
   } catch (error) {
-    console.error("Update exam result error:", error);
+    console.error("Update exam error:", error);
     return errorResponse("Internal server error", 500);
   }
 }
 
 /**
  * DELETE /api/exams/[id]
- * Delete an exam result
+ * Delete an exam
  */
 export async function DELETE(
   request: NextRequest,
@@ -177,21 +188,37 @@ export async function DELETE(
     const { tenantId } = authContext;
     const { id } = await params;
 
-    const existingResult = await prisma.examResult.findUnique({
+    const existingExam = await prisma.exam.findUnique({
       where: { id, tenantId },
     });
 
-    if (!existingResult) {
-      return notFound("Exam result not found");
+    if (!existingExam) {
+      return notFound("Exam not found");
     }
 
-    await prisma.examResult.delete({
-      where: { id },
+    // Check if exam has results
+    const resultsCount = await prisma.examResult.count({
+      where: { examId: id },
     });
 
-    return successResponse(null, "Exam result deleted successfully");
+    if (resultsCount > 0) {
+      return badRequest("Cannot delete exam with existing results", [
+        { field: "examId", code: "in_use", message: "Exam has results" },
+      ]);
+    }
+
+    await prisma.$transaction([
+      prisma.examSubject.deleteMany({
+        where: { tenantId, examId: id },
+      }),
+      prisma.exam.delete({
+        where: { id },
+      }),
+    ]);
+
+    return successResponse(null, "Exam deleted successfully");
   } catch (error) {
-    console.error("Delete exam result error:", error);
+    console.error("Delete exam error:", error);
     return errorResponse("Internal server error", 500);
   }
 }

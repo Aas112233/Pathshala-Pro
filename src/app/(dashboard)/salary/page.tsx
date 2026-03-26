@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
@@ -8,12 +9,15 @@ import { Wallet, Plus, Pencil, Trash2 } from "lucide-react";
 import { useSalary, useDeleteSalary } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 export default function SalaryPage() {
+  const t = useTranslations('salary');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
+  const { formatCurrency } = useTenantFormatting();
 
   const { data, isLoading } = useSalary({
     page,
@@ -26,14 +30,14 @@ export default function SalaryPage() {
   const deleteMutation = useDeleteSalary();
 
   const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this salary ledger?")) return;
+    if (!confirm(t('confirmDelete'))) return;
     
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        toast.success("Salary ledger deleted successfully");
+        toast.success(t('deleteSuccess'));
       },
       onError: (err) => {
-        toast.error(err.message || "Failed to delete salary ledger");
+        toast.error(err.message || t('deleteError'));
       },
     });
   };
@@ -41,7 +45,7 @@ export default function SalaryPage() {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "staff",
-      header: "Staff Member",
+      header: t('tableColumns.staffMember'),
       cell: ({ row }) => {
         const staff = row.original.staffProfile;
         return staff ? (
@@ -53,12 +57,12 @@ export default function SalaryPage() {
     },
     {
       accessorKey: "designation",
-      header: "Designation",
+      header: t('tableColumns.designation'),
       cell: ({ row }) => row.original.staffProfile?.designation || "-",
     },
     {
       accessorKey: "month",
-      header: "Month",
+      header: t('tableColumns.month'),
       cell: ({ getValue }) => {
         const monthNames = [
           "January", "February", "March", "April", "May", "June",
@@ -69,37 +73,37 @@ export default function SalaryPage() {
     },
     {
       accessorKey: "year",
-      header: "Year",
+      header: t('tableColumns.year'),
     },
     {
       accessorKey: "baseSalary",
-      header: "Base Salary",
-      cell: ({ getValue }) => `৳${getValue<number>().toLocaleString()}`,
+      header: t('tableColumns.baseSalary'),
+      cell: ({ getValue }) => formatCurrency(getValue<number>()),
     },
     {
       accessorKey: "deductions",
-      header: "Deductions",
+      header: t('tableColumns.deductions'),
       cell: ({ getValue }) => (
-        <span className="text-destructive">-৳{getValue<number>().toLocaleString()}</span>
+        <span className="text-destructive">-{formatCurrency(getValue<number>())}</span>
       ),
     },
     {
       accessorKey: "advances",
-      header: "Advances",
+      header: t('tableColumns.advances'),
       cell: ({ getValue }) => (
-        <span className="text-destructive">-৳{getValue<number>().toLocaleString()}</span>
+        <span className="text-destructive">-{formatCurrency(getValue<number>())}</span>
       ),
     },
     {
       accessorKey: "netPayable",
-      header: "Net Payable",
+      header: t('tableColumns.netPayable'),
       cell: ({ getValue }) => (
-        <span className="font-semibold">৳{getValue<number>().toLocaleString()}</span>
+        <span className="font-semibold">{formatCurrency(getValue<number>())}</span>
       ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: t('tableColumns.status'),
       cell: ({ getValue }) => (
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -116,7 +120,7 @@ export default function SalaryPage() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
@@ -141,13 +145,13 @@ export default function SalaryPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Salary / Payroll"
-        description="Manage salary disbursements, advances, and payroll records."
+        title={t('title')}
+        description={t('description')}
         icon={Wallet}
       >
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Process Payroll
+          {t('processPayroll')}
         </Button>
       </PageHeader>
 
@@ -158,7 +162,7 @@ export default function SalaryPage() {
         onPageChange={setPage}
         onSearch={setSearch}
         isLoading={isLoading}
-        searchPlaceholder="Search by staff name..."
+        searchPlaceholder={t('searchPlaceholder')}
       />
     </div>
   );

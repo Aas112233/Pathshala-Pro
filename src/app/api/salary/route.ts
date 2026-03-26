@@ -11,6 +11,7 @@ import {
 import { createSalaryLedgerSchema, updateSalaryLedgerSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/salary

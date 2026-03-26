@@ -9,6 +9,7 @@ import {
 } from "@/lib/api-response";
 import { updateSalaryLedgerSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/salary/[id]

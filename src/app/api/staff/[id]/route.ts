@@ -9,6 +9,7 @@ import {
 } from "@/lib/api-response";
 import { updateStaffSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/staff/[id]

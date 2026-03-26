@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-response";
 import { updateAcademicYearSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/academic-years/[id]
@@ -52,8 +53,18 @@ export async function GET(
         examResults: {
           take: 5,
           select: {
-            examName: true,
-            subject: true,
+            exam: {
+              select: {
+                name: true,
+                type: true,
+              },
+            },
+            subject: {
+              select: {
+                name: true,
+                code: true,
+              },
+            },
             studentProfile: {
               select: {
                 firstName: true,
@@ -61,6 +72,8 @@ export async function GET(
                 studentId: true,
               },
             },
+            grade: true,
+            status: true,
           },
         },
       },

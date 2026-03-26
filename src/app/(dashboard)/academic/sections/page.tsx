@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface SectionData {
 }
 
 export default function SectionsPage() {
+  const t = useTranslations('sections');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -220,7 +222,7 @@ export default function SectionsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this section?")) return;
+    if (!confirm(t('confirmDelete'))) return;
     deleteMutation.mutate(id);
   };
 
@@ -239,7 +241,7 @@ export default function SectionsPage() {
   const columns: ColumnDef<SectionData>[] = [
     {
       accessorKey: "name",
-      header: "Section Name",
+      header: t('tableColumns.sectionName'),
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.name}</p>
@@ -249,39 +251,39 @@ export default function SectionsPage() {
     },
     {
       accessorKey: "class",
-      header: "Class",
+      header: t('tableColumns.class'),
       cell: ({ row }) => (
         <span>{row.original.class?.name || "N/A"}</span>
       ),
     },
     {
       accessorKey: "group",
-      header: "Group",
+      header: t('tableColumns.group'),
       cell: ({ row }) => (
-        <span>{row.original.group?.name || "General"}</span>
+        <span>{row.original.group?.name || t('general')}</span>
       ),
     },
     {
       accessorKey: "shortName",
-      header: "Short Name",
+      header: t('tableColumns.shortName'),
     },
     {
       accessorKey: "roomNumber",
-      header: "Room",
+      header: t('tableColumns.room'),
       cell: ({ getValue }) => (
         <span>{getValue<string>() || "-"}</span>
       ),
     },
     {
       accessorKey: "capacity",
-      header: "Capacity",
+      header: t('tableColumns.capacity'),
       cell: ({ getValue }) => (
-        <span>{getValue<number>() || "∞"}</span>
+        <span>{getValue<number>() || t('infinite')}</span>
       ),
     },
     {
       accessorKey: "isActive",
-      header: "Status",
+      header: t('tableColumns.status'),
       cell: ({ getValue }) => (
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${getValue<boolean>()
@@ -291,11 +293,11 @@ export default function SectionsPage() {
         >
           {getValue<boolean>() ? (
             <>
-              <CheckCircle className="h-3 w-3" /> Active
+              <CheckCircle className="h-3 w-3" /> {t('active')}
             </>
           ) : (
             <>
-              <XCircle className="h-3 w-3" /> Inactive
+              <XCircle className="h-3 w-3" /> {t('inactive')}
             </>
           )}
         </span>
@@ -303,7 +305,7 @@ export default function SectionsPage() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Button
@@ -331,13 +333,13 @@ export default function SectionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Sections"
-        description="Manage class sections (A, B, C, etc.)"
+        title={t('title')}
+        description={t('description')}
         icon={ClipboardList}
       >
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Section
+          {t('addSection')}
         </Button>
       </PageHeader>
 
@@ -348,7 +350,7 @@ export default function SectionsPage() {
         onPageChange={setPage}
         onSearch={setSearch}
         isLoading={isLoading}
-        searchPlaceholder="Search sections..."
+        searchPlaceholder={t('searchPlaceholder')}
       />
 
       {/* Add/Edit Modal */}
@@ -359,58 +361,58 @@ export default function SectionsPage() {
           setEditingSection(null);
           resetForm();
         }}
-        title={editingSection ? "Edit Section" : "Add New Section"}
-        description={editingSection ? "Update section information" : "Create a new section"}
+        title={editingSection ? t('editSection') : t('addSection')}
+        description={editingSection ? t('update') : t('description')}
         maxWidth="md"
       >
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Class</label>
+            <label className="text-sm font-medium">{t('class')}</label>
             <AppDropdown
               value={formData.classId}
               onChange={(val) => setFormData({ ...formData, classId: val })}
               options={[
-                { value: "", label: "Select Class" },
+                { value: "", label: t('selectClass') },
                 ...classOptions,
               ]}
-              placeholder="Select Class"
+              placeholder={t('selectClass')}
               searchable
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Group (Optional)</label>
+            <label className="text-sm font-medium">{t('group')} ({t('noGroupGeneral').split('(')[0].trim()})</label>
             <AppDropdown
               value={formData.groupId}
               onChange={(val) => setFormData({ ...formData, groupId: val })}
               options={[
-                { value: "", label: "No Group (General)" },
+                { value: "", label: t('noGroupGeneral') },
                 ...groupOptions,
               ]}
-              placeholder="Select Group"
+              placeholder={t('selectGroup')}
               searchable
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Section Name</label>
+              <label className="text-sm font-medium">{t('sectionName')}</label>
               <input
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Section A"
+                placeholder={t('sectionName')}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Short Name</label>
+              <label className="text-sm font-medium">{t('shortName')}</label>
               <input
                 required
                 value={formData.shortName}
                 onChange={(e) => setFormData({ ...formData, shortName: e.target.value })}
-                placeholder="e.g., A"
+                placeholder={t('shortName')}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
               />
             </div>
@@ -418,35 +420,35 @@ export default function SectionsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Capacity</label>
+              <label className="text-sm font-medium">{t('capacity')}</label>
               <input
                 type="number"
                 value={formData.capacity}
                 onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                placeholder="e.g., 50"
+                placeholder={t('capacityHint')}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Room Number</label>
+              <label className="text-sm font-medium">{t('roomNumber')}</label>
               <input
                 value={formData.roomNumber}
                 onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-                placeholder="e.g., Room 101"
+                placeholder={t('roomHint')}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Status</label>
+            <label className="text-sm font-medium">{t('status')}</label>
             <AppDropdown
               value={formData.isActive ? "ACTIVE" : "INACTIVE"}
               onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
               options={[
-                { value: "ACTIVE", label: "Active" },
-                { value: "INACTIVE", label: "Inactive" },
+                { value: "ACTIVE", label: t('active') },
+                { value: "INACTIVE", label: t('inactive') },
               ]}
             />
           </div>
@@ -461,10 +463,10 @@ export default function SectionsPage() {
                 resetForm();
               }}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingSection ? "Update" : "Create"}
+              {createMutation.isPending || updateMutation.isPending ? t('saving') : editingSection ? t('update') : t('create')}
             </Button>
           </div>
         </form>

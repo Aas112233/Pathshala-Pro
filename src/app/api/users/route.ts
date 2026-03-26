@@ -13,6 +13,7 @@ import {
 import { createUserSchema, updateUserSchema } from "@/lib/schemas";
 import { getAuthContext, hashPassword } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/users
@@ -29,8 +30,8 @@ export async function GET(request: NextRequest) {
     const { user, tenantId } = authContext;
 
     // Check permission
-    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
-      return forbidden("Insufficient permissions");
+    if (user.role !== "SUPER_ADMIN" && !hasPermission(user.permissions, "users", "read")) {
+      return forbidden("Insufficient read permissions for users module");
     }
 
     // Parse query params
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
         email: true,
         name: true,
         role: true,
+        permissions: true,
         isActive: true,
         lastLoginAt: true,
         createdAt: true,
@@ -106,8 +108,8 @@ export async function POST(request: NextRequest) {
     const { user, tenantId } = authContext;
 
     // Check permission
-    if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
-      return forbidden("Insufficient permissions");
+    if (user.role !== "SUPER_ADMIN" && !hasPermission(user.permissions, "users", "write")) {
+      return forbidden("Insufficient write permissions for users module");
     }
 
     const body = await request.json();
@@ -154,6 +156,7 @@ export async function POST(request: NextRequest) {
         email: true,
         name: true,
         role: true,
+        permissions: true,
         isActive: true,
         createdAt: true,
       },
