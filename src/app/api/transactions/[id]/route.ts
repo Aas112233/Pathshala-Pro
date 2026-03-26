@@ -9,6 +9,8 @@ import {
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/transactions/[id]
  * Get a single transaction by ID
@@ -120,8 +122,8 @@ export async function DELETE(
             feeVoucher.balance + transaction.amountPaid <= 0
               ? "PAID"
               : feeVoucher.amountPaid > 0
-              ? "PARTIAL"
-              : "PENDING",
+                ? "PARTIAL"
+                : "PENDING",
         },
       }),
     ]);

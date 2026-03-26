@@ -11,6 +11,8 @@ import { updateFeeVoucherSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/fees/[id]
  * Get a single fee voucher by ID

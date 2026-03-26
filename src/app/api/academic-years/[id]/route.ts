@@ -12,6 +12,8 @@ import { updateAcademicYearSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/academic-years/[id]
  * Get a single academic year by ID

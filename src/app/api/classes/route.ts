@@ -13,6 +13,8 @@ import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { z } from "zod";
 
+export const runtime = 'edge';
+
 const createClassSchema = z.object({
   name: z.string().min(2, "Class name must be at least 2 characters"),
   classNumber: z.number().int().positive("Class number must be positive"),

@@ -5,6 +5,8 @@ import { forbidden } from "next/navigation";
 
 const prisma = new PrismaClient();
 
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext(request);
@@ -109,9 +111,9 @@ export async function GET(request: NextRequest) {
     const averageMarks =
       transformedResults.length > 0
         ? Math.round(
-            transformedResults.reduce((sum, r) => sum + r.percentage, 0) /
-              transformedResults.length
-          )
+          transformedResults.reduce((sum, r) => sum + r.percentage, 0) /
+          transformedResults.length
+        )
         : 0;
 
     const topPerformers = transformedResults.filter((r) => r.percentage >= 90).length;

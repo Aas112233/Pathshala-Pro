@@ -8,6 +8,8 @@ import {
 } from "@/lib/api-response";
 import { getAuthContext } from "@/lib/auth";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/settings
  * Get current tenant settings

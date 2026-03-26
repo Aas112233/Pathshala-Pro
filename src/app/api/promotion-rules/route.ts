@@ -12,6 +12,8 @@ import { createPromotionRuleSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/promotion-rules
  * Get all promotion rules

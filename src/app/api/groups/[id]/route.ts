@@ -12,6 +12,8 @@ import {
 import { getAuthContext } from "@/lib/auth";
 import { z } from "zod";
 
+export const runtime = 'edge';
+
 const updateGroupSchema = z.object({
   classId: z.string().min(1, "Class is required").optional(),
   name: z.string().min(2, "Group name must be at least 2 characters").optional(),

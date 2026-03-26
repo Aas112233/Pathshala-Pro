@@ -13,6 +13,8 @@ import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/attendance
  * Get all attendance records with pagination

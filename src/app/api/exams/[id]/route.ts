@@ -11,6 +11,8 @@ import {
 import { updateExamSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/exams/[id]
  * Get a single exam by ID

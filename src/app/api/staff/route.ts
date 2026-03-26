@@ -14,6 +14,8 @@ import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/staff
  * Get all staff members with pagination

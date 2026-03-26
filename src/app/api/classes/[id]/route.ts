@@ -12,6 +12,8 @@ import {
 import { getAuthContext } from "@/lib/auth";
 import { z } from "zod";
 
+export const runtime = 'edge';
+
 const updateClassSchema = z.object({
   name: z.string().min(2, "Class name must be at least 2 characters").optional(),
   classNumber: z.number().int().positive("Class number must be positive").optional(),

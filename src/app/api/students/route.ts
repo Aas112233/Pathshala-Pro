@@ -14,6 +14,8 @@ import { getAuthContext } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/students
  * Get all students with pagination

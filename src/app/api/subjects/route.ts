@@ -12,6 +12,8 @@ import { createSubjectSchema } from "@/lib/schemas";
 import { getAuthContext } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/subjects
  * Get all subjects

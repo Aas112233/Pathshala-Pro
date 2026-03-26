@@ -9,6 +9,8 @@ import {
 } from "@/lib/api-response";
 import { getAuthContext } from "@/lib/auth";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/class-subjects
  * Get subjects for a specific class

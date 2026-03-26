@@ -12,6 +12,8 @@ import { hasPermission } from "@/lib/permissions";
 import type { StudentProfile as BaseStudentProfile } from "@/types/entities";
 import type { ExamResult as PrismaExamResult, Subject, Class } from "@prisma/client";
 
+export const runtime = 'edge';
+
 interface StudentProfileWithClass extends BaseStudentProfile {
   class?: { classId: string; name: string; classNumber: number } | null;
 }

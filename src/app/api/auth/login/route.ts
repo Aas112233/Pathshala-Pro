@@ -10,6 +10,8 @@ import { loginSchema } from "@/lib/schemas";
 import { verifyPassword, generateAuthToken } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 
+export const runtime = 'edge';
+
 /**
  * POST /api/auth/login
  * Authenticate user and return auth token
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Using IP + Email limits brute force specific to a single login target over the same IP range
     const limitKey = `LOGIN_${ip}_${email}`;
-    const rateCheck = rateLimit(limitKey, 5, 15 * 60 * 1000); 
+    const rateCheck = rateLimit(limitKey, 5, 15 * 60 * 1000);
 
     if (!rateCheck.success) {
       return errorResponse("Too many login attempts. Please try again after 15 minutes.", 429);

@@ -15,6 +15,8 @@ import { getAuthContext, hashPassword } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
 import { hasPermission } from "@/lib/permissions";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/users
  * Get all users with pagination

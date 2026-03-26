@@ -3,6 +3,8 @@ import { uploadToR2, deleteFromR2 } from "@/lib/r2-storage";
 import { getAuthContext } from "@/lib/auth";
 import { unauthorized, errorResponse, successResponse } from "@/lib/api-response";
 
+export const runtime = 'edge';
+
 export async function POST(request: NextRequest) {
   try {
     const authContext = await getAuthContext(request);

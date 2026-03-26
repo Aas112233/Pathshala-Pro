@@ -5,6 +5,8 @@ import { forbidden } from "next/navigation";
 
 const prisma = new PrismaClient();
 
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext(request);
@@ -104,8 +106,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Get latest payment method
-      const latestPayment = voucher.transactions.length > 0 
-        ? voucher.transactions[voucher.transactions.length - 1].paymentMethod 
+      const latestPayment = voucher.transactions.length > 0
+        ? voucher.transactions[voucher.transactions.length - 1].paymentMethod
         : "CASH";
 
       return {
@@ -126,8 +128,8 @@ export async function GET(request: NextRequest) {
     const collectionRate =
       vouchers.length > 0
         ? Math.round(
-            (vouchers.filter((v) => v.status === "PAID").length / vouchers.length) * 100
-          )
+          (vouchers.filter((v) => v.status === "PAID").length / vouchers.length) * 100
+        )
         : 0;
 
     return Response.json({

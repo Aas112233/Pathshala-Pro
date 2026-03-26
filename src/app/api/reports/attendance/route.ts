@@ -5,6 +5,8 @@ import { forbidden } from "next/navigation";
 
 const prisma = new PrismaClient();
 
+export const runtime = 'edge';
+
 export async function GET(request: NextRequest) {
   try {
     const authContext = await getAuthContext(request);
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest) {
 
       const studentData = studentAttendanceMap.get(studentId);
       studentData.totalDays += 1;
-      
+
       // Check attendance status
       if (attendance.status === "PRESENT") {
         studentData.presentDays += 1;
@@ -110,9 +112,9 @@ export async function GET(request: NextRequest) {
     const averageAttendance =
       attendanceRecords.length > 0
         ? Math.round(
-            attendanceRecords.reduce((sum, r) => sum + r.attendancePercentage, 0) /
-              attendanceRecords.length
-          )
+          attendanceRecords.reduce((sum, r) => sum + r.attendancePercentage, 0) /
+          attendanceRecords.length
+        )
         : 0;
 
     const totalPresent = attendanceRecords.reduce((sum, r) => sum + r.presentDays, 0);

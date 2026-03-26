@@ -14,6 +14,8 @@ import { getAuthContext } from "@/lib/auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { z } from "zod";
 
+export const runtime = 'edge';
+
 const createSectionSchema = z.object({
   classId: z.string().min(1, "Class is required"),
   groupId: z.string().optional(),

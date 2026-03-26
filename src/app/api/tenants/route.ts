@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, unauthorized } from "@/lib/api-response";
 import { jwtVerify } from "jose";
 
+export const runtime = 'edge';
+
 /**
  * GET /api/tenants
  * List all tenants for System Admin
@@ -10,7 +12,7 @@ import { jwtVerify } from "jose";
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("auth_token")?.value ||
-                  request.headers.get("authorization")?.substring(7);
+      request.headers.get("authorization")?.substring(7);
 
     if (!token) return unauthorized();
 
