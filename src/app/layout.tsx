@@ -15,6 +15,8 @@ import { locales, isRtl } from "@/i18n/config";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
+export const runtime = "edge";
+
 export const metadata: Metadata = {
   title: "Pathshala Pro - School Management ERP",
   description:
