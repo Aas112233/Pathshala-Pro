@@ -97,7 +97,7 @@ export function SalaryFiltersBar({
         <div className="w-[150px]">
           <AppDropdown
             value={status}
-            onChange={onStatusChange}
+            onChange={(value) => onStatusChange(value as "ALL" | "PENDING" | "PARTIAL" | "PAID")}
             options={STATUS_OPTIONS}
             placeholder="Status"
           />

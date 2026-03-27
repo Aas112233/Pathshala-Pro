@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { salaryApi } from "@/lib/api-client";
-import type { PaginationParams } from "@/types/api";
+import type { SearchParams } from "@/types/api";
 import type { 
   SalaryLedger, 
   SalaryLedgerWithDetails, 
@@ -53,7 +53,7 @@ export interface SalaryViewModel {
 
   // CRUD Operations
   createSalary: (data: CreateSalaryLedgerDTO) => Promise<void>;
-  updateSalary: (id: string, data: UpdateSalaryLedgerDTO) => Promise<void>;
+  updateSalary: (id: string, data: Partial<CreateSalaryLedgerDTO>) => Promise<void>;
   deleteSalary: (id: string) => Promise<void>;
   recordPayment: (id: string, data: PaymentDTO) => Promise<void>;
   processBulkPayroll: (data: BulkPayrollDTO) => Promise<void>;
@@ -109,7 +109,7 @@ export function useSalaryViewModel(): SalaryViewModel {
         ...(filters.year && { year: filters.year }),
         ...(filters.status !== "ALL" && { status: filters.status }),
         ...(filters.department && { filters: { department: filters.department } }),
-      } as PaginationParams),
+      } as SearchParams),
   });
 
   const salary = useMemo(

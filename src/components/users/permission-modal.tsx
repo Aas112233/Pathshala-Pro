@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useUpdateUser } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import { ShieldCheck, ShieldAlert } from "lucide-react";
-import type { UserPermissions } from "@/lib/permissions";
+import type { PermissionAction, UserPermissions } from "@/lib/permissions";
 import type { UserRecord } from "@/types/users";
 
 interface PermissionModalProps {
@@ -26,19 +26,21 @@ const MODULES = [
   { id: "users", label: "System Users" },
   { id: "settings", label: "System Settings" },
   { id: "academic-years", label: "Academic Years" },
-];
+] as const;
 
 const ACTIONS = [
   { id: "read", label: "View (Read)" },
   { id: "write", label: "Create / Edit (Write)" },
   { id: "manage", label: "Delete / Approve (Manage)" },
-];
+] as const satisfies ReadonlyArray<{ id: PermissionAction; label: string }>;
+
+type PermissionModuleId = (typeof MODULES)[number]["id"];
 
 export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps) {
   const updateMutation = useUpdateUser(user?.id || "");
   
   // permissions[module][action] = boolean
-  const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>({});
+  const [permissions, setPermissions] = useState<Record<PermissionModuleId, Record<PermissionAction, boolean>>>({} as Record<PermissionModuleId, Record<PermissionAction, boolean>>);
 
   // Initialize permissions state when modal opens
   useEffect(() => {
@@ -54,9 +56,9 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
         } catch {}
         
         // Ensure all modules and actions exist in state
-        const state: Record<string, Record<string, boolean>> = {};
+        const state = {} as Record<PermissionModuleId, Record<PermissionAction, boolean>>;
         MODULES.forEach(mod => {
-            state[mod.id] = {};
+            state[mod.id] = { read: false, write: false, manage: false };
             ACTIONS.forEach(act => {
                 state[mod.id][act.id] = initialPerms?.[mod.id]?.[act.id] || false;
             });
@@ -66,7 +68,7 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
     }
   }, [user, isOpen]);
 
-  const handleToggle = (moduleId: string, actionId: string, checked: boolean) => {
+  const handleToggle = (moduleId: PermissionModuleId, actionId: PermissionAction, checked: boolean) => {
     setPermissions(prev => ({
         ...prev,
         [moduleId]: {
@@ -76,7 +78,7 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
     }));
   };
 
-  const handleToggleRow = (moduleId: string, checked: boolean) => {
+  const handleToggleRow = (moduleId: PermissionModuleId, checked: boolean) => {
     setPermissions(prev => {
         const next = { ...prev };
         next[moduleId] = {
@@ -88,10 +90,10 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
     });
   };
 
-  const handleToggleColumn = (actionId: string, checked: boolean) => {
+  const handleToggleColumn = (actionId: PermissionAction, checked: boolean) => {
      setPermissions(prev => {
          const next = { ...prev };
-         Object.keys(next).forEach(mod => {
+         (Object.keys(next) as PermissionModuleId[]).forEach(mod => {
              next[mod] = {
                  ...next[mod],
                  [actionId]: checked

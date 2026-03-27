@@ -2,7 +2,7 @@ import type {
   ApiSuccessResponse,
   ApiPaginatedResponse,
   ApiErrorResponse,
-  PaginationParams,
+  SearchParams,
 } from "@/types/api";
 import type {
   CreateUserPayload,
@@ -63,7 +63,7 @@ export class ApiClient {
   }
 
   // GET request
-  async get<T>(endpoint: string, params?: PaginationParams): Promise<ApiSuccessResponse<T> | ApiPaginatedResponse<T>> {
+  async get<T>(endpoint: string, params?: SearchParams): Promise<ApiSuccessResponse<T> | ApiPaginatedResponse<T>> {
     const queryString = params ? this.buildQueryString(params) : "";
     const separator = queryString ? "?" : "";
     return this.request<ApiSuccessResponse<T> | ApiPaginatedResponse<T>>(`${endpoint}${separator}${queryString}`);
@@ -84,7 +84,7 @@ export class ApiClient {
     return this.request<ApiSuccessResponse<T>>(endpoint, { method: "DELETE" });
   }
 
-  private buildQueryString(params: PaginationParams): string {
+  private buildQueryString(params: SearchParams): string {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set("page", params.page.toString());
     if (params.limit) searchParams.set("limit", params.limit.toString());
@@ -140,7 +140,7 @@ export const authApi = {
 
 // Users API
 export const usersApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<UserRecord[]>("/api/users", params),
 
   get: (id: string) =>
@@ -158,7 +158,7 @@ export const usersApi = {
 
 // Students API
 export const studentsApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/students", params),
 
   get: (id: string) =>
@@ -176,7 +176,7 @@ export const studentsApi = {
 
 // Academic Years API
 export const academicYearsApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/academic-years", params),
 
   get: (id: string) =>
@@ -194,7 +194,7 @@ export const academicYearsApi = {
 
 // Fees API
 export const feesApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/fees", params),
 
   get: (id: string) =>
@@ -212,7 +212,7 @@ export const feesApi = {
 
 // Transactions API
 export const transactionsApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/transactions", params),
 
   get: (id: string) =>
@@ -227,7 +227,7 @@ export const transactionsApi = {
 
 // Staff API
 export const staffApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/staff", params),
 
   get: (id: string) =>
@@ -245,7 +245,7 @@ export const staffApi = {
 
 // Salary API
 export const salaryApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/salary", params),
 
   get: (id: string) =>
@@ -266,7 +266,7 @@ export const salaryApi = {
 
 // Attendance API
 export const attendanceApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/attendance", params),
 
   get: (id: string) =>
@@ -284,7 +284,7 @@ export const attendanceApi = {
 
 // Exams API
 export const examsApi = {
-  list: (params?: PaginationParams) =>
+  list: (params?: SearchParams) =>
     api.get<any[]>("/api/exams", params),
 
   get: (id: string) =>

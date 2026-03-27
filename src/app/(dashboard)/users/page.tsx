@@ -144,12 +144,8 @@ export default function UsersPage() {
     },
   ];
 
-  const pagination = "pagination" in (data || {})
-    ? data.pagination
-    : undefined;
-  const users = "data" in (data || {})
-    ? data.data
-    : [];
+  const pagination = ("pagination" in (data || {})) ? (data as any).pagination : undefined;
+  const users = ("data" in (data || {})) ? (data as any).data : [];
 
   const handleFormClose = () => {
     setIsFormOpen(false);

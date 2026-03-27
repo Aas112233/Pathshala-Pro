@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         academicYearId,
         month,
         year,
-        staffProfileId: { in: entries.map(e => e.staffProfileId) },
+        staffProfileId: { in: entries.map((entry: { staffProfileId: string }) => entry.staffProfileId) },
       },
       select: {
         staffProfileId: true,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingSalaries.length > 0) {
-      const duplicateStaffIds = existingSalaries.map(s => s.staffProfileId);
+      const duplicateStaffIds = existingSalaries.map((salary: { staffProfileId: string }) => salary.staffProfileId);
       return badRequest("Salary already exists for some staff members", [
         {
           field: "entries",
