@@ -187,4 +187,4 @@ If you find any issues, note:
 
 **Happy Testing! 🎉**
 
-For questions or issues, refer to `MULTILINGUAL_UPDATE_SUMMARY.md`
+For questions or issues, refer to `../i18n/MULTILINGUAL_UPDATE_SUMMARY.md`
