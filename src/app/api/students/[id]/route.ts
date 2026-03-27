@@ -9,8 +9,13 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { updateStudentSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  buildLockedFieldsDetails,
+  getStudentUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/students/[id]
@@ -21,12 +26,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const student = await prisma.studentProfile.findUnique({
@@ -99,12 +102,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -154,6 +155,59 @@ export async function PUT(
 
     if (!existingStudent) {
       return notFound("Student not found");
+    }
+
+    const usageCounts = await getStudentUsageCounts(tenantId, id);
+    const hasHistory =
+      usageCounts.feeVouchers > 0 ||
+      usageCounts.attendances > 0 ||
+      usageCounts.examResults > 0 ||
+      usageCounts.promotions > 0;
+
+    const lockedFields: string[] = [];
+
+    if (
+      hasHistory &&
+      Object.prototype.hasOwnProperty.call(data, "rollNumber") &&
+      data.rollNumber !== existingStudent.rollNumber
+    ) {
+      lockedFields.push("rollNumber");
+    }
+
+    const classHistoryExists = usageCounts.examResults > 0 || usageCounts.promotions > 0;
+
+    if (
+      classHistoryExists &&
+      Object.prototype.hasOwnProperty.call(data, "classId") &&
+      (data as any).classId !== (existingStudent as any).classId
+    ) {
+      lockedFields.push("classId");
+    }
+
+    if (
+      classHistoryExists &&
+      Object.prototype.hasOwnProperty.call(data, "groupId") &&
+      (data as any).groupId !== (existingStudent as any).groupId
+    ) {
+      lockedFields.push("groupId");
+    }
+
+    if (
+      classHistoryExists &&
+      Object.prototype.hasOwnProperty.call(data, "sectionId") &&
+      (data as any).sectionId !== (existingStudent as any).sectionId
+    ) {
+      lockedFields.push("sectionId");
+    }
+
+    if (lockedFields.length > 0) {
+      return integrityViolation(
+        "Student record cannot be changed in a way that would rewrite historical academic or financial data.",
+        buildLockedFieldsDetails(
+          lockedFields,
+          "the student already has linked fee, attendance, exam, or promotion history"
+        )
+      );
     }
 
     // Check student ID uniqueness if changing
@@ -220,12 +274,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     // Check if student exists
@@ -237,13 +289,16 @@ export async function DELETE(
       return notFound("Student not found");
     }
 
-    // Check for related records
-    const feeVouchers = await prisma.feeVoucher.count({
-      where: { studentProfileId: id },
-    });
-
-    if (feeVouchers > 0) {
-      return badRequest("Cannot delete student with existing fee vouchers");
+    const usageCounts = await getStudentUsageCounts(tenantId, id);
+    if (Object.values(usageCounts).some((count) => count > 0)) {
+      return integrityViolation(lockedDeleteMessage("Student", usageCounts), [
+        {
+          field: "id",
+          code: "in_use",
+          message:
+            "Students with fee, attendance, exam, or promotion history must be kept for audit consistency. Mark the student inactive, transferred, or graduated instead.",
+        },
+      ]);
     }
 
     await prisma.studentProfile.delete({

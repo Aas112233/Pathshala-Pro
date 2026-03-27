@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToR2, deleteFromR2 } from "@/lib/r2-storage";
-import { getAuthContext } from "@/lib/auth";
-import { unauthorized, errorResponse, successResponse } from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
+import { errorResponse, successResponse } from "@/lib/api-response";
 
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request, { module: null });
+    if ("response" in access) return access.response;
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -44,7 +42,7 @@ export async function POST(request: NextRequest) {
       buffer,
       tempFileName,
       file.type,
-      authContext.tenantId,
+      access.authContext.tenantId,
       fileType
     );
 
@@ -68,10 +66,8 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request, { module: null });
+    if ("response" in access) return access.response;
 
     const { searchParams } = new URL(request.url);
     const fileId = searchParams.get("fileId");

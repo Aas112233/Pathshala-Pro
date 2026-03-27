@@ -7,6 +7,11 @@ import {
   StudentIDCardTemplate,
   MarkSheetTemplate,
   ReportCardTemplate,
+  StudentReportTemplate,
+  FeeReportTemplate,
+  AttendanceReportTemplate,
+  ExamReportTemplate,
+  type PdfFilterItem,
 } from "@/lib/pdf-templates";
 
 interface SchoolInfo {
@@ -64,6 +69,61 @@ interface CoCurricularActivity {
   activity: string;
   grade: string;
   remarks?: string;
+}
+
+interface StudentReportRecord {
+  admissionNumber: string;
+  studentName: string;
+  className: string;
+  section: string;
+  rollNumber: string;
+  gender: string;
+  status: string;
+  admissionDate: string;
+  guardianName: string;
+  contactNumber: string;
+  [key: string]: string | number;
+}
+
+interface FeeReportRecord {
+  voucherNumber: string;
+  studentName: string;
+  className: string;
+  section: string;
+  amount: string;
+  paidAmount: string;
+  dueAmount: string;
+  status: string;
+  paymentMethod: string;
+  date: string;
+  [key: string]: string | number;
+}
+
+interface AttendanceReportRecord {
+  rollNumber: string;
+  studentName: string;
+  className: string;
+  section: string;
+  presentDays: number;
+  absentDays: number;
+  totalDays: number;
+  attendancePercentage: string;
+  status: string;
+  [key: string]: string | number;
+}
+
+interface ExamReportRecord {
+  rollNumber: string;
+  studentName: string;
+  className: string;
+  section: string;
+  examName: string;
+  subject: string;
+  marks: string;
+  percentage: string;
+  grade: string;
+  status: string;
+  [key: string]: string | number;
 }
 
 export function usePDFExport() {
@@ -165,11 +225,84 @@ export function usePDFExport() {
     return results;
   }, [exportStudentIDCard]);
 
+  const exportStudentReportPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    dateRangeLabel: string;
+    generatedAt: string;
+    filters: PdfFilterItem[];
+    metrics: {
+      totalStudents: number;
+      activeStudents: number;
+      newAdmissions: number;
+      transferredOut: number;
+      graduated: number;
+    };
+    records: StudentReportRecord[];
+  }) => {
+    const document = <StudentReportTemplate {...params} />;
+    return generatePDF(document, "Student_Report.pdf");
+  }, [generatePDF]);
+
+  const exportFeeReportPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    dateRangeLabel: string;
+    generatedAt: string;
+    filters: PdfFilterItem[];
+    metrics: {
+      totalCollected: string;
+      totalPending: string;
+      totalOverdue: string;
+      collectionRate: string;
+    };
+    records: FeeReportRecord[];
+  }) => {
+    const document = <FeeReportTemplate {...params} />;
+    return generatePDF(document, "Fee_Report.pdf");
+  }, [generatePDF]);
+
+  const exportAttendanceReportPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    dateRangeLabel: string;
+    generatedAt: string;
+    filters: PdfFilterItem[];
+    metrics: {
+      averageAttendance: string;
+      totalPresent: string;
+      totalAbsent: string;
+      defaulterCount: string;
+    };
+    records: AttendanceReportRecord[];
+  }) => {
+    const document = <AttendanceReportTemplate {...params} />;
+    return generatePDF(document, "Attendance_Report.pdf");
+  }, [generatePDF]);
+
+  const exportExamReportPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    dateRangeLabel: string;
+    generatedAt: string;
+    filters: PdfFilterItem[];
+    metrics: {
+      totalExams: string;
+      passPercentage: string;
+      averageMarks: string;
+      topPerformers: string;
+    };
+    records: ExamReportRecord[];
+  }) => {
+    const document = <ExamReportTemplate {...params} />;
+    return generatePDF(document, "Exam_Report.pdf");
+  }, [generatePDF]);
+
   return {
     exportStudentIDCard,
     exportMarkSheet,
     exportReportCard,
     exportBulkIDCards,
+    exportStudentReportPDF,
+    exportFeeReportPDF,
+    exportAttendanceReportPDF,
+    exportExamReportPDF,
   };
 }
 
@@ -186,3 +319,4 @@ export function usePDFPreview() {
 
   return { getPreviewURL };
 }
+

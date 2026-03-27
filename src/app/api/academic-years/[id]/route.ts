@@ -9,8 +9,14 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { updateAcademicYearSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  buildLockedFieldsDetails,
+  getAcademicYearUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/academic-years/[id]
@@ -21,12 +27,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const academicYear = await prisma.academicYear.findUnique({
@@ -99,12 +103,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -128,6 +130,39 @@ export async function PUT(
 
     if (!existingYear) {
       return notFound("Academic year not found");
+    }
+
+    if (existingYear.isClosed) {
+      return integrityViolation(
+        lockedUpdateMessage("Academic year", "it has already been closed"),
+        [
+          {
+            field: "isClosed",
+            code: "locked",
+            message:
+              "Closed academic years are read-only. Reopen support should be a separate controlled workflow if needed.",
+          },
+        ]
+      );
+    }
+
+    const usageCounts = await getAcademicYearUsageCounts(tenantId, id);
+    const hasUsage = Object.values(usageCounts).some((count) => count > 0);
+    const attemptedFrozenFields = ["yearId", "label", "startDate", "endDate"].filter((field) =>
+      Object.prototype.hasOwnProperty.call(body, field)
+    );
+
+    if (hasUsage && attemptedFrozenFields.length > 0) {
+      return integrityViolation(
+        lockedUpdateMessage(
+          "Academic year",
+          "operational records already exist in this academic year"
+        ),
+        buildLockedFieldsDetails(
+          attemptedFrozenFields,
+          "operational records already exist in this academic year"
+        )
+      );
     }
 
     // Check year ID uniqueness if changing
@@ -186,12 +221,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     // Check if academic year exists
@@ -203,29 +236,16 @@ export async function DELETE(
       return notFound("Academic year not found");
     }
 
-    // Check for related records
-    const feeVouchers = await prisma.feeVoucher.count({
-      where: { academicYearId: id },
-    });
-
-    if (feeVouchers > 0) {
-      return badRequest("Cannot delete academic year with existing fee vouchers");
-    }
-
-    const salaryLedgers = await prisma.salaryLedger.count({
-      where: { academicYearId: id },
-    });
-
-    if (salaryLedgers > 0) {
-      return badRequest("Cannot delete academic year with existing salary records");
-    }
-
-    const examResults = await prisma.examResult.count({
-      where: { academicYearId: id },
-    });
-
-    if (examResults > 0) {
-      return badRequest("Cannot delete academic year with existing exam results");
+    const usageCounts = await getAcademicYearUsageCounts(tenantId, id);
+    if (Object.values(usageCounts).some((count) => count > 0)) {
+      return integrityViolation(lockedDeleteMessage("Academic year", usageCounts), [
+        {
+          field: "id",
+          code: "in_use",
+          message:
+            "Academic years with linked finance, exam, or promotion records cannot be deleted.",
+        },
+      ]);
     }
 
     await prisma.academicYear.delete({

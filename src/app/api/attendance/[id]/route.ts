@@ -8,8 +8,7 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { updateAttendanceSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
 
 /**
  * GET /api/attendance/[id]
@@ -20,12 +19,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const attendance = await prisma.attendance.findUnique({
@@ -77,12 +74,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -144,12 +139,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const existingAttendance = await prisma.attendance.findUnique({

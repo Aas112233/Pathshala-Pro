@@ -118,15 +118,48 @@ export interface StaffProfile {
   userId?: string;
   firstName: string;
   lastName: string;
+  firstNameBn?: string;
+  lastNameBn?: string;
   department: string;
   designation: string;
   baseSalary: number;
   hireDate: Date;
+  joiningDate?: Date;
   phone?: string;
   email?: string;
+  gender?: "MALE" | "FEMALE" | "OTHER";
+  dateOfBirth?: Date;
+  qualification?: string;
+  profilePictureUrl?: string;
+  driveFileId?: string;
+  address?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  // Related data (from includes)
+  class?: { id: string; name: string } | null;
+  group?: { id: string; name: string } | null;
+  section?: { id: string; name: string } | null;
+}
+
+export interface StaffProfileWithDetails extends StaffProfile {
+  salaryLedgers?: Array<{
+    id: string;
+    month: number;
+    year: number;
+    baseSalary: number;
+    deductions: number;
+    advances: number;
+    netPayable: number;
+    paidAmount: number;
+    status: "PENDING" | "PAID" | "PARTIAL";
+  }>;
+  attendances?: Array<{
+    id: string;
+    date: Date;
+    status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
+    note?: string;
+  }>;
 }
 
 export interface SalaryLedger {
@@ -145,6 +178,104 @@ export interface SalaryLedger {
   paidAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Related data (from includes)
+  staffProfile?: {
+    staffId: string;
+    firstName: string;
+    lastName: string;
+    designation: string;
+    department: string;
+    baseSalary?: number;
+  };
+  academicYear?: {
+    yearId: string;
+    label: string;
+  };
+}
+
+export interface SalaryLedgerWithDetails extends SalaryLedger {
+  staffProfile: {
+    staffId: string;
+    firstName: string;
+    lastName: string;
+    designation: string;
+    department: string;
+    baseSalary: number;
+  };
+  academicYear: {
+    yearId: string;
+    label: string;
+    startDate: Date;
+    endDate: Date;
+  };
+}
+
+// DTO types for salary ledger creation and updates
+export interface CreateSalaryLedgerDTO {
+  staffProfileId: string;
+  academicYearId: string;
+  month: number;
+  year: number;
+  baseSalary: number;
+  deductions?: number;
+  advances?: number;
+  status?: "PENDING" | "PARTIAL" | "PAID";
+  paidAmount?: number;
+  paidAt?: string;
+}
+
+export interface UpdateSalaryLedgerDTO extends Partial<CreateSalaryLedgerDTO> {
+  id: string;
+}
+
+export interface BulkPayrollEntry {
+  staffProfileId: string;
+  baseSalary: number;
+  deductions?: number;
+  advances?: number;
+  note?: string;
+}
+
+export interface BulkPayrollDTO {
+  academicYearId: string;
+  month: number;
+  year: number;
+  entries: BulkPayrollEntry[];
+}
+
+export interface PaymentDTO {
+  paidAmount: number;
+  paymentMethod: "CASH" | "DIGITAL" | "BANK_TRANSFER";
+  paymentDate?: string;
+  note?: string;
+}
+
+// DTO types for staff creation and updates
+export interface CreateStaffDTO {
+  staffId?: string;
+  firstName: string;
+  lastName: string;
+  firstNameBn?: string;
+  lastNameBn?: string;
+  department: string;
+  designation: string;
+  baseSalary: number;
+  hireDate: string;
+  joiningDate?: string;
+  phone?: string;
+  email?: string;
+  gender?: "MALE" | "FEMALE" | "OTHER";
+  dateOfBirth?: string;
+  qualification?: string;
+  profilePictureUrl?: string;
+  driveFileId?: string;
+  address?: string;
+  isActive?: boolean;
+  userId?: string;
+}
+
+export interface UpdateStaffDTO extends Partial<CreateStaffDTO> {
+  id: string;
 }
 
 export interface Attendance {

@@ -76,19 +76,14 @@ export default function AdmissionsPage() {
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedAcademicYear, setSelectedAcademicYear] = useState("");
+  const [formErrors, setFormErrors] = useState<{ selectedAcademicYear?: string; selectedClass?: string }>({});
+  const [editFormErrors, setEditFormErrors] = useState<{ editClassId?: string }>({});
 
   // Fetch classes
   const { data: classesData } = useQuery({
     queryKey: ["classes-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/classes?limit=100&isActive=true", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) throw new Error("Failed to fetch classes");
       return res.json();
     },
@@ -99,14 +94,7 @@ export default function AdmissionsPage() {
     queryKey: ["groups-all", { classId: selectedClass }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(`/api/groups?limit=100&classId=${selectedClass}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/groups?limit=100&classId=${selectedClass}`);
       if (!res.ok) throw new Error("Failed to fetch groups");
       return res.json();
     },
@@ -118,19 +106,12 @@ export default function AdmissionsPage() {
     queryKey: ["sections-all", { classId: selectedClass, groupId: selectedGroup }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const params = new URLSearchParams({
         limit: "100",
         classId: selectedClass,
         ...(selectedGroup && { groupId: selectedGroup }),
       });
-      const res = await fetch(`/api/sections?${params}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/sections?${params}`);
       if (!res.ok) throw new Error("Failed to fetch sections");
       return res.json();
     },
@@ -141,14 +122,7 @@ export default function AdmissionsPage() {
   const { data: academicYearsData } = useQuery({
     queryKey: ["academic-years-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/academic-years?limit=100", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/academic-years?limit=100");
       if (!res.ok) throw new Error("Failed to fetch academic years");
       return res.json();
     },
@@ -198,6 +172,10 @@ export default function AdmissionsPage() {
 
   const handleOpenStudentSelector = () => {
     if (!canAddStudents) {
+      setFormErrors({
+        selectedAcademicYear: !selectedAcademicYear ? `${t('admissions.academicYear')} is required` : undefined,
+        selectedClass: !selectedClass ? `${t('admissions.class')} is required` : undefined,
+      });
       toast.error(t('admissions.pleaseSelectClassAndYear'));
       return;
     }
@@ -217,15 +195,10 @@ export default function AdmissionsPage() {
   };
 
   const handleCreateStudent = async (data: CreateStudentDTO) => {
-    const token = localStorage.getItem("auth_token");
-    const tenantId = localStorage.getItem("tenant_id");
-
     const res = await fetch("/api/students", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "X-Tenant-ID": tenantId || "",
       },
       body: JSON.stringify(data),
     });
@@ -256,15 +229,11 @@ export default function AdmissionsPage() {
 
   const createAdmissionMutation = useMutation({
     mutationFn: async (items: AdmissionItem[]) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const updates = items.map((item) =>
         fetch(`/api/students/${item.student.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-            "X-Tenant-ID": tenantId || "",
           },
           body: JSON.stringify({
             classId: item.classId,
@@ -292,12 +261,17 @@ export default function AdmissionsPage() {
   });
 
   const handleSubmit = () => {
+    const nextErrors = {
+      selectedAcademicYear: !selectedAcademicYear ? `${t('admissions.academicYear')} is required` : undefined,
+      selectedClass: !selectedClass ? `${t('admissions.class')} is required` : undefined,
+    };
+    setFormErrors(nextErrors);
     if (admissionItems.length === 0) {
       toast.error(t('admissions.noStudentsAddedError'));
       return;
     }
-    if (!selectedClass) {
-      toast.error(t('admissions.pleaseSelectClass'));
+    if (nextErrors.selectedAcademicYear || nextErrors.selectedClass) {
+      toast.error(!selectedAcademicYear ? t('admissions.pleaseSelectClassAndYear') : t('admissions.pleaseSelectClass'));
       return;
     }
 
@@ -319,6 +293,7 @@ export default function AdmissionsPage() {
     setEditClassId("");
     setEditGroupId("");
     setEditSectionId("");
+    setEditFormErrors({});
   };
 
   // Fetch groups/sections for the edit modal's selected class
@@ -326,14 +301,7 @@ export default function AdmissionsPage() {
     queryKey: ["edit-groups", { classId: editClassId }],
     queryFn: async () => {
       if (!editClassId) return { data: [] };
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(`/api/groups?limit=100&classId=${editClassId}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/groups?limit=100&classId=${editClassId}`);
       if (!res.ok) throw new Error("Failed to fetch groups");
       return res.json();
     },
@@ -344,19 +312,12 @@ export default function AdmissionsPage() {
     queryKey: ["edit-sections", { classId: editClassId, groupId: editGroupId }],
     queryFn: async () => {
       if (!editClassId) return { data: [] };
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const params = new URLSearchParams({
         limit: "100",
         classId: editClassId,
         ...(editGroupId && { groupId: editGroupId }),
       });
-      const res = await fetch(`/api/sections?${params}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/sections?${params}`);
       if (!res.ok) throw new Error("Failed to fetch sections");
       return res.json();
     },
@@ -391,16 +352,13 @@ export default function AdmissionsPage() {
   const updateAdmissionMutation = useMutation({
     mutationFn: async () => {
       if (!editingStudent || !editClassId) {
+        setEditFormErrors({ editClassId: `${t('admissions.class')} is required` });
         throw new Error("Please select a class");
       }
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const res = await fetch(`/api/students/${editingStudent.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
         },
         body: JSON.stringify({
           classId: editClassId,
@@ -547,11 +505,19 @@ export default function AdmissionsPage() {
                   </label>
                   <AppDropdown
                     value={selectedAcademicYear}
-                    onChange={setSelectedAcademicYear}
+                    onChange={(value) => {
+                      setSelectedAcademicYear(value);
+                      if (formErrors.selectedAcademicYear) {
+                        setFormErrors((prev) => ({ ...prev, selectedAcademicYear: undefined }));
+                      }
+                    }}
+                    invalid={Boolean(formErrors.selectedAcademicYear)}
+                    triggerClassName={formErrors.selectedAcademicYear ? "border-destructive ring-1 ring-destructive" : ""}
                     options={academicYearOptions}
                     placeholder={t('admissions.selectAcademicYear')}
                     searchable
                   />
+                  {formErrors.selectedAcademicYear && <p className="mt-1 text-xs text-destructive">{formErrors.selectedAcademicYear}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
@@ -559,11 +525,19 @@ export default function AdmissionsPage() {
                   </label>
                   <AppDropdown
                     value={selectedClass}
-                    onChange={setSelectedClass}
+                    onChange={(value) => {
+                      setSelectedClass(value);
+                      if (formErrors.selectedClass) {
+                        setFormErrors((prev) => ({ ...prev, selectedClass: undefined }));
+                      }
+                    }}
+                    invalid={Boolean(formErrors.selectedClass)}
+                    triggerClassName={formErrors.selectedClass ? "border-destructive ring-1 ring-destructive" : ""}
                     options={classOptions}
                     placeholder={t('admissions.selectClass')}
                     searchable
                   />
+                  {formErrors.selectedClass && <p className="mt-1 text-xs text-destructive">{formErrors.selectedClass}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
@@ -766,11 +740,17 @@ export default function AdmissionsPage() {
                 setEditClassId(val);
                 setEditGroupId("");
                 setEditSectionId("");
+                if (editFormErrors.editClassId) {
+                  setEditFormErrors({ editClassId: undefined });
+                }
               }}
+              invalid={Boolean(editFormErrors.editClassId)}
+              triggerClassName={editFormErrors.editClassId ? "border-destructive ring-1 ring-destructive" : ""}
               options={editClassOptions}
               placeholder={t('admissions.selectClass')}
               searchable
             />
+            {editFormErrors.editClassId && <p className="mt-1 text-xs text-destructive">{editFormErrors.editClassId}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">

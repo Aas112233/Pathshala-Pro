@@ -9,8 +9,7 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createPromotionRuleSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
 
 /**
  * GET /api/promotion-rules
@@ -18,12 +17,10 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
     const academicYearId = searchParams.get("academicYearId");
     const classId = searchParams.get("classId");
@@ -68,12 +65,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const body = await request.json();
     const validation = createPromotionRuleSchema.safeParse(body);
 

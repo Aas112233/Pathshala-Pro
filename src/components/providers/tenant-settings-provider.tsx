@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission } from "@/lib/permissions";
 import {
   DEFAULT_TENANT_SETTINGS,
   formatCurrencyWithSettings,
@@ -24,9 +25,13 @@ function getCacheKey(tenantId: string) {
 }
 
 export function TenantSettingsProvider({ children }: { children: React.ReactNode }) {
-  const { tenantId, token, isLoading: isAuthLoading } = useAuth();
+  const { user, tenantId, isLoading: isAuthLoading } = useAuth();
   const [settings, setSettingsState] = useState<TenantSettings>(DEFAULT_TENANT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
+
+  const canReadSettings =
+    user?.role === "SUPER_ADMIN" ||
+    (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "settings", "read"));
 
   const setSettings = useCallback((nextSettings: TenantSettings) => {
     setSettingsState(nextSettings);
@@ -36,7 +41,7 @@ export function TenantSettingsProvider({ children }: { children: React.ReactNode
   }, []);
 
   const refreshSettings = useCallback(async () => {
-    if (!tenantId || !token) {
+    if (!tenantId || !canReadSettings) {
       setSettingsState(DEFAULT_TENANT_SETTINGS);
       setIsLoading(false);
       return;
@@ -44,12 +49,7 @@ export function TenantSettingsProvider({ children }: { children: React.ReactNode
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/settings", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-ID": tenantId,
-        },
-      });
+      const response = await fetch("/api/settings", { credentials: "include" });
       const result = await response.json();
       if (result.data) {
         setSettings(result.data);
@@ -57,14 +57,14 @@ export function TenantSettingsProvider({ children }: { children: React.ReactNode
     } finally {
       setIsLoading(false);
     }
-  }, [setSettings, tenantId, token]);
+  }, [canReadSettings, setSettings, tenantId]);
 
   useEffect(() => {
     if (isAuthLoading) {
       return;
     }
 
-    if (!tenantId || !token) {
+    if (!tenantId || !canReadSettings) {
       setSettingsState(DEFAULT_TENANT_SETTINGS);
       setIsLoading(false);
       return;
@@ -80,7 +80,7 @@ export function TenantSettingsProvider({ children }: { children: React.ReactNode
     }
 
     void refreshSettings();
-  }, [isAuthLoading, refreshSettings, tenantId, token]);
+  }, [canReadSettings, isAuthLoading, refreshSettings, tenantId]);
 
   const value = useMemo(
     () => ({

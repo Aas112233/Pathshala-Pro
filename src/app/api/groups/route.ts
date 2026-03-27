@@ -1,4 +1,3 @@
-import { hasPermission } from "@/lib/permissions";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -10,7 +9,7 @@ import {
   validationError,
   notFound,
 } from "@/lib/api-response";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { z } from "zod";
 
@@ -30,12 +29,10 @@ const updateGroupSchema = createGroupSchema.partial();
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -60,10 +57,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const totalCount = await prisma.group.count({ where });
-
-    // Get groups
-    const groups = await prisma.group.findMany({
+    const [totalCount, groups] = await Promise.all([
+      prisma.group.count({ where }),
+      prisma.group.findMany({
       where,
       skip,
       take: limit,
@@ -80,7 +76,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-    });
+    })
+    ]);
 
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -104,12 +101,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const body = await request.json();
     const validation = createGroupSchema.safeParse(body);

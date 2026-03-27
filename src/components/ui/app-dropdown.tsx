@@ -10,6 +10,7 @@ export interface DropdownOption {
 }
 
 interface AppDropdownProps {
+    id?: string;
     value: string;
     onChange: (value: string) => void;
     options: DropdownOption[];
@@ -18,9 +19,13 @@ interface AppDropdownProps {
     searchable?: boolean;
     noOptionsText?: string;
     className?: string;
+    triggerClassName?: string;
+    invalid?: boolean;
+    "aria-describedby"?: string;
 }
 
 export function AppDropdown({
+    id,
     value,
     onChange,
     options,
@@ -29,6 +34,9 @@ export function AppDropdown({
     searchable = false,
     noOptionsText = 'No options found',
     className = '',
+    triggerClassName = '',
+    invalid = false,
+    "aria-describedby": ariaDescribedBy,
 }: AppDropdownProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -94,8 +102,11 @@ export function AppDropdown({
     return (
         <div ref={containerRef} className={clsx('relative', className)}>
             <button
+                id={id}
                 type="button"
                 disabled={disabled}
+                aria-describedby={ariaDescribedBy}
+                data-invalid={invalid ? 'true' : undefined}
                 onClick={() => setOpen((prev) => !prev)}
                 className={clsx(
                     'w-full flex items-center justify-between',
@@ -105,7 +116,8 @@ export function AppDropdown({
                         ? 'bg-muted text-muted-foreground border-input cursor-not-allowed'
                         : 'bg-background text-foreground border-input hover:border-primary/50',
                     open && 'ring-2 ring-ring border-primary',
-                    className
+                    invalid && 'border-destructive ring-1 ring-destructive',
+                    triggerClassName
                 )}
             >
                 <span className={selected ? 'text-foreground' : 'text-muted-foreground'}>

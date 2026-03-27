@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     // Group by student and calculate attendance stats
     const studentAttendanceMap = new Map<string, any>();
 
-    attendances.forEach((attendance) => {
+    attendances.forEach((attendance: any) => {
       if (!attendance.studentProfileId || !attendance.studentProfile) return;
 
       const studentId = attendance.studentProfileId;

@@ -8,8 +8,7 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { createClassPromotionSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
 
 /**
  * POST /api/promotions/execute
@@ -17,12 +16,10 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId, user } = authContext;
+    const { tenantId, user } = access.authContext;
     const body = await request.json();
 
     // Support both single promotion and bulk promotions
@@ -213,12 +210,10 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
     const studentProfileId = searchParams.get("studentProfileId");
     const academicYearId = searchParams.get("academicYearId");

@@ -10,8 +10,7 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createExamResultNewSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
 
 // Grading scale configuration
 const GRADING_SCALE = [
@@ -41,12 +40,10 @@ function calculateGrade(marks: number, maxMarks: number) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
 
     // Pagination params
@@ -150,12 +147,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId, user } = authContext;
+    const { tenantId } = access.authContext;
     const body = await request.json();
 
     // Support both single result and bulk results
@@ -207,6 +202,15 @@ export async function POST(request: NextRequest) {
           field: `results[${index}].examId`,
           code: "not_found",
           message: "Exam not found",
+        });
+        continue;
+      }
+
+      if (exam.isPublished) {
+        errors.push({
+          field: `results[${index}].examId`,
+          code: "locked",
+          message: "Results cannot be created because the exam is already published.",
         });
         continue;
       }
@@ -316,12 +320,10 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const body = await request.json();
 
     const resultsData = Array.isArray(body) ? body : [body];
@@ -347,6 +349,31 @@ export async function PUT(request: NextRequest) {
       }
 
       const data = validation.data;
+
+      const exam = await prisma.exam.findUnique({
+        where: { id: data.examId, tenantId },
+        select: {
+          isPublished: true,
+        },
+      });
+
+      if (!exam) {
+        errors.push({
+          field: `results[${index}].examId`,
+          code: "not_found",
+          message: "Exam not found",
+        });
+        continue;
+      }
+
+      if (exam.isPublished) {
+        errors.push({
+          field: `results[${index}].examId`,
+          code: "locked",
+          message: "Results cannot be changed because the exam is already published.",
+        });
+        continue;
+      }
 
       // Calculate grade and status
       const { grade, gradePoint, percentage, status } = calculateGrade(

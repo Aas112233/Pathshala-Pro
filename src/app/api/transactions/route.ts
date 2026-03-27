@@ -10,9 +10,8 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createTransactionSchema, updateTransactionSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
-import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/transactions
@@ -20,12 +19,10 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -58,10 +55,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const totalCount = await prisma.transaction.count({ where });
-
-    // Get transactions
-    const transactions = await prisma.transaction.findMany({
+    const [totalCount, transactions] = await Promise.all([
+      prisma.transaction.count({ where }),
+      prisma.transaction.findMany({
       where,
       skip,
       take: limit,
@@ -88,7 +84,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-    });
+    })
+    ]);
 
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -113,12 +110,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { user, tenantId } = authContext;
+    const { user, tenantId } = access.authContext;
 
     const body = await request.json();
     const validation = createTransactionSchema.safeParse(body);

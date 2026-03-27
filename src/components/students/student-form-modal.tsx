@@ -169,8 +169,7 @@ export function StudentFormModal({
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/upload");
-      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("auth_token")}`);
-      xhr.setRequestHeader("X-Tenant-ID", localStorage.getItem("tenant_id") || "");
+      xhr.withCredentials = true;
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -217,10 +216,6 @@ export function StudentFormModal({
       try {
         const response = await fetch(`/api/upload?fileId=${encodeURIComponent(tempFileId)}`, {
           method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
-            "X-Tenant-ID": localStorage.getItem("tenant_id") || "",
-          },
         });
 
         if (response.ok) {
@@ -441,7 +436,7 @@ export function StudentFormModal({
               {/* Bengali Name Fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className={labelClass}>First Name (বাংলা)</label>
+                  <label className={labelClass}>First Name (Second Language)</label>
                   <input
                     name="firstNameBn"
                     value={formData.firstNameBn}
@@ -452,7 +447,7 @@ export function StudentFormModal({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className={labelClass}>Last Name (বাংলা)</label>
+                  <label className={labelClass}>Last Name (Second Language)</label>
                   <input
                     name="lastNameBn"
                     value={formData.lastNameBn}

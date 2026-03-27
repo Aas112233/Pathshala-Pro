@@ -80,6 +80,7 @@ model User {
   transactions   Transaction[]
   attendances    Attendance[] @relation("MarkedBy")
   decidedPromotions ClassPromotion[]
+  staff          StaffProfile[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -207,22 +208,33 @@ model StaffProfile {
   userId        String?        @db.ObjectId
   firstName     String
   lastName      String
+  firstNameBn   String?
+  lastNameBn    String?
   department    String
   designation   String
   baseSalary    Float
   hireDate      DateTime
+  joiningDate   DateTime?
   phone         String?
   email         String?
+  gender        String?
+  dateOfBirth   DateTime?
+  qualification String?
+  address       String?
+  profilePictureUrl String?
+  driveFileId   String?
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
   tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
+  user          User?          @relation(fields: [userId], references: [id])
   salaryLedgers SalaryLedger[]
   attendances   Attendance[]
 
   @@unique([tenantId, staffId])
   @@index([tenantId])
+  @@index([userId])
 }
 
 model SalaryLedger {

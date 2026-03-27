@@ -11,9 +11,9 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createUserSchema, updateUserSchema } from "@/lib/schemas";
-import { getAuthContext, hashPassword } from "@/lib/auth";
+import { hashPassword } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
-import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/users
@@ -21,18 +21,9 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth context
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
-
-    const { user, tenantId } = authContext;
-
-    // Check permission
-    if (user.role !== "SUPER_ADMIN" && !hasPermission(user.permissions, "users", "read")) {
-      return forbidden("Insufficient read permissions for users module");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
+    const { tenantId } = access.authContext;
 
     // Parse query params
     const { searchParams } = new URL(request.url);
@@ -56,10 +47,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const totalCount = await prisma.user.count({ where });
-
-    // Get users
-    const users = await prisma.user.findMany({
+    const [totalCount, users] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
       where,
       skip,
       take: limit,
@@ -75,7 +65,8 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         updatedAt: true,
       },
-    });
+    })
+    ]);
 
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -99,18 +90,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get auth context
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
-
-    const { user, tenantId } = authContext;
-
-    // Check permission
-    if (user.role !== "SUPER_ADMIN" && !hasPermission(user.permissions, "users", "write")) {
-      return forbidden("Insufficient write permissions for users module");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
+    const { tenantId } = access.authContext;
 
     const body = await request.json();
     const validation = createUserSchema.safeParse(body);

@@ -8,8 +8,12 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { updateSalaryLedgerSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/salary/[id]
@@ -20,12 +24,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const salaryLedger = await prisma.salaryLedger.findUnique({
@@ -72,12 +74,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -100,6 +100,20 @@ export async function PUT(
 
     if (!existingLedger) {
       return notFound("Salary ledger not found");
+    }
+
+    if (existingLedger.paidAmount > 0 || ["PAID", "PARTIAL"].includes(existingLedger.status)) {
+      return integrityViolation(
+        lockedUpdateMessage("Salary ledger", "payment activity already exists"),
+        [
+          {
+            field: "id",
+            code: "locked",
+            message:
+              "Salary records with paid or partially paid amounts cannot be edited. Create an adjustment workflow instead.",
+          },
+        ]
+      );
     }
 
     // Calculate net payable if amounts are being updated
@@ -142,12 +156,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const existingLedger = await prisma.salaryLedger.findUnique({
@@ -156,6 +168,23 @@ export async function DELETE(
 
     if (!existingLedger) {
       return notFound("Salary ledger not found");
+    }
+
+    if (existingLedger.paidAmount > 0 || ["PAID", "PARTIAL"].includes(existingLedger.status)) {
+      return integrityViolation(
+        lockedDeleteMessage("Salary ledger", {
+          payments: existingLedger.paidAmount > 0 ? 1 : 0,
+          paidStatus: ["PAID", "PARTIAL"].includes(existingLedger.status) ? 1 : 0,
+        }),
+        [
+          {
+            field: "id",
+            code: "locked",
+            message:
+              "Salary records with payment history cannot be deleted. Use a payroll adjustment workflow instead.",
+          },
+        ]
+      );
     }
 
     await prisma.salaryLedger.delete({

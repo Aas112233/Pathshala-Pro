@@ -9,9 +9,8 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
-import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/attendance
@@ -19,12 +18,10 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -66,9 +63,9 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
-    const totalCount = await prisma.attendance.count({ where });
-
-    const attendance = await prisma.attendance.findMany({
+    const [totalCount, attendance] = await Promise.all([
+      prisma.attendance.count({ where }),
+      prisma.attendance.findMany({
       where,
       skip,
       take: limit,
@@ -98,7 +95,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-    });
+    })
+    ]);
 
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -122,12 +120,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { user, tenantId } = authContext;
+    const { user, tenantId } = access.authContext;
 
     const body = await request.json();
     const validation = createAttendanceSchema.safeParse(body);

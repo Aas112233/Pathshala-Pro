@@ -12,12 +12,18 @@ import {
   authApi,
 } from "@/lib/api-client";
 import type { PaginationParams } from "@/types/api";
+import type { CreateUserPayload, UpdateUserPayload } from "@/types/users";
+
+interface QueryHookOptions {
+  enabled?: boolean;
+}
 
 // Students hooks
-export function useStudents(params?: PaginationParams) {
+export function useStudents(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
     queryKey: ["students", params],
     queryFn: () => studentsApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -61,10 +67,11 @@ export function useDeleteStudent() {
 }
 
 // Users hooks
-export function useUsers(params?: PaginationParams) {
+export function useUsers(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
     queryKey: ["users", params],
     queryFn: () => usersApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -79,7 +86,7 @@ export function useUser(id: string) {
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => usersApi.create(data),
+    mutationFn: (data: CreateUserPayload) => usersApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
@@ -89,7 +96,7 @@ export function useCreateUser() {
 export function useUpdateUser(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => usersApi.update(id, data),
+    mutationFn: (data: UpdateUserPayload) => usersApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["user", id] });
@@ -155,10 +162,11 @@ export function useDeleteAcademicYear() {
 }
 
 // Fees hooks
-export function useFees(params?: PaginationParams) {
+export function useFees(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
     queryKey: ["fees", params],
     queryFn: () => feesApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -202,10 +210,11 @@ export function useDeleteFee() {
 }
 
 // Transactions hooks
-export function useTransactions(params?: PaginationParams) {
+export function useTransactions(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
     queryKey: ["transactions", params],
     queryFn: () => transactionsApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -240,10 +249,11 @@ export function useDeleteTransaction() {
 }
 
 // Staff hooks
-export function useStaff(params?: PaginationParams) {
+export function useStaff(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
     queryKey: ["staff", params],
     queryFn: () => staffApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { getJwtSecretKey } from "@/lib/jwt";
 
 // Paths that do not require authentication
 const PUBLIC_PATHS = ["/login"];
@@ -15,13 +16,30 @@ export async function middleware(request: NextRequest) {
 
   // Allow public paths
   const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
-  if (isPublicPath) {
-    return NextResponse.next();
-  }
 
   // Check for auth token
   const token = request.cookies.get("auth_token")?.value ||
                 request.headers.get("authorization")?.substring(7);
+
+  // If user is on a public path (e.g. /login) AND has a valid token,
+  // redirect them to the dashboard so they don't get stuck on the login page
+  if (isPublicPath) {
+    if (token) {
+      try {
+        await jwtVerify(token, getJwtSecretKey());
+        // Token is valid — redirect away from login to dashboard
+        return NextResponse.redirect(new URL("/", request.url));
+      } catch {
+        // Token is invalid/expired — let them stay on login, clear the bad cookie
+        const response = NextResponse.next();
+        response.cookies.delete("auth_token");
+        return response;
+      }
+    }
+    return NextResponse.next();
+  }
+
+  // No token on protected route — redirect to login
 
   if (!token) {
     // Redirect to login if no token
@@ -31,9 +49,7 @@ export async function middleware(request: NextRequest) {
 
   // Token exists, strictly validate using edge-compatible jose library
   try {
-    const secret = process.env.JWT_SECRET || "default_super_secret_key_for_jwt_2026_fallback";
-    const encodedSecret = new TextEncoder().encode(secret);
-    const { payload } = await jwtVerify(token, encodedSecret);
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
     const role = payload.role as string;
     
     // System Admin redirection logic
@@ -52,9 +68,9 @@ export async function middleware(request: NextRequest) {
     
     // Valid context, proceed
     return NextResponse.next();
-  } catch (error) {
-    console.warn("Middleware detected tampered or expired JWT Token. Re-routing to login.", error);
-    // Invalid/expired token, force a hard re-login by overriding path cookies
+  } catch (error: any) {
+    console.warn("Middleware JWT verification failed:", error?.code || error?.message || error);
+    // Invalid/expired token, force a hard re-login by clearing the cookie
     const loginUrl = new URL("/login", request.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete("auth_token");

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useStudents, useStaff, useFees, useTransactions } from "@/hooks/use-queries";
+import { hasPermission } from "@/lib/permissions";
 import Link from "next/link";
 import {
   GraduationCap,
@@ -165,19 +166,48 @@ function ActivityRow({
 // ─────────────────── Main Dashboard ───────────────────
 export default function DashboardPage() {
   const t = useTranslations();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { formatDate } = useTenantFormatting();
 
-  const { data: studentsData, isLoading: studentsLoading } = useStudents({ page: 1, limit: 1 });
-  const { data: staffData, isLoading: staffLoading } = useStaff({ page: 1, limit: 1 });
-  const { data: feesData, isLoading: feesLoading } = useFees({ page: 1, limit: 1 });
-  const { data: transactionsData, isLoading: txLoading } = useTransactions({ page: 1, limit: 1 });
+  const canReadStudents =
+    user?.role === "SUPER_ADMIN" ||
+    (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "students", "read"));
+  const canReadStaff =
+    user?.role === "SUPER_ADMIN" ||
+    (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "staff", "read"));
+  const canReadFees =
+    user?.role === "SUPER_ADMIN" ||
+    (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "fees", "read"));
+
+  const queryEnabled = !isAuthLoading && !!user;
+
+  const { data: studentsData, isLoading: studentsLoading } = useStudents(
+    { page: 1, limit: 1 },
+    { enabled: queryEnabled && canReadStudents }
+  );
+  const { data: staffData, isLoading: staffLoading } = useStaff(
+    { page: 1, limit: 1 },
+    { enabled: queryEnabled && canReadStaff }
+  );
+  const { data: feesData, isLoading: feesLoading } = useFees(
+    { page: 1, limit: 1 },
+    { enabled: queryEnabled && canReadFees }
+  );
+  const { data: transactionsData, isLoading: txLoading } = useTransactions(
+    { page: 1, limit: 1 },
+    { enabled: queryEnabled && canReadFees }
+  );
 
   const totalStudents = (studentsData as any)?.pagination?.totalCount ?? 0;
   const totalStaff = (staffData as any)?.pagination?.totalCount ?? 0;
   const totalFees = (feesData as any)?.pagination?.totalCount ?? 0;
   const totalTransactions = (transactionsData as any)?.pagination?.totalCount ?? 0;
-  const isLoading = studentsLoading || staffLoading || feesLoading || txLoading;
+  const isLoading =
+    isAuthLoading ||
+    (canReadStudents && studentsLoading) ||
+    (canReadStaff && staffLoading) ||
+    (canReadFees && feesLoading) ||
+    (canReadFees && txLoading);
 
   const firstName = user?.name?.split(" ")[0] ?? "";
 

@@ -9,8 +9,13 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { updateUserSchema } from "@/lib/schemas";
-import { getAuthContext, hashPassword } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { hashPassword } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  getUserUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/users/[id]
@@ -21,17 +26,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
-
-    const { user: currentUser, tenantId } = authContext;
-
-    // Check permission
-    if (currentUser.role !== "SUPER_ADMIN" && !hasPermission(currentUser.permissions, "users", "read")) {
-      return forbidden("Insufficient read permissions for users module");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
+    const { tenantId } = access.authContext;
 
     const { id } = await params;
 
@@ -71,17 +68,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
-
-    const { user: currentUser, tenantId } = authContext;
-
-    // Check permission
-    if (currentUser.role !== "SUPER_ADMIN" && !hasPermission(currentUser.permissions, "users", "write")) {
-      return forbidden("Insufficient write permissions for users module");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
+    const { tenantId } = access.authContext;
 
     const { id } = await params;
     const body = await request.json();
@@ -157,17 +146,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
-
-    const { user: currentUser, tenantId } = authContext;
-
-    // Check permission
-    if (currentUser.role !== "SUPER_ADMIN" && !hasPermission(currentUser.permissions, "users", "manage")) {
-      return forbidden("Insufficient manage permissions for users module");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
+    const { user: currentUser, tenantId } = access.authContext;
 
     const { id } = await params;
 
@@ -183,6 +164,18 @@ export async function DELETE(
 
     if (!existingUser) {
       return notFound("User not found");
+    }
+
+    const usageCounts = await getUserUsageCounts(tenantId, id);
+    if (Object.values(usageCounts).some((count) => count > 0)) {
+      return integrityViolation(lockedDeleteMessage("User account", usageCounts), [
+        {
+          field: "id",
+          code: "in_use",
+          message:
+            "Users referenced by collections, attendance, or promotion decisions cannot be deleted. Deactivate the account instead.",
+        },
+      ]);
     }
 
     await prisma.user.delete({

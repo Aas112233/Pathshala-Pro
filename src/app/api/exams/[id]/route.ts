@@ -9,7 +9,14 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { updateExamSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  buildLockedFieldsDetails,
+  getExamUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/exams/[id]
@@ -20,12 +27,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const exam = await prisma.exam.findUnique({
@@ -93,12 +98,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
     const body = await request.json();
     const validation = updateExamSchema.safeParse(body);
@@ -121,6 +124,41 @@ export async function PUT(
 
     if (!existingExam) {
       return notFound("Exam not found");
+    }
+
+    const usageCounts = await getExamUsageCounts(tenantId, id);
+    const examLocked = existingExam.isPublished || usageCounts.results > 0;
+    const attemptedCoreFields = [
+      "examId",
+      "academicYearId",
+      "name",
+      "type",
+      "startDate",
+      "endDate",
+      "totalMarks",
+      "passPercentage",
+    ].filter((field) => Object.prototype.hasOwnProperty.call(body, field));
+
+    if (examLocked && (attemptedCoreFields.length > 0 || Array.isArray(body.subjects))) {
+      const reason = existingExam.isPublished
+        ? "the exam has already been published"
+        : "results already exist for this exam";
+      const details = buildLockedFieldsDetails(
+        attemptedCoreFields.length > 0 ? attemptedCoreFields : ["subjects"],
+        reason
+      );
+      if (Array.isArray(body.subjects)) {
+        details.push({
+          field: "subjects",
+          code: "locked",
+          message: `subjects cannot be changed because ${reason}.`,
+        });
+      }
+
+      return integrityViolation(
+        lockedUpdateMessage("Exam", reason),
+        details
+      );
     }
 
     // Check exam ID uniqueness if changing
@@ -180,12 +218,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const existingExam = await prisma.exam.findUnique({
@@ -196,15 +232,22 @@ export async function DELETE(
       return notFound("Exam not found");
     }
 
-    // Check if exam has results
-    const resultsCount = await prisma.examResult.count({
-      where: { examId: id },
-    });
-
-    if (resultsCount > 0) {
-      return badRequest("Cannot delete exam with existing results", [
-        { field: "examId", code: "in_use", message: "Exam has results" },
-      ]);
+    const usageCounts = await getExamUsageCounts(tenantId, id);
+    if (existingExam.isPublished || usageCounts.results > 0) {
+      return integrityViolation(
+        lockedDeleteMessage("Exam", {
+          published: existingExam.isPublished ? 1 : 0,
+          results: usageCounts.results,
+        }),
+        [
+          {
+            field: "id",
+            code: "in_use",
+            message:
+              "Published exams or exams with results cannot be deleted. Archive the exam instead of removing it.",
+          },
+        ]
+      );
     }
 
     await prisma.$transaction([

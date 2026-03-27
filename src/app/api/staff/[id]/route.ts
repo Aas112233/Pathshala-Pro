@@ -8,8 +8,14 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { updateStaffSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  buildLockedFieldsDetails,
+  getStaffUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/staff/[id]
@@ -20,12 +26,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const staff = await prisma.staffProfile.findUnique({
@@ -77,12 +81,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -107,6 +109,33 @@ export async function PUT(
       return notFound("Staff member not found");
     }
 
+    const usageCounts = await getStaffUsageCounts(tenantId, id);
+    const lockedFields: string[] = [];
+
+    if (
+      (usageCounts.salaryLedgers > 0 || usageCounts.attendances > 0) &&
+      Object.prototype.hasOwnProperty.call(body, "staffId")
+    ) {
+      lockedFields.push("staffId");
+    }
+
+    if (
+      usageCounts.salaryLedgers > 0 &&
+      Object.prototype.hasOwnProperty.call(body, "hireDate")
+    ) {
+      lockedFields.push("hireDate");
+    }
+
+    if (lockedFields.length > 0) {
+      return integrityViolation(
+        lockedUpdateMessage("Staff member", "salary or attendance history already exists"),
+        buildLockedFieldsDetails(
+          lockedFields,
+          "salary or attendance history already exists for this staff member"
+        )
+      );
+    }
+
     // Check staff ID uniqueness if changing
     if (data.staffId && data.staffId !== existingStaff.staffId) {
       const idExists = await prisma.staffProfile.findFirst({
@@ -128,12 +157,23 @@ export async function PUT(
         staffId: true,
         firstName: true,
         lastName: true,
+        firstNameBn: true,
+        lastNameBn: true,
         department: true,
         designation: true,
         baseSalary: true,
         email: true,
         phone: true,
         isActive: true,
+        hireDate: true,
+        joiningDate: true,
+        qualification: true,
+        gender: true,
+        dateOfBirth: true,
+        address: true,
+        profilePictureUrl: true,
+        driveFileId: true,
+        userId: true,
         updatedAt: true,
       },
     });
@@ -154,12 +194,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const existingStaff = await prisma.staffProfile.findUnique({
@@ -170,13 +208,16 @@ export async function DELETE(
       return notFound("Staff member not found");
     }
 
-    // Check for related records
-    const salaryLedgers = await prisma.salaryLedger.count({
-      where: { staffProfileId: id },
-    });
-
-    if (salaryLedgers > 0) {
-      return badRequest("Cannot delete staff member with existing salary records");
+    const usageCounts = await getStaffUsageCounts(tenantId, id);
+    if (Object.values(usageCounts).some((count) => count > 0)) {
+      return integrityViolation(lockedDeleteMessage("Staff member", usageCounts), [
+        {
+          field: "id",
+          code: "in_use",
+          message:
+            "Staff members with salary, attendance, or linked user history cannot be deleted. Mark the profile inactive instead.",
+        },
+      ]);
     }
 
     await prisma.staffProfile.delete({

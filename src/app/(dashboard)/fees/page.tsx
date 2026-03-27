@@ -10,6 +10,7 @@ import { useFees, useDeleteFee } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { formatStudentName } from "@/lib/utils";
 
 export default function FeesPage() {
@@ -99,19 +100,10 @@ export default function FeesPage() {
       accessorKey: "status",
       header: t('tableColumns.status'),
       cell: ({ getValue }) => (
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            getValue<string>() === "PAID"
-              ? "bg-green-100 text-green-800"
-              : getValue<string>() === "PARTIAL"
-              ? "bg-yellow-100 text-yellow-800"
-              : getValue<string>() === "OVERDUE"
-              ? "bg-red-100 text-red-800"
-              : "bg-gray-100 text-gray-800"
-          }`}
-        >
-          {getValue<string>()}
-        </span>
+        <StatusBadge
+          status={getValue<string>()}
+          domain="fee"
+        />
       ),
     },
     {

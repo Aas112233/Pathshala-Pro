@@ -9,8 +9,7 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createSubjectSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
 
 /**
  * GET /api/subjects
@@ -18,12 +17,10 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
     const isActive = searchParams.get("isActive");
 
@@ -51,12 +48,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const body = await request.json();
     const validation = createSubjectSchema.safeParse(body);
 

@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { api } from "@/lib/api-client";
 
 interface User {
   id: string;
@@ -12,15 +11,15 @@ interface User {
   role: string;
   isActive: boolean;
   permissions?: Record<string, any> | null;
+  tenantName?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   tenantId: string | null;
   isLoading: boolean;
-  login: (token: string, tenantId: string, user: User) => void;
-  logout: () => void;
+  login: (user: User) => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,12 +27,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<{
     user: User | null;
-    token: string | null;
     tenantId: string | null;
     isLoading: boolean;
   }>({
     user: null,
-    token: null,
     tenantId: null,
     isLoading: true,
   });
@@ -41,34 +38,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Restore auth state from localStorage on mount
   useEffect(() => {
-    const restoreAuth = () => {
+    const restoreAuth = async () => {
       try {
-        const token = localStorage.getItem("auth_token");
-        const tenantId = localStorage.getItem("tenant_id");
-        const userStr = localStorage.getItem("user");
+        const response = await fetch("/api/auth/session", {
+          credentials: "include",
+        });
 
-        if (token && tenantId && userStr) {
-          const user = JSON.parse(userStr) as User;
-          
-          // Set auth in API client
-          api.setAuth(token, tenantId);
-          
+        if (response.ok) {
+          const result = await response.json();
+          const user = result.data as User;
           setAuthState({
             user,
-            token,
-            tenantId,
+            tenantId: user.tenantId,
             isLoading: false,
           });
-
-          // Also set cookie for middleware
-          const isSecure = window.location.protocol === 'https:';
-          document.cookie = `auth_token=${token}; path=/; max-age=86400${isSecure ? '; Secure; SameSite=None' : '; SameSite=Lax'}`;
         } else {
           setAuthState({
             user: null,
-            token: null,
             tenantId: null,
             isLoading: false,
           });
@@ -99,42 +86,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [authState.user, authState.isLoading, pathname, router]);
 
-  const login = useCallback((token: string, tenantId: string, user: User) => {
-    // Store in localStorage
-    localStorage.setItem("auth_token", token);
-    localStorage.setItem("tenant_id", tenantId);
-    localStorage.setItem("user", JSON.stringify(user));
-
-    // Set cookie for middleware
-    const isSecure = window.location.protocol === 'https:';
-    document.cookie = `auth_token=${token}; path=/; max-age=86400${isSecure ? '; Secure; SameSite=None' : '; SameSite=Lax'}`;
-
-    // Set auth in API client
-    api.setAuth(token, tenantId);
-
+  const login = useCallback((user: User) => {
     setAuthState({
       user,
-      token,
-      tenantId,
+      tenantId: user.tenantId,
       isLoading: false,
     });
   }, []);
 
-  const logout = useCallback(() => {
-    // Clear localStorage
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("tenant_id");
-    localStorage.removeItem("user");
-
-    // Clear cookie
-    document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
-
-    // Clear API client auth
-    api.clearAuth();
+  const logout = useCallback(async () => {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
 
     setAuthState({
       user: null,
-      token: null,
       tenantId: null,
       isLoading: false,
     });

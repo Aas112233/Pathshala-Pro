@@ -60,8 +60,6 @@ export function StudentSelectorModal({
   const { data: studentsData, isLoading } = useQuery({
     queryKey: ["students-all", { search, selectedClass, selectedGroup, selectedSection }],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const params = new URLSearchParams({
         limit: "100",
         ...(search && { search }),
@@ -69,12 +67,7 @@ export function StudentSelectorModal({
         ...(selectedGroup && { groupId: selectedGroup }),
         ...(selectedSection && { sectionId: selectedSection }),
       });
-      const res = await fetch(`/api/students?${params}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/students?${params}`);
       if (!res.ok) throw new Error("Failed to fetch students");
       return res.json();
     },
@@ -83,14 +76,7 @@ export function StudentSelectorModal({
   const { data: classesData } = useQuery({
     queryKey: ["classes-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/classes?limit=100", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/classes?limit=100");
       if (!res.ok) throw new Error("Failed to fetch classes");
       return res.json();
     },
@@ -100,14 +86,7 @@ export function StudentSelectorModal({
     queryKey: ["groups-all", { classId: selectedClass }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(`/api/groups?limit=100&classId=${selectedClass}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/groups?limit=100&classId=${selectedClass}`);
       if (!res.ok) throw new Error("Failed to fetch groups");
       return res.json();
     },
@@ -118,19 +97,12 @@ export function StudentSelectorModal({
     queryKey: ["sections-all", { classId: selectedClass, groupId: selectedGroup }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const params = new URLSearchParams({
         limit: "100",
         classId: selectedClass,
         ...(selectedGroup && { groupId: selectedGroup }),
       });
-      const res = await fetch(`/api/sections?${params}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/sections?${params}`);
       if (!res.ok) throw new Error("Failed to fetch sections");
       return res.json();
     },

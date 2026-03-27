@@ -1,4 +1,3 @@
-import { hasPermission } from "@/lib/permissions";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -9,8 +8,15 @@ import {
   badRequest,
   validationError,
 } from "@/lib/api-response";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { z } from "zod";
+import {
+  buildLockedFieldsDetails,
+  getSectionUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 const updateSectionSchema = z.object({
   classId: z.string().min(1, "Class is required").optional(),
@@ -31,12 +37,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const section = await prisma.section.findFirst({
@@ -67,12 +71,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -96,6 +98,19 @@ export async function PUT(
 
     if (!existingSection) {
       return notFound("Section not found");
+    }
+
+    const usageCounts = await getSectionUsageCounts(tenantId, id);
+    const lockedFields = ["classId", "groupId"].filter(
+      (field) =>
+        usageCounts.students > 0 && Object.prototype.hasOwnProperty.call(body, field)
+    );
+
+    if (lockedFields.length > 0) {
+      return integrityViolation(
+        lockedUpdateMessage("Section", "students are already assigned to it"),
+        buildLockedFieldsDetails(lockedFields, "students are already assigned to this section")
+      );
     }
 
     // If changing class, verify it exists
@@ -149,12 +164,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     // Check if section exists
@@ -166,9 +179,19 @@ export async function DELETE(
       return notFound("Section not found");
     }
 
-    await prisma.section.delete({
-      where: { id },
-    });
+    const usageCounts = await getSectionUsageCounts(tenantId, id);
+    if (usageCounts.students > 0) {
+      return integrityViolation(lockedDeleteMessage("Section", usageCounts), [
+        {
+          field: "id",
+          code: "in_use",
+          message:
+            "Sections with assigned students cannot be deleted. Move the students or mark the section inactive instead.",
+        },
+      ]);
+    }
+
+    await prisma.section.delete({ where: { id } });
 
     return successResponse(null, "Section deleted successfully");
   } catch (error) {

@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { cn } from "@/lib/utils";
 
 const EXAM_TYPES = [
   { value: "MID_TERM", label: "Mid-Term" },
@@ -126,6 +127,13 @@ export default function EditExamPage() {
     endDate: "",
     isPublished: false,
   });
+  const [formErrors, setFormErrors] = useState<{
+    academicYearId?: string;
+    name?: string;
+    subjects?: string;
+    startDate?: string;
+    endDate?: string;
+  }>({});
 
   // Get selected subjects - either from current class selection or default (prefilled)
   const selectedSubjectIds = selectedClassId
@@ -248,8 +256,15 @@ export default function EditExamPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const nextErrors: typeof formErrors = {};
+    if (!formData.academicYearId) nextErrors.academicYearId = `${t('academicYear')} is required`;
+    if (!formData.name.trim()) nextErrors.name = `${t('examName')} is required`;
+    if (!formData.startDate) nextErrors.startDate = `${t('startDate')} is required`;
+    if (!formData.endDate) nextErrors.endDate = `${t('endDate')} is required`;
+    if (selectedClassId && selectedSubjectIds.length === 0) nextErrors.subjects = t('subjectsRequired');
+    setFormErrors(nextErrors);
 
-    if (!formData.academicYearId || !formData.name) {
+    if (nextErrors.academicYearId || nextErrors.name || nextErrors.startDate || nextErrors.endDate) {
       toast.error(t('fillRequiredFields'));
       return;
     }
@@ -267,7 +282,7 @@ export default function EditExamPage() {
         passMarks: subject.subject.passMarks,
       }));
 
-    if (subjects.length === 0 && selectedClassId) {
+    if ((subjects.length === 0 && selectedClassId) || nextErrors.subjects) {
       toast.error(t('subjectsRequired'));
       return;
     }
@@ -363,9 +378,12 @@ export default function EditExamPage() {
                 <Label htmlFor="academicYearId">{t('academicYear')} *</Label>
                 <Select
                   value={formData.academicYearId}
-                  onValueChange={(value) => setFormData({ ...formData, academicYearId: value })}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, academicYearId: value });
+                    if (formErrors.academicYearId) setFormErrors((prev) => ({ ...prev, academicYearId: undefined }));
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-invalid={Boolean(formErrors.academicYearId)} className={formErrors.academicYearId ? "border-destructive ring-destructive" : undefined}>
                     <SelectValue placeholder={t('selectYear')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -376,6 +394,7 @@ export default function EditExamPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {formErrors.academicYearId && <p className="text-xs text-destructive">{formErrors.academicYearId}</p>}
               </div>
             </div>
 
@@ -384,9 +403,15 @@ export default function EditExamPage() {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                }}
                 placeholder="Mid-Term Examination 2025"
+                aria-invalid={Boolean(formErrors.name)}
+                className={formErrors.name ? "border-destructive focus:ring-destructive" : undefined}
               />
+              {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
             </div>
 
             <div className="space-y-2">
@@ -417,7 +442,7 @@ export default function EditExamPage() {
                   </span>
                 ) : null}
               </div>
-              <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-border p-3">
+              <div className={cn("max-h-56 space-y-2 overflow-y-auto rounded-md border border-border p-3", formErrors.subjects && "border-destructive")}>
                 {!selectedClassId ? (
                   <p className="text-sm text-muted-foreground">{t('selectClassToLoadSubjects')}</p>
                 ) : isClassSubjectsLoading ? (
@@ -456,6 +481,7 @@ export default function EditExamPage() {
                   ))
                 )}
               </div>
+              {formErrors.subjects && <p className="text-xs text-destructive">{formErrors.subjects}</p>}
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -486,8 +512,14 @@ export default function EditExamPage() {
                   id="startDate"
                   type="date"
                   value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, startDate: e.target.value });
+                    if (formErrors.startDate) setFormErrors((prev) => ({ ...prev, startDate: undefined }));
+                  }}
+                  aria-invalid={Boolean(formErrors.startDate)}
+                  className={formErrors.startDate ? "border-destructive focus:ring-destructive" : undefined}
                 />
+                {formErrors.startDate && <p className="text-xs text-destructive">{formErrors.startDate}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endDate">{t('endDate')} *</Label>
@@ -495,8 +527,14 @@ export default function EditExamPage() {
                   id="endDate"
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, endDate: e.target.value });
+                    if (formErrors.endDate) setFormErrors((prev) => ({ ...prev, endDate: undefined }));
+                  }}
+                  aria-invalid={Boolean(formErrors.endDate)}
+                  className={formErrors.endDate ? "border-destructive focus:ring-destructive" : undefined}
                 />
+                {formErrors.endDate && <p className="text-xs text-destructive">{formErrors.endDate}</p>}
               </div>
             </div>
 

@@ -6,8 +6,8 @@ import {
   unauthorized,
   notFound,
 } from "@/lib/api-response";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
+import { integrityViolation } from "@/lib/data-integrity";
 
 /**
  * GET /api/transactions/[id]
@@ -18,12 +18,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const transaction = await prisma.transaction.findUnique({
@@ -81,12 +79,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     // Get transaction and verify it exists
@@ -101,32 +97,17 @@ export async function DELETE(
       return notFound("Transaction not found");
     }
 
-    const { feeVoucher } = transaction;
-
-    // Atomic transaction: Delete transaction and rollback voucher balance
-    await prisma.$transaction([
-      // Delete the transaction
-      prisma.transaction.delete({
-        where: { id },
-      }),
-
-      // Rollback the voucher balance
-      prisma.feeVoucher.update({
-        where: { id: feeVoucher.id },
-        data: {
-          amountPaid: { decrement: transaction.amountPaid },
-          balance: { increment: transaction.amountPaid },
-          status:
-            feeVoucher.balance + transaction.amountPaid <= 0
-              ? "PAID"
-              : feeVoucher.amountPaid > 0
-                ? "PARTIAL"
-                : "PENDING",
+    return integrityViolation(
+      "Transactions cannot be deleted once recorded.",
+      [
+        {
+          field: "id",
+          code: "locked",
+          message:
+            "Payment history is audit-sensitive. Create a reversal or refund entry instead of deleting the transaction.",
         },
-      }),
-    ]);
-
-    return successResponse(null, "Transaction deleted and balance rolled back");
+      ]
+    );
   } catch (error) {
     console.error("Delete transaction error:", error);
     return errorResponse("Internal server error", 500);

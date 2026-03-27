@@ -128,15 +128,10 @@ export default function SettingsPage() {
 
     setIsSaving(true);
     try {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
         },
         body: JSON.stringify(settings),
       });

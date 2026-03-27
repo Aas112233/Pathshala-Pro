@@ -1,23 +1,29 @@
 "use client";
 
-import { PageHeader } from "@/components/shared/page-header";
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import type { ColumnDef } from "@tanstack/react-table";
+import { AlertTriangle, CalendarCheck, Percent, Users } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
+  BarChart,
+  ExportDropdown,
+  LineChart,
+  ReportEmptyState,
   ReportFilters,
   ReportMetricCard,
+  ReportPageShell,
+  ReportSummaryBar,
   ReportTable,
-  BarChart,
-  LineChart,
-  ExportDropdown,
 } from "@/components/reports";
 import type { ReportFilterState } from "@/components/reports";
-import { useTranslations } from "next-intl";
-import { CalendarCheck, Percent, AlertTriangle, Users, FileSpreadsheet } from "lucide-react";
-import { useState } from "react";
+import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ColumnDef } from "@tanstack/react-table";
-import { api } from "@/lib/api-client";
+import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
-import { Button } from "@/components/ui/button";
+import { usePDFExport } from "@/hooks/use-pdf-export";
+import { api } from "@/lib/api-client";
+import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
 
 interface AttendanceRecord {
@@ -47,9 +53,16 @@ interface AttendanceReportData {
 
 export default function AttendanceReportPage() {
   const tAttendance = useTranslations("reports.attendanceReport");
+  const { settings } = useTenantSettings();
+  const { formatDateTime } = useTenantFormatting();
   const { exportAttendanceReport } = useExcelExport({
-    schoolName: "Pathshala Pro School",
+    fileName: "attendance_report",
+    schoolName: settings.name || "Pathshala Pro School",
+    schoolAddress: settings.address,
+    schoolPhone: settings.phone,
+    schoolEmail: settings.email,
   });
+  const { exportAttendanceReportPDF } = usePDFExport();
 
   const [filters, setFilters] = useState<ReportFilterState>({
     fromDate: "",
@@ -57,11 +70,33 @@ export default function AttendanceReportPage() {
     classId: "",
     sectionId: "",
   });
-
   const [isLoading, setIsLoading] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState("");
   const [data, setData] = useState<AttendanceRecord[]>([]);
   const [metrics, setMetrics] = useState<AttendanceReportData["metrics"] | null>(null);
-  const [classWiseData, setClassWiseData] = useState<{ className: string; averagePercentage: number }[]>([]);
+  const [classWiseData, setClassWiseData] = useState<{ className: string; averagePercentage: number }[]>(
+    []
+  );
+
+  const schoolInfo = {
+    name: settings.name || "Pathshala Pro School",
+    address: settings.address || "",
+    phone: settings.phone || "",
+    email: settings.email || "",
+    logoUrl: settings.logoUrl,
+  };
+  const dateRange = {
+    from: filters.fromDate || "Start",
+    to: filters.toDate || "Present",
+  };
+  const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
+  const appliedFilters = [
+    filters.classId && filters.classId !== "all" ? { label: "Class", value: filters.classId } : null,
+    filters.sectionId && filters.sectionId !== "all"
+      ? { label: "Section", value: filters.sectionId }
+      : null,
+  ].filter((value): value is { label: string; value: string } => Boolean(value));
 
   const handleGenerateReport = async () => {
     setIsLoading(true);
@@ -72,14 +107,19 @@ export default function AttendanceReportPage() {
       if (filters.classId && filters.classId !== "all") params.set("classId", filters.classId);
       if (filters.sectionId && filters.sectionId !== "all") params.set("sectionId", filters.sectionId);
 
-      const response = await api.get<AttendanceReportData>(`/api/reports/attendance?${params.toString()}`);
-      const reportData = (response as any).data;
-      
+      const response = await api.get<AttendanceReportData>(
+        `/api/reports/attendance?${params.toString()}`
+      );
+      const reportData = (response as ApiSuccessResponse<AttendanceReportData>).data;
+
       setData(reportData.records || []);
       setMetrics(reportData.metrics || null);
       setClassWiseData(reportData.classWise || []);
+      setHasGenerated(true);
+      setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate attendance report:", error);
+      toast.error("Failed to generate attendance report");
     } finally {
       setIsLoading(false);
     }
@@ -95,32 +135,62 @@ export default function AttendanceReportPage() {
     setData([]);
     setMetrics(null);
     setClassWiseData([]);
+    setHasGenerated(false);
+    setGeneratedAt("");
   };
 
   const handleExportExcel = async () => {
-    try {
-      const result = await exportAttendanceReport(data, {
-        from: filters.fromDate || "N/A",
-        to: filters.toDate || "Present",
-      });
-      
-      if (result.success) {
-        toast.success("Report exported successfully");
-      } else {
-        toast.error("Failed to export report");
-      }
-    } catch (error) {
-      toast.error("Failed to export report");
+    const result = await exportAttendanceReport(data, dateRange);
+    if (result.success) {
+      toast.success("Attendance report exported");
+      return;
     }
+    toast.error("Failed to export attendance report");
+  };
+
+  const handleExportPdf = async () => {
+    if (!metrics) return;
+
+    const result = await exportAttendanceReportPDF({
+      school: schoolInfo,
+      dateRangeLabel,
+      generatedAt: generatedAt || formatDateTime(new Date()),
+      filters: appliedFilters,
+      metrics: {
+        averageAttendance: `${metrics.averageAttendance}%`,
+        totalPresent: String(metrics.totalPresent),
+        totalAbsent: String(metrics.totalAbsent),
+        defaulterCount: String(metrics.defaulterCount),
+      },
+      records: data.map((record) => ({
+        rollNumber: record.rollNumber,
+        studentName: record.studentName,
+        className: record.className,
+        section: record.section,
+        presentDays: record.presentDays,
+        absentDays: record.absentDays,
+        totalDays: record.totalDays,
+        attendancePercentage: `${record.attendancePercentage}%`,
+        status: record.status,
+      })),
+    });
+
+    if (result.success) {
+      toast.success("Attendance report exported");
+      return;
+    }
+    toast.error("Failed to export attendance report");
   };
 
   const handleExport = async (type: "excel" | "pdf") => {
     if (type === "excel") {
       await handleExportExcel();
-    } else {
-      toast.info("PDF export coming soon");
+      return;
     }
+    await handleExportPdf();
   };
+
+  const defaulters = data.filter((record) => record.attendancePercentage < 75);
 
   const columns: ColumnDef<AttendanceRecord>[] = [
     {
@@ -128,36 +198,20 @@ export default function AttendanceReportPage() {
       header: "Roll No.",
       cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span>,
     },
-    {
-      accessorKey: "studentName",
-      header: "Student Name",
-    },
-    {
-      accessorKey: "className",
-      header: "Class",
-    },
-    {
-      accessorKey: "section",
-      header: "Section",
-    },
+    { accessorKey: "studentName", header: "Student Name" },
+    { accessorKey: "className", header: "Class" },
+    { accessorKey: "section", header: "Section" },
     {
       accessorKey: "presentDays",
       header: "Present",
-      cell: ({ getValue }) => (
-        <span className="text-green-600 font-medium">{getValue<number>()}</span>
-      ),
+      cell: ({ getValue }) => <span className="font-medium text-green-600">{getValue<number>()}</span>,
     },
     {
       accessorKey: "absentDays",
       header: "Absent",
-      cell: ({ getValue }) => (
-        <span className="text-red-600 font-medium">{getValue<number>()}</span>
-      ),
+      cell: ({ getValue }) => <span className="font-medium text-red-600">{getValue<number>()}</span>,
     },
-    {
-      accessorKey: "totalDays",
-      header: "Total Days",
-    },
+    { accessorKey: "totalDays", header: "Total Days" },
     {
       accessorKey: "attendancePercentage",
       header: "Attendance %",
@@ -167,36 +221,20 @@ export default function AttendanceReportPage() {
         if (percentage < 75) colorClass = "text-red-600";
         else if (percentage < 85) colorClass = "text-yellow-600";
 
-        return (
-          <span className={`font-bold ${colorClass}`}>{percentage}%</span>
-        );
+        return <span className={`font-bold ${colorClass}`}>{percentage}%</span>;
       },
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ getValue }) => {
-        const status = getValue<string>();
-        const statusColors: Record<string, string> = {
-          GOOD: "bg-green-100 text-green-800",
-          AVERAGE: "bg-yellow-100 text-yellow-800",
-          DEFICIT: "bg-red-100 text-red-800",
-        };
-        return (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              statusColors[status] || "bg-gray-100 text-gray-800"
-            }`}
-          >
-            {status}
-          </span>
-        );
-      },
+      cell: ({ getValue }) => (
+        <StatusBadge
+          status={getValue<string>()}
+          domain="attendance"
+        />
+      ),
     },
   ];
-
-  // Defaulter list (students with < 75% attendance)
-  const defaulters = data.filter((r) => r.attendancePercentage < 75);
 
   return (
     <div className="space-y-6">
@@ -206,146 +244,139 @@ export default function AttendanceReportPage() {
         icon={CalendarCheck}
       />
 
-      {/* Filters */}
-      <ReportFilters
-        filters={filters}
-        onFilterChange={setFilters}
-        onGenerate={handleGenerateReport}
-        onReset={handleReset}
-        isLoading={isLoading}
-        showClassFilter
-        showSectionFilter
-        exportComponent={
-          <ExportDropdown onExport={handleExport} disabled={data.length === 0} />
+      <ReportPageShell
+        filters={
+          <ReportFilters
+            filters={filters}
+            onFilterChange={setFilters}
+            onGenerate={handleGenerateReport}
+            onReset={handleReset}
+            isLoading={isLoading}
+            showClassFilter
+            showSectionFilter
+            exportComponent={<ExportDropdown onExport={handleExport} disabled={data.length === 0} />}
+          />
+        }
+        summary={
+          hasGenerated ? (
+            <ReportSummaryBar
+              dateRangeLabel={dateRangeLabel}
+              generatedAtLabel={generatedAt}
+              recordCount={data.length}
+              appliedFilters={appliedFilters}
+            />
+          ) : undefined
+        }
+        metrics={
+          metrics ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <ReportMetricCard
+                title={tAttendance("averageAttendance")}
+                value={`${metrics.averageAttendance}%`}
+                icon={Percent}
+              />
+              <ReportMetricCard
+                title={tAttendance("presentDays")}
+                value={metrics.totalPresent}
+                icon={CalendarCheck}
+              />
+              <ReportMetricCard
+                title={tAttendance("absentDays")}
+                value={metrics.totalAbsent}
+                icon={AlertTriangle}
+              />
+              <ReportMetricCard
+                title={tAttendance("defaulterList")}
+                value={metrics.defaulterCount}
+                icon={Users}
+              />
+            </div>
+          ) : undefined
+        }
+        insights={
+          data.length > 0 ? (
+            <div className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <BarChart
+                  title={tAttendance("classWiseAttendance")}
+                  data={classWiseData.map((item) => ({
+                    label: item.className,
+                    value: item.averagePercentage,
+                    color: "hsl(var(--primary))",
+                  }))}
+                  height={200}
+                />
+                <LineChart
+                  title="Attendance Trend"
+                  data={data.slice(0, 5).map((record, index) => ({
+                    label: `S${index + 1}`,
+                    value: record.attendancePercentage,
+                  }))}
+                  height={200}
+                />
+              </div>
+
+              {defaulters.length > 0 ? (
+                <Card className="border-red-200 bg-red-50">
+                  <CardHeader>
+                    <CardTitle className="text-red-800">
+                      {tAttendance("defaulterList")} ({defaulters.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                      {defaulters.map((defaulter) => (
+                        <div
+                          key={defaulter.id}
+                          className="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm"
+                        >
+                          <div>
+                            <p className="font-medium">{defaulter.studentName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {defaulter.className} - {defaulter.section}
+                            </p>
+                          </div>
+                          <span className="font-bold text-red-600">
+                            {defaulter.attendancePercentage}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+          ) : undefined
+        }
+        table={
+          hasGenerated || isLoading ? (
+            data.length > 0 || isLoading ? (
+              <ReportTable
+                title="Attendance Details"
+                description="Attendance status for the generated period."
+                columns={columns}
+                data={data}
+                isLoading={isLoading}
+                showExport={false}
+                onExportCSV={handleExportExcel}
+              />
+            ) : (
+              <ReportEmptyState
+                title="No attendance data found"
+                description="Try a different period or broader class filters."
+              />
+            )
+          ) : (
+            <ReportEmptyState
+              title="Generate an attendance report"
+              description="Select the date range and optional class filters to review attendance trends and export the report."
+              actionLabel="Generate report"
+              onAction={handleGenerateReport}
+            />
+          )
         }
       />
-
-      {/* Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <ReportMetricCard
-          title={tAttendance("averageAttendance")}
-          value={`${metrics?.averageAttendance || 0}%`}
-          icon={Percent}
-        />
-        <ReportMetricCard
-          title={tAttendance("presentDays")}
-          value={metrics?.totalPresent || 0}
-          icon={CalendarCheck}
-        />
-        <ReportMetricCard
-          title={tAttendance("absentDays")}
-          value={metrics?.totalAbsent || 0}
-          icon={AlertTriangle}
-        />
-        <ReportMetricCard
-          title={tAttendance("defaulterList")}
-          value={metrics?.defaulterCount || 0}
-          icon={Users}
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <BarChart
-          title={tAttendance("classWiseAttendance")}
-          data={classWiseData.map((c) => ({
-            label: c.className,
-            value: c.averagePercentage,
-            color: "hsl(var(--primary))",
-          }))}
-          height={200}
-        />
-        <LineChart
-          title="Attendance Trend"
-          data={data.slice(0, 5).map((_, i) => ({
-            label: `S${i + 1}`,
-            value: data[i]?.attendancePercentage || 0,
-          }))}
-          height={200}
-        />
-      </div>
-
-      {/* Defaulter List */}
-      {defaulters.length > 0 && (
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="text-red-800">
-              {tAttendance("defaulterList")} ({defaulters.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-              {defaulters.map((defaulter) => (
-                <div
-                  key={defaulter.id}
-                  className="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm"
-                >
-                  <div>
-                    <p className="font-medium">{defaulter.studentName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {defaulter.className} - {defaulter.section}
-                    </p>
-                  </div>
-                  <span className="text-red-600 font-bold">
-                    {defaulter.attendancePercentage}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Detailed Table */}
-      <ReportTable
-        title="Attendance Details"
-        columns={columns}
-        data={data}
-        isLoading={isLoading}
-        showExport={false}
-        onExportCSV={handleExportExcel}
-      />
-
-      {/* Export Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleExportExcel} disabled={data.length === 0}>
-          <FileSpreadsheet className="mr-2 h-4 w-4" />
-          Export to Excel
-        </Button>
-      </div>
-
-      {/* Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Report Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Students</p>
-              <p className="text-2xl font-bold">{metrics?.totalStudents || data.length}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Good Attendance</p>
-              <p className="text-2xl font-bold text-green-600">
-                {data.filter((r) => r.status === "GOOD").length}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Average Attendance</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {data.filter((r) => r.status === "AVERAGE").length}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Deficit Attendance</p>
-              <p className="text-2xl font-bold text-red-600">
-                {data.filter((r) => r.status === "DEFICIT").length}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
+

@@ -7,7 +7,8 @@ import {
   notFound,
   badRequest,
 } from "@/lib/api-response";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
+import { integrityViolation, lockedUpdateMessage } from "@/lib/data-integrity";
 
 // Grading scale configuration
 const GRADING_SCALE = [
@@ -40,12 +41,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const result = await prisma.examResult.findUnique({
@@ -105,22 +104,42 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
     const body = await request.json();
 
     // Verify result exists
     const existingResult = await prisma.examResult.findUnique({
       where: { id, tenantId },
+      include: {
+        exam: {
+          select: {
+            isPublished: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (!existingResult) {
       return notFound("Exam result not found");
+    }
+
+    if (existingResult.exam.isPublished) {
+      return integrityViolation(
+        lockedUpdateMessage("Exam result", "the parent exam has already been published"),
+        [
+          {
+            field: "id",
+            code: "locked",
+            message:
+              "Published exam results cannot be edited directly. Unpublish the exam or use a controlled correction workflow.",
+          },
+        ]
+      );
     }
 
     // Validate required fields
@@ -192,21 +211,40 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     // Verify result exists
     const existingResult = await prisma.examResult.findUnique({
       where: { id, tenantId },
+      include: {
+        exam: {
+          select: {
+            isPublished: true,
+          },
+        },
+      },
     });
 
     if (!existingResult) {
       return notFound("Exam result not found");
+    }
+
+    if (existingResult.exam.isPublished) {
+      return integrityViolation(
+        "Exam result cannot be deleted because the parent exam has already been published.",
+        [
+          {
+            field: "id",
+            code: "locked",
+            message:
+              "Published exam results must remain for historical consistency. Use a controlled correction workflow instead of deletion.",
+          },
+        ]
+      );
     }
 
     await prisma.examResult.delete({

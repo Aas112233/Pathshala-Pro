@@ -3,39 +3,42 @@ import { prisma } from "@/lib/prisma";
 import { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
+import { getJwtSecretKey } from "@/lib/jwt";
 
 export interface AuthContext {
   user: User;
   tenantId: string;
 }
 
-const getJwtSecretKey = () => {
-  const secret = process.env.JWT_SECRET || "default_super_secret_key_for_jwt_2026_fallback";
-  return new TextEncoder().encode(secret);
-};
-
 /**
  * Extract and validate user from request headers
  * In production, this validates JWT tokens from the Authorization header using jose
  */
-export async function getAuthContext(request: NextRequest): Promise<AuthContext | null> {
+export async function getAuthContext(
+  request: NextRequest,
+  options?: { allowTrustedHeaders?: boolean }
+): Promise<AuthContext | null> {
   try {
     // Get authorization header
     const authHeader = request.headers.get("authorization");
-    
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const cookieToken = request.cookies.get("auth_token")?.value;
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : cookieToken;
+
+    if (!token) {
       return null;
     }
-
-    const token = authHeader.substring(7);
     
     // For development/production: verify user info from standard JWT token
     let userId: string | null = null;
     let tenantId: string | null = null;
 
-    // Try to get from header (for internal microservices / test requests)
-    userId = request.headers.get("x-user-id");
-    tenantId = request.headers.get("x-tenant-id");
+    if (options?.allowTrustedHeaders) {
+      // Trusted internal requests can pass pre-validated identity headers.
+      userId = request.headers.get("x-user-id");
+      tenantId = request.headers.get("x-tenant-id");
+    }
 
     // If not in headers, cryptographically decode and verify from token using jose
     if (!userId || !tenantId) {

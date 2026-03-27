@@ -68,17 +68,26 @@ export const updateTransactionSchema = createTransactionSchema.partial();
 
 // Staff schemas
 export const createStaffSchema = z.object({
-  staffId: z.string().min(1, "Staff ID is required"),
+  staffId: z.string().min(1, "Staff ID is required").optional(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  firstNameBn: z.string().optional(),
+  lastNameBn: z.string().optional(),
   department: z.string().min(1, "Department is required"),
   designation: z.string().min(1, "Designation is required"),
-  email: z.string().email().optional(),
+  email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
   baseSalary: z.number().min(0).default(0),
   hireDate: z.string().min(1, "Hire date is required"),
   joiningDate: z.string().optional(),
   qualification: z.string().optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  dateOfBirth: z.string().optional(),
+  address: z.string().optional(),
+  profilePictureUrl: z.string().url().optional(),
+  driveFileId: z.string().optional(),
+  isActive: z.boolean().default(true),
+  userId: z.string().optional(),
 });
 
 export const updateStaffSchema = createStaffSchema.partial();
@@ -212,6 +221,23 @@ export const createSalaryLedgerSchema = z.object({
   deductions: z.number().min(0).default(0),
   advances: z.number().min(0).default(0),
   status: z.enum(["PENDING", "PARTIAL", "PAID"]).default("PENDING"),
+  paidAmount: z.number().min(0).default(0),
+  paidAt: z.string().optional(),
 });
 
 export const updateSalaryLedgerSchema = createSalaryLedgerSchema.partial();
+
+// Bulk payroll schema
+export const bulkPayrollEntrySchema = z.object({
+  staffProfileId: z.string().min(1, "Staff is required"),
+  baseSalary: z.number().min(0),
+  deductions: z.number().min(0).default(0),
+  advances: z.number().min(0).default(0),
+});
+
+export const bulkPayrollSchema = z.object({
+  academicYearId: z.string().min(1, "Academic year is required"),
+  month: z.number().min(1).max(12),
+  year: z.number().min(2000).max(2100),
+  entries: z.array(bulkPayrollEntrySchema).min(1, "At least one entry is required"),
+});

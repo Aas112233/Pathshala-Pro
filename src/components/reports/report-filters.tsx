@@ -26,6 +26,7 @@ interface ReportFiltersProps {
   showStatusFilter?: boolean;
   showPaymentMethodFilter?: boolean;
   showExamTypeFilter?: boolean;
+  statusOptions?: { value: string; label: string }[];
   classes?: { id: string; name: string }[];
   sections?: { id: string; name: string }[];
   groups?: { id: string; name: string }[];
@@ -56,6 +57,12 @@ export function ReportFilters({
   showStatusFilter = false,
   showPaymentMethodFilter = false,
   showExamTypeFilter = false,
+  statusOptions = [
+    { value: "PENDING", label: "Pending" },
+    { value: "PAID", label: "Paid" },
+    { value: "PARTIAL", label: "Partial" },
+    { value: "OVERDUE", label: "Overdue" },
+  ],
   classes = [],
   sections = [],
   groups = [],
@@ -191,10 +198,11 @@ export function ReportFilters({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="PAID">Paid</SelectItem>
-                  <SelectItem value="PARTIAL">Partial</SelectItem>
-                  <SelectItem value="OVERDUE">Overdue</SelectItem>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

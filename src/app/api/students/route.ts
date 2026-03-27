@@ -10,9 +10,8 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createStudentSchema, updateStudentSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
-import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/students
@@ -20,12 +19,10 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -67,10 +64,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const totalCount = await prisma.studentProfile.count({ where });
-
-    // Get students
-    const students = await prisma.studentProfile.findMany({
+    const [totalCount, students] = await Promise.all([
+      prisma.studentProfile.count({ where }),
+      prisma.studentProfile.findMany({
       where,
       skip,
       take: limit,
@@ -113,7 +109,8 @@ export async function GET(request: NextRequest) {
           }
         },
       },
-    });
+    })
+    ]);
 
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -140,12 +137,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const body = await request.json();
     const validation = createStudentSchema.safeParse(body);

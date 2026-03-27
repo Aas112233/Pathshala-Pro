@@ -1,4 +1,3 @@
-import { hasPermission } from "@/lib/permissions";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -9,8 +8,15 @@ import {
   badRequest,
   validationError,
 } from "@/lib/api-response";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { z } from "zod";
+import {
+  buildLockedFieldsDetails,
+  getClassUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 const updateClassSchema = z.object({
   name: z.string().min(2, "Class name must be at least 2 characters").optional(),
@@ -27,12 +33,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const classData = await prisma.class.findUnique({
@@ -72,12 +76,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -101,6 +103,39 @@ export async function PUT(
 
     if (!existingClass) {
       return notFound("Class not found");
+    }
+
+    const usageCounts = await getClassUsageCounts(tenantId, id);
+    const lockedFields: string[] = [];
+
+    if (
+      usageCounts.promotions > 0 &&
+      Object.prototype.hasOwnProperty.call(body, "name")
+    ) {
+      lockedFields.push("name");
+    }
+
+    if (
+      (usageCounts.students > 0 ||
+        usageCounts.promotions > 0 ||
+        usageCounts.classSubjects > 0 ||
+        usageCounts.promotionRules > 0) &&
+      Object.prototype.hasOwnProperty.call(body, "classNumber")
+    ) {
+      lockedFields.push("classNumber");
+    }
+
+    if (lockedFields.length > 0) {
+      return integrityViolation(
+        lockedUpdateMessage(
+          "Class",
+          "it already has linked students, promotions, or academic setup"
+        ),
+        buildLockedFieldsDetails(
+          lockedFields,
+          "the class already has linked students, promotions, or academic setup"
+        )
+      );
     }
 
     const updatedClass = await prisma.class.update({
@@ -132,12 +167,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     // Check if class exists
@@ -149,13 +182,16 @@ export async function DELETE(
       return notFound("Class not found");
     }
 
-    // Check for related records
-    const studentCount = await prisma.studentProfile.count({
-      where: { classId: id },
-    });
-
-    if (studentCount > 0) {
-      return badRequest("Cannot delete class with enrolled students");
+    const usageCounts = await getClassUsageCounts(tenantId, id);
+    if (Object.values(usageCounts).some((count) => count > 0)) {
+      return integrityViolation(lockedDeleteMessage("Class", usageCounts), [
+        {
+          field: "id",
+          code: "in_use",
+          message:
+            "Classes with enrolled students, setup mappings, or promotion history cannot be deleted. Mark the class inactive instead.",
+        },
+      ]);
     }
 
     await prisma.class.delete({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,8 @@ interface ImagePreviewModalProps {
   alt?: string;
   title?: string;
 }
+
+const ANIMATION_DURATION = 200;
 
 export function ImagePreviewModal({
   isOpen,
@@ -27,20 +29,41 @@ export function ImagePreviewModal({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
 
+  // Animation state
+  const [isMounted, setIsMounted] = useState(false);
+  const [animationState, setAnimationState] = useState<'entering' | 'open' | 'exiting' | 'closed'>('closed');
+
+  // Open/close animation
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
-      // Reset zoom and position when opening
+      setIsMounted(true);
       setScale(1);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
-    } else {
-      document.body.style.overflow = "unset";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setAnimationState('entering');
+          const timer = setTimeout(() => setAnimationState('open'), ANIMATION_DURATION);
+          return () => clearTimeout(timer);
+        });
+      });
+      document.body.style.overflow = "hidden";
+    } else if (isMounted) {
+      setAnimationState('exiting');
+      const timer = setTimeout(() => {
+        setAnimationState('closed');
+        setIsMounted(false);
+        document.body.style.overflow = "unset";
+      }, ANIMATION_DURATION);
+      return () => clearTimeout(timer);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen]);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -106,14 +129,28 @@ export function ImagePreviewModal({
     setRotation((prev) => (prev + 90) % 360);
   };
 
-  if (!isOpen || typeof document === "undefined") return null;
+  if (!isMounted || typeof document === "undefined") return null;
+
+  const isVisible = animationState === 'entering' || animationState === 'open';
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95">
+    <div
+      className={cn(
+        "fixed inset-0 z-[100] flex items-center justify-center transition-colors",
+        isVisible
+          ? "bg-black/95 duration-200 ease-out"
+          : "bg-black/0 duration-200 ease-in"
+      )}
+    >
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+        className={cn(
+          "absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white transition-all hover:bg-white/20",
+          isVisible
+            ? "opacity-100 scale-100 duration-200 ease-out"
+            : "opacity-0 scale-90 duration-200 ease-in"
+        )}
         aria-label="Close preview"
       >
         <X className="h-6 w-6" />
@@ -121,14 +158,26 @@ export function ImagePreviewModal({
 
       {/* Title */}
       {title && (
-        <div className="absolute left-4 top-4 z-10 text-white">
+        <div
+          className={cn(
+            "absolute left-4 top-4 z-10 text-white transition-all",
+            isVisible
+              ? "opacity-100 translate-y-0 duration-200 ease-out"
+              : "opacity-0 -translate-y-2 duration-200 ease-in"
+          )}
+        >
           <h3 className="text-lg font-semibold">{title}</h3>
         </div>
       )}
 
       {/* Image container */}
       <div
-        className="flex h-full w-full items-center justify-center overflow-hidden"
+        className={cn(
+          "flex h-full w-full items-center justify-center overflow-hidden transition-all",
+          isVisible
+            ? "opacity-100 scale-100 duration-200 ease-out"
+            : "opacity-0 scale-95 duration-200 ease-in"
+        )}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -149,7 +198,14 @@ export function ImagePreviewModal({
       </div>
 
       {/* Zoom controls */}
-      <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+      <div
+        className={cn(
+          "absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm transition-all",
+          isVisible
+            ? "opacity-100 translate-y-0 duration-200 ease-out"
+            : "opacity-0 translate-y-4 duration-200 ease-in"
+        )}
+      >
         <Button
           variant="ghost"
           size="icon"

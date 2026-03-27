@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse, unauthorized } from "@/lib/api-response";
 import { jwtVerify } from "jose";
+import { getJwtSecretKey } from "@/lib/jwt";
 
 /**
  * GET /api/tenants
@@ -14,9 +15,7 @@ export async function GET(request: NextRequest) {
 
     if (!token) return unauthorized();
 
-    const secret = process.env.JWT_SECRET || "default_super_secret_key_for_jwt_2026_fallback";
-    const encodedSecret = new TextEncoder().encode(secret);
-    const { payload } = await jwtVerify(token, encodedSecret);
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
 
     if (payload.role !== "SYSTEM_ADMIN") {
       return unauthorized("Only system administrators can access this.");

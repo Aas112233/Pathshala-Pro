@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useUpdateUser } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import { ShieldCheck, ShieldAlert } from "lucide-react";
+import type { UserPermissions } from "@/lib/permissions";
+import type { UserRecord } from "@/types/users";
 
 interface PermissionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: any | null;
+  user: UserRecord | null;
 }
 
 const MODULES = [
@@ -42,21 +44,21 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
   useEffect(() => {
     if (user && isOpen) {
         // Safe parsing if stringified in database, or use object if raw JSON
-        let initialPerms = {};
+        let initialPerms: UserPermissions = {};
         try {
             if (typeof user.permissions === "string") {
-                initialPerms = JSON.parse(user.permissions);
+                initialPerms = JSON.parse(user.permissions) as UserPermissions;
             } else if (typeof user.permissions === "object" && user.permissions !== null) {
                 initialPerms = user.permissions;
             }
-        } catch(e) {}
+        } catch {}
         
         // Ensure all modules and actions exist in state
         const state: Record<string, Record<string, boolean>> = {};
         MODULES.forEach(mod => {
             state[mod.id] = {};
             ACTIONS.forEach(act => {
-                state[mod.id][act.id] = (initialPerms as any)?.[mod.id]?.[act.id] || false;
+                state[mod.id][act.id] = initialPerms?.[mod.id]?.[act.id] || false;
             });
         });
         

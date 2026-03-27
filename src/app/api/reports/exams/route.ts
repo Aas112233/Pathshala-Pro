@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform results
-    const transformedResults = results.map((result) => ({
+    const transformedResults = results.map((result: any) => ({
       id: result.id,
       studentName: `${result.studentProfile.firstName} ${result.studentProfile.lastName}`,
       className: result.studentProfile.class?.name || "N/A",

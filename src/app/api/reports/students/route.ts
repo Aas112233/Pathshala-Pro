@@ -1,18 +1,14 @@
 import { NextRequest } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { getAuthContext } from "@/lib/auth";
-import { forbidden } from "next/navigation";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+import { requireApiAccess } from "@/lib/api-auth";
+import { errorResponse, successResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return forbidden();
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { user } = authContext;
+    const { tenantId } = access.authContext;
 
     const searchParams = request.nextUrl.searchParams;
     const fromDate = searchParams.get("fromDate");
@@ -48,7 +44,7 @@ export async function GET(request: NextRequest) {
     // Fetch students with related data
     const students = await prisma.studentProfile.findMany({
       where: {
-        tenantId: user.tenantId,
+        tenantId,
         ...(Object.keys(dateFilter).length > 0 && {
           admissionDate: dateFilter,
         }),
@@ -74,24 +70,24 @@ export async function GET(request: NextRequest) {
 
     // Calculate metrics
     const totalStudents = students.length;
-    const activeStudents = students.filter((s) => s.status === "ACTIVE").length;
+    const activeStudents = students.filter((s: any) => s.status === "ACTIVE").length;
     const newAdmissions = students.filter(
-      (s) =>
+      (s: any) =>
         fromDate && toDate
           ? s.admissionDate >= new Date(fromDate) && s.admissionDate <= new Date(toDate)
           : true
     ).length;
-    const transferredOut = students.filter((s) => s.status === "TRANSFERRED").length;
-    const graduated = students.filter((s) => s.status === "GRADUATED").length;
+    const transferredOut = students.filter((s: any) => s.status === "TRANSFERRED").length;
+    const graduated = students.filter((s: any) => s.status === "GRADUATED").length;
 
     // Gender distribution
-    const maleCount = students.filter((s) => s.gender === "MALE").length;
-    const femaleCount = students.filter((s) => s.gender === "FEMALE").length;
-    const otherCount = students.filter((s) => s.gender === "OTHER" || !s.gender).length;
+    const maleCount = students.filter((s: any) => s.gender === "MALE").length;
+    const femaleCount = students.filter((s: any) => s.gender === "FEMALE").length;
+    const otherCount = students.filter((s: any) => s.gender === "OTHER" || !s.gender).length;
 
     // Class-wise strength
     const classWiseMap = new Map<string, number>();
-    students.forEach((student) => {
+    students.forEach((student: any) => {
       const className = student.class?.name || "N/A";
       classWiseMap.set(className, (classWiseMap.get(className) || 0) + 1);
     });
@@ -103,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     // Admission trend (monthly)
     const monthlyMap = new Map<string, number>();
-    students.forEach((student) => {
+    students.forEach((student: any) => {
       const month = student.admissionDate.toLocaleString("default", { month: "short" });
       monthlyMap.set(month, (monthlyMap.get(month) || 0) + 1);
     });
@@ -114,7 +110,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // Transform students for response
-    const transformedStudents = students.map((student) => ({
+    const transformedStudents = students.map((student: any) => ({
       id: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
       className: student.class?.name || "N/A",
@@ -129,34 +125,25 @@ export async function GET(request: NextRequest) {
       contactNumber: student.guardianContact,
     }));
 
-    return Response.json({
-      success: true,
-      data: {
-        metrics: {
-          totalStudents,
-          activeStudents,
-          newAdmissions,
-          transferredOut,
-          graduated,
-        },
-        genderDistribution: {
-          male: maleCount,
-          female: femaleCount,
-          other: otherCount,
-        },
-        classWise: classWiseData,
-        admissionTrend: admissionTrendData,
-        students: transformedStudents,
+    return successResponse({
+      metrics: {
+        totalStudents,
+        activeStudents,
+        newAdmissions,
+        transferredOut,
+        graduated,
       },
+      genderDistribution: {
+        male: maleCount,
+        female: femaleCount,
+        other: otherCount,
+      },
+      classWise: classWiseData,
+      admissionTrend: admissionTrendData,
+      students: transformedStudents,
     });
   } catch (error) {
     console.error("Student report error:", error);
-    return Response.json(
-      {
-        success: false,
-        message: "Failed to generate student report",
-      },
-      { status: 500 }
-    );
+    return errorResponse("Failed to generate student report", 500);
   }
 }

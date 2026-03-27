@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -28,8 +29,8 @@ export function SystemAdminSidebar({ collapsed, onToggle }: SystemAdminSidebarPr
       {/* Brand */}
       <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
         <Link href="/system-admin" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
-            <ShieldCheck className="h-4 w-4" />
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-indigo-600 text-white">
+            <Image src="/pathshalapro-app-icon.webp" alt="App Icon" fill className="object-cover scale-125 rounded-lg" />
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold tracking-tight text-white">

@@ -62,6 +62,11 @@ export default function SubjectsPage() {
     passMarks: 33,
     isActive: true,
   });
+  const [formErrors, setFormErrors] = useState<{
+    subjectId?: string;
+    name?: string;
+    code?: string;
+  }>({});
 
   function resetForm() {
     setFormData({
@@ -73,6 +78,7 @@ export default function SubjectsPage() {
       passMarks: 33,
       isActive: true,
     });
+    setFormErrors({});
   }
 
   function handleCreateOpen() {
@@ -97,8 +103,15 @@ export default function SubjectsPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
-    if (!formData.subjectId || !formData.name || !formData.code) {
+
+    const nextErrors: typeof formErrors = {};
+    if (!formData.subjectId.trim()) nextErrors.subjectId = "Subject ID is required";
+    if (!formData.name.trim()) nextErrors.name = "Subject name is required";
+    if (!formData.code.trim()) nextErrors.code = "Subject code is required";
+
+    setFormErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
       toast.error(t('pleaseFillRequired'));
       return;
     }
@@ -318,20 +331,36 @@ export default function SubjectsPage() {
                   <Input
                     id="subjectId"
                     value={formData.subjectId}
-                    onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, subjectId: e.target.value });
+                      if (formErrors.subjectId) {
+                        setFormErrors((prev) => ({ ...prev, subjectId: undefined }));
+                      }
+                    }}
                     placeholder="SUB-MAT"
                     disabled={!!editingSubject}
+                    aria-invalid={Boolean(formErrors.subjectId)}
+                    className={formErrors.subjectId ? "border-destructive focus:ring-destructive" : undefined}
                   />
+                  {formErrors.subjectId && <p className="text-xs text-destructive">{formErrors.subjectId}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="code">{t('subjectCode')} *</Label>
                   <Input
                     id="code"
                     value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, code: e.target.value.toUpperCase() });
+                      if (formErrors.code) {
+                        setFormErrors((prev) => ({ ...prev, code: undefined }));
+                      }
+                    }}
                     placeholder="MAT"
                     maxLength={10}
+                    aria-invalid={Boolean(formErrors.code)}
+                    className={formErrors.code ? "border-destructive focus:ring-destructive" : undefined}
                   />
+                  {formErrors.code && <p className="text-xs text-destructive">{formErrors.code}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">{t('category')}</Label>
@@ -358,9 +387,17 @@ export default function SubjectsPage() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (formErrors.name) {
+                      setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    }
+                  }}
                   placeholder="Mathematics"
+                  aria-invalid={Boolean(formErrors.name)}
+                  className={formErrors.name ? "border-destructive focus:ring-destructive" : undefined}
                 />
+                {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

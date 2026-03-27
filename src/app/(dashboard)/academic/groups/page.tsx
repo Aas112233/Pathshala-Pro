@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { AppModal } from "@/components/ui/app-modal";
 import { Layers, Plus, Pencil, Trash2, CheckCircle, XCircle, X, Search } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
 
 interface GroupData {
   id: string;
@@ -50,14 +52,7 @@ export default function GroupsPage() {
   const { data: classesData } = useQuery({
     queryKey: ["classes-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/classes?limit=100", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/classes?limit=100");
       if (!res.ok) throw new Error("Failed to fetch classes");
       return res.json();
     },
@@ -67,14 +62,7 @@ export default function GroupsPage() {
   const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
     queryKey: ["subjects-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/subjects?isActive=true", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/subjects?isActive=true");
       if (!res.ok) throw new Error("Failed to fetch subjects");
       return res.json();
     },
@@ -93,14 +81,7 @@ export default function GroupsPage() {
         limit: "20",
         ...(search && { search }),
       });
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(`/api/groups?${params}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/groups?${params}`);
       if (!res.ok) throw new Error("Failed to fetch groups");
       return res.json();
     },
@@ -108,14 +89,10 @@ export default function GroupsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const res = await fetch("/api/groups", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
         },
         body: JSON.stringify(data),
       });
@@ -135,14 +112,10 @@ export default function GroupsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const res = await fetch(`/api/groups/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
         },
         body: JSON.stringify(data),
       });
@@ -163,15 +136,7 @@ export default function GroupsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(`/api/groups/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/groups/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete group");
       return res.json();
     },
@@ -191,6 +156,11 @@ export default function GroupsPage() {
     selectedSubjects: [] as string[],
     isActive: true,
   });
+  const [formErrors, setFormErrors] = useState<{
+    classId?: string;
+    name?: string;
+    shortName?: string;
+  }>({});
 
   const resetForm = () => {
     setFormData({
@@ -201,10 +171,20 @@ export default function GroupsPage() {
       isActive: true,
     });
     setSubjectSearch("");
+    setFormErrors({});
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: typeof formErrors = {};
+    if (!formData.classId) nextErrors.classId = `${t('class')} is required`;
+    if (!formData.name.trim()) nextErrors.name = `${t('groupName')} is required`;
+    if (!formData.shortName.trim()) nextErrors.shortName = `${t('shortName')} is required`;
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
     const data = {
       classId: formData.classId,
       name: formData.name,
@@ -314,22 +294,12 @@ export default function GroupsPage() {
       accessorKey: "isActive",
       header: t('tableColumns.status'),
       cell: ({ getValue }) => (
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${getValue<boolean>()
-            ? "bg-green-100 text-green-800"
-            : "bg-gray-100 text-gray-800"
-            }`}
-        >
-          {getValue<boolean>() ? (
-            <>
-              <CheckCircle className="h-3 w-3" /> {t('active')}
-            </>
-          ) : (
-            <>
-              <XCircle className="h-3 w-3" /> {t('inactive')}
-            </>
-          )}
-        </span>
+        <StatusBadge
+          status={getValue<boolean>()}
+          domain="active"
+          label={getValue<boolean>() ? t('active') : t('inactive')}
+          icon={getValue<boolean>() ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+        />
       ),
     },
     {
@@ -408,7 +378,12 @@ export default function GroupsPage() {
             <label className="text-sm font-medium">{t('class')}</label>
             <AppDropdown
               value={formData.classId}
-              onChange={(val) => setFormData({ ...formData, classId: val })}
+              onChange={(val) => {
+                setFormData({ ...formData, classId: val });
+                if (formErrors.classId) setFormErrors((prev) => ({ ...prev, classId: undefined }));
+              }}
+              invalid={Boolean(formErrors.classId)}
+              triggerClassName={formErrors.classId ? "border-destructive ring-1 ring-destructive" : ""}
               options={[
                 { value: "", label: t('selectClass') },
                 ...classOptions,
@@ -416,28 +391,37 @@ export default function GroupsPage() {
               placeholder={t('selectClass')}
               searchable
             />
+            {formErrors.classId && <p className="text-xs text-destructive">{formErrors.classId}</p>}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t('groupName')}</label>
             <input
-              required
+              aria-invalid={Boolean(formErrors.name)}
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+              }}
               placeholder="e.g., Science"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+              className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.name && "border-destructive focus:ring-destructive")}
             />
+            {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t('shortName')}</label>
             <input
-              required
+              aria-invalid={Boolean(formErrors.shortName)}
               value={formData.shortName}
-              onChange={(e) => setFormData({ ...formData, shortName: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, shortName: e.target.value });
+                if (formErrors.shortName) setFormErrors((prev) => ({ ...prev, shortName: undefined }));
+              }}
               placeholder="e.g., SCI"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+              className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.shortName && "border-destructive focus:ring-destructive")}
             />
+            {formErrors.shortName && <p className="text-xs text-destructive">{formErrors.shortName}</p>}
           </div>
 
           {/* Subject Multi-Select from API */}
@@ -507,13 +491,12 @@ export default function GroupsPage() {
                         />
                         <span className="flex-1 truncate">{subject.name}</span>
                         <span className="text-xs text-muted-foreground">{subject.code}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                          subject.category === "COMPULSORY"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}>
-                          {subject.category === "COMPULSORY" ? "C" : "E"}
-                        </span>
+                        <StatusBadge
+                          status={subject.category}
+                          domain="subjectType"
+                          label={subject.category === "COMPULSORY" ? "C" : "E"}
+                          className="text-[10px] px-1.5 py-0.5"
+                        />
                       </label>
                     );
                   })

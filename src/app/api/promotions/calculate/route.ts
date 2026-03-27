@@ -7,8 +7,7 @@ import {
   notFound,
   badRequest,
 } from "@/lib/api-response";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
 import type { StudentProfile as BaseStudentProfile } from "@/types/entities";
 import type { ExamResult as PrismaExamResult, Subject, Class } from "@prisma/client";
 
@@ -27,12 +26,10 @@ interface ExamResultWithRelations extends PrismaExamResult {
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
     const academicYearId = searchParams.get("academicYearId");

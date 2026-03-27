@@ -8,6 +8,7 @@ import { AppDropdown } from "@/components/ui/app-dropdown";
 import { DataTable } from "@/components/shared/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { formatStudentName } from "@/lib/utils";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   ClipboardCheck,
   Save,
@@ -78,14 +79,7 @@ export default function ExamResultsPage() {
   const { data: examsData } = useQuery({
     queryKey: ["exams-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/exams", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/exams");
       if (!res.ok) throw new Error("Failed to fetch exams");
       return res.json();
     },
@@ -95,14 +89,7 @@ export default function ExamResultsPage() {
   const { data: classesData } = useQuery({
     queryKey: ["classes-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/classes?limit=100&isActive=true", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) throw new Error("Failed to fetch classes");
       return res.json();
     },
@@ -112,8 +99,6 @@ export default function ExamResultsPage() {
   const { data: allResultsData, isLoading: isResultsLoading } = useQuery({
     queryKey: ["all-exam-results", listPage, debouncedSearch, filterExam, filterSubject, filterStatus],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const params = new URLSearchParams({
         page: String(listPage),
         limit: String(LIST_PAGE_SIZE),
@@ -123,12 +108,7 @@ export default function ExamResultsPage() {
       if (filterSubject) params.set("subjectId", filterSubject);
       if (filterStatus) params.set("status", filterStatus);
 
-      const res = await fetch(`/api/exam-results?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/exam-results?${params}`);
       if (!res.ok) throw new Error("Failed to fetch results");
       return res.json();
     },
@@ -225,16 +205,9 @@ export default function ExamResultsPage() {
   const { data: studentsData, isLoading: studentsLoading } = useQuery({
     queryKey: ["students-by-class", selectedClass],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const res = await fetch(
         `/api/students?limit=200&classId=${selectedClass}&status=ACTIVE&sortBy=rollNumber&sortOrder=asc`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "X-Tenant-ID": tenantId || "",
-          },
-        }
+        {}
       );
       if (!res.ok) throw new Error("Failed to fetch students");
       return res.json();
@@ -246,17 +219,7 @@ export default function ExamResultsPage() {
   const { data: existingResultsData } = useQuery({
     queryKey: ["exam-results", selectedExam, selectedSubject],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(
-        `/api/exam-results?examId=${selectedExam}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "X-Tenant-ID": tenantId || "",
-          },
-        }
-      );
+      const res = await fetch(`/api/exam-results?examId=${selectedExam}`);
       if (!res.ok) throw new Error("Failed to fetch results");
       return res.json();
     },
@@ -333,17 +296,12 @@ export default function ExamResultsPage() {
   // Save exam results
   const saveMutation = useMutation({
     mutationFn: async (results: any[]) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-
       // If editing a single result, use PUT with single result
       if (editingResult) {
         const res = await fetch(`/api/exam-results/${editingResult.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            "X-Tenant-ID": tenantId || "",
           },
           body: JSON.stringify(results[0]),
         });
@@ -359,8 +317,6 @@ export default function ExamResultsPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
         },
         body: JSON.stringify(results),
       });
@@ -576,15 +532,19 @@ export default function ExamResultsPage() {
       cell: ({ getValue }) => {
         const status = getValue<string>();
         return status === "PASS" ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-            <CheckCircle className="h-3 w-3" />
-            {t("pass")}
-          </span>
+          <StatusBadge
+            status="PASS"
+            domain="examResult"
+            label={t("pass")}
+            icon={<CheckCircle className="h-3 w-3" />}
+          />
         ) : status === "FAIL" ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-            <XCircle className="h-3 w-3" />
-            {t("fail")}
-          </span>
+          <StatusBadge
+            status="FAIL"
+            domain="examResult"
+            label={t("fail")}
+            icon={<XCircle className="h-3 w-3" />}
+          />
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
         );
@@ -798,15 +758,19 @@ export default function ExamResultsPage() {
                         <div className="col-span-2 flex justify-center">
                           {student.obtainedMarks !== "" ? (
                             isPassing ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                                <CheckCircle className="h-3 w-3" />
-                                {t("pass")}
-                              </span>
+                              <StatusBadge
+                                status="PASS"
+                                domain="examResult"
+                                label={t("pass")}
+                                icon={<CheckCircle className="h-3 w-3" />}
+                              />
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-                                <XCircle className="h-3 w-3" />
-                                {t("fail")}
-                              </span>
+                              <StatusBadge
+                                status="FAIL"
+                                domain="examResult"
+                                label={t("fail")}
+                                icon={<XCircle className="h-3 w-3" />}
+                              />
                             )
                           ) : (
                             <span className="text-xs text-muted-foreground">

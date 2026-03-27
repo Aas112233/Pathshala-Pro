@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 // ──────────── Types ────────────
 interface ClassData {
@@ -34,12 +35,8 @@ interface ClassData {
 
 // ──────────── Helpers ────────────
 function getAuthHeaders() {
-  const token = localStorage.getItem("auth_token");
-  const tenantId = localStorage.getItem("tenant_id");
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-    "X-Tenant-ID": tenantId || "",
   };
 }
 
@@ -61,6 +58,7 @@ export default function ClassesPage() {
 
   // Form state
   const [formData, setFormData] = useState({ name: "", classNumber: "" as any, isActive: true });
+  const [formErrors, setFormErrors] = useState<{ name?: string; classNumber?: string }>({});
   const [classNumberError, setClassNumberError] = useState("");
   const [pendingSubjects, setPendingSubjects] = useState<string[]>([]);
   const [subjectTypeMap, setSubjectTypeMap] = useState<Record<string, boolean>>({});
@@ -156,6 +154,7 @@ export default function ClassesPage() {
   // ──── Handlers ────
   const resetForm = () => {
     setFormData({ name: "", classNumber: "" as any, isActive: true });
+    setFormErrors({});
     setClassNumberError("");
     setPendingSubjects([]);
     setSubjectTypeMap({});
@@ -222,6 +221,14 @@ export default function ClassesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setClassNumberError("");
+    const nextErrors: { name?: string; classNumber?: string } = {};
+    if (!formData.name.trim()) nextErrors.name = t("className") + " is required";
+    if (!String(formData.classNumber).trim()) nextErrors.classNumber = t("classNumber") + " is required";
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
 
     const payload = { ...formData, classNumber: parseInt(formData.classNumber) || 0 };
 
@@ -290,13 +297,12 @@ export default function ClassesPage() {
       cell: ({ getValue }) => {
         const active = getValue<boolean>();
         return (
-          <span className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-            active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
-          )}>
-            {active ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-            {active ? t("active") : t("inactive")}
-          </span>
+          <StatusBadge
+            status={active}
+            domain="active"
+            label={active ? t("active") : t("inactive")}
+            icon={active ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+          />
         );
       },
     },
@@ -419,30 +425,44 @@ export default function ClassesPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{t("className")}</label>
                 <input
-                  required
+                  aria-invalid={Boolean(formErrors.name)}
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
                   placeholder="e.g., Class 10"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+                  className={cn(
+                    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary",
+                    formErrors.name && "border-destructive focus:border-destructive focus:ring-destructive"
+                  )}
                 />
+                {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{t("classNumber")}</label>
                 <input
                   type="number"
-                  required
+                  aria-invalid={Boolean(formErrors.classNumber || classNumberError)}
                   value={formData.classNumber}
                   onChange={(e) => {
                     setFormData({ ...formData, classNumber: e.target.value as any });
                     setClassNumberError("");
+                    if (formErrors.classNumber) setFormErrors((prev) => ({ ...prev, classNumber: undefined }));
                   }}
                   placeholder="e.g., 10"
                   className={cn(
                     "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary",
-                    classNumberError && "border-destructive focus:border-destructive focus:ring-destructive"
+                    (classNumberError || formErrors.classNumber) && "border-destructive focus:border-destructive focus:ring-destructive"
                   )}
                 />
+                {formErrors.classNumber && !classNumberError && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <XCircle className="h-3 w-3" />
+                    {formErrors.classNumber}
+                  </p>
+                )}
                 {classNumberError && (
                   <p className="text-xs text-destructive flex items-center gap-1">
                     <XCircle className="h-3 w-3" />
@@ -520,14 +540,14 @@ export default function ClassesPage() {
                               e.stopPropagation();
                               handleTypeChange(subject.subjectId);
                             }}
-                            className={cn(
-                              "shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors",
-                              isCompulsory
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-amber-100 text-amber-700"
-                            )}
+                            className="shrink-0"
                           >
-                            {isCompulsory ? t("compulsory") : t("elective")}
+                            <StatusBadge
+                              status={isCompulsory ? "COMPULSORY" : "ELECTIVE"}
+                              domain="subjectType"
+                              label={isCompulsory ? t("compulsory") : t("elective")}
+                              className="text-[10px] font-semibold uppercase tracking-wider cursor-pointer"
+                            />
                           </button>
                         )}
                       </div>
@@ -606,14 +626,12 @@ export default function ClassesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                          cs.isCompulsory
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
-                        )}>
-                          {cs.isCompulsory ? t("compulsory") : t("elective")}
-                        </span>
+                        <StatusBadge
+                          status={cs.isCompulsory ? "COMPULSORY" : "ELECTIVE"}
+                          domain="subjectType"
+                          label={cs.isCompulsory ? t("compulsory") : t("elective")}
+                          className="text-[10px] font-semibold uppercase tracking-wider"
+                        />
                       </td>
                     </tr>
                   ))}

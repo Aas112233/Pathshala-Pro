@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-response";
 import { loginSchema, createUserSchema } from "@/lib/schemas";
 import { hashPassword, verifyPassword, generateAuthToken } from "@/lib/auth";
+import { setAuthCookie } from "@/lib/auth-cookies";
 
 /**
  * POST /api/auth/login
@@ -56,9 +57,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Generate auth token
-    const token = generateAuthToken(user.id, user.tenantId);
+    const token = await generateAuthToken(user.id, user.tenantId, user.role);
 
-    return successResponse(
+    const response = successResponse(
       {
         user: {
           id: user.id,
@@ -68,10 +69,11 @@ export async function POST(request: NextRequest) {
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
         },
-        token,
       },
       "Login successful"
     );
+    setAuthCookie(response, token);
+    return response;
   } catch (error) {
     console.error("Login error:", error);
     return errorResponse("Internal server error", 500);

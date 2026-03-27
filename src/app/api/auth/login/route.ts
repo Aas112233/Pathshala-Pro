@@ -9,6 +9,7 @@ import {
 import { loginSchema } from "@/lib/schemas";
 import { verifyPassword, generateAuthToken } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { setAuthCookie } from "@/lib/auth-cookies";
 
 /**
  * POST /api/auth/login
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Generate cryptographically signed JWT NextAuth token
     const token = await generateAuthToken(user.id, user.tenantId, user.role);
 
-    return successResponse(
+    const response = successResponse(
       {
         user: {
           id: user.id,
@@ -82,10 +83,11 @@ export async function POST(request: NextRequest) {
           tenantName: user.tenant.name,
           permissions: (user as any).permissions,
         },
-        token,
       },
       "Login successful"
     );
+    setAuthCookie(response, token);
+    return response;
   } catch (error) {
     console.error("Login error:", error);
     return errorResponse("Internal server error", 500);

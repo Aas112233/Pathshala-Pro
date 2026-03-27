@@ -8,8 +8,13 @@ import {
   badRequest,
 } from "@/lib/api-response";
 import { updateFeeVoucherSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  buildLockedFieldsDetails,
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/fees/[id]
@@ -20,12 +25,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const feeVoucher = await prisma.feeVoucher.findUnique({
@@ -85,12 +88,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -116,9 +117,33 @@ export async function PUT(
       return notFound("Fee voucher not found");
     }
 
+    const transactionsCount = await prisma.transaction.count({
+      where: { tenantId, feeVoucherId: id },
+    });
+
     // Don't allow updating if voucher is paid or cancelled
     if (["PAID", "CANCELLED"].includes(existingVoucher.status)) {
       return badRequest(`Cannot update ${existingVoucher.status} voucher`);
+    }
+
+    const lockedFields = [
+      "studentProfileId",
+      "academicYearId",
+      "feeType",
+      "baseAmount",
+      "discountAmount",
+      "arrears",
+      "dueDate",
+    ].filter((field) => transactionsCount > 0 && Object.prototype.hasOwnProperty.call(body, field));
+
+    if (lockedFields.length > 0) {
+      return integrityViolation(
+        lockedUpdateMessage("Fee voucher", "payments have already been collected against it"),
+        buildLockedFieldsDetails(
+          lockedFields,
+          "payments have already been collected against this voucher"
+        )
+      );
     }
 
     // Calculate new totals if amounts are being updated
@@ -175,12 +200,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     // Check if fee voucher exists
@@ -192,13 +215,26 @@ export async function DELETE(
       return notFound("Fee voucher not found");
     }
 
-    // Check for related transactions
     const transactions = await prisma.transaction.count({
-      where: { feeVoucherId: id },
+      where: { tenantId, feeVoucherId: id },
     });
 
-    if (transactions > 0) {
-      return badRequest("Cannot delete fee voucher with existing transactions");
+    if (transactions > 0 || existingVoucher.amountPaid > 0 || existingVoucher.status !== "PENDING") {
+      return integrityViolation(
+        lockedDeleteMessage("Fee voucher", {
+          transactions,
+          payments: existingVoucher.amountPaid > 0 ? 1 : 0,
+          nonPendingStatus: existingVoucher.status !== "PENDING" ? 1 : 0,
+        }),
+        [
+          {
+            field: "id",
+            code: "in_use",
+            message:
+              "Issued or paid fee vouchers cannot be deleted. Use cancellation or an adjustment workflow instead.",
+          },
+        ]
+      );
     }
 
     await prisma.feeVoucher.delete({

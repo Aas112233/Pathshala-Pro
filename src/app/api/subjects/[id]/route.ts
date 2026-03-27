@@ -9,8 +9,14 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { updateSubjectSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { requireApiAccess } from "@/lib/api-auth";
+import {
+  buildLockedFieldsDetails,
+  getSubjectUsageCounts,
+  integrityViolation,
+  lockedDeleteMessage,
+  lockedUpdateMessage,
+} from "@/lib/data-integrity";
 
 /**
  * GET /api/subjects/[id]
@@ -21,12 +27,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const subject = await prisma.subject.findUnique({
@@ -53,12 +57,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
     const body = await request.json();
     const validation = updateSubjectSchema.safeParse(body);
@@ -80,6 +82,31 @@ export async function PUT(
 
     if (!existingSubject) {
       return notFound("Subject not found");
+    }
+
+    const usageCounts = await getSubjectUsageCounts(tenantId, id);
+    const subjectLocked =
+      usageCounts.examResults > 0 || usageCounts.examMappings > 0 || usageCounts.classMappings > 0;
+    const attemptedCoreFields = [
+      "subjectId",
+      "name",
+      "code",
+      "category",
+      "maxMarks",
+      "passMarks",
+    ].filter((field) => Object.prototype.hasOwnProperty.call(body, field));
+
+    if (subjectLocked && attemptedCoreFields.length > 0) {
+      return integrityViolation(
+        lockedUpdateMessage(
+          "Subject",
+          "it is already linked to class mapping, exam setup, or exam results"
+        ),
+        buildLockedFieldsDetails(
+          attemptedCoreFields,
+          "the subject is already linked to class mapping, exam setup, or exam results"
+        )
+      );
     }
 
     // Check subject ID uniqueness if changing
@@ -116,12 +143,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
     const { id } = await params;
 
     const existingSubject = await prisma.subject.findUnique({
@@ -132,14 +157,15 @@ export async function DELETE(
       return notFound("Subject not found");
     }
 
-    // Check if subject is used in any exam results
-    const resultsCount = await prisma.examResult.count({
-      where: { subjectId: id },
-    });
-
-    if (resultsCount > 0) {
-      return badRequest("Cannot delete subject with existing exam results", [
-        { field: "subjectId", code: "in_use", message: "Subject is used in exam results" },
+    const usageCounts = await getSubjectUsageCounts(tenantId, id);
+    if (Object.values(usageCounts).some((count) => count > 0)) {
+      return integrityViolation(lockedDeleteMessage("Subject", usageCounts), [
+        {
+          field: "id",
+          code: "in_use",
+          message:
+            "Subjects already used by class setup, exam setup, or results cannot be deleted. Mark the subject inactive instead.",
+        },
       ]);
     }
 

@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     const collectionRate =
       vouchers.length > 0
         ? Math.round(
-          (vouchers.filter((v) => v.status === "PAID").length / vouchers.length) * 100
+          (vouchers.filter((v: any) => v.status === "PAID").length / vouchers.length) * 100
         )
         : 0;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -108,8 +109,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Brand */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         <Link href="/" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <GraduationCap className="h-4 w-4" />
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-primary-foreground">
+            <Image src="/pathshalapro-app-icon.webp" alt="App Icon" fill className="object-cover scale-125 rounded-lg" />
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">

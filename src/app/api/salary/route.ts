@@ -9,9 +9,8 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createSalaryLedgerSchema, updateSalaryLedgerSchema } from "@/lib/schemas";
-import { getAuthContext } from "@/lib/auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
-import { hasPermission } from "@/lib/permissions";
 
 /**
  * GET /api/salary
@@ -19,12 +18,10 @@ import { hasPermission } from "@/lib/permissions";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -54,9 +51,9 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
-    const totalCount = await prisma.salaryLedger.count({ where });
-
-    const salaryLedgers = await prisma.salaryLedger.findMany({
+    const [totalCount, salaryLedgers] = await Promise.all([
+      prisma.salaryLedger.count({ where }),
+      prisma.salaryLedger.findMany({
       where,
       skip,
       take: limit,
@@ -78,7 +75,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-    });
+    })
+    ]);
 
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -102,12 +100,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return unauthorized("Authentication required");
-    }
+    const access = await requireApiAccess(request);
+    if ("response" in access) return access.response;
 
-    const { tenantId } = authContext;
+    const { tenantId } = access.authContext;
 
     const body = await request.json();
     const validation = createSalaryLedgerSchema.safeParse(body);

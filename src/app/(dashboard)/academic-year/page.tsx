@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { CalendarRange, Plus, Pencil, Trash2 } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useAcademicYears, useDeleteAcademicYear } from "@/hooks/use-queries";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -64,15 +65,11 @@ export default function AcademicYearPage() {
       accessorKey: "isClosed",
       header: t('tableColumns.status'),
       cell: ({ getValue }) => (
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            getValue<boolean>()
-              ? "bg-red-100 text-red-800"
-              : "bg-green-100 text-green-800"
-          }`}
-        >
-          {getValue<boolean>() ? t('status.closed') : t('status.active')}
-        </span>
+        <StatusBadge
+          status={getValue<boolean>()}
+          domain="academicYear"
+          label={getValue<boolean>() ? t('status.closed') : t('status.active')}
+        />
       ),
     },
     {

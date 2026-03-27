@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { AppModal } from "@/components/ui/app-modal";
 import { ClipboardList, Plus, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
 
 interface SectionData {
   id: string;
@@ -43,14 +45,7 @@ export default function SectionsPage() {
   const { data: classesData } = useQuery({
     queryKey: ["classes-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/classes?limit=100", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/classes?limit=100");
       if (!res.ok) throw new Error("Failed to fetch classes");
       return res.json();
     },
@@ -59,14 +54,7 @@ export default function SectionsPage() {
   const { data: groupsData } = useQuery({
     queryKey: ["groups-all"],
     queryFn: async () => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch("/api/groups?limit=100", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch("/api/groups?limit=100");
       if (!res.ok) throw new Error("Failed to fetch groups");
       return res.json();
     },
@@ -80,14 +68,7 @@ export default function SectionsPage() {
         limit: "20",
         ...(search && { search }),
       });
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(`/api/sections?${params}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/sections?${params}`);
       if (!res.ok) throw new Error("Failed to fetch sections");
       return res.json();
     },
@@ -95,14 +76,10 @@ export default function SectionsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const res = await fetch("/api/sections", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
         },
         body: JSON.stringify(data),
       });
@@ -122,14 +99,10 @@ export default function SectionsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
       const res = await fetch(`/api/sections/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
         },
         body: JSON.stringify(data),
       });
@@ -150,15 +123,7 @@ export default function SectionsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const token = localStorage.getItem("auth_token");
-      const tenantId = localStorage.getItem("tenant_id");
-      const res = await fetch(`/api/sections/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Tenant-ID": tenantId || "",
-        },
-      });
+      const res = await fetch(`/api/sections/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete section");
       return res.json();
     },
@@ -180,6 +145,11 @@ export default function SectionsPage() {
     roomNumber: "",
     isActive: true,
   });
+  const [formErrors, setFormErrors] = useState<{
+    classId?: string;
+    name?: string;
+    shortName?: string;
+  }>({});
 
   const resetForm = () => {
     setFormData({
@@ -191,10 +161,20 @@ export default function SectionsPage() {
       roomNumber: "",
       isActive: true,
     });
+    setFormErrors({});
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: typeof formErrors = {};
+    if (!formData.classId) nextErrors.classId = `${t('class')} is required`;
+    if (!formData.name.trim()) nextErrors.name = `${t('sectionName')} is required`;
+    if (!formData.shortName.trim()) nextErrors.shortName = `${t('shortName')} is required`;
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
     const data: any = {
       ...formData,
       capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
@@ -285,22 +265,12 @@ export default function SectionsPage() {
       accessorKey: "isActive",
       header: t('tableColumns.status'),
       cell: ({ getValue }) => (
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${getValue<boolean>()
-            ? "bg-green-100 text-green-800"
-            : "bg-gray-100 text-gray-800"
-            }`}
-        >
-          {getValue<boolean>() ? (
-            <>
-              <CheckCircle className="h-3 w-3" /> {t('active')}
-            </>
-          ) : (
-            <>
-              <XCircle className="h-3 w-3" /> {t('inactive')}
-            </>
-          )}
-        </span>
+        <StatusBadge
+          status={getValue<boolean>()}
+          domain="active"
+          label={getValue<boolean>() ? t('active') : t('inactive')}
+          icon={getValue<boolean>() ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+        />
       ),
     },
     {
@@ -370,7 +340,12 @@ export default function SectionsPage() {
             <label className="text-sm font-medium">{t('class')}</label>
             <AppDropdown
               value={formData.classId}
-              onChange={(val) => setFormData({ ...formData, classId: val })}
+              onChange={(val) => {
+                setFormData({ ...formData, classId: val });
+                if (formErrors.classId) setFormErrors((prev) => ({ ...prev, classId: undefined }));
+              }}
+              invalid={Boolean(formErrors.classId)}
+              triggerClassName={formErrors.classId ? "border-destructive ring-1 ring-destructive" : ""}
               options={[
                 { value: "", label: t('selectClass') },
                 ...classOptions,
@@ -378,6 +353,7 @@ export default function SectionsPage() {
               placeholder={t('selectClass')}
               searchable
             />
+            {formErrors.classId && <p className="text-xs text-destructive">{formErrors.classId}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -398,23 +374,31 @@ export default function SectionsPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t('sectionName')}</label>
               <input
-                required
+                aria-invalid={Boolean(formErrors.name)}
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                }}
                 placeholder={t('sectionName')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+                className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.name && "border-destructive focus:ring-destructive")}
               />
+              {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
             </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t('shortName')}</label>
               <input
-                required
+                aria-invalid={Boolean(formErrors.shortName)}
                 value={formData.shortName}
-                onChange={(e) => setFormData({ ...formData, shortName: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, shortName: e.target.value });
+                  if (formErrors.shortName) setFormErrors((prev) => ({ ...prev, shortName: undefined }));
+                }}
                 placeholder={t('shortName')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+                className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.shortName && "border-destructive focus:ring-destructive")}
               />
+              {formErrors.shortName && <p className="text-xs text-destructive">{formErrors.shortName}</p>}
             </div>
           </div>
 

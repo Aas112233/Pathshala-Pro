@@ -4,6 +4,11 @@ import type {
   ApiErrorResponse,
   PaginationParams,
 } from "@/types/api";
+import type {
+  CreateUserPayload,
+  UpdateUserPayload,
+  UserRecord,
+} from "@/types/users";
 
 const API_BASE_URL = "";
 
@@ -13,24 +18,14 @@ interface FetchOptions extends RequestInit {
 
 export class ApiClient {
   private baseUrl: string;
-  private token: string | null;
-  private tenantId: string | null;
 
   constructor() {
     this.baseUrl = API_BASE_URL;
-    this.token = null;
-    this.tenantId = null;
   }
 
-  setAuth(token: string, tenantId: string) {
-    this.token = token;
-    this.tenantId = tenantId;
-  }
+  setAuth(_token: string, _tenantId: string) {}
 
-  clearAuth() {
-    this.token = null;
-    this.tenantId = null;
-  }
+  clearAuth() {}
 
   private async request<T>(
     endpoint: string,
@@ -43,32 +38,11 @@ export class ApiClient {
       ...(customHeaders as Record<string, string> || {}),
     };
 
-    // Try to auto-hydrate auth from localStorage if it wasn't set yet (handles hard reloads before AuthProvider finishes useEffect)
-    if (!this.token && typeof window !== "undefined") {
-      try {
-        const storedToken = localStorage.getItem("auth_token");
-        const storedTenant = localStorage.getItem("tenant_id");
-        if (storedToken && storedTenant) {
-          this.token = storedToken;
-          this.tenantId = storedTenant;
-        }
-      } catch (e) {
-        // Ignore localStorage errors
-      }
-    }
-
-    // Add auth headers
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
-    }
-    if (this.tenantId) {
-      headers["X-Tenant-ID"] = this.tenantId;
-    }
-
     const url = `${this.baseUrl}${endpoint}`;
 
     const response = await fetch(url, {
       ...restOptions,
+      credentials: "include",
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -78,10 +52,6 @@ export class ApiClient {
     if (!response.ok) {
       // Auto logout on 401, but not if they are just trying to log in
       if (response.status === 401 && typeof window !== 'undefined' && !url.includes('/api/auth/login')) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('tenant_id');
-        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
         window.location.href = '/login';
       }
 
@@ -162,7 +132,7 @@ export const api = new ApiClient();
 // Auth API
 export const authApi = {
   login: (email: string, password: string) =>
-    api.post<{ user: any; token: string }>("/api/auth/login", { email, password }),
+    api.post<{ user: any }>("/api/auth/login", { email, password }),
 
   register: (data: any) =>
     api.post("/api/auth/register", data),
@@ -171,19 +141,19 @@ export const authApi = {
 // Users API
 export const usersApi = {
   list: (params?: PaginationParams) =>
-    api.get<any[]>("/api/users", params),
+    api.get<UserRecord[]>("/api/users", params),
 
   get: (id: string) =>
-    api.get<any>(`/api/users/${id}`),
+    api.get<UserRecord>(`/api/users/${id}`),
 
-  create: (data: any) =>
-    api.post<any>("/api/users", data),
+  create: (data: CreateUserPayload) =>
+    api.post<UserRecord>("/api/users", data),
 
-  update: (id: string, data: any) =>
-    api.put<any>(`/api/users/${id}`, data),
+  update: (id: string, data: UpdateUserPayload) =>
+    api.put<UserRecord>(`/api/users/${id}`, data),
 
   delete: (id: string) =>
-    api.delete<any>(`/api/users/${id}`),
+    api.delete<null>(`/api/users/${id}`),
 };
 
 // Students API
@@ -289,6 +259,9 @@ export const salaryApi = {
 
   delete: (id: string) =>
     api.delete<any>(`/api/salary/${id}`),
+
+  bulk: (data: any) =>
+    api.post<any>("/api/salary/bulk", data),
 };
 
 // Attendance API

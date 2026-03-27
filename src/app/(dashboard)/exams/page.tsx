@@ -39,6 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { cn } from "@/lib/utils";
 
 const EXAM_TYPES = [
   { value: "MID_TERM", label: "Mid-Term" },
@@ -121,6 +122,14 @@ export default function ExamsPage() {
     endDate: "",
     isPublished: false,
   });
+  const [formErrors, setFormErrors] = useState<{
+    academicYearId?: string;
+    name?: string;
+    classId?: string;
+    subjects?: string;
+    startDate?: string;
+    endDate?: string;
+  }>({});
 
   const filteredExams = filterType === "all"
     ? exams
@@ -137,6 +146,7 @@ export default function ExamsPage() {
     });
     setSelectedClassId("");
     setSubjectSelectionByClass({});
+    setFormErrors({});
   }
 
   function handleCreateOpen() {
@@ -164,13 +174,21 @@ export default function ExamsPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
-    if (!formData.academicYearId || !formData.name || !selectedClassId) {
+    const nextErrors: typeof formErrors = {};
+    if (!formData.academicYearId) nextErrors.academicYearId = `${t('academicYear')} is required`;
+    if (!formData.name.trim()) nextErrors.name = `${t('examName')} is required`;
+    if (!selectedClassId) nextErrors.classId = `${t('class')} is required`;
+    if (!formData.startDate) nextErrors.startDate = `${t('startDate')} is required`;
+    if (!formData.endDate) nextErrors.endDate = `${t('endDate')} is required`;
+    if (selectedSubjectIds.length === 0) nextErrors.subjects = t('subjectsRequired');
+    setFormErrors(nextErrors);
+
+    if (nextErrors.academicYearId || nextErrors.name || nextErrors.classId || nextErrors.startDate || nextErrors.endDate) {
       toast.error(t('fillRequiredFields'));
       return;
     }
 
-    if (selectedSubjectIds.length === 0) {
+    if (nextErrors.subjects) {
       toast.error(t('subjectsRequired'));
       return;
     }
@@ -452,9 +470,12 @@ export default function ExamsPage() {
                     <Label htmlFor="academicYearId">{t('academicYear')} *</Label>
                     <Select
                       value={formData.academicYearId}
-                      onValueChange={(value) => setFormData({ ...formData, academicYearId: value })}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, academicYearId: value });
+                        if (formErrors.academicYearId) setFormErrors((prev) => ({ ...prev, academicYearId: undefined }));
+                      }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger aria-invalid={Boolean(formErrors.academicYearId)} className={formErrors.academicYearId ? "border-destructive ring-destructive" : undefined}>
                         <SelectValue placeholder={t('selectYear')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -465,6 +486,7 @@ export default function ExamsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {formErrors.academicYearId && <p className="text-xs text-destructive">{formErrors.academicYearId}</p>}
                   </div>
                 </div>
 
@@ -473,18 +495,29 @@ export default function ExamsPage() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
                     placeholder="Mid-Term Examination 2025"
+                    aria-invalid={Boolean(formErrors.name)}
+                    className={formErrors.name ? "border-destructive focus:ring-destructive" : undefined}
                   />
+                  {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="classId">{t('class')} *</Label>
                   <Select
                     value={selectedClassId}
-                    onValueChange={setSelectedClassId}
+                    onValueChange={(value) => {
+                      setSelectedClassId(value);
+                      if (formErrors.classId || formErrors.subjects) {
+                        setFormErrors((prev) => ({ ...prev, classId: undefined, subjects: undefined }));
+                      }
+                    }}
                   >
-                    <SelectTrigger id="classId">
+                    <SelectTrigger id="classId" aria-invalid={Boolean(formErrors.classId)} className={formErrors.classId ? "border-destructive ring-destructive" : undefined}>
                       <SelectValue placeholder={t('selectClass')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -495,6 +528,7 @@ export default function ExamsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.classId && <p className="text-xs text-destructive">{formErrors.classId}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -506,7 +540,7 @@ export default function ExamsPage() {
                       </span>
                     ) : null}
                   </div>
-                  <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-border p-3">
+                  <div className={cn("max-h-56 space-y-2 overflow-y-auto rounded-md border border-border p-3", formErrors.subjects && "border-destructive")}>
                     {!selectedClassId ? (
                       <p className="text-sm text-muted-foreground">{t('selectClassToLoadSubjects')}</p>
                     ) : isClassSubjectsLoading ? (
@@ -545,6 +579,7 @@ export default function ExamsPage() {
                       ))
                     )}
                   </div>
+                  {formErrors.subjects && <p className="text-xs text-destructive">{formErrors.subjects}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -575,8 +610,14 @@ export default function ExamsPage() {
                       id="startDate"
                       type="date"
                       value={formData.startDate}
-                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, startDate: e.target.value });
+                        if (formErrors.startDate) setFormErrors((prev) => ({ ...prev, startDate: undefined }));
+                      }}
+                      aria-invalid={Boolean(formErrors.startDate)}
+                      className={formErrors.startDate ? "border-destructive focus:ring-destructive" : undefined}
                     />
+                    {formErrors.startDate && <p className="text-xs text-destructive">{formErrors.startDate}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="endDate">{t('endDate')} *</Label>
@@ -584,8 +625,14 @@ export default function ExamsPage() {
                       id="endDate"
                       type="date"
                       value={formData.endDate}
-                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, endDate: e.target.value });
+                        if (formErrors.endDate) setFormErrors((prev) => ({ ...prev, endDate: undefined }));
+                      }}
+                      aria-invalid={Boolean(formErrors.endDate)}
+                      className={formErrors.endDate ? "border-destructive focus:ring-destructive" : undefined}
                     />
+                    {formErrors.endDate && <p className="text-xs text-destructive">{formErrors.endDate}</p>}
                   </div>
                 </div>
 
