@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, GraduationCap, TrendingUp } from "lucide-react";
+import { Plus, GraduationCap, TrendingUp } from "lucide-react";
 import { usePromotionRules, useCreatePromotionRule, type PromotionRule } from "@/hooks/use-exams";
 import { useAcademicYears } from "@/hooks/use-queries";
 import { useStudents } from "@/hooks/use-queries";
@@ -9,14 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import {
   Select,
   SelectContent,
@@ -26,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -129,8 +124,8 @@ export default function PromotionRulesPage() {
       {/* Rules Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
-          <div className="col-span-full text-center py-12">
-            <p className="text-muted-foreground">Loading rules...</p>
+          <div className="col-span-full">
+            <CardGridSkeleton count={6} />
           </div>
         ) : rules?.length === 0 ? (
           <div className="col-span-full text-center py-12">
@@ -192,156 +187,149 @@ export default function PromotionRulesPage() {
         )}
       </div>
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Promotion Rule</DialogTitle>
-            <DialogDescription>
-              Define promotion criteria for a class
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="academicYearId">Academic Year *</Label>
-                  <Select
-                    value={formData.academicYearId}
-                    onValueChange={(value) => setFormData({ ...formData, academicYearId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {academicYears?.map((year: any) => (
-                        <SelectItem key={year.id} value={year.id}>
-                          {year.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+      {/* Create Sheet */}
+      <TopSheet
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Create Promotion Rule"
+        description="Define promotion criteria for a class"
+        maxWidth="2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="promotion-rule-form" disabled={createRule.isPending}>
+              {createRule.isPending ? "Creating..." : "Create Rule"}
+            </Button>
+          </div>
+        }
+      >
+        <form id="promotion-rule-form" onSubmit={handleSubmit} className="space-y-5">
+          <ERPFormSection>
+            <ERPFormGrid cols={2}>
+              <ERPFormField label="Academic Year" required htmlFor="academicYearId">
+                <Select
+                  value={formData.academicYearId}
+                  onValueChange={(value) => setFormData({ ...formData, academicYearId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicYears?.map((year: any) => (
+                      <SelectItem key={year.id} value={year.id}>
+                        {year.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ERPFormField>
+              <ERPFormField label="Class" required htmlFor="classId">
+                <Select
+                  value={formData.classId}
+                  onValueChange={(value) => setFormData({ ...formData, classId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((cls: any) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ERPFormField>
+            </ERPFormGrid>
+
+            <ERPFormGrid cols={3}>
+              <ERPFormField label="Min Attendance %" htmlFor="minimumAttendance">
+                <Input
+                  id="minimumAttendance"
+                  type="number"
+                  value={formData.minimumAttendance}
+                  onChange={(e) => setFormData({ ...formData, minimumAttendance: Number(e.target.value) })}
+                />
+              </ERPFormField>
+              <ERPFormField label="Min Overall %" htmlFor="minimumOverallPercentage">
+                <Input
+                  id="minimumOverallPercentage"
+                  type="number"
+                  value={formData.minimumOverallPercentage}
+                  onChange={(e) => setFormData({ ...formData, minimumOverallPercentage: Number(e.target.value) })}
+                />
+              </ERPFormField>
+              <ERPFormField label="Min Per Subject %" htmlFor="minimumPerSubject">
+                <Input
+                  id="minimumPerSubject"
+                  type="number"
+                  value={formData.minimumPerSubject}
+                  onChange={(e) => setFormData({ ...formData, minimumPerSubject: Number(e.target.value) })}
+                />
+              </ERPFormField>
+            </ERPFormGrid>
+
+            <ERPFormGrid cols={2}>
+              <ERPFormField label="Max Failed Subjects" htmlFor="maxFailedSubjects">
+                <Input
+                  id="maxFailedSubjects"
+                  type="number"
+                  value={formData.maxFailedSubjects}
+                  onChange={(e) => setFormData({ ...formData, maxFailedSubjects: Number(e.target.value) })}
+                />
+              </ERPFormField>
+              <ERPFormField label="Next Class" htmlFor="nextClassId">
+                <Select
+                  value={formData.nextClassId}
+                  onValueChange={(value) => setFormData({ ...formData, nextClassId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select next class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No Next Class (Final)</SelectItem>
+                    {classes.map((cls: any) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ERPFormField>
+            </ERPFormGrid>
+
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Allow Conditional Promotion</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow promotion with re-exam for borderline cases
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="classId">Class *</Label>
-                  <Select
-                    value={formData.classId}
-                    onValueChange={(value) => setFormData({ ...formData, classId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select class" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes.map((cls: any) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Switch
+                  checked={formData.allowConditionalPromotion}
+                  onCheckedChange={(checked) => setFormData({ ...formData, allowConditionalPromotion: checked })}
+                />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="minimumAttendance">Min Attendance %</Label>
-                  <Input
-                    id="minimumAttendance"
-                    type="number"
-                    value={formData.minimumAttendance}
-                    onChange={(e) => setFormData({ ...formData, minimumAttendance: Number(e.target.value) })}
-                  />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Auto Promote</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically promote eligible students
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minimumOverallPercentage">Min Overall %</Label>
-                  <Input
-                    id="minimumOverallPercentage"
-                    type="number"
-                    value={formData.minimumOverallPercentage}
-                    onChange={(e) => setFormData({ ...formData, minimumOverallPercentage: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minimumPerSubject">Min Per Subject %</Label>
-                  <Input
-                    id="minimumPerSubject"
-                    type="number"
-                    value={formData.minimumPerSubject}
-                    onChange={(e) => setFormData({ ...formData, minimumPerSubject: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxFailedSubjects">Max Failed Subjects</Label>
-                  <Input
-                    id="maxFailedSubjects"
-                    type="number"
-                    value={formData.maxFailedSubjects}
-                    onChange={(e) => setFormData({ ...formData, maxFailedSubjects: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nextClassId">Next Class</Label>
-                  <Select
-                    value={formData.nextClassId}
-                    onValueChange={(value) => setFormData({ ...formData, nextClassId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select next class" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">No Next Class (Final)</SelectItem>
-                      {classes.map((cls: any) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Allow Conditional Promotion</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Allow promotion with re-exam for borderline cases
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.allowConditionalPromotion}
-                    onCheckedChange={(checked) => setFormData({ ...formData, allowConditionalPromotion: checked })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Auto Promote</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically promote eligible students
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.autoPromote}
-                    onCheckedChange={(checked) => setFormData({ ...formData, autoPromote: checked })}
-                  />
-                </div>
+                <Switch
+                  checked={formData.autoPromote}
+                  onCheckedChange={(checked) => setFormData({ ...formData, autoPromote: checked })}
+                />
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createRule.isPending}>
-                {createRule.isPending ? "Creating..." : "Create Rule"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </ERPFormSection>
+        </form>
+      </TopSheet>
     </div>
   );
 }

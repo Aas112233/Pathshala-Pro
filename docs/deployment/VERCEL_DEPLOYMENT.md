@@ -24,7 +24,7 @@ In the Vercel dashboard, add these environment variables:
 
 | Variable | Value |
 |----------|-------|
-| `DATABASE_URL` | Your MongoDB Atlas connection string |
+| `DATABASE_URL` | Your PostgreSQL connection string |
 | `NEXTAUTH_URL` | Your production URL (e.g., `https://your-app.vercel.app`) |
 | `NEXTAUTH_SECRET` | Generate with: `openssl rand -base64 32` |
 | `R2_ACCOUNT_ID` | Your Cloudflare R2 Account ID |
@@ -47,10 +47,10 @@ openssl rand -base64 32
 ```
 Copy the output and use it as `NEXTAUTH_SECRET`.
 
-### MongoDB Connection String
+### PostgreSQL Connection String
 Your `DATABASE_URL` should look like:
 ```
-mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
+postgresql://username:password@host:5432/database?schema=public&connection_limit=5
 ```
 
 ### NEXTAUTH_URL
@@ -64,11 +64,11 @@ mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=
 ### 1. Update NEXTAUTH_URL
 After first deployment, update `NEXTAUTH_URL` with your Vercel URL.
 
-### 2. Configure MongoDB Atlas
-1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
-2. Network Access → Add IP Address
-3. Add `0.0.0.0/0` (allow all) OR Vercel's IPs
-4. Save changes
+### 2. Configure Your PostgreSQL Provider
+1. Open your Postgres provider dashboard (Neon, Supabase, Railway, etc.)
+2. Allow connections from Vercel (most serverless providers allow this by default)
+3. Copy the pooled connection string into `DATABASE_URL`
+4. Run `npx prisma migrate deploy` against the production database
 
 ### 3. Test Your App
 - Visit your Vercel URL
@@ -96,12 +96,12 @@ After first deployment, update `NEXTAUTH_URL` with your Vercel URL.
 ### Runtime Errors
 - Check Vercel Function logs
 - Verify environment variables
-- Check MongoDB Atlas network access
+- Verify database provider network access / connection limits
 
 ### Authentication Issues
 - Ensure `NEXTAUTH_SECRET` is set
 - Verify `NEXTAUTH_URL` matches your domain
-- Check MongoDB connection
+- Check database connection
 
 ---
 
@@ -142,5 +142,5 @@ See [vercel.com/pricing](https://vercel.com/pricing) for details.
 
 - [Vercel Next.js Docs](https://vercel.com/docs/frameworks/nextjs)
 - [Environment Variables](https://vercel.com/docs/concepts/projects/environment-variables)
-- [MongoDB Atlas](https://www.mongodb.com/docs/atlas/)
+- [Prisma Deployment Guide](https://www.prisma.io/docs/orm/prisma-client/deployment)
 - [NextAuth.js](https://next-auth.js.org/)

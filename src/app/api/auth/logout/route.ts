@@ -1,5 +1,9 @@
 import { clearAuthCookie } from "@/lib/auth-cookies";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import {
+  successResponse,
+  errorResponse,
+  handleApiError,
+} from "@/lib/api-response";
 
 export async function POST() {
   try {
@@ -7,6 +11,6 @@ export async function POST() {
     clearAuthCookie(response);
     return response;
   } catch (error) {
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

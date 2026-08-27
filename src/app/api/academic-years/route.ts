@@ -8,6 +8,7 @@ import {
   unauthorized,
   forbidden,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { createAcademicYearSchema, updateAcademicYearSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -77,8 +78,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get academic years error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -136,7 +136,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(academicYear, "Academic year created successfully", 201);
   } catch (error) {
-    console.error("Create academic year error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

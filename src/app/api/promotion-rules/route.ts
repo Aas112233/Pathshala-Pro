@@ -7,6 +7,7 @@ import {
   notFound,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { createPromotionRuleSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -54,8 +55,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(rules, "Promotion rules retrieved successfully");
   } catch (error) {
-    console.error("Get promotion rules error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -165,7 +165,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(rule, "Promotion rule created successfully", 201);
   } catch (error) {
-    console.error("Create promotion rule error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

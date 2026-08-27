@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { CreateSalaryLedgerDTO, SalaryLedgerWithDetails } from "@/types/entities";
@@ -197,34 +197,31 @@ export function SalaryFormModal({
     }
   };
 
-  const inputClass = cn(
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-    "focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary",
-    "transition-colors duration-200"
-  );
-
-  const labelClass = "text-sm font-medium";
-  const errorClass = "text-xs text-destructive mt-1";
-
   const selectedStaff = staffList.find(s => s.id === formData.staffProfileId);
 
   return (
-    <AppModal
+    <TopSheet
       isOpen={isOpen}
       onClose={onClose}
       title={isEditing ? "Edit Salary Ledger" : "Process Salary"}
       description={isEditing ? "Update salary ledger information." : "Create a new salary ledger entry for a staff member."}
       maxWidth="3xl"
-      className="max-h-[90vh]"
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="salary-form" disabled={isLoading}>
+            {isLoading ? "Saving..." : isEditing ? "Update Salary" : "Create Salary Ledger"}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+      <form id="salary-form" onSubmit={handleSubmit} className="space-y-5">
         {/* Staff Selection */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-foreground border-b pb-2">Staff & Period</h4>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="staffProfileId" className={labelClass}>Staff Member <span className="text-destructive">*</span></Label>
+        <ERPFormSection title="Staff & Period">
+          <ERPFormGrid cols={2}>
+            <ERPFormField label="Staff Member" required htmlFor="staffProfileId">
               <AppDropdown
                 id="staffProfileId"
                 value={formData.staffProfileId}
@@ -240,11 +237,10 @@ export function SalaryFormModal({
                 placeholder="Select staff member"
                 searchable
               />
-              {errors.staffProfileId && <p id="salary-staffProfileId-error" className={errorClass}>{errors.staffProfileId}</p>}
-            </div>
+              {errors.staffProfileId && <p id="salary-staffProfileId-error" className="text-xs text-destructive mt-1">{errors.staffProfileId}</p>}
+            </ERPFormField>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="academicYearId" className={labelClass}>Academic Year <span className="text-destructive">*</span></Label>
+            <ERPFormField label="Academic Year" required htmlFor="academicYearId">
               <AppDropdown
                 id="academicYearId"
                 value={formData.academicYearId}
@@ -259,13 +255,10 @@ export function SalaryFormModal({
                 }))}
                 placeholder="Select year"
               />
-              {errors.academicYearId && <p id="salary-academicYearId-error" className={errorClass}>{errors.academicYearId}</p>}
-            </div>
-          </div>
+              {errors.academicYearId && <p id="salary-academicYearId-error" className="text-xs text-destructive mt-1">{errors.academicYearId}</p>}
+            </ERPFormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="month" className={labelClass}>Month <span className="text-destructive">*</span></Label>
+            <ERPFormField label="Month" required htmlFor="month">
               <AppDropdown
                 id="month"
                 value={formData.month.toString()}
@@ -277,11 +270,10 @@ export function SalaryFormModal({
                 options={MONTHS}
                 placeholder="Select month"
               />
-              {errors.month && <p id="salary-month-error" className={errorClass}>{errors.month}</p>}
-            </div>
+              {errors.month && <p id="salary-month-error" className="text-xs text-destructive mt-1">{errors.month}</p>}
+            </ERPFormField>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="year" className={labelClass}>Year <span className="text-destructive">*</span></Label>
+            <ERPFormField label="Year" required htmlFor="year">
               <Input
                 id="year"
                 type="number"
@@ -291,20 +283,17 @@ export function SalaryFormModal({
                 min={2000}
                 max={2100}
                 disabled={isLoading || isEditing}
-                className={cn(inputClass, errors.year && "border-destructive focus:ring-destructive")}
+                aria-invalid={Boolean(errors.year)}
               />
-              {errors.year && <p className={errorClass}>{errors.year}</p>}
-            </div>
-          </div>
-        </div>
+              {errors.year && <p className="text-xs text-destructive mt-1">{errors.year}</p>}
+            </ERPFormField>
+          </ERPFormGrid>
+        </ERPFormSection>
 
         {/* Salary Breakdown */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-foreground border-b pb-2">Salary Breakdown</h4>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="baseSalary" className={labelClass}>Base Salary</Label>
+        <ERPFormSection title="Salary Breakdown">
+          <ERPFormGrid cols={2}>
+            <ERPFormField label="Base Salary" htmlFor="baseSalary">
               <Input
                 id="baseSalary"
                 type="number"
@@ -314,16 +303,15 @@ export function SalaryFormModal({
                 min={0}
                 step={0.01}
                 disabled={isLoading}
-                className={cn(inputClass, errors.baseSalary && "border-destructive focus:ring-destructive")}
+                aria-invalid={Boolean(errors.baseSalary)}
               />
-              {errors.baseSalary && <p className={errorClass}>{errors.baseSalary}</p>}
+              {errors.baseSalary && <p className="text-xs text-destructive mt-1">{errors.baseSalary}</p>}
               {selectedStaff && !isEditing && (
                 <p className="text-xs text-muted-foreground">From profile: {selectedStaff.baseSalary}</p>
               )}
-            </div>
+            </ERPFormField>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="deductions" className={labelClass}>Deductions</Label>
+            <ERPFormField label="Deductions" htmlFor="deductions" helperText="e.g., tax, insurance">
               <Input
                 id="deductions"
                 type="number"
@@ -333,15 +321,10 @@ export function SalaryFormModal({
                 min={0}
                 step={0.01}
                 disabled={isLoading}
-                className={inputClass}
               />
-              <p className="text-xs text-muted-foreground">e.g., tax, insurance</p>
-            </div>
-          </div>
+            </ERPFormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="advances" className={labelClass}>Advances</Label>
+            <ERPFormField label="Advances" htmlFor="advances" helperText="Salary advance taken">
               <Input
                 id="advances"
                 type="number"
@@ -351,34 +334,20 @@ export function SalaryFormModal({
                 min={0}
                 step={0.01}
                 disabled={isLoading}
-                className={inputClass}
               />
-              <p className="text-xs text-muted-foreground">Salary advance taken</p>
-            </div>
+            </ERPFormField>
 
-            <div className="space-y-1.5">
-              <Label className={labelClass}>Net Payable</Label>
+            <ERPFormField label="Net Payable" helperText="Base - Deductions - Advances">
               <div className={cn(
                 "px-3 py-2 rounded-md border bg-muted font-semibold",
                 netPayable < 0 ? "border-destructive text-destructive" : "border-input text-foreground"
               )}>
                 {netPayable.toFixed(2)}
               </div>
-              <p className="text-xs text-muted-foreground">Base - Deductions - Advances</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions - Fixed at bottom */}
-        <div className="flex justify-end gap-3 pt-4 border-t mt-4 sticky bottom-0 bg-background">
-          <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Saving..." : isEditing ? "Update Salary" : "Create Salary Ledger"}
-          </Button>
-        </div>
+            </ERPFormField>
+          </ERPFormGrid>
+        </ERPFormSection>
       </form>
-    </AppModal>
+    </TopSheet>
   );
 }

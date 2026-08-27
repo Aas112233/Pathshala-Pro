@@ -6,13 +6,15 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Layers, Plus, Pencil, Trash2, CheckCircle, XCircle, X, Search } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { cn } from "@/lib/utils";
 
 interface GroupData {
   id: string;
@@ -172,6 +174,12 @@ export default function GroupsPage() {
     });
     setSubjectSearch("");
     setFormErrors({});
+  };
+
+  const handleClose = () => {
+    setIsModalOpen(false);
+    setEditingGroup(null);
+    resetForm();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -361,180 +369,163 @@ export default function GroupsPage() {
         searchPlaceholder={t('searchPlaceholder')}
       />
 
-      {/* Add/Edit Modal */}
-      <AppModal
+      {/* Add/Edit Form */}
+      <TopSheet
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingGroup(null);
-          resetForm();
-        }}
+        onClose={handleClose}
         title={editingGroup ? t('editGroup') : t('addGroup')}
         description={editingGroup ? t('update') : t('description')}
-        maxWidth="md"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('class')}</label>
-            <AppDropdown
-              value={formData.classId}
-              onChange={(val) => {
-                setFormData({ ...formData, classId: val });
-                if (formErrors.classId) setFormErrors((prev) => ({ ...prev, classId: undefined }));
-              }}
-              invalid={Boolean(formErrors.classId)}
-              triggerClassName={formErrors.classId ? "border-destructive ring-1 ring-destructive" : ""}
-              options={[
-                { value: "", label: t('selectClass') },
-                ...classOptions,
-              ]}
-              placeholder={t('selectClass')}
-              searchable
-            />
-            {formErrors.classId && <p className="text-xs text-destructive">{formErrors.classId}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('groupName')}</label>
-            <input
-              aria-invalid={Boolean(formErrors.name)}
-              value={formData.name}
-              onChange={(e) => {
-                setFormData({ ...formData, name: e.target.value });
-                if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
-              }}
-              placeholder="e.g., Science"
-              className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.name && "border-destructive focus:ring-destructive")}
-            />
-            {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('shortName')}</label>
-            <input
-              aria-invalid={Boolean(formErrors.shortName)}
-              value={formData.shortName}
-              onChange={(e) => {
-                setFormData({ ...formData, shortName: e.target.value });
-                if (formErrors.shortName) setFormErrors((prev) => ({ ...prev, shortName: undefined }));
-              }}
-              placeholder="e.g., SCI"
-              className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.shortName && "border-destructive focus:ring-destructive")}
-            />
-            {formErrors.shortName && <p className="text-xs text-destructive">{formErrors.shortName}</p>}
-          </div>
-
-          {/* Subject Multi-Select from API */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">
-              {t('subjects')}
-              {formData.selectedSubjects.length > 0 && (
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  ({formData.selectedSubjects.length} selected)
-                </span>
-              )}
-            </label>
-
-            {/* Selected subjects as chips */}
-            {formData.selectedSubjects.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pb-1">
-                {formData.selectedSubjects.map((name) => (
-                  <span
-                    key={name}
-                    className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
-                  >
-                    {name}
-                    <button
-                      type="button"
-                      onClick={() => removeSubject(name)}
-                      className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Search + subject list */}
-            <div className="rounded-md border border-input overflow-hidden">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={subjectSearch}
-                  onChange={(e) => setSubjectSearch(e.target.value)}
-                  placeholder={t('subjectsHint')}
-                  className="w-full bg-muted/30 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground/60 border-b border-input"
-                />
-              </div>
-              <div className="max-h-40 overflow-y-auto">
-                {subjectsLoading ? (
-                  <p className="p-3 text-xs text-muted-foreground text-center">Loading subjects...</p>
-                ) : filteredSubjects.length === 0 ? (
-                  <p className="p-3 text-xs text-muted-foreground text-center">No subjects found</p>
-                ) : (
-                  filteredSubjects.map((subject) => {
-                    const isSelected = formData.selectedSubjects.includes(subject.name);
-                    return (
-                      <label
-                        key={subject.id}
-                        className={`flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-muted/50 ${
-                          isSelected ? "bg-primary/5" : ""
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSubject(subject.name)}
-                          className="h-3.5 w-3.5 rounded border-input accent-primary"
-                        />
-                        <span className="flex-1 truncate">{subject.name}</span>
-                        <span className="text-xs text-muted-foreground">{subject.code}</span>
-                        <StatusBadge
-                          status={subject.category}
-                          domain="subjectType"
-                          label={subject.category === "COMPULSORY" ? "C" : "E"}
-                          className="text-[10px] px-1.5 py-0.5"
-                        />
-                      </label>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('status')}</label>
-            <AppDropdown
-              value={formData.isActive ? "ACTIVE" : "INACTIVE"}
-              onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
-              options={[
-                { value: "ACTIVE", label: t('active') },
-                { value: "INACTIVE", label: t('inactive') },
-              ]}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setIsModalOpen(false);
-                setEditingGroup(null);
-                resetForm();
-              }}
-            >
+        maxWidth="2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={handleClose}>
               {t('cancel')}
             </Button>
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+            <Button type="submit" form="group-form" disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending ? t('saving') : editingGroup ? t('update') : t('create')}
             </Button>
           </div>
+        }
+      >
+        <form id="group-form" onSubmit={handleSubmit} className="space-y-5">
+          <ERPFormSection>
+            <ERPFormGrid cols={2}>
+              <ERPFormField label={t('class')} required error={formErrors.classId}>
+                <AppDropdown
+                  value={formData.classId}
+                  onChange={(val) => {
+                    setFormData({ ...formData, classId: val });
+                    if (formErrors.classId) setFormErrors((prev) => ({ ...prev, classId: undefined }));
+                  }}
+                  invalid={Boolean(formErrors.classId)}
+                  triggerClassName={formErrors.classId ? "border-destructive ring-1 ring-destructive" : ""}
+                  options={[
+                    { value: "", label: t('selectClass') },
+                    ...classOptions,
+                  ]}
+                  placeholder={t('selectClass')}
+                  searchable
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('groupName')} required error={formErrors.name}>
+                <Input
+                  aria-invalid={Boolean(formErrors.name)}
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
+                  placeholder="e.g., Science"
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('shortName')} required error={formErrors.shortName}>
+                <Input
+                  aria-invalid={Boolean(formErrors.shortName)}
+                  value={formData.shortName}
+                  onChange={(e) => {
+                    setFormData({ ...formData, shortName: e.target.value });
+                    if (formErrors.shortName) setFormErrors((prev) => ({ ...prev, shortName: undefined }));
+                  }}
+                  placeholder="e.g., SCI"
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('status')}>
+                <AppDropdown
+                  value={formData.isActive ? "ACTIVE" : "INACTIVE"}
+                  onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
+                  options={[
+                    { value: "ACTIVE", label: t('active') },
+                    { value: "INACTIVE", label: t('inactive') },
+                  ]}
+                />
+              </ERPFormField>
+            </ERPFormGrid>
+
+            {/* Subject Multi-Select from API */}
+            <ERPFormField
+              label={t('subjects')}
+              action={
+                formData.selectedSubjects.length > 0 && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    ({formData.selectedSubjects.length} selected)
+                  </span>
+                )
+              }
+            >
+              {/* Selected subjects as chips */}
+              {formData.selectedSubjects.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pb-1">
+                  {formData.selectedSubjects.map((name) => (
+                    <span
+                      key={name}
+                      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
+                    >
+                      {name}
+                      <button
+                        type="button"
+                        onClick={() => removeSubject(name)}
+                        className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Search + subject list */}
+              <div className="rounded-md border border-input overflow-hidden">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    value={subjectSearch}
+                    onChange={(e) => setSubjectSearch(e.target.value)}
+                    placeholder={t('subjectsHint')}
+                    className="w-full rounded-none border-0 border-b bg-muted/30 py-2 pl-8 pr-3 shadow-none placeholder:text-muted-foreground/60"
+                  />
+                </div>
+                <div className="max-h-40 overflow-y-auto">
+                  {subjectsLoading ? (
+                    <p className="p-3 text-xs text-muted-foreground text-center">Loading subjects...</p>
+                  ) : filteredSubjects.length === 0 ? (
+                    <p className="p-3 text-xs text-muted-foreground text-center">No subjects found</p>
+                  ) : (
+                    filteredSubjects.map((subject) => {
+                      const isSelected = formData.selectedSubjects.includes(subject.name);
+                      return (
+                        <label
+                          key={subject.id}
+                          className={`flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-muted/50 ${
+                            isSelected ? "bg-primary/5" : ""
+                          }`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSubject(subject.name)}
+                            className="h-3.5 w-3.5"
+                          />
+                          <span className="flex-1 truncate">{subject.name}</span>
+                          <span className="text-xs text-muted-foreground">{subject.code}</span>
+                          <StatusBadge
+                            status={subject.category}
+                            domain="subjectType"
+                            label={subject.category === "COMPULSORY" ? "C" : "E"}
+                            className="text-[10px] px-1.5 py-0.5"
+                          />
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </ERPFormField>
+          </ERPFormSection>
         </form>
-      </AppModal>
+      </TopSheet>
     </div>
   );
 }

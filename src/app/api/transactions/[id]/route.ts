@@ -5,6 +5,7 @@ import {
   errorResponse,
   unauthorized,
   notFound,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { integrityViolation } from "@/lib/data-integrity";
@@ -65,8 +66,7 @@ export async function GET(
 
     return successResponse(transaction);
   } catch (error) {
-    console.error("Get transaction error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -109,7 +109,6 @@ export async function DELETE(
       ]
     );
   } catch (error) {
-    console.error("Delete transaction error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

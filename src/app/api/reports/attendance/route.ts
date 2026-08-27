@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { getAuthContext } from "@/lib/auth";
-import { forbidden } from "next/navigation";
-
-const prisma = new PrismaClient();
+import {
+  forbidden,
+  handleApiError,
+} from "@/lib/api-response";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {

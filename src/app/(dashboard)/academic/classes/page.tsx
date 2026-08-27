@@ -7,6 +7,10 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   School, Plus, Pencil, Trash2, CheckCircle, XCircle,
@@ -375,16 +379,34 @@ export default function ClassesPage() {
         searchPlaceholder={t("searchPlaceholder")}
       />
 
-      {/* ═══════════ Add/Edit Modal with Tabs ═══════════ */}
-      <AppModal
+      {/* ═══════════ Add/Edit Form with Tabs ═══════════ */}
+      <TopSheet
         isOpen={isModalOpen}
         onClose={closeModal}
         title={editingClass ? t("editClass") : t("addClass")}
         description={editingClass ? t("updateClass") : t("description")}
         maxWidth="2xl"
+        footer={
+          <div className="flex items-center justify-between gap-3 w-full">
+            <p className="text-xs text-muted-foreground">
+              {pendingSubjects.length > 0
+                ? `${pendingSubjects.length} ${t("subjectsWillBeAssigned")}`
+                : t("noSubjectsSelected")}
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" type="button" onClick={closeModal}>
+                {t("cancel")}
+              </Button>
+              <Button type="submit" form="class-form" disabled={isSaving} className="gap-2">
+                <Save className="h-4 w-4" />
+                {isSaving ? t("saving") : t("saveClassAndSubjects")}
+              </Button>
+            </div>
+          </div>
+        }
       >
         {/* Tab Bar */}
-        <div className="flex border-b border-border -mx-1 mb-5">
+        <div className="flex border-b border-border -mx-1">
           <button
             type="button"
             onClick={() => setActiveTab("details")}
@@ -418,171 +440,143 @@ export default function ClassesPage() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form id="class-form" onSubmit={handleSubmit}>
           {/* ═══ Tab 1 — Class Details ═══ */}
           {activeTab === "details" && (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">{t("className")}</label>
-                <input
-                  aria-invalid={Boolean(formErrors.name)}
-                  value={formData.name}
-                  onChange={(e) => {
-                    setFormData({ ...formData, name: e.target.value });
-                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
-                  }}
-                  placeholder="e.g., Class 10"
-                  className={cn(
-                    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary",
-                    formErrors.name && "border-destructive focus:border-destructive focus:ring-destructive"
-                  )}
-                />
-                {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
-              </div>
+            <ERPFormSection className="mt-6">
+              <ERPFormGrid cols={2}>
+                <ERPFormField label={t("className")} required error={formErrors.name}>
+                  <Input
+                    aria-invalid={Boolean(formErrors.name)}
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
+                    placeholder="e.g., Class 10"
+                  />
+                </ERPFormField>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">{t("classNumber")}</label>
-                <input
-                  type="number"
-                  aria-invalid={Boolean(formErrors.classNumber || classNumberError)}
-                  value={formData.classNumber}
-                  onChange={(e) => {
-                    setFormData({ ...formData, classNumber: e.target.value as any });
-                    setClassNumberError("");
-                    if (formErrors.classNumber) setFormErrors((prev) => ({ ...prev, classNumber: undefined }));
-                  }}
-                  placeholder="e.g., 10"
-                  className={cn(
-                    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary",
-                    (classNumberError || formErrors.classNumber) && "border-destructive focus:border-destructive focus:ring-destructive"
+                <ERPFormField label={t("classNumber")} required>
+                  <Input
+                    type="number"
+                    aria-invalid={Boolean(formErrors.classNumber || classNumberError)}
+                    value={formData.classNumber}
+                    onChange={(e) => {
+                      setFormData({ ...formData, classNumber: e.target.value as any });
+                      setClassNumberError("");
+                      if (formErrors.classNumber) setFormErrors((prev) => ({ ...prev, classNumber: undefined }));
+                    }}
+                    placeholder="e.g., 10"
+                  />
+                  {formErrors.classNumber && !classNumberError && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <XCircle className="h-3 w-3" />
+                      {formErrors.classNumber}
+                    </p>
                   )}
-                />
-                {formErrors.classNumber && !classNumberError && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <XCircle className="h-3 w-3" />
-                    {formErrors.classNumber}
-                  </p>
-                )}
-                {classNumberError && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <XCircle className="h-3 w-3" />
-                    {classNumberError}
-                  </p>
-                )}
-                {!classNumberError && (
-                  <p className="text-xs text-muted-foreground">{t("enterUniqueClassNumber")}</p>
-                )}
-              </div>
+                  {classNumberError && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <XCircle className="h-3 w-3" />
+                      {classNumberError}
+                    </p>
+                  )}
+                  {!classNumberError && (
+                    <p className="text-xs text-muted-foreground">{t("enterUniqueClassNumber")}</p>
+                  )}
+                </ERPFormField>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">{t("status")}</label>
-                <AppDropdown
-                  value={formData.isActive ? "ACTIVE" : "INACTIVE"}
-                  onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
-                  options={[
-                    { value: "ACTIVE", label: t("active") },
-                    { value: "INACTIVE", label: t("inactive") },
-                  ]}
-                />
-              </div>
-            </div>
+                <ERPFormField label={t("status")}>
+                  <AppDropdown
+                    value={formData.isActive ? "ACTIVE" : "INACTIVE"}
+                    onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
+                    options={[
+                      { value: "ACTIVE", label: t("active") },
+                      { value: "INACTIVE", label: t("inactive") },
+                    ]}
+                  />
+                </ERPFormField>
+              </ERPFormGrid>
+            </ERPFormSection>
           )}
 
           {/* ═══ Tab 2 — Subjects ═══ */}
           {activeTab === "subjects" && (
-            <div className="space-y-4">
+            <ERPFormSection
+              title={t("selectSubjects")}
+              headerAction={
+                <span className="text-xs font-medium text-muted-foreground">
+                  ({pendingSubjects.length} selected)
+                </span>
+              }
+              className="mt-6"
+            >
               {/* Available Subjects Grid */}
-              <div>
-                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  {t("selectSubjects")} ({pendingSubjects.length} selected)
-                </h4>
-                <div className="grid gap-2 md:grid-cols-2 max-h-[50vh] overflow-y-auto pr-1">
-                  {allSubjects.map((subject: any) => {
-                    const isSelected = pendingSubjects.includes(subject.subjectId);
-                    const isCompulsory = subjectTypeMap[subject.subjectId] ?? true;
+              <div className="grid gap-2 md:grid-cols-2 max-h-[50vh] overflow-y-auto pr-1">
+                {allSubjects.map((subject: any) => {
+                  const isSelected = pendingSubjects.includes(subject.subjectId);
+                  const isCompulsory = subjectTypeMap[subject.subjectId] ?? true;
 
-                    return (
-                      <div
-                        key={subject.id}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer",
-                          isSelected
-                            ? "bg-primary/5 border-primary/30 ring-1 ring-primary/20"
-                            : "bg-background hover:bg-muted/50 border-border"
-                        )}
-                        onClick={() => handleToggleSubject(subject.subjectId)}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary pointer-events-none"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{subject.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">{subject.code}</Badge>
-                            <Badge
-                              variant={subject.category === "COMPULSORY" ? "default" : "secondary"}
-                              className="text-[10px] h-4 px-1.5"
-                            >
-                              {subject.category}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {/* Compulsory/Elective Toggle */}
-                        {isSelected && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTypeChange(subject.subjectId);
-                            }}
-                            className="shrink-0"
+                  return (
+                    <div
+                      key={subject.id}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-primary/5 border-primary/30 ring-1 ring-primary/20"
+                          : "bg-background hover:bg-muted/50 border-border"
+                      )}
+                      onClick={() => handleToggleSubject(subject.subjectId)}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        className="h-4 w-4 pointer-events-none"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{subject.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-[10px] h-4 px-1.5">{subject.code}</Badge>
+                          <Badge
+                            variant={subject.category === "COMPULSORY" ? "default" : "secondary"}
+                            className="text-[10px] h-4 px-1.5"
                           >
-                            <StatusBadge
-                              status={isCompulsory ? "COMPULSORY" : "ELECTIVE"}
-                              domain="subjectType"
-                              label={isCompulsory ? t("compulsory") : t("elective")}
-                              className="text-[10px] font-semibold uppercase tracking-wider cursor-pointer"
-                            />
-                          </button>
-                        )}
+                            {subject.category}
+                          </Badge>
+                        </div>
                       </div>
-                    );
-                  })}
 
-                  {allSubjects.length === 0 && (
-                    <div className="col-span-2 text-center py-8 text-sm text-muted-foreground">
-                      No subjects available. Create subjects first.
+                      {/* Compulsory/Elective Toggle */}
+                      {isSelected && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTypeChange(subject.subjectId);
+                          }}
+                          className="shrink-0"
+                        >
+                          <StatusBadge
+                            status={isCompulsory ? "COMPULSORY" : "ELECTIVE"}
+                            domain="subjectType"
+                            label={isCompulsory ? t("compulsory") : t("elective")}
+                            className="text-[10px] font-semibold uppercase tracking-wider cursor-pointer"
+                          />
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+                  );
+                })}
 
-          {/* ═══ Footer ═══ */}
-          <div className="flex items-center justify-between gap-3 pt-5 border-t mt-5">
-            <p className="text-xs text-muted-foreground">
-              {pendingSubjects.length > 0
-                ? `${pendingSubjects.length} ${t("subjectsWillBeAssigned")}`
-                : t("noSubjectsSelected")}
-            </p>
-            <div className="flex gap-3">
-              <Button variant="outline" type="button" onClick={closeModal}>
-                {t("cancel")}
-              </Button>
-              <Button type="submit" disabled={isSaving} className="gap-2">
-                <Save className="h-4 w-4" />
-                {isSaving ? t("saving") : t("saveClassAndSubjects")}
-              </Button>
-            </div>
-          </div>
+                {allSubjects.length === 0 && (
+                  <div className="col-span-2 text-center py-8 text-sm text-muted-foreground">
+                    No subjects available. Create subjects first.
+                  </div>
+                )}
+              </div>
+            </ERPFormSection>
+          )}
         </form>
-      </AppModal>
+      </TopSheet>
 
       {/* ═══════════ View Assigned Subjects Modal ═══════════ */}
       <AppModal

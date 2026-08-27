@@ -7,6 +7,7 @@ import {
   forbidden,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { updateAcademicYearSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -89,8 +90,7 @@ export async function GET(
 
     return successResponse(academicYear);
   } catch (error) {
-    console.error("Get academic year error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -207,8 +207,7 @@ export async function PUT(
 
     return successResponse(updatedAcademicYear, "Academic year updated successfully");
   } catch (error) {
-    console.error("Update academic year error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -254,7 +253,6 @@ export async function DELETE(
 
     return successResponse(null, "Academic year deleted successfully");
   } catch (error) {
-    console.error("Delete academic year error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

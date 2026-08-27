@@ -22,38 +22,60 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
+const AUTH_STORAGE_KEY = "pathshala_auth_user";
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<{
-    user: User | null;
-    tenantId: string | null;
-    isLoading: boolean;
-  }>({
-    user: null,
-    tenantId: null,
-    isLoading: true,
-  });
+function getInitialUser(): { user: User | null; tenantId: string | null; isLoading: boolean } {
+  return { user: null, tenantId: null, isLoading: true };
+}
 
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [authState, setAuthState] = useState(getInitialUser);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
+    let isMounted = true;
+
+    // Immediately restore cached user on mount (client-side only, after clean hydration)
+    try {
+      const cached = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (cached) {
+        const user = JSON.parse(cached) as User;
+        if (user && user.tenantId) {
+          setAuthState({
+            user,
+            tenantId: user.tenantId,
+            isLoading: false,
+          });
+        }
+      }
+    } catch {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+
     const restoreAuth = async () => {
       try {
         const response = await fetch("/api/auth/session", {
           credentials: "include",
         });
 
+        if (!isMounted) return;
+
         if (response.ok) {
           const result = await response.json();
           const user = result.data as User;
-          setAuthState({
-            user,
-            tenantId: user.tenantId,
-            isLoading: false,
-          });
+          if (user) {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+            setAuthState({
+              user,
+              tenantId: user.tenantId,
+              isLoading: false,
+            });
+          }
         } else {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
           setAuthState({
             user: null,
             tenantId: null,
@@ -61,24 +83,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch (error) {
-        console.error("Failed to restore auth:", error);
-        setAuthState((prev) => ({ ...prev, isLoading: false }));
+        console.error("Failed to restore auth session:", error);
+        if (isMounted) {
+          setAuthState((prev) => ({ ...prev, isLoading: false }));
+        }
       }
     };
 
-    restoreAuth();
+    void restoreAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Protect routes
+  // Protect routes without blocking renders
   useEffect(() => {
     if (!authState.isLoading) {
       if (!authState.user) {
-        // Allow access to auth pages without login
         if (!pathname.startsWith("/login") && !pathname.startsWith("/register")) {
           router.push("/login");
         }
       } else {
-        // If user is logged in, restrict access to auth pages
         if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
           router.push("/");
         }
@@ -87,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [authState.user, authState.isLoading, pathname, router]);
 
   const login = useCallback((user: User) => {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
     setAuthState({
       user,
       tenantId: user.tenantId,
@@ -95,10 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    });
+    // Clear client auth state
+    localStorage.removeItem(AUTH_STORAGE_KEY);
 
     setAuthState({
       user: null,
@@ -106,9 +131,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading: false,
     });
 
-    // Redirect to login
-    router.push("/login");
-  }, [router]);
+    try {
+      // Invalidate the auth cookie on the server before redirecting
+      await Promise.race([
+        fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include",
+        }),
+        new Promise((resolve) => setTimeout(resolve, 400)),
+      ]);
+    } catch {
+      // Ignore network errors during logout
+    } finally {
+      // Full redirect to /login clears client cache, queries, and prevents middleware bounce
+      window.location.href = "/login";
+    }
+  }, []);
 
   return (
     <AuthContext.Provider

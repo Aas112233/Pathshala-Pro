@@ -243,15 +243,17 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
             {school.logoUrl ? (
               <Image src={school.logoUrl} style={markSheetStyles.logo} />
             ) : (
-              <View style={markSheetStyles.logo}>
-                <Text style={{ fontSize: 30, textAlign: "center" }}>🏫</Text>
+              <View style={[markSheetStyles.logo, { backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" }]}>
+                <Text style={{ fontSize: 20, color: "#1E3A8A", fontWeight: "bold" }}>
+                  {school.name ? school.name.charAt(0).toUpperCase() : "S"}
+                </Text>
               </View>
             )}
             <View style={markSheetStyles.schoolInfo}>
               <Text style={markSheetStyles.schoolName}>{school.name.toUpperCase()}</Text>
               <Text style={markSheetStyles.schoolAddress}>{school.address}</Text>
               <Text style={markSheetStyles.contact}>
-                📞 {school.phone}  |  ✉️ {school.email}
+                Tel: {school.phone}  |  Email: {school.email}
               </Text>
             </View>
           </View>

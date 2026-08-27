@@ -6,6 +6,7 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { integrityViolation, lockedUpdateMessage } from "@/lib/data-integrity";
@@ -90,8 +91,7 @@ export async function GET(
 
     return successResponse(result);
   } catch (error) {
-    console.error("Get exam result error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -197,8 +197,7 @@ export async function PUT(
 
     return successResponse(updated, "Exam result updated successfully");
   } catch (error) {
-    console.error("Update exam result error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -253,7 +252,6 @@ export async function DELETE(
 
     return successResponse(null, "Exam result deleted successfully");
   } catch (error) {
-    console.error("Delete exam result error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

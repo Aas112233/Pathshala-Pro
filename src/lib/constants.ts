@@ -18,6 +18,21 @@ import {
   FilePlus,
   TrendingUp,
   BarChart3,
+  Landmark,
+  ShieldAlert,
+  DollarSign,
+  Megaphone,
+  Radio,
+  FileSpreadsheet,
+  Library,
+  Bus,
+  UserPlus,
+  ClipboardPen,
+  CalendarOff,
+  Package,
+  BedDouble,
+  Award,
+  HeartPulse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -78,6 +93,16 @@ export const SYSTEM_ADMIN_NAV: NavGroup[] = [
     labelKey: "systemAdmin.system",
     items: [
       {
+        titleKey: "systemAdmin.broadcasts",
+        href: "/system-admin/notices",
+        icon: Megaphone,
+      },
+      {
+        titleKey: "systemAdmin.auditLogs",
+        href: "/system-admin/audit-logs",
+        icon: ShieldAlert,
+      },
+      {
         titleKey: "nav.users",
         href: "/system-admin/users",
         icon: UserCheck,
@@ -110,6 +135,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         href: "/admissions",
         icon: FilePlus,
       },
+      {
+        titleKey: "nav.enquiries",
+        href: "/enquiries",
+        icon: ClipboardList,
+      },
     ],
   },
   {
@@ -124,6 +154,31 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.attendance",
         href: "/attendance",
         icon: CalendarCheck,
+      },
+      {
+        titleKey: "nav.timetable",
+        href: "/timetable",
+        icon: CalendarRange,
+      },
+      {
+        titleKey: "nav.library",
+        href: "/library",
+        icon: Library,
+      },
+      {
+        titleKey: "nav.transport",
+        href: "/transport",
+        icon: Bus,
+      },
+      {
+        titleKey: "nav.homework",
+        href: "/homework",
+        icon: ClipboardPen,
+      },
+      {
+        titleKey: "nav.leaves",
+        href: "/leaves",
+        icon: CalendarOff,
       },
       {
         titleKey: "nav.exams",
@@ -150,6 +205,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
   {
     labelKey: "nav.academicSettings",
     items: [
+      {
+        titleKey: "nav.academicYear",
+        href: "/academic-year",
+        icon: CalendarRange,
+      },
       {
         titleKey: "nav.classes",
         href: "/academic/classes",
@@ -195,6 +255,26 @@ export const SIDEBAR_NAV: NavGroup[] = [
         href: "/transactions",
         icon: ArrowLeftRight,
       },
+      {
+        titleKey: "nav.expenses",
+        href: "/accounting/expenses",
+        icon: Wallet,
+      },
+      {
+        titleKey: "nav.bankAccounts",
+        href: "/accounting/accounts",
+        icon: Landmark,
+      },
+      {
+        titleKey: "nav.profitLoss",
+        href: "/accounting/profit-loss",
+        icon: BarChart3,
+      },
+      {
+        titleKey: "nav.statements",
+        href: "/accounting/statements",
+        icon: FileSpreadsheet,
+      },
     ],
   },
   {
@@ -209,6 +289,41 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.salaryPayroll",
         href: "/salary",
         icon: Wallet,
+      },
+    ],
+  },
+  {
+    labelKey: "nav.communication",
+    items: [
+      {
+        titleKey: "nav.notices",
+        href: "/notices",
+        icon: Megaphone,
+      },
+    ],
+  },
+  {
+    labelKey: "nav.store",
+    items: [
+      {
+        titleKey: "nav.inventory",
+        href: "/inventory",
+        icon: Package,
+      },
+      {
+        titleKey: "nav.hostel",
+        href: "/hostel",
+        icon: BedDouble,
+      },
+      {
+        titleKey: "nav.certificates",
+        href: "/certificates",
+        icon: Award,
+      },
+      {
+        titleKey: "nav.health",
+        href: "/health",
+        icon: HeartPulse,
       },
     ],
   },
@@ -239,6 +354,21 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "reports.feeReport.title",
         href: "/reports/fees",
         icon: Receipt,
+      },
+      {
+        titleKey: "reports.salaryReport.title",
+        href: "/reports/salary",
+        icon: Wallet,
+      },
+      {
+        titleKey: "reports.financialReport.title",
+        href: "/reports/financial",
+        icon: Landmark,
+      },
+      {
+        titleKey: "reports.admissionsReport.title",
+        href: "/reports/admissions",
+        icon: UserPlus,
       },
       {
         titleKey: "reports.attendanceReport.title",

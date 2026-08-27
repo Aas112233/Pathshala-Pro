@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Table,
@@ -357,14 +358,23 @@ export default function PromotionsCalculatePage() {
       )}
 
       {isLoading && (
-        <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-muted-foreground">Calculating promotion eligibility...</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-4" aria-busy="true">
+          <div className="grid gap-4 md:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Card key={i}>
+                <CardContent className="pt-6 space-y-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <CardContent className="pt-6 p-0">
+              <TableSkeleton rows={8} />
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

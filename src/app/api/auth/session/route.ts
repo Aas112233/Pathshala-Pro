@@ -2,8 +2,14 @@ import { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { prisma } from "@/lib/prisma";
 import { getJwtSecretKey } from "@/lib/jwt";
-import { successResponse, unauthorized, errorResponse } from "@/lib/api-response";
+import {
+  successResponse,
+  unauthorized,
+  errorResponse,
+  handleApiError,
+} from "@/lib/api-response";
 import { authCookieName, clearAuthCookie } from "@/lib/auth-cookies";
+import { getEffectivePermissions } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +55,7 @@ export async function GET(request: NextRequest) {
       role: user.role,
       isActive: user.isActive,
       tenantName: user.tenant.name,
-      permissions: user.permissions,
+      permissions: getEffectivePermissions(user.role, user.permissions),
     });
   } catch (error) {
     const response = unauthorized("Session expired");

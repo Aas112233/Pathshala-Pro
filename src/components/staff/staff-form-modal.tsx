@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { clsx } from "clsx";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ImagePreviewModal } from "@/components/shared/image-preview-modal";
 import { ZoomIn, UserCircle } from "lucide-react";
@@ -288,7 +288,19 @@ export function StaffFormModal({
     setIsLoading(true);
 
     try {
-      await onSubmit(formData);
+      // Strip empty strings from optional fields - the API's Zod schemas
+      // reject e.g. profilePictureUrl: "" / email: "" otherwise.
+      const payload: CreateStaffDTO = {
+        ...formData,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        qualification: formData.qualification || undefined,
+        profilePictureUrl: formData.profilePictureUrl || undefined,
+        driveFileId: formData.driveFileId || undefined,
+        address: formData.address || undefined,
+      };
+      await onSubmit(payload);
 
       // If create user account is checked, we would need to call a separate endpoint
       // This is handled by the parent component via the viewmodel
@@ -329,36 +341,36 @@ export function StaffFormModal({
     }
   };
 
-  const inputClass = cn(
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-    "focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary",
-    "transition-colors duration-200"
-  );
-
-  const labelClass = "text-sm font-medium";
-  const errorClass = "text-xs text-destructive mt-1";
-
   const handleModalClose = useCallback(() => {
     cleanupTempFile();
     onClose();
   }, [cleanupTempFile, onClose]);
 
   return (
-    <AppModal
+    <TopSheet
       isOpen={isOpen}
       onClose={handleModalClose}
       title={isEditing ? "Edit Staff Member" : "Add New Staff Member"}
       description={isEditing ? "Update staff member information." : "Create a new staff member profile in the system."}
       maxWidth="5xl"
-      className="max-h-[90vh]"
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <Button variant="outline" type="button" onClick={handleModalClose} disabled={isLoading || isUploading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="staff-form" disabled={isLoading || isUploading}>
+            {isLoading ? "Saving..." : isUploading ? "Uploading file..." : isEditing ? "Update Staff" : "Save Staff"}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+      <form id="staff-form" onSubmit={handleSubmit} className="space-y-5">
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Column - Photo Upload */}
           <div className="lg:col-span-1">
-            <div className="sticky top-0">
-              <label className="text-sm font-medium mb-2 block">Staff Photo</label>
+            <div className="sticky top-0 space-y-1.5">
+              <label className="text-xs font-semibold text-foreground/90">Staff Photo</label>
               <div className={clsx(
                 "space-y-1.5 flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg transition-colors",
                 isUploading ? "border-primary/50 bg-primary/5" : "border-muted-foreground/25 hover:bg-muted/50"
@@ -434,20 +446,15 @@ export function StaffFormModal({
           {/* Right Column - Form Fields */}
           <div className="lg:col-span-3 space-y-5">
             {/* Basic Information */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground border-b pb-2">Basic Information</h4>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className={labelClass}>Staff ID</Label>
+            <ERPFormSection title="Basic Information">
+              <ERPFormGrid cols={2}>
+                <ERPFormField label="Staff ID" helperText="Format: STAFF-YYYY-####">
                   <div className="px-3 py-2 rounded-md border border-input bg-muted text-sm text-muted-foreground">
                     Auto-generated on save
                   </div>
-                  <p className="text-xs text-muted-foreground">Format: STAFF-YYYY-####</p>
-                </div>
+                </ERPFormField>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="gender" className={labelClass}>Gender</Label>
+                <ERPFormField label="Gender" htmlFor="gender">
                   <AppDropdown
                     value={formData.gender || "MALE"}
                     onChange={(val) => handleDropdownChange("gender", val)}
@@ -458,12 +465,9 @@ export function StaffFormModal({
                       { value: "OTHER", label: "Other" },
                     ]}
                   />
-                </div>
-              </div>
+                </ERPFormField>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="firstName" className={labelClass}>First Name <span className="text-destructive">*</span></Label>
+                <ERPFormField label="First Name" required error={errors.firstName} htmlFor="firstName">
                   <Input
                     id="firstName"
                     name="firstName"
@@ -471,12 +475,10 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="First name"
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.firstName && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.firstName)}
                   />
-                  {errors.firstName && <p className={errorClass}>{errors.firstName}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="lastName" className={labelClass}>Last Name <span className="text-destructive">*</span></Label>
+                </ERPFormField>
+                <ERPFormField label="Last Name" required error={errors.lastName} htmlFor="lastName">
                   <Input
                     id="lastName"
                     name="lastName"
@@ -484,16 +486,12 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="Last name"
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.lastName && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.lastName)}
                   />
-                  {errors.lastName && <p className={errorClass}>{errors.lastName}</p>}
-                </div>
-              </div>
+                </ERPFormField>
 
-              {/* Bengali Name Fields */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="firstNameBn" className={labelClass}>First Name (Second Language)</Label>
+                {/* Bengali Name Fields */}
+                <ERPFormField label="First Name (Second Language)" htmlFor="firstNameBn">
                   <Input
                     id="firstNameBn"
                     name="firstNameBn"
@@ -501,11 +499,9 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="প্রথম নাম"
                     disabled={isLoading || isUploading}
-                    className={inputClass}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="lastNameBn" className={labelClass}>Last Name (Second Language)</Label>
+                </ERPFormField>
+                <ERPFormField label="Last Name (Second Language)" htmlFor="lastNameBn">
                   <Input
                     id="lastNameBn"
                     name="lastNameBn"
@@ -513,14 +509,10 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="শেষ নাম"
                     disabled={isLoading || isUploading}
-                    className={inputClass}
                   />
-                </div>
-              </div>
+                </ERPFormField>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="dateOfBirth" className={labelClass}>Date of Birth</Label>
+                <ERPFormField label="Date of Birth" htmlFor="dateOfBirth">
                   <Input
                     id="dateOfBirth"
                     type="date"
@@ -528,11 +520,9 @@ export function StaffFormModal({
                     value={formData.dateOfBirth}
                     onChange={handleChange}
                     disabled={isLoading || isUploading}
-                    className={inputClass}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="address" className={labelClass}>Address</Label>
+                </ERPFormField>
+                <ERPFormField label="Address" htmlFor="address">
                   <Input
                     id="address"
                     name="address"
@@ -540,19 +530,15 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="Full address"
                     disabled={isLoading || isUploading}
-                    className={inputClass}
                   />
-                </div>
-              </div>
-            </div>
+                </ERPFormField>
+              </ERPFormGrid>
+            </ERPFormSection>
 
             {/* Employment Information */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground border-b pb-2">Employment Information</h4>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="department" className={labelClass}>Department <span className="text-destructive">*</span></Label>
+            <ERPFormSection title="Employment Information">
+              <ERPFormGrid cols={2}>
+                <ERPFormField label="Department" required error={errors.department} htmlFor="department">
                   <Input
                     id="department"
                     name="department"
@@ -560,12 +546,10 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="e.g. Teaching, Administration"
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.department && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.department)}
                   />
-                  {errors.department && <p className={errorClass}>{errors.department}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="designation" className={labelClass}>Designation <span className="text-destructive">*</span></Label>
+                </ERPFormField>
+                <ERPFormField label="Designation" required error={errors.designation} htmlFor="designation">
                   <Input
                     id="designation"
                     name="designation"
@@ -573,15 +557,11 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="e.g. Senior Teacher, Principal"
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.designation && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.designation)}
                   />
-                  {errors.designation && <p className={errorClass}>{errors.designation}</p>}
-                </div>
-              </div>
+                </ERPFormField>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="hireDate" className={labelClass}>Hire Date <span className="text-destructive">*</span></Label>
+                <ERPFormField label="Hire Date" required error={errors.hireDate} htmlFor="hireDate">
                   <Input
                     id="hireDate"
                     type="date"
@@ -589,12 +569,10 @@ export function StaffFormModal({
                     value={formData.hireDate}
                     onChange={handleChange}
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.hireDate && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.hireDate)}
                   />
-                  {errors.hireDate && <p className={errorClass}>{errors.hireDate}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="joiningDate" className={labelClass}>Joining Date</Label>
+                </ERPFormField>
+                <ERPFormField label="Joining Date" htmlFor="joiningDate">
                   <Input
                     id="joiningDate"
                     type="date"
@@ -602,14 +580,10 @@ export function StaffFormModal({
                     value={formData.joiningDate}
                     onChange={handleChange}
                     disabled={isLoading || isUploading}
-                    className={inputClass}
                   />
-                </div>
-              </div>
+                </ERPFormField>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="qualification" className={labelClass}>Qualification</Label>
+                <ERPFormField label="Qualification" htmlFor="qualification">
                   <Input
                     id="qualification"
                     name="qualification"
@@ -617,11 +591,9 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="e.g. M.Ed, B.Ed"
                     disabled={isLoading || isUploading}
-                    className={inputClass}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="baseSalary" className={labelClass}>Base Salary</Label>
+                </ERPFormField>
+                <ERPFormField label="Base Salary" error={errors.baseSalary} htmlFor="baseSalary">
                   <Input
                     id="baseSalary"
                     type="number"
@@ -632,14 +604,12 @@ export function StaffFormModal({
                     min="0"
                     step="0.01"
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.baseSalary && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.baseSalary)}
                   />
-                  {errors.baseSalary && <p className={errorClass}>{errors.baseSalary}</p>}
-                </div>
-              </div>
+                </ERPFormField>
+              </ERPFormGrid>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="isActive" className={labelClass}>Status</Label>
+              <ERPFormField label="Status" htmlFor="isActive">
                 <div className="flex items-center gap-2">
                   <Switch
                     id="isActive"
@@ -649,16 +619,13 @@ export function StaffFormModal({
                   />
                   <span className="text-sm">{formData.isActive ? "Active" : "Inactive"}</span>
                 </div>
-              </div>
-            </div>
+              </ERPFormField>
+            </ERPFormSection>
 
             {/* Contact Information */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground border-b pb-2">Contact Information</h4>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className={labelClass}>Email</Label>
+            <ERPFormSection title="Contact Information">
+              <ERPFormGrid cols={2}>
+                <ERPFormField label="Email" error={errors.email} htmlFor="email">
                   <Input
                     id="email"
                     type="email"
@@ -667,12 +634,10 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="staff@school.edu"
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.email && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.email)}
                   />
-                  {errors.email && <p className={errorClass}>{errors.email}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone" className={labelClass}>Phone</Label>
+                </ERPFormField>
+                <ERPFormField label="Phone" error={errors.phone} htmlFor="phone">
                   <Input
                     id="phone"
                     name="phone"
@@ -680,18 +645,15 @@ export function StaffFormModal({
                     onChange={handleChange}
                     placeholder="+880-XXX-XXXXXX"
                     disabled={isLoading || isUploading}
-                    className={clsx(inputClass, errors.phone && "border-destructive focus:ring-destructive")}
+                    aria-invalid={Boolean(errors.phone)}
                   />
-                  {errors.phone && <p className={errorClass}>{errors.phone}</p>}
-                </div>
-              </div>
-            </div>
+                </ERPFormField>
+              </ERPFormGrid>
+            </ERPFormSection>
 
             {/* User Account Creation */}
             {!isEditing && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-foreground border-b pb-2">User Account</h4>
-
+              <ERPFormSection title="User Account">
                 <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30">
                   <Switch
                     id="createUserAccount"
@@ -710,9 +672,8 @@ export function StaffFormModal({
                 </div>
 
                 {createUserAccount && (
-                  <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted/10">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="userEmail" className={labelClass}>Login Email <span className="text-destructive">*</span></Label>
+                  <ERPFormGrid cols={2}>
+                    <ERPFormField label="Login Email" required error={errors.userEmail} htmlFor="userEmail">
                       <Input
                         id="userEmail"
                         type="email"
@@ -726,12 +687,9 @@ export function StaffFormModal({
                         placeholder="staff@school.edu"
                         disabled={isLoading || isUploading}
                         aria-invalid={Boolean(errors.userEmail)}
-                        className={cn(inputClass, errors.userEmail && "border-destructive focus:ring-destructive")}
                       />
-                      {errors.userEmail && <p className={errorClass}>{errors.userEmail}</p>}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="userPassword" className={labelClass}>Temporary Password <span className="text-destructive">*</span></Label>
+                    </ERPFormField>
+                    <ERPFormField label="Temporary Password" required error={errors.userPassword} htmlFor="userPassword">
                       <Input
                         id="userPassword"
                         type="password"
@@ -745,25 +703,13 @@ export function StaffFormModal({
                         placeholder="Min 6 characters"
                         disabled={isLoading || isUploading}
                         aria-invalid={Boolean(errors.userPassword)}
-                        className={cn(inputClass, errors.userPassword && "border-destructive focus:ring-destructive")}
                       />
-                      {errors.userPassword && <p className={errorClass}>{errors.userPassword}</p>}
-                    </div>
-                  </div>
+                    </ERPFormField>
+                  </ERPFormGrid>
                 )}
-              </div>
+              </ERPFormSection>
             )}
           </div>
-        </div>
-
-        {/* Actions - Fixed at bottom */}
-        <div className="flex justify-end gap-3 pt-4 border-t mt-4 sticky bottom-0 bg-background">
-          <Button variant="outline" type="button" onClick={handleModalClose} disabled={isLoading || isUploading}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading || isUploading}>
-            {isLoading ? "Saving..." : isUploading ? "Uploading file..." : isEditing ? "Update Staff" : "Save Staff"}
-          </Button>
         </div>
       </form>
 
@@ -774,6 +720,6 @@ export function StaffFormModal({
         alt="Staff photo preview"
         title="Staff Photo"
       />
-    </AppModal>
+    </TopSheet>
   );
 }

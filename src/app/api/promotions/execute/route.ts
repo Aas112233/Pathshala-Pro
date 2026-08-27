@@ -6,6 +6,7 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { createClassPromotionSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -199,8 +200,7 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error) {
-    console.error("Execute promotions error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -269,8 +269,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(promotions, "Promotion history retrieved successfully");
   } catch (error) {
-    console.error("Get promotions error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 

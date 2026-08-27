@@ -8,6 +8,7 @@ import {
   notFound,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { createExamResultNewSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -136,8 +137,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get exam results error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -309,8 +309,7 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error) {
-    console.error("Create exam results error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -466,7 +465,6 @@ export async function PUT(request: NextRequest) {
       `Successfully saved ${upsertedResults.length} exam result(s)`
     );
   } catch (error) {
-    console.error("Upsert exam results error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

@@ -7,7 +7,15 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CalendarCheck,
   Plus,
@@ -25,6 +33,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { cn, formatStudentName } from "@/lib/utils";
 import { MarkAttendanceModal } from "@/components/attendance/mark-attendance-modal";
+import { FastAttendanceGrid } from "@/components/attendance/fast-attendance-grid";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 export default function AttendancePage() {
@@ -36,6 +45,7 @@ export default function AttendancePage() {
   const [endDate, setEndDate] = useState("");
   const [status, setStatus] = useState("");
   const [viewType, setViewType] = useState<"all" | "students" | "staff">("all");
+  const [activeTab, setActiveTab] = useState<"grid" | "records">("grid");
   const [isMarkAttendanceOpen, setIsMarkAttendanceOpen] = useState(false);
   const { formatDate } = useTenantFormatting();
 
@@ -179,12 +189,26 @@ export default function AttendancePage() {
         description={t('description')}
         icon={CalendarCheck}
       >
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            {t('bulkActions.export')}
-          </Button>
-          <Button onClick={() => setIsMarkAttendanceOpen(true)}>
+        <div className="flex items-center gap-2">
+          <div className="bg-muted p-1 rounded-lg flex items-center gap-1 border border-border">
+            <Button
+              size="sm"
+              variant={activeTab === "grid" ? "default" : "ghost"}
+              onClick={() => setActiveTab("grid")}
+              className="h-8 text-xs font-semibold"
+            >
+              Daily Fast-Grid Sheet
+            </Button>
+            <Button
+              size="sm"
+              variant={activeTab === "records" ? "default" : "ghost"}
+              onClick={() => setActiveTab("records")}
+              className="h-8 text-xs font-semibold"
+            >
+              Historical Logs
+            </Button>
+          </div>
+          <Button onClick={() => setIsMarkAttendanceOpen(true)} className="h-9">
             <Plus className="mr-2 h-4 w-4" />
             {t('markAttendance')}
           </Button>
@@ -200,7 +224,11 @@ export default function AttendancePage() {
                 <Users className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pagination?.totalCount || 0}</p>
+                {isLoading ? (
+                  <Skeleton className="mb-1 h-8 w-14" />
+                ) : (
+                  <p className="text-2xl font-bold">{pagination?.totalCount || 0}</p>
+                )}
                 <p className="text-sm text-muted-foreground">{t('stats.totalRecords')}</p>
               </div>
             </div>
@@ -214,7 +242,11 @@ export default function AttendancePage() {
                 <UserCheck className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600">{presentCount}</p>
+                {isLoading ? (
+                  <Skeleton className="mb-1 h-8 w-14" />
+                ) : (
+                  <p className="text-2xl font-bold text-green-600">{presentCount}</p>
+                )}
                 <p className="text-sm text-green-600">{t('stats.presentToday')}</p>
               </div>
             </div>
@@ -228,7 +260,11 @@ export default function AttendancePage() {
                 <UserX className="h-6 w-6 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-600">{absentCount}</p>
+                {isLoading ? (
+                  <Skeleton className="mb-1 h-8 w-14" />
+                ) : (
+                  <p className="text-2xl font-bold text-red-600">{absentCount}</p>
+                )}
                 <p className="text-sm text-red-600">{t('stats.absentToday')}</p>
               </div>
             </div>
@@ -242,7 +278,11 @@ export default function AttendancePage() {
                 <TrendingUp className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-600">{attendanceRate}%</p>
+                {isLoading ? (
+                  <Skeleton className="mb-1 h-8 w-14" />
+                ) : (
+                  <p className="text-2xl font-bold text-blue-600">{attendanceRate}%</p>
+                )}
                 <p className="text-sm text-blue-600">{t('stats.attendanceRate')}</p>
               </div>
             </div>
@@ -250,112 +290,122 @@ export default function AttendancePage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <Input
-                placeholder={t('searchPlaceholder')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full"
-              />
-            </div>
+      {activeTab === "grid" ? (
+        <FastAttendanceGrid />
+      ) : (
+        <>
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap gap-4">
+                <div className="flex-1 min-w-[200px]">
+                  <Input
+                    placeholder={t('searchPlaceholder')}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
 
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{t('viewType.all')}:</span>
-            </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t('viewType.all')}:</span>
+                </div>
 
-            <div className="flex gap-2">
-              <Button
-                variant={viewType === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewType("all")}
-              >
-                {t('viewType.all')}
-              </Button>
-              <Button
-                variant={viewType === "students" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewType("students")}
-              >
-                {t('viewType.students')}
-              </Button>
-              <Button
-                variant={viewType === "staff" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewType("staff")}
-              >
-                {t('viewType.staff')}
-              </Button>
-            </div>
-          </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewType === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewType("all")}
+                  >
+                    {t('viewType.all')}
+                  </Button>
+                  <Button
+                    variant={viewType === "students" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewType("students")}
+                  >
+                    {t('viewType.students')}
+                  </Button>
+                  <Button
+                    variant={viewType === "staff" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewType("staff")}
+                  >
+                    {t('viewType.staff')}
+                  </Button>
+                </div>
+              </div>
 
-          <div className="flex flex-wrap gap-4 mt-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">{t('dateRange.from')}:</label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-[180px]"
-              />
-            </div>
+              <div className="flex flex-wrap gap-4 mt-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">{t('dateRange.from')}:</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-[180px]"
+                  />
+                </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">{t('dateRange.to')}:</label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-[180px]"
-              />
-            </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">{t('dateRange.to')}:</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-[180px]"
+                  />
+                </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">{t('tableColumns.status')}:</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">{t('filters.status.all')}</option>
-                <option value="PRESENT">{t('filters.status.present')}</option>
-                <option value="ABSENT">{t('filters.status.absent')}</option>
-                <option value="LATE">{t('filters.status.late')}</option>
-                <option value="LEAVE">{t('filters.status.leave')}</option>
-              </select>
-            </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">{t('tableColumns.status')}:</label>
+                  <Select
+                    value={status || "__ALL__"}
+                    onValueChange={(value) => setStatus(value === "__ALL__" ? "" : value)}
+                  >
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder={t('filters.status.all')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__ALL__">{t('filters.status.all')}</SelectItem>
+                      <SelectItem value="PRESENT">{t('filters.status.present')}</SelectItem>
+                      <SelectItem value="ABSENT">{t('filters.status.absent')}</SelectItem>
+                      <SelectItem value="LATE">{t('filters.status.late')}</SelectItem>
+                      <SelectItem value="LEAVE">{t('filters.status.leave')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {(search || startDate || endDate || status) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearch("");
-                  setStartDate("");
-                  setEndDate("");
-                  setStatus("");
-                }}
-              >
-                {t('filters.clearFilters')}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                {(search || startDate || endDate || status) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearch("");
+                      setStartDate("");
+                      setEndDate("");
+                      setStatus("");
+                    }}
+                  >
+                    {t('filters.clearFilters')}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Data Table */}
-      <DataTable
-        columns={columns}
-        data={attendanceData}
-        pagination={pagination}
-        onPageChange={setPage}
-        isLoading={isLoading}
-        searchPlaceholder={t('searchPlaceholder')}
-      />
+          {/* Data Table */}
+          <DataTable
+            columns={columns}
+            data={attendanceData}
+            pagination={pagination}
+            onPageChange={setPage}
+            isLoading={isLoading}
+            searchPlaceholder={t('searchPlaceholder')}
+          />
+        </>
+      )}
 
       {/* Mark Attendance Modal */}
       <MarkAttendanceModal

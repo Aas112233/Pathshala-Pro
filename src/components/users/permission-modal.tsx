@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection } from "@/components/ui/erp-form-layout";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useUpdateUser } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import { ShieldCheck, ShieldAlert } from "lucide-react";
@@ -128,15 +130,31 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
   const isLoading = updateMutation.isPending;
 
   return (
-    <AppModal
+    <TopSheet
       isOpen={isOpen}
       onClose={onClose}
       title="Manage Access & Permissions"
       description={`Configure module access levels for ${user.name} (${user.email})`}
       maxWidth="3xl"
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isLoading}
+            type="button"
+          >
+            Discard
+          </Button>
+          <Button type="submit" form="permissions-form" disabled={isLoading} className="shadow-md">
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            {isLoading ? "Enforcing Rules..." : "Save Policies"}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-4 max-h-[70vh] overflow-y-auto">
-        
+      <form id="permissions-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <ERPFormSection>
         {isAdmin && (
             <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-500/30 dark:bg-orange-500/10">
                 <ShieldAlert className="mt-0.5 h-5 w-5 text-orange-600 dark:text-orange-400 shrink-0" />
@@ -159,11 +177,10 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
                                 <div className="flex flex-col items-center gap-2">
                                     <span>{action.label}</span>
                                     <label className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground cursor-pointer hover:text-foreground">
-                                        <input 
-                                            type="checkbox" 
-                                            className="accent-primary w-3.5 h-3.5"
+                                        <Checkbox
+                                            className="w-3.5 h-3.5"
                                             checked={MODULES.every(m => permissions?.[m.id]?.[action.id])}
-                                            onChange={(e) => handleToggleColumn(action.id, e.target.checked)}
+                                            onCheckedChange={(checked) => handleToggleColumn(action.id, checked === true)}
                                         />
                                         All
                                     </label>
@@ -178,11 +195,10 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
                             <td className="px-4 py-3 font-medium text-foreground">
                                 <div className="flex items-center gap-2">
                                     <label className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground cursor-pointer shrink-0">
-                                        <input 
-                                            type="checkbox" 
-                                            className="accent-primary w-3 h-3 rounded"
+                                        <Checkbox
+                                            className="w-3 h-3 rounded"
                                             checked={ACTIONS.every(a => permissions?.[module.id]?.[a.id])}
-                                            onChange={(e) => handleToggleRow(module.id, e.target.checked)}
+                                            onCheckedChange={(checked) => handleToggleRow(module.id, checked === true)}
                                         />
                                     </label>
                                     {module.label}
@@ -190,11 +206,10 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
                             </td>
                             {ACTIONS.map(action => (
                                 <td key={action.id} className="px-4 py-3 text-center">
-                                    <input
-                                        type="checkbox"
-                                        className="accent-primary w-4 h-4 rounded cursor-pointer transition-transform hover:scale-110"
+                                    <Checkbox
+                                        className="w-4 h-4 cursor-pointer transition-transform hover:scale-110"
                                         checked={!!permissions?.[module.id]?.[action.id]}
-                                        onChange={(e) => handleToggle(module.id, action.id, e.target.checked)}
+                                        onCheckedChange={(checked) => handleToggle(module.id, action.id, checked === true)}
                                     />
                                 </td>
                             ))}
@@ -203,22 +218,8 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
                 </tbody>
             </table>
         </div>
-
-        <div className="flex justify-end gap-3 sticky bottom-0 bg-background pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-            type="button"
-          >
-            Discard
-          </Button>
-          <Button type="submit" disabled={isLoading} className="shadow-md">
-            <ShieldCheck className="mr-2 h-4 w-4" />
-            {isLoading ? "Enforcing Rules..." : "Save Policies"}
-          </Button>
-        </div>
+        </ERPFormSection>
       </form>
-    </AppModal>
+    </TopSheet>
   );
 }

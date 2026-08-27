@@ -299,3 +299,219 @@ export const examsApi = {
   delete: (id: string) =>
     api.delete<any>(`/api/exams/${id}`),
 };
+
+// Expenses API
+export const expensesApi = {
+  list: (params?: SearchParams) =>
+    api.get<any[]>("/api/accounting/expenses", params),
+
+  create: (data: any) =>
+    api.post<any>("/api/accounting/expenses", data),
+
+  delete: (id: string) =>
+    api.delete<any>(`/api/accounting/expenses/${id}`),
+};
+
+// Expense Categories API
+export const expenseCategoriesApi = {
+  list: () =>
+    api.get<any[]>("/api/accounting/categories"),
+
+  create: (data: any) =>
+    api.post<any>("/api/accounting/categories", data),
+};
+
+// Bank Accounts API
+export const bankAccountsApi = {
+  list: () =>
+    api.get<any[]>("/api/accounting/accounts"),
+
+  create: (data: any) =>
+    api.post<any>("/api/accounting/accounts", data),
+};
+
+// Profit & Loss API
+export const profitLossApi = {
+  get: (year?: number) =>
+    api.get<any>("/api/accounting/profit-loss", year ? { year: year.toString() } : undefined),
+};
+
+// Enquiries API
+export const enquiriesApi = {
+  list: (params?: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString();
+    return api.get<any[]>(`/api/enquiries?${qs}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/enquiries", data),
+  update: (id: string, data: any) => api.put<any>(`/api/enquiries/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/enquiries/${id}`),
+  convert: (id: string) => api.post<any>(`/api/enquiries/${id}/convert`, {}),
+};
+
+// Leaves API
+export const leavesApi = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? new URLSearchParams(params).toString() : "";
+    return api.get<any[]>(`/api/leaves${qs ? `?${qs}` : ""}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/leaves", data),
+  update: (id: string, data: any) => api.put<any>(`/api/leaves/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/leaves/${id}`),
+};
+
+// Homework API
+export const homeworkApi = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? new URLSearchParams(params).toString() : "";
+    return api.get<any[]>(`/api/homeworks${qs ? `?${qs}` : ""}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/homeworks", data),
+  update: (id: string, data: any) => api.put<any>(`/api/homeworks/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/homeworks/${id}`),
+  submissions: {
+    list: (homeworkId: string) => api.get<any[]>(`/api/homeworks/${homeworkId}/submissions` as any),
+    create: (homeworkId: string, data: any) => api.post<any>(`/api/homeworks/${homeworkId}/submissions`, data),
+    grade: (id: string, data: any) => api.put<any>(`/api/homework-submissions/${id}`, data),
+  },
+};
+
+// Certificates API
+export const certificatesApi = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? new URLSearchParams(params).toString() : "";
+    return api.get<any[]>(`/api/certificates${qs ? `?${qs}` : ""}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/certificates", data),
+  update: (id: string, data: any) => api.put<any>(`/api/certificates/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/certificates/${id}`),
+};
+
+// Health API
+export const healthApi = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? new URLSearchParams(params).toString() : "";
+    return api.get<any[]>(`/api/health-records${qs ? `?${qs}` : ""}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/health-records", data),
+  update: (id: string, data: any) => api.put<any>(`/api/health-records/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/health-records/${id}`),
+};
+
+// Hostel API
+export const hostelApi = {
+  hostels: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/hostels${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/hostels", data),
+    update: (id: string, data: any) => api.put<any>(`/api/hostels/${id}`, data),
+    remove: (id: string) => api.delete<any>(`/api/hostels/${id}`),
+  },
+  rooms: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/hostel-rooms${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/hostel-rooms", data),
+    update: (id: string, data: any) => api.put<any>(`/api/hostel-rooms/${id}`, data),
+    remove: (id: string) => api.delete<any>(`/api/hostel-rooms/${id}`),
+  },
+  allocations: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/hostel-allocations${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/hostel-allocations", data),
+    remove: (id: string) => api.delete<any>(`/api/hostel-allocations/${id}`),
+  },
+};
+
+// Inventory API
+export const inventoryApi = {
+  items: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/inventory/items${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/inventory/items", data),
+    update: (id: string, data: any) => api.put<any>(`/api/inventory/items/${id}`, data),
+    remove: (id: string) => api.delete<any>(`/api/inventory/items/${id}`),
+  },
+  transactions: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/inventory/transactions${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/inventory/transactions", data),
+    remove: (id: string) => api.delete<any>(`/api/inventory/transactions/${id}`),
+  },
+};
+
+// Transport API
+export const transportApi = {
+  vehicles: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/transport/vehicles${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/transport/vehicles", data),
+    update: (id: string, data: any) => api.put<any>(`/api/transport/vehicles/${id}`, data),
+    remove: (id: string) => api.delete<any>(`/api/transport/vehicles/${id}`),
+  },
+  routes: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/transport/routes${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/transport/routes", data),
+    update: (id: string, data: any) => api.put<any>(`/api/transport/routes/${id}`, data),
+    remove: (id: string) => api.delete<any>(`/api/transport/routes/${id}`),
+  },
+  allocations: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/transport/allocations${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/transport/allocations", data),
+    remove: (id: string) => api.delete<any>(`/api/transport/allocations/${id}`),
+  },
+};
+
+// Library API
+export const libraryApi = {
+  books: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/library/books${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/library/books", data),
+    update: (id: string, data: any) => api.put<any>(`/api/library/books/${id}`, data),
+    remove: (id: string) => api.delete<any>(`/api/library/books/${id}`),
+  },
+  issues: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? new URLSearchParams(params).toString() : "";
+      return api.get<any[]>(`/api/library/issues${qs ? `?${qs}` : ""}` as any);
+    },
+    create: (data: any) => api.post<any>("/api/library/issues", data),
+    return: (id: string, data?: any) => api.post<any>(`/api/library/issues/${id}/return`, data || {}),
+  },
+};
+
+// Timetable API
+export const timetableApi = {
+  list: (params: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString();
+    return api.get<any[]>(`/api/timetables?${qs}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/timetables", data),
+  bulk: (entries: any[]) => api.post<any>("/api/timetables", { entries }),
+  update: (id: string, data: any) => api.put<any>(`/api/timetables/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/timetables/${id}`),
+  conflicts: (params: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString();
+    return api.get<any>(`/api/timetables/conflicts?${qs}` as any);
+  },
+};
+

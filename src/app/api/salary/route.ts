@@ -5,11 +5,12 @@ import {
   paginatedResponse,
   errorResponse,
   badRequest,
-  unauthorized,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
-import { createSalaryLedgerSchema, updateSalaryLedgerSchema } from "@/lib/schemas";
+import { createSalaryLedgerSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { smartRateLimit, dedupeRequest } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 /**
@@ -89,8 +90,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get salary error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const access = await requireApiAccess(request);
     if ("response" in access) return access.response;
 
-    const { tenantId } = access.authContext;
+    const { tenantId, user } = access.authContext as any;
 
     const body = await request.json();
     const validation = createSalaryLedgerSchema.safeParse(body);
@@ -118,6 +118,18 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
+
+    // 1. Server-side duplicate prevention
+    const dedupeKey = `SALARY_POST_${tenantId}_${data.staffProfileId}_${data.month}_${data.year}`;
+    if (!dedupeRequest(dedupeKey, 3000)) {
+      return errorResponse("Duplicate salary record request detected. Please wait a moment.", 409);
+    }
+
+    // 2. Adaptive rate limiting
+    const rateCheck = smartRateLimit(`SALARY_MUT_${tenantId}_${user?.id || "anon"}`, { preset: "mutation" });
+    if (!rateCheck.success) {
+      return errorResponse("Too many salary ledger operations. Please slow down.", 429);
+    }
 
     // Verify staff exists
     const staff = await prisma.staffProfile.findUnique({
@@ -180,7 +192,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(salaryLedger, "Salary ledger created successfully", 201);
   } catch (error) {
-    console.error("Create salary error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

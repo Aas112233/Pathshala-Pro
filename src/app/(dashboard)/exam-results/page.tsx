@@ -9,6 +9,7 @@ import { DataTable } from "@/components/shared/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { formatStudentName } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Input } from "@/components/ui/input";
 import {
   ClipboardCheck,
   Save,
@@ -20,9 +21,12 @@ import {
   Search,
   FilterX,
   Pencil,
+  Trophy,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ClassGradebookMatrix } from "@/components/exams/class-gradebook-matrix";
 
 interface StudentMark {
   studentProfileId: string;
@@ -41,6 +45,7 @@ export default function ExamResultsPage() {
 
   // View state: list (default) or form
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [activeViewTab, setActiveViewTab] = useState("ledger");
   const [editingResult, setEditingResult] = useState<any>(null);
 
   // List view filter & pagination state
@@ -566,7 +571,7 @@ export default function ExamResultsPage() {
     },
   ];
 
-  // ─── Screen 1: List View (like Admissions list) ───
+  // ─── Screen 1: List View / Class Gradebook Matrix ───
   if (!isFormOpen) {
     return (
       <div className="space-y-6">
@@ -581,75 +586,94 @@ export default function ExamResultsPage() {
           </Button>
         </PageHeader>
 
-        {/* Search & Filter Bar */}
-        <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-4">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder={t("searchPlaceholder")}
-              value={listSearch}
-              onChange={(e) => setListSearch(e.target.value)}
-              className="h-10 w-full rounded-lg border border-input bg-background pl-10 pr-4 text-sm text-foreground outline-none ring-ring transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+        <Tabs value={activeViewTab} onValueChange={setActiveViewTab}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="ledger" className="gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              {t("resultsLedger") || "Results Ledger"}
+            </TabsTrigger>
+            <TabsTrigger value="gradebook" className="gap-2">
+              <Trophy className="h-4 w-4 text-amber-500" />
+              {t("classGradebook") || "Class Gradebook & Batch Cards"}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="ledger" className="space-y-6 mt-4">
+            {/* Search & Filter Bar */}
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-4">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder={t("searchPlaceholder")}
+                  value={listSearch}
+                  onChange={(e) => setListSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Filter Dropdowns Row */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="w-48">
+                  <AppDropdown
+                    value={filterExam}
+                    onChange={setFilterExam}
+                    options={listExamFilterOptions}
+                    placeholder={t("filterAllExams")}
+                    searchable
+                  />
+                </div>
+                <div className="w-48">
+                  <AppDropdown
+                    value={filterSubject}
+                    onChange={setFilterSubject}
+                    options={listSubjectFilterOptions}
+                    placeholder={t("filterAllSubjects")}
+                    searchable
+                  />
+                </div>
+                <div className="w-40">
+                  <AppDropdown
+                    value={filterStatus}
+                    onChange={setFilterStatus}
+                    options={listStatusFilterOptions}
+                    placeholder={t("filterAllStatus")}
+                  />
+                </div>
+
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="text-muted-foreground hover:text-foreground gap-1"
+                  >
+                    <FilterX className="h-4 w-4" />
+                    {t("clearFilters")}
+                  </Button>
+                )}
+
+                {/* Result count */}
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {listPagination ? `${listPagination.totalCount}` : allResults.length} {t("totalStudents").toLowerCase()}
+                </span>
+              </div>
+            </div>
+
+            <DataTable
+              columns={listColumns}
+              data={allResults}
+              isLoading={isResultsLoading}
+              pagination={listPagination || undefined}
+              onPageChange={setListPage}
             />
-          </div>
+          </TabsContent>
 
-          {/* Filter Dropdowns Row */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="w-48">
-              <AppDropdown
-                value={filterExam}
-                onChange={setFilterExam}
-                options={listExamFilterOptions}
-                placeholder={t("filterAllExams")}
-                searchable
-              />
-            </div>
-            <div className="w-48">
-              <AppDropdown
-                value={filterSubject}
-                onChange={setFilterSubject}
-                options={listSubjectFilterOptions}
-                placeholder={t("filterAllSubjects")}
-                searchable
-              />
-            </div>
-            <div className="w-40">
-              <AppDropdown
-                value={filterStatus}
-                onChange={setFilterStatus}
-                options={listStatusFilterOptions}
-                placeholder={t("filterAllStatus")}
-              />
-            </div>
-
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-                className="text-muted-foreground hover:text-foreground gap-1"
-              >
-                <FilterX className="h-4 w-4" />
-                {t("clearFilters")}
-              </Button>
-            )}
-
-            {/* Result count */}
-            <span className="ml-auto text-xs text-muted-foreground">
-              {listPagination ? `${listPagination.totalCount}` : allResults.length} {t("totalStudents").toLowerCase()}
-            </span>
-          </div>
-        </div>
-
-        <DataTable
-          columns={listColumns}
-          data={allResults}
-          isLoading={isResultsLoading}
-          pagination={listPagination || undefined}
-          onPageChange={setListPage}
-        />
+          <TabsContent value="gradebook" className="space-y-6 mt-4">
+            <ClassGradebookMatrix exams={exams} classes={classes} />
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
@@ -672,6 +696,13 @@ export default function ExamResultsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Main Marks Entry */}
           <div className="lg:col-span-4 space-y-6">
+            <form
+              id="exam-results-marks-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
+            >
             <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
               {/* Table Header */}
               <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/50 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -731,7 +762,7 @@ export default function ExamResultsPage() {
                           </p>
                         </div>
                         <div className="col-span-2 flex justify-center">
-                          <input
+                          <Input
                             type="number"
                             value={student.obtainedMarks}
                             onChange={(e) =>
@@ -742,7 +773,7 @@ export default function ExamResultsPage() {
                             max={maxMarks}
                             step="0.5"
                             placeholder="0"
-                            className={`w-20 text-center rounded-md border border-input bg-background px-2 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary ${gradeColor}`}
+                            className={`w-20 text-center font-semibold ${gradeColor}`}
                           />
                         </div>
                         <div className="col-span-1 text-center text-sm text-muted-foreground">
@@ -784,6 +815,7 @@ export default function ExamResultsPage() {
                 </div>
               )}
             </div>
+            </form>
           </div>
 
           {/* Summary Sidebar */}
@@ -877,7 +909,8 @@ export default function ExamResultsPage() {
               </div>
 
               <Button
-                onClick={handleSave}
+                type="submit"
+                form="exam-results-marks-form"
                 disabled={
                   saveMutation.isPending || filledCount === 0
                 }

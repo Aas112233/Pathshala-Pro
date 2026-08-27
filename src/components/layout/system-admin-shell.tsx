@@ -15,13 +15,18 @@ export function SystemAdminShell({ children }: SystemAdminShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, isLoading } = useAuth();
   
-  // Strict System Admin Access Check
-  if (!isLoading && user?.role !== "SYSTEM_ADMIN") {
+  // Strict System Admin / Super Admin Access Check
+  const isAuthorized =
+    user?.role === "SYSTEM_ADMIN" ||
+    user?.role === "SUPER_ADMIN" ||
+    user?.tenantId === "system";
+
+  if (!isLoading && !isAuthorized) {
     return <NotAuthorizedScreen />;
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-background text-foreground">
       <SystemAdminSidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}

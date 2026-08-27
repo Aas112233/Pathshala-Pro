@@ -7,7 +7,7 @@ Production-grade, ultra-fast RESTful API for the PathshalaPro School Management 
 
 ### Core Components
 - **Framework**: Next.js 16 App Router with API Routes
-- **Database**: MongoDB via Prisma ORM
+- **Database**: PostgreSQL via Prisma ORM
 - **Validation**: Zod schemas for request validation
 - **Authentication**: Token-based auth with tenant isolation
 - **Response Format**: Standardized JSON responses
@@ -280,7 +280,7 @@ DELETE /api/users/:id
 
 ### Performance
 - Server-side pagination on all list endpoints
-- MongoDB indexes on frequently queried fields
+- PostgreSQL indexes on frequently queried fields
 - Efficient Prisma queries with selective field projection
 
 ### Error Handling
@@ -374,8 +374,8 @@ curl -X GET "http://localhost:3000/api/students?page=1&limit=10" \
 ## Deployment Notes
 
 1. Set `NEXTAUTH_SECRET` to a strong random string
-2. Use production MongoDB connection string
-3. Enable MongoDB Atlas network access
+2. Use production PostgreSQL connection string
+3. Allow inbound connections from your hosting provider
 4. Configure CORS for production domain
 5. Set up rate limiting on auth endpoints
 6. Enable HTTPS in production

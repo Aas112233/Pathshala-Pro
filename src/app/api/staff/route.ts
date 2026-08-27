@@ -8,6 +8,7 @@ import {
   unauthorized,
   validationError,
   notFound,
+  handleApiError,
 } from "@/lib/api-response";
 import { createStaffSchema, updateStaffSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -99,8 +100,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get staff error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
-    let staffId = data.staffId;
+    let staffId: string = data.staffId ?? "";
 
     if (!staffId) {
       // Auto-generate staff ID uniquely with 4-digit sequence number
@@ -223,7 +223,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(staff, "Staff member created successfully", 201);
   } catch (error) {
-    console.error("Create staff error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

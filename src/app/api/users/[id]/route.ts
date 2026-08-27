@@ -7,6 +7,7 @@ import {
   forbidden,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { updateUserSchema } from "@/lib/schemas";
 import { hashPassword } from "@/lib/auth";
@@ -54,8 +55,7 @@ export async function GET(
 
     return successResponse(user);
   } catch (error) {
-    console.error("Get user error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -132,8 +132,7 @@ export async function PUT(
 
     return successResponse(updatedUser, "User updated successfully");
   } catch (error) {
-    console.error("Update user error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -184,7 +183,6 @@ export async function DELETE(
 
     return successResponse(null, "User deleted successfully");
   } catch (error) {
-    console.error("Delete user error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

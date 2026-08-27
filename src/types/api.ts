@@ -10,12 +10,14 @@ export interface PaginationMeta {
 }
 
 export interface ApiSuccessResponse<T> {
+  success?: boolean;
   error: false;
   data: T;
   message?: string;
 }
 
 export interface ApiPaginatedResponse<T> {
+  success?: boolean;
   error: false;
   data: T[];
   pagination: PaginationMeta;
@@ -45,4 +47,5 @@ export interface PaginationParams {
 
 export interface SearchParams extends PaginationParams {
   filters?: Record<string, string | number | boolean>;
+  year?: string;
 }

@@ -5,8 +5,12 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FilePlus, Plus, Save, Trash2, ArrowLeft, UserPlus, UserCheck, Pencil } from "lucide-react";
 import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
+import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -80,7 +84,7 @@ export default function AdmissionsPage() {
   const [editFormErrors, setEditFormErrors] = useState<{ editClassId?: string }>({});
 
   // Fetch classes
-  const { data: classesData } = useQuery({
+  const { data: classesData, isLoading: isClassesLoading } = useQuery({
     queryKey: ["classes-all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
@@ -90,7 +94,7 @@ export default function AdmissionsPage() {
   });
 
   // Fetch groups (filtered by selected class)
-  const { data: groupsData } = useQuery({
+  const { data: groupsData, isLoading: isGroupsLoading } = useQuery({
     queryKey: ["groups-all", { classId: selectedClass }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
@@ -102,7 +106,7 @@ export default function AdmissionsPage() {
   });
 
   // Fetch sections (filtered by selected class and group)
-  const { data: sectionsData } = useQuery({
+  const { data: sectionsData, isLoading: isSectionsLoading } = useQuery({
     queryKey: ["sections-all", { classId: selectedClass, groupId: selectedGroup }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
@@ -119,7 +123,7 @@ export default function AdmissionsPage() {
   });
 
   // Fetch academic years
-  const { data: academicYearsData } = useQuery({
+  const { data: academicYearsData, isLoading: isAcademicYearsLoading } = useQuery({
     queryKey: ["academic-years-all"],
     queryFn: async () => {
       const res = await fetch("/api/academic-years?limit=100");
@@ -278,7 +282,7 @@ export default function AdmissionsPage() {
     createAdmissionMutation.mutate(admissionItems);
   };
 
-  // ── Edit admission handlers ──
+  // Edit admission handlers
   const handleOpenEditModal = (student: any) => {
     setEditingStudent(student);
     setEditClassId(student.classId || "");
@@ -494,8 +498,8 @@ export default function AdmissionsPage() {
           {/* Main Content */}
           <div className="lg:col-span-4 space-y-6">
             {/* Academic Details Card */}
-            <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">
+            <div className="bg-card rounded-xl border border-border p-6">
+              <h3 className="text-sm font-semibold text-foreground mb-4">
                 {t('admissions.academicDetails')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -503,76 +507,92 @@ export default function AdmissionsPage() {
                   <label className="block text-sm font-medium text-foreground mb-1">
                     {t('admissions.academicYear')}
                   </label>
-                  <AppDropdown
-                    value={selectedAcademicYear}
-                    onChange={(value) => {
-                      setSelectedAcademicYear(value);
-                      if (formErrors.selectedAcademicYear) {
-                        setFormErrors((prev) => ({ ...prev, selectedAcademicYear: undefined }));
-                      }
-                    }}
-                    invalid={Boolean(formErrors.selectedAcademicYear)}
-                    triggerClassName={formErrors.selectedAcademicYear ? "border-destructive ring-1 ring-destructive" : ""}
-                    options={academicYearOptions}
-                    placeholder={t('admissions.selectAcademicYear')}
-                    searchable
-                  />
+                  {isAcademicYearsLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <AppDropdown
+                      value={selectedAcademicYear}
+                      onChange={(value) => {
+                        setSelectedAcademicYear(value);
+                        if (formErrors.selectedAcademicYear) {
+                          setFormErrors((prev) => ({ ...prev, selectedAcademicYear: undefined }));
+                        }
+                      }}
+                      invalid={Boolean(formErrors.selectedAcademicYear)}
+                      triggerClassName={formErrors.selectedAcademicYear ? "border-destructive ring-1 ring-destructive" : ""}
+                      options={academicYearOptions}
+                      placeholder={t('admissions.selectAcademicYear')}
+                      searchable
+                    />
+                  )}
                   {formErrors.selectedAcademicYear && <p className="mt-1 text-xs text-destructive">{formErrors.selectedAcademicYear}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     {t('admissions.class')}
                   </label>
-                  <AppDropdown
-                    value={selectedClass}
-                    onChange={(value) => {
-                      setSelectedClass(value);
-                      if (formErrors.selectedClass) {
-                        setFormErrors((prev) => ({ ...prev, selectedClass: undefined }));
-                      }
-                    }}
-                    invalid={Boolean(formErrors.selectedClass)}
-                    triggerClassName={formErrors.selectedClass ? "border-destructive ring-1 ring-destructive" : ""}
-                    options={classOptions}
-                    placeholder={t('admissions.selectClass')}
-                    searchable
-                  />
+                  {isClassesLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <AppDropdown
+                      value={selectedClass}
+                      onChange={(value) => {
+                        setSelectedClass(value);
+                        if (formErrors.selectedClass) {
+                          setFormErrors((prev) => ({ ...prev, selectedClass: undefined }));
+                        }
+                      }}
+                      invalid={Boolean(formErrors.selectedClass)}
+                      triggerClassName={formErrors.selectedClass ? "border-destructive ring-1 ring-destructive" : ""}
+                      options={classOptions}
+                      placeholder={t('admissions.selectClass')}
+                      searchable
+                    />
+                  )}
                   {formErrors.selectedClass && <p className="mt-1 text-xs text-destructive">{formErrors.selectedClass}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     {t('admissions.group')}
                   </label>
-                  <AppDropdown
-                    value={selectedGroup}
-                    onChange={setSelectedGroup}
-                    options={groupOptions}
-                    placeholder={t('admissions.selectGroup')}
-                    searchable
-                    disabled={!selectedClass}
-                  />
+                  {isGroupsLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <AppDropdown
+                      value={selectedGroup}
+                      onChange={setSelectedGroup}
+                      options={groupOptions}
+                      placeholder={t('admissions.selectGroup')}
+                      searchable
+                      disabled={!selectedClass}
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
                     {t('admissions.section')}
                   </label>
-                  <AppDropdown
-                    value={selectedSection}
-                    onChange={setSelectedSection}
-                    options={sectionOptions}
-                    placeholder={t('admissions.selectSection')}
-                    searchable
-                    disabled={!selectedClass}
-                  />
+                  {isSectionsLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <AppDropdown
+                      value={selectedSection}
+                      onChange={setSelectedSection}
+                      options={sectionOptions}
+                      placeholder={t('admissions.selectSection')}
+                      searchable
+                      disabled={!selectedClass}
+                    />
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Students Section */}
-            <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-4">
+            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                  <h3 className="text-sm font-semibold text-foreground">
                     {t('admissions.students')}
                   </h3>
                   <p className="text-xs text-muted-foreground">
@@ -600,7 +620,7 @@ export default function AdmissionsPage() {
 
               {admissionItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <FilePlus className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                  <FilePlus className="h-10 w-10 text-muted-foreground/50 mb-3" />
                   <p className="text-sm text-muted-foreground">
                     {t('admissions.noStudentsAdded')}
                   </p>
@@ -613,17 +633,17 @@ export default function AdmissionsPage() {
                   {admissionItems.map((item, index) => (
                     <div
                       key={item.student.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30"
+                      className="flex items-center justify-between px-3 py-2 border-b border-border/60 last:border-b-0"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                          <span className="text-sm font-semibold">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                          <span className="text-xs font-semibold">
                             {item.student.firstName.charAt(0)}
                             {item.student.lastName.charAt(0)}
                           </span>
                         </div>
                         <div>
-                          <p className="font-medium">
+                          <p className="text-sm font-medium">
                             {formatStudentName(item.student.firstName, item.student.lastName, item.student.firstNameBn, item.student.lastNameBn)}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -631,7 +651,7 @@ export default function AdmissionsPage() {
                           </p>
                         </div>
                       </div>
-                      <Button
+                        <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRemoveStudent(index)}
@@ -646,13 +666,12 @@ export default function AdmissionsPage() {
             </div>
 
             {/* Notes */}
-            <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+            <div className="bg-card rounded-xl border border-border p-6">
               <label className="block text-sm font-medium text-foreground mb-2">
                 {t('admissions.additionalNotes')}
               </label>
-              <textarea
+              <Textarea
                 rows={3}
-                className="w-full px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-primary outline-none text-sm"
                 placeholder={t('admissions.internalRemarks')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -663,7 +682,7 @@ export default function AdmissionsPage() {
           {/* Summary Sidebar */}
           <div className="space-y-6">
             <div className="bg-card rounded-xl border border-border p-6 shadow-sm sticky top-6">
-              <h2 className="text-lg font-bold text-foreground mb-6 font-mono uppercase tracking-tighter text-center">
+              <h2 className="text-base font-semibold text-foreground mb-6">
                 {t('admissions.summary')}
               </h2>
               <div className="space-y-4">
@@ -683,7 +702,7 @@ export default function AdmissionsPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={createAdmissionMutation.isPending || admissionItems.length === 0 || !canAddStudents}
-                className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shadow-lg"
+                className="w-full mt-8 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-medium"
               >
                 <Save className="h-4 w-4" />{" "}
                 {createAdmissionMutation.isPending ? t('admissions.processing') : t('admissions.completeAdmission')}
@@ -705,7 +724,7 @@ export default function AdmissionsPage() {
         onClose={() => setShowStudentSelector(false)}
         onAdd={handleAddStudents}
         selectedStudents={admissionItems.map((item) => item.student)}
-        confirmLabel="Add to Admission"
+        confirmLabel={t('admissions.addStudents')}
         allowMultiple={true}
       />
 
@@ -718,7 +737,7 @@ export default function AdmissionsPage() {
       />
 
       {/* Edit Admission Modal */}
-      <AppModal
+      <TopSheet
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}
         title={t('admissions.editAdmission')}
@@ -727,73 +746,77 @@ export default function AdmissionsPage() {
             ? `${t('admissions.editAdmissionDescription')} — ${formatStudentName(editingStudent.firstName, editingStudent.lastName, editingStudent.firstNameBn, editingStudent.lastNameBn)}`
             : ""
         }
-        maxWidth="md"
-      >
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              {t('admissions.class')} *
-            </label>
-            <AppDropdown
-              value={editClassId}
-              onChange={(val) => {
-                setEditClassId(val);
-                setEditGroupId("");
-                setEditSectionId("");
-                if (editFormErrors.editClassId) {
-                  setEditFormErrors({ editClassId: undefined });
-                }
-              }}
-              invalid={Boolean(editFormErrors.editClassId)}
-              triggerClassName={editFormErrors.editClassId ? "border-destructive ring-1 ring-destructive" : ""}
-              options={editClassOptions}
-              placeholder={t('admissions.selectClass')}
-              searchable
-            />
-            {editFormErrors.editClassId && <p className="mt-1 text-xs text-destructive">{editFormErrors.editClassId}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              {t('admissions.group')}
-            </label>
-            <AppDropdown
-              value={editGroupId}
-              onChange={(val) => {
-                setEditGroupId(val);
-                setEditSectionId("");
-              }}
-              options={editGroupOptions}
-              placeholder={t('admissions.selectGroup')}
-              searchable
-              disabled={!editClassId}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              {t('admissions.section')}
-            </label>
-            <AppDropdown
-              value={editSectionId}
-              onChange={setEditSectionId}
-              options={editSectionOptions}
-              placeholder={t('admissions.selectSection')}
-              searchable
-              disabled={!editClassId}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={handleCloseEditModal}>
+        maxWidth="xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={handleCloseEditModal}>
               {t('admissions.back')}
             </Button>
             <Button
-              onClick={() => updateAdmissionMutation.mutate()}
+              type="submit"
+              form="edit-admission-form"
               disabled={!editClassId || updateAdmissionMutation.isPending}
             >
               {updateAdmissionMutation.isPending ? t('admissions.processing') : t('admissions.saveChanges')}
             </Button>
           </div>
-        </div>
-      </AppModal>
+        }
+      >
+        <form
+          id="edit-admission-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            updateAdmissionMutation.mutate();
+          }}
+          className="space-y-5"
+        >
+          <ERPFormSection>
+            <ERPFormGrid cols={1}>
+              <ERPFormField label={t('admissions.class')} required error={editFormErrors.editClassId}>
+                <AppDropdown
+                  value={editClassId}
+                  onChange={(val) => {
+                    setEditClassId(val);
+                    setEditGroupId("");
+                    setEditSectionId("");
+                    if (editFormErrors.editClassId) {
+                      setEditFormErrors({ editClassId: undefined });
+                    }
+                  }}
+                  invalid={Boolean(editFormErrors.editClassId)}
+                  triggerClassName={editFormErrors.editClassId ? "border-destructive ring-1 ring-destructive" : ""}
+                  options={editClassOptions}
+                  placeholder={t('admissions.selectClass')}
+                  searchable
+                />
+              </ERPFormField>
+              <ERPFormField label={t('admissions.group')}>
+                <AppDropdown
+                  value={editGroupId}
+                  onChange={(val) => {
+                    setEditGroupId(val);
+                    setEditSectionId("");
+                  }}
+                  options={editGroupOptions}
+                  placeholder={t('admissions.selectGroup')}
+                  searchable
+                  disabled={!editClassId}
+                />
+              </ERPFormField>
+              <ERPFormField label={t('admissions.section')}>
+                <AppDropdown
+                  value={editSectionId}
+                  onChange={setEditSectionId}
+                  options={editSectionOptions}
+                  placeholder={t('admissions.selectSection')}
+                  searchable
+                  disabled={!editClassId}
+                />
+              </ERPFormField>
+            </ERPFormGrid>
+          </ERPFormSection>
+        </form>
+      </TopSheet>
     </>
   );
 }

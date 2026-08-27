@@ -8,6 +8,7 @@ import {
   unauthorized,
   validationError,
   notFound,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
@@ -99,8 +100,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get sections error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -196,7 +196,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(newSection, "Section created successfully", 201);
   } catch (error) {
-    console.error("Create section error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

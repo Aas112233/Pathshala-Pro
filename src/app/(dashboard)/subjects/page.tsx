@@ -15,14 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import {
   Select,
   SelectContent,
@@ -33,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 const CATEGORIES = [
@@ -248,8 +243,8 @@ export default function SubjectsPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    {t('loadingSubjects')}
+                  <TableCell colSpan={8} className="p-0">
+                    <TableSkeleton rows={6} />
                   </TableCell>
                 </TableRow>
               ) : filteredSubjects?.length === 0 ? (
@@ -312,157 +307,143 @@ export default function SubjectsPage() {
         </CardContent>
       </Card>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingSubject ? t('editSubject') : t('createNewSubject')}
-            </DialogTitle>
-            <DialogDescription>
-              {editingSubject ? t('updateSubject') : t('addSubjectDescription')}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="subjectId">{t('subjectId')} *</Label>
-                  <Input
-                    id="subjectId"
-                    value={formData.subjectId}
-                    onChange={(e) => {
-                      setFormData({ ...formData, subjectId: e.target.value });
-                      if (formErrors.subjectId) {
-                        setFormErrors((prev) => ({ ...prev, subjectId: undefined }));
-                      }
-                    }}
-                    placeholder="SUB-MAT"
-                    disabled={!!editingSubject}
-                    aria-invalid={Boolean(formErrors.subjectId)}
-                    className={formErrors.subjectId ? "border-destructive focus:ring-destructive" : undefined}
-                  />
-                  {formErrors.subjectId && <p className="text-xs text-destructive">{formErrors.subjectId}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="code">{t('subjectCode')} *</Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) => {
-                      setFormData({ ...formData, code: e.target.value.toUpperCase() });
-                      if (formErrors.code) {
-                        setFormErrors((prev) => ({ ...prev, code: undefined }));
-                      }
-                    }}
-                    placeholder="MAT"
-                    maxLength={10}
-                    aria-invalid={Boolean(formErrors.code)}
-                    className={formErrors.code ? "border-destructive focus:ring-destructive" : undefined}
-                  />
-                  {formErrors.code && <p className="text-xs text-destructive">{formErrors.code}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">{t('category')}</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value: any) => setFormData({ ...formData, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="name">{t('subjectName')} *</Label>
+      {/* Create/Edit Sheet */}
+      <TopSheet
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title={editingSubject ? t('editSubject') : t('createNewSubject')}
+        description={editingSubject ? t('updateSubject') : t('addSubjectDescription')}
+        maxWidth="2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" form="subject-form" disabled={createSubject.isPending || updateSubject.isPending}>
+              {editingSubject ? t('update') : t('create')}
+            </Button>
+          </div>
+        }
+      >
+        <form id="subject-form" onSubmit={handleSubmit} className="space-y-5">
+          <ERPFormSection>
+            <ERPFormGrid cols={3}>
+              <ERPFormField label={t('subjectId')} required error={formErrors.subjectId} htmlFor="subjectId">
                 <Input
-                  id="name"
-                  value={formData.name}
+                  id="subjectId"
+                  value={formData.subjectId}
                   onChange={(e) => {
-                    setFormData({ ...formData, name: e.target.value });
-                    if (formErrors.name) {
-                      setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    setFormData({ ...formData, subjectId: e.target.value });
+                    if (formErrors.subjectId) {
+                      setFormErrors((prev) => ({ ...prev, subjectId: undefined }));
                     }
                   }}
-                  placeholder="Mathematics"
-                  aria-invalid={Boolean(formErrors.name)}
-                  className={formErrors.name ? "border-destructive focus:ring-destructive" : undefined}
+                  placeholder="SUB-MAT"
+                  disabled={!!editingSubject}
+                  aria-invalid={Boolean(formErrors.subjectId)}
                 />
-                {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxMarks">{t('maxMarks')}</Label>
-                  <Input
-                    id="maxMarks"
-                    type="number"
-                    value={formData.maxMarks}
-                    onChange={(e) => setFormData({ ...formData, maxMarks: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="passMarks">{t('passMarks')}</Label>
-                  <Input
-                    id="passMarks"
-                    type="number"
-                    value={formData.passMarks}
-                    onChange={(e) => setFormData({ ...formData, passMarks: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 pt-2">
-                <Switch
-                  id="isActive"
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+              </ERPFormField>
+              <ERPFormField label={t('subjectCode')} required error={formErrors.code} htmlFor="code">
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) => {
+                    setFormData({ ...formData, code: e.target.value.toUpperCase() });
+                    if (formErrors.code) {
+                      setFormErrors((prev) => ({ ...prev, code: undefined }));
+                    }
+                  }}
+                  placeholder="MAT"
+                  maxLength={10}
+                  aria-invalid={Boolean(formErrors.code)}
                 />
-                <Label htmlFor="isActive">{t('isActive')}</Label>
-              </div>
+              </ERPFormField>
+              <ERPFormField label={t('category')} htmlFor="category">
+                <Select
+                  value={formData.category}
+                  onValueChange={(value: any) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ERPFormField>
+            </ERPFormGrid>
 
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="text-sm font-medium mb-2">{t('quickPresets')}</h4>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, maxMarks: 100, passMarks: 33 })}
-                  >
-                    {t('marks100')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, maxMarks: 50, passMarks: 20 })}
-                  >
-                    {t('marks50')}
-                  </Button>
-                </div>
+            <ERPFormField label={t('subjectName')} required error={formErrors.name} htmlFor="name">
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (formErrors.name) {
+                    setFormErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }}
+                placeholder="Mathematics"
+                aria-invalid={Boolean(formErrors.name)}
+              />
+            </ERPFormField>
+
+            <ERPFormGrid cols={2}>
+              <ERPFormField label={t('maxMarks')} htmlFor="maxMarks">
+                <Input
+                  id="maxMarks"
+                  type="number"
+                  value={formData.maxMarks}
+                  onChange={(e) => setFormData({ ...formData, maxMarks: Number(e.target.value) })}
+                />
+              </ERPFormField>
+              <ERPFormField label={t('passMarks')} htmlFor="passMarks">
+                <Input
+                  id="passMarks"
+                  type="number"
+                  value={formData.passMarks}
+                  onChange={(e) => setFormData({ ...formData, passMarks: Number(e.target.value) })}
+                />
+              </ERPFormField>
+            </ERPFormGrid>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isActive"
+                checked={formData.isActive}
+                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+              />
+              <Label htmlFor="isActive">{t('isActive')}</Label>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h4 className="text-sm font-medium mb-2">{t('quickPresets')}</h4>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData({ ...formData, maxMarks: 100, passMarks: 33 })}
+                >
+                  {t('marks100')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData({ ...formData, maxMarks: 50, passMarks: 20 })}
+                >
+                  {t('marks50')}
+                </Button>
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                {t('cancel')}
-              </Button>
-              <Button type="submit" disabled={createSubject.isPending || updateSubject.isPending}>
-                {editingSubject ? t('update') : t('create')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </ERPFormSection>
+        </form>
+      </TopSheet>
     </div>
   );
 }

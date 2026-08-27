@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Search, UserCheck, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -171,26 +172,42 @@ export function StudentSelectorModal({
   };
 
   return (
-    <AppModal
+    <TopSheet
       isOpen={isOpen}
       onClose={handleReset}
       title="Select Students"
       description="Search and select existing students for admission. Their current class information is shown below their name."
       maxWidth="4xl"
-      className="max-h-[90vh]"
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <Button variant="outline" type="button" onClick={handleReset}>
+            Cancel
+          </Button>
+          <div className="flex items-center gap-3">
+            {tempSelected.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {tempSelected.length} selected
+              </span>
+            )}
+            <Button type="button" onClick={handleConfirm} disabled={tempSelected.length === 0}>
+              {confirmLabel}
+            </Button>
+          </div>
+        </div>
+      }
     >
-      <div className="space-y-4 pt-2">
+      <div className="space-y-4">
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="md:col-span-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search by name, roll number, or student ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+                className="pl-10"
               />
             </div>
           </div>
@@ -327,25 +344,8 @@ export function StudentSelectorModal({
             </div>
           )}
         </div>
-
-        {/* Actions */}
-        <div className="flex justify-between items-center pt-4 border-t">
-          <Button variant="outline" onClick={handleReset}>
-            Cancel
-          </Button>
-          <div className="flex items-center gap-3">
-            {tempSelected.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {tempSelected.length} selected
-              </span>
-            )}
-            <Button onClick={handleConfirm} disabled={tempSelected.length === 0}>
-              {confirmLabel}
-            </Button>
-          </div>
-        </div>
       </div>
-    </AppModal>
+    </TopSheet>
   );
 }
 

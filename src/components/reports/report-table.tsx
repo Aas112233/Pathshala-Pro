@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -142,11 +143,8 @@ export function ReportTable<TData>({
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    {t("common.generating")}
+                  <TableCell colSpan={columns.length} className="p-0">
+                    <TableSkeleton rows={6} />
                   </TableCell>
                 </TableRow>
               ) : data.length === 0 ? (

@@ -27,6 +27,7 @@ export function clearAuthCookie(response: NextResponse) {
     secure: isSecureCookie(),
     sameSite: "strict",
     path: "/",
+    maxAge: 0,
     expires: new Date(0),
   });
 }

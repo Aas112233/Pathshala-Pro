@@ -5,11 +5,18 @@ import {
   errorResponse,
   badRequest,
   unauthorized,
+  handleApiError,
 } from "@/lib/api-response";
 import { loginSchema } from "@/lib/schemas";
 import { verifyPassword, generateAuthToken } from "@/lib/auth";
-import { rateLimit } from "@/lib/rate-limit";
+import {
+  smartRateLimit,
+  recordRateLimitFailure,
+  recordRateLimitSuccess,
+  dedupeRequest,
+} from "@/lib/rate-limit";
 import { setAuthCookie } from "@/lib/auth-cookies";
+import { getEffectivePermissions } from "@/lib/permissions";
 
 /**
  * POST /api/auth/login
@@ -34,13 +41,28 @@ export async function POST(request: NextRequest) {
     // Apply IP-based Rate Limiting (5 attempts per IP in a window)
     const ip = request.headers.get("x-forwarded-for") || "unknown_ip";
 
-    // Using IP + Email limits brute force specific to a single login target over the same IP range
+    // Server-side duplicate prevention: identical login POSTs within 2s are rejected.
+    if (!dedupeRequest(`LOGIN_POST_${ip}_${email}`, 2000)) {
+      return errorResponse("Duplicate request detected. Please wait a moment.", 409);
+    }
+
+    // Smart adaptive rate limiting: tightens automatically as failures accumulate.
     const limitKey = `LOGIN_${ip}_${email}`;
-    const rateCheck = rateLimit(limitKey, 5, 15 * 60 * 1000);
+    const rateCheck = smartRateLimit(limitKey, { preset: "auth" });
 
     if (!rateCheck.success) {
-      return errorResponse("Too many login attempts. Please try again after 15 minutes.", 429);
+      const minutes = Math.max(1, Math.ceil(rateCheck.retryAfterSeconds / 60));
+      return errorResponse(
+        `Too many login attempts. Please try again in ${minutes} minute${minutes > 1 ? "s" : ""}.`,
+        429
+      );
     }
+
+    // Local helper: every auth failure feeds the adaptive backoff.
+    const failAuth = (message: string) => {
+      recordRateLimitFailure(limitKey);
+      return unauthorized(message);
+    };
 
     // Find user by email
     const user = await prisma.user.findFirst({
@@ -49,18 +71,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return unauthorized("Invalid email or password");
+      return failAuth("Invalid email or password");
     }
 
     if (!user.isActive) {
-      return unauthorized("Account is deactivated");
+      return failAuth("Account is deactivated");
     }
 
     // Verify password
     const isValid = await verifyPassword(password, user.hash);
     if (!isValid) {
-      return unauthorized("Invalid email or password");
+      return failAuth("Invalid email or password");
     }
+
+    // Successful authentication — clear any adaptive penalties for this client.
+    recordRateLimitSuccess(limitKey);
 
     // Update last login
     await prisma.user.update({
@@ -81,7 +106,7 @@ export async function POST(request: NextRequest) {
           isActive: user.isActive,
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
-          permissions: (user as any).permissions,
+          permissions: getEffectivePermissions(user.role, user.permissions),
         },
       },
       "Login successful"
@@ -89,7 +114,6 @@ export async function POST(request: NextRequest) {
     setAuthCookie(response, token);
     return response;
   } catch (error) {
-    console.error("Login error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

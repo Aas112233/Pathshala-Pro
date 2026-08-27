@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV, APP_NAME } from "@/lib/constants";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getModuleForPath } from "@/lib/permissions";
-import { ChevronLeft, GraduationCap, Search, X } from "lucide-react";
+import { ChevronLeft, GraduationCap, Search, X, ShieldAlert, Building2 } from "lucide-react";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -39,8 +39,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations();
   const { user, isLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Ctrl+K / Cmd+K shortcut to focus search
   useEffect(() => {
@@ -72,9 +77,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     return SIDEBAR_NAV.map((group) => {
       // First filter by permissions
       const permissionFiltered = group.items.filter((item) => {
-        if (isLoading) return true;
+        if (!mounted || isLoading) return true;
         if (!user) return false;
-        if (user.role === "SUPER_ADMIN") return true;
+        if (user.role === "SUPER_ADMIN" || user.role === "SYSTEM_ADMIN") return true;
         const moduleName = getModuleForPath(item.href);
         if (!moduleName) return true;
         return hasPermission(user.permissions, moduleName, "read");
@@ -90,7 +95,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       return { ...group, items: searchFiltered };
     }).filter((group) => group.items.length > 0);
-  }, [searchQuery, isLoading, user, t]);
+  }, [searchQuery, isLoading, user, t, mounted]);
 
   const hasResults = filteredNav.length > 0;
 
@@ -162,6 +167,39 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+        {/* System Admin Portal Switcher for Super Admin */}
+        {mounted && (user?.role === "SUPER_ADMIN" || user?.role === "SYSTEM_ADMIN" || user?.tenantId === "system") && (
+          <div className="mb-4">
+            <Link
+              href="/system-admin"
+              className={cn(
+                "flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-bold transition-all border shadow-xs",
+                pathname.startsWith("/system-admin")
+                  ? "bg-indigo-600 text-white border-indigo-700 shadow-indigo-500/20"
+                  : "bg-indigo-50/90 text-indigo-700 border-indigo-200/90 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+              )}
+              title={collapsed ? "SuperAdmin Command Center" : undefined}
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shrink-0 shadow-xs">
+                <ShieldAlert className="h-4 w-4" />
+              </div>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="truncate font-bold">SuperAdmin Portal</span>
+                    <span className="text-[9px] bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-1 py-0.5 rounded font-mono font-bold">
+                      SAAS
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground truncate font-normal">
+                    Manage 1,000+ Schools
+                  </p>
+                </div>
+              )}
+            </Link>
+          </div>
+        )}
+
         {hasResults ? (
           filteredNav.map((group) => (
             <div key={group.labelKey} className="mb-4">

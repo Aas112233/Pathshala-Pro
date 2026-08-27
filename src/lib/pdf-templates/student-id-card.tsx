@@ -342,8 +342,10 @@ export const StudentIDCardTemplate: React.FC<StudentIDCardProps> = ({ student, s
             {school.logoUrl ? (
               <Image src={school.logoUrl} style={styles.idCardLogo} />
             ) : (
-              <View style={styles.idCardLogo}>
-                <Text style={{ fontSize: 20, textAlign: "center" }}>🏫</Text>
+              <View style={[styles.idCardLogo, { backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }]}>
+                <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "bold" }}>
+                  {school.name ? school.name.charAt(0).toUpperCase() : "S"}
+                </Text>
               </View>
             )}
             <Text style={styles.idCardSchoolName}>{school.name.toUpperCase()}</Text>

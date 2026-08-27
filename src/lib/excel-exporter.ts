@@ -106,10 +106,10 @@ export class ExcelExporter {
     logoRow.height = 60;
 
     if (options.showLogo && options.logoUrl) {
-      // Logo placeholder (can be enhanced to add actual image)
+      // Logo placeholder
       const logoCell = logoRow.getCell(1);
-      logoCell.value = "🏫";
-      logoCell.font = { size: 36 };
+      logoCell.value = "";
+      logoCell.font = { size: 14 };
       logoCell.alignment = { vertical: "middle", horizontal: "center" };
     }
 
@@ -145,8 +145,8 @@ export class ExcelExporter {
     const contactRow = this.worksheet.getRow(3);
     contactRow.height = 20;
     const contactParts = [];
-    if (options.schoolPhone) contactParts.push(`📞 ${options.schoolPhone}`);
-    if (options.schoolEmail) contactParts.push(`✉️ ${options.schoolEmail}`);
+    if (options.schoolPhone) contactParts.push(`Tel: ${options.schoolPhone}`);
+    if (options.schoolEmail) contactParts.push(`Email: ${options.schoolEmail}`);
     
     const contactCell = contactRow.getCell(1);
     contactCell.value = contactParts.join("  |  ");
@@ -498,6 +498,76 @@ export const ReportTemplates = {
       "Grade Scale: A+ (90%+), A (80-89%), B (70-79%), C (60-69%), D (40-59%), F (Below 40%)",
       "Status: PASS - 40% or above, FAIL - Below 40%",
       "For grade improvement queries, contact the examination department",
+    ],
+    ...options,
+  }),
+
+  salaryReport: (data: any[], options: Partial<ExcelExportOptions>): ExcelExportOptions => ({
+    title: "Staff Payroll & Salary Disbursement Report",
+    schoolName: options.schoolName || "Pathshala Pro School",
+    columns: [
+      { header: "Staff ID", key: "staffId", width: 14, style: "text" },
+      { header: "Staff Name", key: "staffName", width: 25, style: "text" },
+      { header: "Department", key: "department", width: 16, style: "text" },
+      { header: "Designation", key: "designation", width: 18, style: "text" },
+      { header: "Period", key: "period", width: 12, style: "text" },
+      { header: "Gross Salary", key: "baseSalary", width: 15, style: "currency" },
+      { header: "Deductions", key: "deductions", width: 14, style: "currency" },
+      { header: "Net Payable", key: "netPayable", width: 15, style: "currency" },
+      { header: "Paid Amount", key: "paidAmount", width: 15, style: "currency" },
+      { header: "Pending Due", key: "pendingAmount", width: 15, style: "currency" },
+      { header: "Status", key: "status", width: 12, style: "text" },
+    ],
+    data,
+    footerNotes: [
+      "Status: PAID - Fully disbursed, PENDING - Payment queued, PARTIAL - Partial advance/settlement",
+      "Net Payable = Gross Salary - (Deductions + Advances)",
+      "Payroll ledger generated from Pathshala-Pro HR & Financial Records",
+    ],
+    ...options,
+  }),
+
+  financialReport: (data: any[], options: Partial<ExcelExportOptions>): ExcelExportOptions => ({
+    title: "Financial Expenses & Cash Flow Audit Report",
+    schoolName: options.schoolName || "Pathshala Pro School",
+    columns: [
+      { header: "Voucher #", key: "expenseNumber", width: 16, style: "text" },
+      { header: "Title / Description", key: "title", width: 30, style: "text" },
+      { header: "Category", key: "category", width: 18, style: "text" },
+      { header: "Amount", key: "amount", width: 16, style: "currency" },
+      { header: "Method", key: "paymentMethod", width: 12, style: "text" },
+      { header: "Payee", key: "payeeName", width: 20, style: "text" },
+      { header: "Receipt #", key: "receiptNumber", width: 14, style: "text" },
+      { header: "Date", key: "expenseDate", width: 14, style: "date" },
+      { header: "Recorded By", key: "recordedByName", width: 18, style: "text" },
+    ],
+    data,
+    footerNotes: [
+      "Audited from Pathshala-Pro Institutional Accounting Ledger",
+      "Payment Methods: CASH, BANK, CHEQUE, DIGITAL",
+      "Strictly confidential school financial documentation",
+    ],
+    ...options,
+  }),
+
+  admissionsReport: (data: any[], options: Partial<ExcelExportOptions>): ExcelExportOptions => ({
+    title: "Admissions Pipeline & Enquiry Conversion Report",
+    schoolName: options.schoolName || "Pathshala Pro School",
+    columns: [
+      { header: "Applicant / Student", key: "studentName", width: 25, style: "text" },
+      { header: "Guardian Name", key: "guardianName", width: 22, style: "text" },
+      { header: "Phone", key: "phone", width: 15, style: "text" },
+      { header: "Target Grade", key: "className", width: 14, style: "text" },
+      { header: "Lead Source", key: "source", width: 15, style: "text" },
+      { header: "Status", key: "status", width: 14, style: "text" },
+      { header: "Assigned To", key: "assignedToName", width: 18, style: "text" },
+      { header: "Enquiry Date", key: "createdAt", width: 14, style: "date" },
+    ],
+    data,
+    footerNotes: [
+      "Pipeline Status: NEW, CONTACTED, VISITED, ADMITTED, REJECTED",
+      "Admitted candidates include generated Student ID assignments",
+      "Pathshala-Pro Admissions Management & CRM System",
     ],
     ...options,
   }),

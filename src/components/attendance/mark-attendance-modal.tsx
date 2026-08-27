@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { User, Users, Briefcase, CheckCircle2, XCircle, Clock } from "lucide-react";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useStudents, useStaff } from "@/hooks/use-queries";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
@@ -36,8 +37,14 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
   const [attendanceList, setAttendanceList] = useState<AttendanceEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { data: studentsData } = useStudents({ limit: 100 });
-  const { data: staffData } = useStaff({ limit: 100 });
+  const {
+    data: studentsData,
+    isLoading: isStudentsLoading,
+  } = useStudents({ limit: 100 });
+  const { data: staffData, isLoading: isStaffLoading } = useStaff({ limit: 100 });
+
+  const isPeopleLoading =
+    attendanceType === "student" ? isStudentsLoading : isStaffLoading;
 
   const students = (studentsData as any)?.data || [];
   const staff = (staffData as any)?.data || [];
@@ -126,18 +133,40 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
   const lateCount = attendanceList.filter(e => e.status === "LATE").length;
 
   return (
-    <AppModal
+    <TopSheet
       isOpen={isOpen}
       onClose={onClose}
       title={t('markAttendance')}
       description={formatDate(selectedDate)}
       maxWidth="6xl"
-      className="max-h-[90vh]"
+      footer={
+        <>
+          <p className="text-sm text-muted-foreground">
+            Total: {attendanceList.length} | {t('present')}: {presentCount} | {t('absent')}: {absentCount} | {t('late')}: {lateCount}
+          </p>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" type="button" onClick={onClose}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" form="mark-attendance-form" disabled={isSaving}>
+              {isSaving ? t('saving') : t('saveChanges')}
+            </Button>
+          </div>
+        </>
+      }
     >
-      <div className="space-y-4 -mx-1 px-1">
+      <form
+        id="mark-attendance-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave();
+        }}
+        className="space-y-5"
+      >
         {/* Type Selector */}
         <div className="flex items-center gap-4">
           <Button
+            type="button"
             variant={attendanceType === "student" ? "default" : "outline"}
             onClick={() => setAttendanceType("student")}
             className="flex-1"
@@ -146,6 +175,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
             {t('viewType.students')}
           </Button>
           <Button
+            type="button"
             variant={attendanceType === "staff" ? "default" : "outline"}
             onClick={() => setAttendanceType("staff")}
             className="flex-1"
@@ -180,6 +210,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleMarkAll("PRESENT")}
@@ -188,6 +219,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
                 {t('present')}
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleMarkAll("ABSENT")}
@@ -196,6 +228,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
                 {t('absent')}
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleMarkAll("LATE")}
@@ -214,7 +247,23 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
 
         {/* Attendance List */}
         <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-          {filteredList.map((entry) => (
+          {isPeopleLoading ? (
+            <div className="space-y-2" aria-busy="true">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-lg border border-border/60 bg-card p-4"
+                >
+                  <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-8 w-28 shrink-0 rounded-md" />
+                </div>
+              ))}
+            </div>
+          ) : filteredList.map((entry) => (
             <Card key={entry.id} className="p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1">
@@ -233,6 +282,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
 
                 <div className="flex items-center gap-2">
                   <Button
+                    type="button"
                     variant={entry.status === "PRESENT" ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleStatusChange(entry.id, "PRESENT")}
@@ -241,6 +291,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
                     <CheckCircle2 className="h-4 w-4" />
                   </Button>
                   <Button
+                    type="button"
                     variant={entry.status === "ABSENT" ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleStatusChange(entry.id, "ABSENT")}
@@ -249,6 +300,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
                     <XCircle className="h-4 w-4" />
                   </Button>
                   <Button
+                    type="button"
                     variant={entry.status === "LATE" ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleStatusChange(entry.id, "LATE")}
@@ -267,22 +319,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
             </Card>
           ))}
         </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t">
-          <p className="text-sm text-muted-foreground">
-            Total: {attendanceList.length} | {t('present')}: {presentCount} | {t('absent')}: {absentCount} | {t('late')}: {lateCount}
-          </p>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose}>
-              {t('cancel')}
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? t('saving') : t('saveChanges')}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </AppModal>
+      </form>
+    </TopSheet>
   );
 }

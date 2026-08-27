@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToR2, deleteFromR2 } from "@/lib/r2-storage";
 import { requireApiAccess } from "@/lib/api-auth";
-import { errorResponse, successResponse } from "@/lib/api-response";
+import {
+  badRequest,
+  errorResponse,
+  successResponse,
+  handleApiError,
+} from "@/lib/api-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,13 +18,13 @@ export async function POST(request: NextRequest) {
     const fileType = formData.get("fileType") as string || "general";
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return badRequest("No file provided");
     }
 
     // Input sanitization: ensure it's a valid image or specific document and not too large
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File exceeds the 5MB size limit" }, { status: 400 });
+      return badRequest("File exceeds the 5MB size limit");
     }
 
     const allowedMimeTypes = [
@@ -27,7 +32,7 @@ export async function POST(request: NextRequest) {
       "application/pdf" // For receipt documents etc.
     ];
     if (!allowedMimeTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed." }, { status: 400 });
+      return badRequest("Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed.");
     }
 
     // Convert Next.js Web API File to a Node.js Buffer for S3/R2 AWS SDK
@@ -55,8 +60,7 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error: any) {
-    console.error("Upload error:", error);
-    return errorResponse(error.message || "Failed to upload file", 500);
+    return handleApiError(error, "Failed to upload file");
   }
 }
 
@@ -73,19 +77,18 @@ export async function DELETE(request: NextRequest) {
     const fileId = searchParams.get("fileId");
 
     if (!fileId) {
-      return NextResponse.json({ error: "File ID required" }, { status: 400 });
+      return badRequest("File ID required");
     }
 
     // Only allow deleting temp files (files starting with "temp_")
     if (!fileId.includes("temp_")) {
-      return NextResponse.json({ error: "Can only delete temporary files" }, { status: 400 });
+      return badRequest("Can only delete temporary files");
     }
 
     await deleteFromR2(fileId);
 
     return successResponse(null, "Temporary file deleted successfully");
   } catch (error: any) {
-    console.error("Delete temp file error:", error);
-    return errorResponse(error.message || "Failed to delete temporary file", 500);
+    return handleApiError(error, "Failed to delete temporary file");
   }
 }

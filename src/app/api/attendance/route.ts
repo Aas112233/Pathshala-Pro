@@ -3,18 +3,17 @@ import { prisma } from "@/lib/prisma";
 import {
   successResponse,
   paginatedResponse,
-  errorResponse,
   badRequest,
-  unauthorized,
+  handleApiError,
   validationError,
 } from "@/lib/api-response";
-import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas";
+import { createAttendanceSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 /**
  * GET /api/attendance
- * Get all attendance records with pagination
+ * Get all attendance records with pagination and filters
  */
 export async function GET(request: NextRequest) {
   try {
@@ -32,6 +31,7 @@ export async function GET(request: NextRequest) {
     const studentId = searchParams.get("studentId") || "";
     const staffId = searchParams.get("staffId") || "";
     const status = searchParams.get("status") || "";
+    const classId = searchParams.get("classId") || "";
 
     const skip = (page - 1) * limit;
 
@@ -63,39 +63,44 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
+    if (classId) {
+      where.studentProfile = { classId };
+    }
+
     const [totalCount, attendance] = await Promise.all([
       prisma.attendance.count({ where }),
       prisma.attendance.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { date: "desc" },
-      include: {
-        studentProfile: {
-          select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            rollNumber: true,
+        where,
+        skip,
+        take: limit,
+        orderBy: { date: "desc" },
+        include: {
+          studentProfile: {
+            select: {
+              studentId: true,
+              firstName: true,
+              lastName: true,
+              rollNumber: true,
+              class: { select: { name: true } },
+              section: { select: { name: true } },
+            },
+          },
+          staffProfile: {
+            select: {
+              staffId: true,
+              firstName: true,
+              lastName: true,
+              designation: true,
+            },
+          },
+          markedBy: {
+            select: {
+              name: true,
+              email: true,
+            },
           },
         },
-        staffProfile: {
-          select: {
-            staffId: true,
-            firstName: true,
-            lastName: true,
-            designation: true,
-          },
-        },
-        markedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
+      }),
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -109,14 +114,13 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get attendance error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
 /**
  * POST /api/attendance
- * Mark attendance (student or staff)
+ * Create single or bulk fast-grid attendance records
  */
 export async function POST(request: NextRequest) {
   try {
@@ -124,10 +128,85 @@ export async function POST(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user, tenantId } = access.authContext;
-
     const body = await request.json();
-    const validation = createAttendanceSchema.safeParse(body);
 
+    // 1. Check if bulk fast-grid format
+    if (body.records && Array.isArray(body.records)) {
+      const { date, records } = body;
+      if (!date) return badRequest("Attendance date is required");
+
+      const attendanceDate = new Date(date);
+      attendanceDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(attendanceDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      let presentCount = 0;
+      let absentCount = 0;
+      let lateCount = 0;
+      let excusedCount = 0;
+      const absentees: any[] = [];
+
+      await prisma.$transaction(async (tx) => {
+        for (const item of records) {
+          const status = item.status || "PRESENT";
+          if (status === "PRESENT") presentCount++;
+          else if (status === "ABSENT") {
+            absentCount++;
+            absentees.push(item.studentProfileId);
+          } else if (status === "LATE") lateCount++;
+          else if (status === "EXCUSED") excusedCount++;
+
+          // Check if existing record for this student on this date
+          const existing = await tx.attendance.findFirst({
+            where: {
+              tenantId,
+              studentProfileId: item.studentProfileId,
+              date: { gte: attendanceDate, lt: nextDate },
+            },
+          });
+
+          if (existing) {
+            await tx.attendance.update({
+              where: { id: existing.id },
+              data: {
+                status,
+                note: item.note || undefined,
+                markedById: user.id,
+              },
+            });
+          } else {
+            await tx.attendance.create({
+              data: {
+                tenantId,
+                studentProfileId: item.studentProfileId,
+                date: attendanceDate,
+                status,
+                note: item.note || undefined,
+                markedById: user.id,
+              },
+            });
+          }
+        }
+      });
+
+      return successResponse(
+        {
+          totalMarked: records.length,
+          presentCount,
+          absentCount,
+          lateCount,
+          excusedCount,
+          attendanceRate: records.length > 0 ? ((presentCount / records.length) * 100).toFixed(1) : "0",
+          date: date,
+          absenteesCount: absentees.length,
+        },
+        "Fast-grid attendance saved successfully!",
+        201
+      );
+    }
+
+    // 2. Standard Single Attendance
+    const validation = createAttendanceSchema.safeParse(body);
     if (!validation.success) {
       const errors = validation.error.errors.map((err) => ({
         field: err.path.join("."),
@@ -139,25 +218,18 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
-    // Verify student or staff exists
     if (data.studentProfileId) {
       const student = await prisma.studentProfile.findUnique({
         where: { id: data.studentProfileId, tenantId },
       });
-
-      if (!student) {
-        return badRequest("Student not found");
-      }
+      if (!student) return badRequest("Student not found");
     }
 
     if (data.staffProfileId) {
       const staff = await prisma.staffProfile.findUnique({
         where: { id: data.staffProfileId, tenantId },
       });
-
-      if (!staff) {
-        return badRequest("Staff member not found");
-      }
+      if (!staff) return badRequest("Staff member not found");
     }
 
     const attendance = await prisma.attendance.create({
@@ -188,7 +260,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(attendance, "Attendance marked successfully", 201);
   } catch (error) {
-    console.error("Create attendance error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

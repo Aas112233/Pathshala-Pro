@@ -54,6 +54,22 @@ export const createFeeVoucherSchema = z.object({
 
 export const updateFeeVoucherSchema = createFeeVoucherSchema.partial();
 
+export const batchFeeInvoicingSchema = z.object({
+  academicYearId: z.string().min(1, "Academic Year is required"),
+  feeType: z.string().min(1, "Fee type is required").default("TUITION"),
+  month: z.number().int().min(1).max(12).optional(),
+  year: z.number().int().min(2000).max(2100).optional(),
+  dueDate: z.string().min(1, "Due date is required"),
+  baseAmount: z.number().min(0, "Base amount must be non-negative"),
+  target: z.enum(["ALL_STUDENTS", "CLASS", "SECTION"]).default("ALL_STUDENTS"),
+  classId: z.string().optional(),
+  sectionId: z.string().optional(),
+  carryForwardArrears: z.boolean().default(true),
+  note: z.string().optional(),
+});
+
+export type BatchFeeInvoicingInput = z.infer<typeof batchFeeInvoicingSchema>;
+
 // Transaction schemas
 export const createTransactionSchema = z.object({
   transactionId: z.string().min(1, "Transaction ID is required"),
@@ -241,3 +257,410 @@ export const bulkPayrollSchema = z.object({
   year: z.number().min(2000).max(2100),
   entries: z.array(bulkPayrollEntrySchema).min(1, "At least one entry is required"),
 });
+
+// Institute Onboarding schemas
+export const CLASS_TEMPLATE_PRESETS = [
+  "K_12",
+  "PRIMARY_1_5",
+  "MIDDLE_6_8",
+  "SECONDARY_9_10",
+  "HIGHER_SEC_11_12",
+  "O_A_LEVELS",
+  "MADRASA",
+  "CUSTOM",
+] as const;
+
+export type ClassTemplatePreset = (typeof CLASS_TEMPLATE_PRESETS)[number];
+
+export const onboardInstituteSchema = z.object({
+  name: z.string().min(2, "School name must be at least 2 characters"),
+  tenantId: z
+    .string()
+    .min(3, "Subdomain/slug must be at least 3 characters")
+    .max(30, "Subdomain/slug must be 30 characters or less")
+    .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens")
+    .optional(),
+  schoolCode: z.string().optional(),
+  address: z.string().min(5, "Address must be at least 5 characters"),
+  phone: z.string().optional(),
+  email: z.preprocess(
+    (val) => (!val || (typeof val === "string" && !val.trim()) ? undefined : typeof val === "string" ? val.trim().toLowerCase() : val),
+    z.string().email("Invalid email format").optional().nullable()
+  ),
+  website: z.preprocess(
+    (val) => {
+      if (!val || (typeof val === "string" && !val.trim())) return undefined;
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        return trimmed.startsWith("http://") || trimmed.startsWith("https://")
+          ? trimmed
+          : `https://${trimmed}`;
+      }
+      return val;
+    },
+    z.string().url("Invalid website URL").optional().nullable()
+  ),
+  motto: z.string().optional(),
+  establishedYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+
+  currency: z.string().default("PKR"),
+  currencySymbol: z.string().default("₨"),
+  taxRate: z.number().min(0).max(100).default(0),
+  dateFormat: z.string().default("DD/MM/YYYY"),
+  timeFormat: z.enum(["12h", "24h"]).default("12h"),
+  timezone: z.string().default("Asia/Karachi"),
+  firstDayOfWeek: z.string().default("monday"),
+  gradingSystem: z.enum(["GPA", "PERCENTAGE", "LETTER"]).default("GPA"),
+
+  academicYearLabel: z.string().min(4, "Academic year label is required"),
+  academicStartDate: z.string().min(1, "Academic start date is required"),
+  academicEndDate: z.string().min(1, "Academic end date is required"),
+  classTemplate: z.enum(CLASS_TEMPLATE_PRESETS).default("K_12"),
+
+  adminName: z.string().min(2, "Admin name must be at least 2 characters"),
+  adminEmail: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim().toLowerCase() : val),
+    z.string().email("Valid admin email is required")
+  ),
+  adminPassword: z.string().min(6, "Password must be at least 6 characters"),
+  adminPhone: z.string().optional(),
+
+  subscriptionStatus: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "EXPIRED"]).default("TRIAL"),
+});
+
+export type OnboardInstituteInput = z.infer<typeof onboardInstituteSchema>;
+
+// Expense Category schemas
+export const createExpenseCategorySchema = z.object({
+  name: z.string().min(2, "Category name is required"),
+  code: z.string().min(2, "Code is required").toUpperCase(),
+  description: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const updateExpenseCategorySchema = createExpenseCategorySchema.partial();
+
+// Expense schemas
+export const createExpenseSchema = z.object({
+  title: z.string().min(2, "Expense title is required"),
+  categoryId: z.string().min(1, "Category is required"),
+  amount: z.number().positive("Amount must be greater than 0"),
+  paymentMethod: z.enum(["CASH", "BANK", "CHEQUE", "DIGITAL"]).default("CASH"),
+  expenseDate: z.string().min(1, "Expense date is required"),
+  payeeName: z.string().optional(),
+  receiptNumber: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateExpenseSchema = createExpenseSchema.partial();
+
+// Bank Account schemas
+export const createBankAccountSchema = z.object({
+  accountName: z.string().min(2, "Account name is required"),
+  accountNumber: z.string().min(2, "Account number is required"),
+  bankName: z.string().min(2, "Bank name is required"),
+  branchName: z.string().optional(),
+  accountType: z.enum(["CHECKING", "SAVINGS", "PETTY_CASH"]).default("CHECKING"),
+  openingBalance: z.number().min(0).default(0),
+  currency: z.string().default("PKR"),
+});
+
+export const updateBankAccountSchema = createBankAccountSchema.partial();
+
+// Timetable schemas
+export const DAYS_OF_WEEK = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
+
+const baseTimetableSchema = z.object({
+  academicYearId: z.string().optional().nullable(),
+  classId: z.string().min(1, "Class is required"),
+  sectionId: z.string().optional().nullable(),
+  dayOfWeek: z.enum(DAYS_OF_WEEK),
+  periodNumber: z.number().int().min(1).max(12),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Start time must be HH:MM"),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "End time must be HH:MM"),
+  subjectId: z.string().optional().nullable(),
+  staffProfileId: z.string().optional().nullable(),
+  roomNumber: z.string().optional().nullable(),
+  isBreak: z.boolean().default(false),
+  breakLabel: z.string().optional().nullable(),
+});
+
+export const createTimetableSchema = baseTimetableSchema.refine(
+  (d) => d.isBreak || !!d.subjectId,
+  { message: "Subject is required for teaching periods", path: ["subjectId"] }
+);
+
+export const updateTimetableSchema = baseTimetableSchema.partial();
+
+export const bulkTimetableSchema = z.object({
+  entries: z.array(createTimetableSchema).min(1, "At least one entry required"),
+});
+
+// Enquiry schemas
+export const ENQUIRY_STATUSES = ["NEW", "CONTACTED", "VISITED", "ADMITTED", "REJECTED"] as const;
+export const ENQUIRY_SOURCES = ["WALK_IN", "PHONE", "WEBSITE", "REFERRAL", "SOCIAL", "OTHER"] as const;
+
+export const createEnquirySchema = z.object({
+  studentName: z.string().min(2, "Student name is required"),
+  guardianName: z.string().min(2, "Guardian name is required"),
+  phone: z.string().min(8, "Phone is required"),
+  email: z.preprocess(
+    (v) => (typeof v === "string" && !v.trim() ? undefined : v),
+    z.string().email("Invalid email").optional().nullable()
+  ),
+  classAppliedId: z.string().optional().nullable(),
+  source: z.enum(ENQUIRY_SOURCES).default("WALK_IN"),
+  status: z.enum(ENQUIRY_STATUSES).default("NEW"),
+  followUpDate: z.preprocess((v) => (v === "" ? null : v), z.string().optional().nullable()),
+  notes: z.string().optional().nullable(),
+  assignedToId: z.string().optional().nullable(),
+});
+
+export const updateEnquirySchema = createEnquirySchema.partial();
+
+// Library schemas
+export const createBookSchema = z.object({
+  title: z.string().min(2, "Title is required"),
+  author: z.string().min(2, "Author is required"),
+  isbn: z.string().optional().nullable(),
+  publisher: z.string().optional().nullable(),
+  category: z.enum(["GENERAL", "TEXTBOOK", "REFERENCE", "STORY", "SCIENCE", "HISTORY", "COMPUTER"]).default("GENERAL"),
+  accessionNo: z.string().min(1, "Accession number is required"),
+  copies: z.number().int().min(1).default(1),
+  shelfLocation: z.string().optional().nullable(),
+});
+
+export const updateBookSchema = createBookSchema.partial();
+
+export const createBookIssueSchema = z.object({
+  bookId: z.string().min(1, "Book is required"),
+  borrowerType: z.enum(["STUDENT", "STAFF"]).default("STUDENT"),
+  studentProfileId: z.string().optional().nullable(),
+  staffProfileId: z.string().optional().nullable(),
+  borrowerName: z.string().min(1, "Borrower name is required"),
+  borrowerIdNo: z.string().min(1, "Borrower ID is required"),
+  dueDate: z.string().min(1, "Due date is required"),
+  notes: z.string().optional().nullable(),
+});
+
+export const returnBookSchema = z.object({
+  fineAmount: z.number().min(0).default(0),
+  notes: z.string().optional().nullable(),
+});
+
+// Transport schemas
+export const createVehicleSchema = z.object({
+  vehicleNo: z.string().min(2, "Vehicle number is required"),
+  type: z.enum(["BUS", "VAN", "MINI_BUS", "OTHER"]).default("BUS"),
+  capacity: z.number().int().min(1),
+  driverName: z.string().optional().nullable(),
+  driverPhone: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
+});
+
+export const updateVehicleSchema = createVehicleSchema.partial();
+
+export const createRouteSchema = z.object({
+  name: z.string().min(2, "Route name is required"),
+  stops: z.array(z.string().min(1)).min(1, "At least one stop required"),
+  vehicleId: z.string().optional().nullable(),
+  monthlyFee: z.number().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const updateRouteSchema = createRouteSchema.partial();
+
+export const createAllocationSchema = z.object({
+  studentProfileId: z.string().min(1, "Student is required"),
+  routeId: z.string().min(1, "Route is required"),
+  stopName: z.string().min(1, "Stop is required"),
+  monthlyFee: z.number().min(0).default(0),
+});
+
+export const updateAllocationSchema = createAllocationSchema.partial();
+
+// Homework schemas
+export const createHomeworkSchema = z.object({
+  classId: z.string().min(1, "Class is required"),
+  sectionId: z.string().optional().nullable(),
+  subjectId: z.string().optional().nullable(),
+  title: z.string().min(2, "Title is required"),
+  description: z.string().min(5, "Description is required"),
+  attachmentUrl: z.string().url().optional().nullable().or(z.literal("")),
+  dueDate: z.string().min(1, "Due date is required"),
+});
+
+export const updateHomeworkSchema = createHomeworkSchema.partial();
+
+export const createSubmissionSchema = z.object({
+  homeworkId: z.string().min(1, "Homework is required"),
+  studentProfileId: z.string().min(1, "Student is required"),
+  attachmentUrl: z.string().url().optional().nullable().or(z.literal("")),
+  remarks: z.string().optional().nullable(),
+});
+
+export const gradeSubmissionSchema = z.object({
+  grade: z.string().min(1, "Grade is required"),
+  remarks: z.string().optional().nullable(),
+  status: z.enum(["GRADED", "PENDING", "LATE"]).default("GRADED"),
+});
+
+// Leave schemas
+export const createLeaveSchema = z.object({
+  applicantType: z.enum(["STUDENT", "STAFF"]).default("STUDENT"),
+  studentProfileId: z.string().optional().nullable(),
+  staffProfileId: z.string().optional().nullable(),
+  leaveType: z.enum(["SICK", "CASUAL", "EMERGENCY", "OTHER"]).default("SICK"),
+  fromDate: z.string().min(1, "From date is required"),
+  toDate: z.string().min(1, "To date is required"),
+  reason: z.string().min(5, "Reason is required"),
+}).refine((d) => (d.applicantType === "STUDENT" ? !!d.studentProfileId : !!d.staffProfileId), {
+  message: "Applicant is required",
+  path: ["studentProfileId"],
+});
+
+export const updateLeaveSchema = z.object({
+  status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
+  leaveType: z.enum(["SICK", "CASUAL", "EMERGENCY", "OTHER"]).optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
+  reason: z.string().optional(),
+});
+
+// Certificate schemas
+export const createCertificateSchema = z.object({
+  studentProfileId: z.string().min(1, "Student is required"),
+  certificateType: z.enum(["TRANSFER", "CHARACTER", "BONAFIDE", "STUDY", "MARKSHEET", "OTHER"]).default("BONAFIDE"),
+  certificateNumber: z.string().optional(),
+  issueDate: z.string().optional(),
+  validUntil: z.preprocess((v) => (v === "" ? null : v), z.string().optional().nullable()),
+  purpose: z.string().optional().nullable(),
+  remarks: z.string().optional().nullable(),
+});
+
+export const updateCertificateSchema = z.object({
+  studentProfileId: z.string().optional(),
+  certificateType: z.enum(["TRANSFER", "CHARACTER", "BONAFIDE", "STUDY", "MARKSHEET", "OTHER"]).optional(),
+  certificateNumber: z.string().optional(),
+  issueDate: z.string().optional(),
+  validUntil: z.preprocess((v) => (v === "" ? null : v), z.string().optional().nullable()),
+  purpose: z.string().optional().nullable(),
+  remarks: z.string().optional().nullable(),
+  status: z.enum(["ISSUED", "REVOKED", "DRAFT"]).optional(),
+});
+
+// Health schemas
+export const createHealthRecordSchema = z.object({
+  studentProfileId: z.string().min(1, "Student is required"),
+  bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional().nullable(),
+  allergies: z.string().optional().nullable(),
+  chronicConditions: z.string().optional().nullable(),
+  medications: z.string().optional().nullable(),
+  vaccinationJson: z.any().optional().nullable(),
+  heightCm: z.number().min(30).max(250).optional().nullable(),
+  weightKg: z.number().min(5).max(300).optional().nullable(),
+  visionLeft: z.string().optional().nullable(),
+  visionRight: z.string().optional().nullable(),
+  lastCheckupDate: z.preprocess((v) => (v === "" ? null : v), z.string().optional().nullable()),
+  remarks: z.string().optional().nullable(),
+});
+
+export const updateHealthRecordSchema = createHealthRecordSchema.partial();
+
+// Inventory schemas
+export const createInventoryItemSchema = z.object({
+  name: z.string().min(2, "Item name is required"),
+  code: z.string().min(1, "Code is required"),
+  category: z.enum(["GENERAL", "STATIONERY", "LAB", "SPORTS", "UNIFORM", "BOOKS", "FURNITURE", "ELECTRONICS"]).default("GENERAL"),
+  unit: z.enum(["PCS", "BOX", "KG", "LTR", "SET", "DOZEN"]).default("PCS"),
+  quantity: z.number().int().min(0).default(0),
+  minStockLevel: z.number().int().min(0).default(10),
+  location: z.string().optional().nullable(),
+  costPrice: z.number().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const updateInventoryItemSchema = createInventoryItemSchema.partial();
+
+export const createInventoryTransactionSchema = z.object({
+  itemId: z.string().min(1, "Item is required"),
+  transactionType: z.enum(["PURCHASE", "ISSUE", "ADJUSTMENT", "RETURN"]).default("PURCHASE"),
+  quantity: z.number().int().min(1, "Quantity must be at least 1"),
+  unitCost: z.number().min(0).optional().nullable(),
+  reference: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+// Hostel schemas
+export const createHostelSchema = z.object({
+  name: z.string().min(2, "Hostel name is required"),
+  type: z.enum(["BOYS", "GIRLS", "COMBINED"]).default("BOYS"),
+  wardenName: z.string().optional().nullable(),
+  wardenPhone: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  capacity: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const updateHostelSchema = createHostelSchema.partial();
+
+export const createHostelRoomSchema = z.object({
+  hostelId: z.string().min(1, "Hostel is required"),
+  roomNumber: z.string().min(1, "Room number is required"),
+  floor: z.number().int().min(0).default(1),
+  capacity: z.number().int().min(1).default(4),
+  roomType: z.enum(["GENERAL", "DELUXE", "DORMITORY"]).default("GENERAL"),
+  isActive: z.boolean().default(true),
+});
+
+export const updateHostelRoomSchema = createHostelRoomSchema.partial();
+
+export const createHostelAllocationSchema = z.object({
+  hostelId: z.string().min(1, "Hostel is required"),
+  roomId: z.string().min(1, "Room is required"),
+  studentProfileId: z.string().min(1, "Student is required"),
+  bedNumber: z.string().optional().nullable(),
+});
+
+export const updateHostelAllocationSchema = createHostelAllocationSchema.partial();
+
+// Notice schemas
+export const createNoticeSchema = z.object({
+  title: z.string().min(2, "Title must be at least 2 characters"),
+  content: z.string().min(5, "Content must be at least 5 characters"),
+  category: z.enum([
+    "GENERAL",
+    "ACADEMIC",
+    "EXAMINATION",
+    "FEE_REMINDER",
+    "HOLIDAY",
+    "EVENT",
+    "MAINTENANCE",
+    "SYSTEM_UPDATE",
+    "BILLING_ALERT",
+    "URGENT_ALERT",
+  ]).default("GENERAL"),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
+  audience: z.enum([
+    "ALL",
+    "TEACHERS",
+    "STUDENTS",
+    "PARENTS",
+    "SPECIFIC_CLASS",
+    "ALL_SCHOOLS",
+    "SPECIFIC_TENANTS",
+    "SYSTEM_ADMINS",
+  ]).default("ALL"),
+  targetClassId: z.string().optional().nullable(),
+  targetTenants: z.array(z.string()).optional().default([]),
+  isPinned: z.boolean().optional().default(false),
+  isPublished: z.boolean().optional().default(true),
+  publishDate: z.string().optional(),
+  expiresAt: z.preprocess((val) => (val === "" ? null : val), z.string().optional().nullable()),
+  attachmentUrl: z.preprocess((val) => (val === "" ? null : val), z.string().optional().nullable()),
+});
+
+export const updateNoticeSchema = createNoticeSchema.partial();
+
+
+

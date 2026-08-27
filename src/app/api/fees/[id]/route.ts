@@ -6,6 +6,7 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { updateFeeVoucherSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -74,8 +75,7 @@ export async function GET(
 
     return successResponse(feeVoucher);
   } catch (error) {
-    console.error("Get fee voucher error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -186,8 +186,7 @@ export async function PUT(
 
     return successResponse(updatedVoucher, "Fee voucher updated successfully");
   } catch (error) {
-    console.error("Update fee voucher error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -243,7 +242,6 @@ export async function DELETE(
 
     return successResponse(null, "Fee voucher deleted successfully");
   } catch (error) {
-    console.error("Delete fee voucher error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

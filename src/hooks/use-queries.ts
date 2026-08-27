@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   studentsApi,
   usersApi,
@@ -10,6 +10,10 @@ import {
   attendanceApi,
   examsApi,
   authApi,
+  expensesApi,
+  expenseCategoriesApi,
+  bankAccountsApi,
+  profitLossApi,
 } from "@/lib/api-client";
 import type { PaginationParams } from "@/types/api";
 import type { CreateUserPayload, UpdateUserPayload } from "@/types/users";
@@ -24,6 +28,7 @@ export function useStudents(params?: PaginationParams, options?: QueryHookOption
     queryKey: ["students", params],
     queryFn: () => studentsApi.list(params),
     enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -72,6 +77,7 @@ export function useUsers(params?: PaginationParams, options?: QueryHookOptions) 
     queryKey: ["users", params],
     queryFn: () => usersApi.list(params),
     enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -115,10 +121,12 @@ export function useDeleteUser() {
 }
 
 // Academic Years hooks
-export function useAcademicYears(params?: PaginationParams) {
+export function useAcademicYears(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
     queryKey: ["academicYears", params],
     queryFn: () => academicYearsApi.list(params),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -167,6 +175,7 @@ export function useFees(params?: PaginationParams, options?: QueryHookOptions) {
     queryKey: ["fees", params],
     queryFn: () => feesApi.list(params),
     enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -215,6 +224,7 @@ export function useTransactions(params?: PaginationParams, options?: QueryHookOp
     queryKey: ["transactions", params],
     queryFn: () => transactionsApi.list(params),
     enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -254,6 +264,7 @@ export function useStaff(params?: PaginationParams, options?: QueryHookOptions) 
     queryKey: ["staff", params],
     queryFn: () => staffApi.list(params),
     enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -301,6 +312,7 @@ export function useSalary(params?: PaginationParams) {
   return useQuery({
     queryKey: ["salary", params],
     queryFn: () => salaryApi.list(params),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -344,10 +356,12 @@ export function useDeleteSalary() {
 }
 
 // Attendance hooks
-export function useAttendance(params?: PaginationParams) {
+export function useAttendance(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
     queryKey: ["attendance", params],
     queryFn: () => attendanceApi.list(params),
+    placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -395,6 +409,7 @@ export function useExams(params?: PaginationParams) {
   return useQuery({
     queryKey: ["exams", params],
     queryFn: () => examsApi.list(params),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -444,3 +459,80 @@ export function useLogin() {
       authApi.login(email, password),
   });
 }
+
+// Expenses hooks
+export function useExpenses(params?: PaginationParams, options?: QueryHookOptions) {
+  return useQuery({
+    queryKey: ["expenses", params],
+    queryFn: () => expensesApi.list(params),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCreateExpense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => expensesApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["profitLoss"] });
+    },
+  });
+}
+
+export function useDeleteExpense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => expensesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["profitLoss"] });
+    },
+  });
+}
+
+// Expense Categories hooks
+export function useExpenseCategories() {
+  return useQuery({
+    queryKey: ["expenseCategories"],
+    queryFn: () => expenseCategoriesApi.list(),
+  });
+}
+
+export function useCreateExpenseCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => expenseCategoriesApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenseCategories"] });
+    },
+  });
+}
+
+// Bank Accounts hooks
+export function useBankAccounts() {
+  return useQuery({
+    queryKey: ["bankAccounts"],
+    queryFn: () => bankAccountsApi.list(),
+  });
+}
+
+export function useCreateBankAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => bankAccountsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bankAccounts"] });
+    },
+  });
+}
+
+// Profit & Loss hooks
+export function useProfitLoss(year?: number) {
+  return useQuery({
+    queryKey: ["profitLoss", year],
+    queryFn: () => profitLossApi.get(year),
+  });
+}
+

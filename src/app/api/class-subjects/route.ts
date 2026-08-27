@@ -6,6 +6,7 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 
@@ -45,8 +46,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(classSubjects, "Class subjects retrieved successfully");
   } catch (error) {
-    console.error("Get class subjects error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       return badRequest("One or more subjects not found");
     }
 
-    // Create a map of subjectId to MongoDB id
+    // Create a map of subjectId to database id
     const subjectIdMap = new Map(existingSubjects.map((s: { id: string; subjectId: string }) => [s.subjectId, s.id]));
 
     // Remove existing subject assignments for this class
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       data: subjects.map((s: any, index: number) => ({
         tenantId,
         classId,
-        subjectId: subjectIdMap.get(s.subjectId)!, // Use MongoDB ObjectId
+        subjectId: subjectIdMap.get(s.subjectId)!, // Use the subject record's primary key
         isCompulsory: s.isCompulsory ?? true,
         sortOrder: s.sortOrder ?? index,
       })),
@@ -130,7 +130,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(result, "Subjects assigned to class successfully", 201);
   } catch (error) {
-    console.error("Assign class subjects error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

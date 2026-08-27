@@ -7,6 +7,7 @@ import {
   notFound,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { z } from "zod";
@@ -55,8 +56,7 @@ export async function GET(
 
     return successResponse(group);
   } catch (error) {
-    console.error("Get group error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -138,8 +138,7 @@ export async function PUT(
 
     return successResponse(updatedGroup, "Group updated successfully");
   } catch (error) {
-    console.error("Update group error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -185,7 +184,6 @@ export async function DELETE(
 
     return successResponse(null, "Group deleted successfully");
   } catch (error) {
-    console.error("Delete group error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

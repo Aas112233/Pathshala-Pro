@@ -7,6 +7,7 @@ import {
   notFound,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { updateExamSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -84,8 +85,7 @@ export async function GET(
 
     return successResponse(exam, "Exam retrieved successfully");
   } catch (error) {
-    console.error("Get exam error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -188,7 +188,10 @@ export async function PUT(
     const updatedExam = await prisma.exam.update({
       where: { id },
       data: {
-        ...data,
+        ...(() => {
+          const { subjects: _ignoredSubjects, ...scalarData } = data;
+          return scalarData;
+        })(),
         startDate: data.startDate ? new Date(data.startDate) : undefined,
         endDate: data.endDate ? new Date(data.endDate) : undefined,
       },
@@ -204,8 +207,7 @@ export async function PUT(
 
     return successResponse(updatedExam, "Exam updated successfully");
   } catch (error) {
-    console.error("Update exam error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -261,7 +263,6 @@ export async function DELETE(
 
     return successResponse(null, "Exam deleted successfully");
   } catch (error) {
-    console.error("Delete exam error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

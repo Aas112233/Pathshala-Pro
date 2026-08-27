@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
+import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { Users, Plus } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -196,7 +197,7 @@ export default function StaffPage() {
             onClick={() => setViewMode(viewMode === "table" ? "grid" : "table")}
             size="sm"
           >
-            {viewMode === "table" ? "Grid View" : "Table View"}
+            {viewMode === "table" ? "Grid view" : "Table view"}
           </Button>
           <Button onClick={() => setIsFormOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -233,6 +234,8 @@ export default function StaffPage() {
           isLoading={isLoading}
           searchPlaceholder={t('searchPlaceholder')}
         />
+      ) : isLoading ? (
+        <CardGridSkeleton count={6} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {staff.map((staffMember) => (

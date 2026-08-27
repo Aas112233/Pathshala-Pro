@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
+import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { GraduationCap, Plus } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -210,6 +211,8 @@ export default function StudentsPage() {
           isLoading={isLoading}
           searchPlaceholder={t('searchPlaceholder')}
         />
+      ) : isLoading ? (
+        <CardGridSkeleton count={6} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {students.map((student) => (

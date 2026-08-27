@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn, formatStudentName } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ export default function ExamResultsPage() {
   const [results, setResults] = useState<StudentResult[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { data: examsData } = useExams();
+  const { data: examsData, isLoading: isExamsLoading } = useExams();
   const { data: examData } = useExam(selectedExam);
   const { data: studentsData } = useStudents();
   const { data: academicYearsData } = useAcademicYears();
@@ -193,22 +194,26 @@ export default function ExamResultsPage() {
             <CardDescription>Choose the examination</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select value={selectedExam} onValueChange={(value) => {
-              setSelectedExam(value);
-              setSelectedSubject("");
-              setResults([]);
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an exam" />
-              </SelectTrigger>
-              <SelectContent>
-                {exams?.map((exam: any) => (
-                  <SelectItem key={exam.id} value={exam.id}>
-                    {exam.name} ({exam.academicYear?.label})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isExamsLoading ? (
+              <Skeleton className="h-10 w-full" aria-busy="true" />
+            ) : (
+              <Select value={selectedExam} onValueChange={(value) => {
+                setSelectedExam(value);
+                setSelectedSubject("");
+                setResults([]);
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an exam" />
+                </SelectTrigger>
+                <SelectContent>
+                  {exams?.map((exam: any) => (
+                    <SelectItem key={exam.id} value={exam.id}>
+                      {exam.name} ({exam.academicYear?.label})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardContent>
         </Card>
 
@@ -329,6 +334,13 @@ export default function ExamResultsPage() {
 
           {/* Results Table */}
           <Card>
+            <form
+              id="exam-results-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
+            >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -337,7 +349,7 @@ export default function ExamResultsPage() {
                     Enter marks for each student (Max: {subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks})
                   </CardDescription>
                 </div>
-                <Button onClick={handleSave} disabled={isSaving}>
+                <Button type="submit" disabled={isSaving}>
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? "Saving..." : "Save Results"}
                 </Button>
@@ -399,6 +411,7 @@ export default function ExamResultsPage() {
                 </TableBody>
               </Table>
             </CardContent>
+            </form>
           </Card>
         </>
       )}

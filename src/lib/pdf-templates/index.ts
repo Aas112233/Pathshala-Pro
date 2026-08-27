@@ -6,3 +6,19 @@ export { StudentReportTemplate } from "./student-report";
 export { FeeReportTemplate } from "./fee-report";
 export { AttendanceReportTemplate } from "./attendance-report";
 export { ExamReportTemplate } from "./exam-report";
+export { FeeVoucherPDFDocument, type FeeVoucherPDFData } from "./fee-voucher";
+export {
+  BatchReportCardDocument,
+  type BatchStudentResult,
+  type BatchReportCardProps,
+} from "./batch-report-card";
+export {
+  TransportManifestPDFDocument,
+  type TransportManifestPDFData,
+  type ManifestStudent,
+} from "./transport-manifest";
+export {
+  SalaryPayslipDocument,
+  BatchSalaryPayslipPDFDocument,
+  type SalaryPayslipPDFData,
+} from "./salary-payslip";

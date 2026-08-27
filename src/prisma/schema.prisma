@@ -3,234 +3,281 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Tenant {
-  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId           String             @unique
+  id                 String  @id @default(cuid())
+  tenantId           String  @unique
   name               String
   address            String
-  subscriptionStatus String             @default("TRIAL")
-  fiscalYearStart    Int                @default(1)
+  subscriptionStatus String  @default("TRIAL")
+  fiscalYearStart    Int     @default(1)
   logoUrl            String?
   phone              String?
   email              String?
 
   // School Settings
-  schoolCode         String?
-  establishedYear    Int?
-  motto              String?
-  website            String?
+  schoolCode      String?
+  establishedYear Int?
+  motto           String?
+  website         String?
 
   // Financial Settings
-  currency           String             @default("BDT")
-  currencySymbol     String             @default("৳")
-  taxRate            Float              @default(0)
+  currency       String @default("BDT")
+  currencySymbol String @default("৳")
+  taxRate        Float  @default(0)
 
   // Date & Time Settings
-  dateFormat         String             @default("DD/MM/YYYY")
-  timeFormat         String             @default("24h")
-  timezone           String             @default("Asia/Dhaka")
-  firstDayOfWeek     String             @default("sunday")
+  dateFormat     String @default("DD/MM/YYYY")
+  timeFormat     String @default("24h")
+  timezone       String @default("Asia/Dhaka")
+  firstDayOfWeek String @default("sunday")
 
   // Academic Settings
-  academicYearStart  String             @default("january")
-  gradingSystem      String             @default("GPA")
+  academicYearStart String @default("january")
+  gradingSystem     String @default("GPA")
 
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  users              User[]
-  studentProfiles    StudentProfile[]
-  academicYears      AcademicYear[]
-  feeVouchers        FeeVoucher[]
-  transactions       Transaction[]
-  staffProfiles      StaffProfile[]
-  salaryLedgers      SalaryLedger[]
-  attendances        Attendance[]
-  examResults        ExamResult[]
-  classes            Class[]
-  groups             Group[]
-  sections           Section[]
-  subjects           Subject[]
-  exams              Exam[]
-  examSubjects       ExamSubject[]
-  promotionRules     PromotionRule[]
-  classPromotions    ClassPromotion[]
-  classSubjects      ClassSubject[]
+  users                 User[]
+  studentProfiles       StudentProfile[]
+  academicYears         AcademicYear[]
+  timetables            Timetable[]
+  feeVouchers           FeeVoucher[]
+  transactions          Transaction[]
+  staffProfiles         StaffProfile[]
+  salaryLedgers         SalaryLedger[]
+  attendances           Attendance[]
+  examResults           ExamResult[]
+  classes               Class[]
+  groups                Group[]
+  sections              Section[]
+  subjects              Subject[]
+  exams                 Exam[]
+  examSubjects          ExamSubject[]
+  promotionRules        PromotionRule[]
+  classPromotions       ClassPromotion[]
+  classSubjects         ClassSubject[]
+  auditLogs             AuditLog[]
+  expenseCategories     ExpenseCategory[]
+  expenses              Expense[]
+  bankAccounts          BankAccount[]
+  notices               Notice[]
+  enquiries             Enquiry[]
+  transportVehicles     TransportVehicle[]
+  transportRoutes       TransportRoute[]
+  transportAllocations  TransportAllocation[]
+  books                 Book[]
+  bookIssues            BookIssue[]
+  homeworks             Homework[]
+  homeworkSubmissions   HomeworkSubmission[]
+  leaveApplications     LeaveApplication[]
+  inventoryItems        InventoryItem[]
+  inventoryTransactions InventoryTransaction[]
+  hostels               Hostel[]
+  hostelRooms           HostelRoom[]
+  hostelAllocations     HostelAllocation[]
+  certificates          Certificate[]
+  healthRecords         HealthRecord[]
 }
 
 model User {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  id             String    @id @default(cuid())
   tenantId       String
   email          String
   name           String
-  role           String       @default("CLERK")
+  role           String    @default("CLERK")
   permissions    Json?
   hash           String
-  isActive       Boolean      @default(true)
-  staffProfileId String?      @db.ObjectId
+  isActive       Boolean   @default(true)
+  staffProfileId String?
   lastLoginAt    DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  tenant         Tenant       @relation(fields: [tenantId], references: [tenantId])
-  transactions   Transaction[]
-  attendances    Attendance[] @relation("MarkedBy")
-  decidedPromotions ClassPromotion[]
-  staff          StaffProfile[]
+  tenant                Tenant                 @relation(fields: [tenantId], references: [tenantId])
+  transactions          Transaction[]
+  attendances           Attendance[]           @relation("MarkedBy")
+  decidedPromotions     ClassPromotion[]
+  staff                 StaffProfile[]
+  recordedExpenses      Expense[]
+  issuedBookIssues      BookIssue[]
+  createdHomeworks      Homework[]
+  inventoryTransactions InventoryTransaction[]
+  approvedLeaves        LeaveApplication[]
+  issuedCertificates    Certificate[]
+  enquiries             Enquiry[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
+  @@index([email])
 }
 
 model StudentProfile {
-  id              String       @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId        String
-  studentId       String
-  rollNumber      String
+  id                String    @id @default(cuid())
+  tenantId          String
+  studentId         String
+  rollNumber        String
   profilePictureUrl String?
-  firstName       String
-  lastName        String
-  firstNameBn     String?
-  lastNameBn      String?
-  guardianName    String
-  guardianContact String
-  guardianEmail   String?
-  dateOfBirth     DateTime?
-  gender          String?
-  address         String?
-  classId         String?    @db.ObjectId
-  groupId         String?    @db.ObjectId
-  sectionId       String?    @db.ObjectId
-  status          String     @default("ACTIVE")
-  admissionDate   DateTime   @default(now())
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  firstName         String
+  lastName          String
+  firstNameBn       String?
+  lastNameBn        String?
+  guardianName      String
+  guardianContact   String
+  guardianEmail     String?
+  dateOfBirth       DateTime?
+  gender            String?
+  address           String?
+  classId           String?
+  groupId           String?
+  sectionId         String?
+  status            String    @default("ACTIVE")
+  admissionDate     DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  tenant          Tenant     @relation(fields: [tenantId], references: [tenantId])
-  class           Class?     @relation(fields: [classId], references: [id])
-  group           Group?     @relation(fields: [groupId], references: [id])
-  section         Section?   @relation(fields: [sectionId], references: [id])
-  feeVouchers     FeeVoucher[]
-  attendances     Attendance[]
-  examResults     ExamResult[]
-  promotions      ClassPromotion[]
+  tenant               Tenant                @relation(fields: [tenantId], references: [tenantId])
+  class                Class?                @relation(fields: [classId], references: [id])
+  group                Group?                @relation(fields: [groupId], references: [id])
+  section              Section?              @relation(fields: [sectionId], references: [id])
+  feeVouchers          FeeVoucher[]
+  attendances          Attendance[]
+  examResults          ExamResult[]
+  promotions           ClassPromotion[]
+  bookIssues           BookIssue[]
+  transportAllocations TransportAllocation[]
+  homeworkSubmissions  HomeworkSubmission[]
+  leaveApplications    LeaveApplication[]
+  enquiries            Enquiry[]
+  hostelAllocations    HostelAllocation[]
+  certificates         Certificate[]
+  healthRecords        HealthRecord[]
 
   @@unique([tenantId, studentId])
   @@index([tenantId, rollNumber])
   @@index([tenantId, status])
-  @@index([tenantId, classId])
+  @@index([tenantId, classId, status])
+  @@index([tenantId, sectionId])
+  @@index([tenantId, groupId])
+  @@index([tenantId, createdAt])
 }
 
 model AcademicYear {
-  id                       String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId                 String
-  yearId                   String
-  label                    String
-  startDate                DateTime
-  endDate                  DateTime
-  isClosed                 Boolean        @default(false)
-  createdAt                DateTime       @default(now())
-  updatedAt                DateTime       @updatedAt
+  id        String   @id @default(cuid())
+  tenantId  String
+  yearId    String
+  label     String
+  startDate DateTime
+  endDate   DateTime
+  isClosed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant                   Tenant         @relation(fields: [tenantId], references: [tenantId])
-  feeVouchers              FeeVoucher[]
-  salaryLedgers            SalaryLedger[]
-  examResults              ExamResult[]
-  exams                    Exam[]
-  promotionRules           PromotionRule[]
+  tenant                     Tenant           @relation(fields: [tenantId], references: [tenantId])
+  feeVouchers                FeeVoucher[]
+  salaryLedgers              SalaryLedger[]
+  examResults                ExamResult[]
+  exams                      Exam[]
+  promotionRules             PromotionRule[]
   fromAcademicYearPromotions ClassPromotion[] @relation("FromAcademicYearPromotions")
-  toAcademicYearPromotions ClassPromotion[] @relation("ToAcademicYearPromotions")
+  toAcademicYearPromotions   ClassPromotion[] @relation("ToAcademicYearPromotions")
+  timetables                 Timetable[]
 
   @@unique([tenantId, yearId])
   @@index([tenantId])
 }
 
 model FeeVoucher {
-  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  id               String   @id @default(cuid())
   tenantId         String
   voucherId        String
-  studentProfileId String        @db.ObjectId
-  academicYearId   String        @db.ObjectId
+  studentProfileId String
+  academicYearId   String
   feeType          String
   baseAmount       Float
-  discountAmount   Float         @default(0)
-  arrears          Float         @default(0)
+  discountAmount   Float    @default(0)
+  arrears          Float    @default(0)
   totalDue         Float
-  amountPaid       Float         @default(0)
+  amountPaid       Float    @default(0)
   balance          Float
   dueDate          DateTime
-  status           String        @default("PENDING")
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  status           String   @default("PENDING")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  tenant           Tenant        @relation(fields: [tenantId], references: [tenantId])
-  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
-  academicYear     AcademicYear  @relation(fields: [academicYearId], references: [id])
-  transactions     Transaction[]
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
+  transactions   Transaction[]
 
   @@unique([tenantId, voucherId])
   @@index([tenantId, studentProfileId])
   @@index([tenantId, status])
-  @@index([dueDate])
+  @@index([tenantId, academicYearId])
+  @@index([tenantId, createdAt])
 }
 
 model Transaction {
-  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  id            String   @id @default(cuid())
   tenantId      String
   transactionId String
-  feeVoucherId  String     @db.ObjectId
+  feeVoucherId  String
   amountPaid    Float
   paymentMethod String
   receiptNumber String
-  collectedById String     @db.ObjectId
+  collectedById String
   note          String?
-  timestamp     DateTime   @default(now())
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  timestamp     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  tenant        Tenant     @relation(fields: [tenantId], references: [tenantId])
-  feeVoucher    FeeVoucher @relation(fields: [feeVoucherId], references: [id])
-  collectedBy   User       @relation(fields: [collectedById], references: [id])
+  tenant      Tenant     @relation(fields: [tenantId], references: [tenantId])
+  feeVoucher  FeeVoucher @relation(fields: [feeVoucherId], references: [id])
+  collectedBy User       @relation(fields: [collectedById], references: [id])
 
   @@unique([tenantId, transactionId])
-  @@index([tenantId])
-  @@index([timestamp])
+  @@index([tenantId, timestamp])
+  @@index([tenantId, feeVoucherId])
+  @@index([tenantId, collectedById])
 }
 
 model StaffProfile {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  staffId       String
-  userId        String?        @db.ObjectId
-  firstName     String
-  lastName      String
-  firstNameBn   String?
-  lastNameBn    String?
-  department    String
-  designation   String
-  baseSalary    Float
-  hireDate      DateTime
-  joiningDate   DateTime?
-  phone         String?
-  email         String?
-  gender        String?
-  dateOfBirth   DateTime?
-  qualification String?
-  address       String?
+  id                String    @id @default(cuid())
+  tenantId          String
+  staffId           String
+  userId            String?
+  firstName         String
+  lastName          String
+  firstNameBn       String?
+  lastNameBn        String?
+  department        String
+  designation       String
+  baseSalary        Float
+  hireDate          DateTime
+  joiningDate       DateTime?
+  phone             String?
+  email             String?
+  gender            String?
+  dateOfBirth       DateTime?
+  qualification     String?
+  address           String?
   profilePictureUrl String?
-  driveFileId   String?
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  driveFileId       String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
-  user          User?          @relation(fields: [userId], references: [id])
-  salaryLedgers SalaryLedger[]
-  attendances   Attendance[]
+  tenant            Tenant             @relation(fields: [tenantId], references: [tenantId])
+  user              User?              @relation(fields: [userId], references: [id])
+  salaryLedgers     SalaryLedger[]
+  attendances       Attendance[]
+  bookIssues        BookIssue[]
+  leaveApplications LeaveApplication[]
+  timetables        Timetable[]
 
   @@unique([tenantId, staffId])
   @@index([tenantId])
@@ -238,69 +285,74 @@ model StaffProfile {
 }
 
 model SalaryLedger {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  id             String    @id @default(cuid())
   tenantId       String
-  staffProfileId String       @db.ObjectId
-  academicYearId String       @db.ObjectId
+  staffProfileId String
+  academicYearId String
   month          Int
   year           Int
   baseSalary     Float
-  deductions     Float        @default(0)
-  advances       Float        @default(0)
+  deductions     Float     @default(0)
+  advances       Float     @default(0)
   netPayable     Float
-  paidAmount     Float        @default(0)
-  status         String       @default("PENDING")
+  paidAmount     Float     @default(0)
+  status         String    @default("PENDING")
   paidAt         DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  tenant         Tenant       @relation(fields: [tenantId], references: [tenantId])
-  staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id])
-  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [tenantId])
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
   @@index([tenantId, staffProfileId])
-  @@index([tenantId, month, year])
+  @@index([tenantId, year, month])
+  @@index([tenantId, academicYearId])
 }
 
 model Attendance {
-  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  id               String   @id @default(cuid())
   tenantId         String
-  studentProfileId String?         @db.ObjectId
-  staffProfileId   String?         @db.ObjectId
+  studentProfileId String?
+  staffProfileId   String?
   date             DateTime
   status           String
   note             String?
-  markedById       String          @db.ObjectId
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  markedById       String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  tenant           Tenant          @relation(fields: [tenantId], references: [tenantId])
-  studentProfile   StudentProfile? @relation(fields: [studentProfileId], references: [id])
-  staffProfile     StaffProfile?   @relation(fields: [staffProfileId], references: [id])
-  markedBy         User            @relation("MarkedBy", fields: [markedById], references: [id])
+  tenant         Tenant          @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id])
+  staffProfile   StaffProfile?   @relation(fields: [staffProfileId], references: [id])
+  markedBy       User            @relation("MarkedBy", fields: [markedById], references: [id])
 
   @@index([tenantId, date])
   @@index([tenantId, studentProfileId])
+  @@index([tenantId, staffProfileId])
+  @@index([tenantId, markedById])
 }
 
 // Exam & Subject Models
 model Subject {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  subjectId     String
-  name          String
-  code          String
-  category      String         // "COMPULSORY", "ELECTIVE", "OPTIONAL"
-  maxMarks      Float          @default(100)
-  passMarks     Float          @default(33)
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id        String   @id @default(cuid())
+  tenantId  String
+  subjectId String
+  name      String
+  code      String
+  category  String // "COMPULSORY", "ELECTIVE", "OPTIONAL"
+  maxMarks  Float    @default(100)
+  passMarks Float    @default(33)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
   examResults   ExamResult[]
   examSubjects  ExamSubject[]
   classSubjects ClassSubject[]
+  timetables    Timetable[]
+  homeworks     Homework[]
 
   @@unique([tenantId, subjectId])
   @@index([tenantId])
@@ -308,17 +360,17 @@ model Subject {
 
 // Class-Subject Mapping
 model ClassSubject {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  classId       String         @db.ObjectId
-  subjectId     String         @db.ObjectId
-  isCompulsory  Boolean        @default(true)
-  sortOrder     Int            @default(0)
-  createdAt     DateTime       @default(now())
+  id           String   @id @default(cuid())
+  tenantId     String
+  classId      String
+  subjectId    String
+  isCompulsory Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
-  class         Class          @relation(fields: [classId], references: [id])
-  subject       Subject        @relation(fields: [subjectId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [tenantId])
+  class   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
 
   @@unique([tenantId, classId, subjectId])
   @@index([tenantId, classId])
@@ -326,24 +378,24 @@ model ClassSubject {
 }
 
 model Exam {
-  id              String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId        String
-  examId          String
-  academicYearId  String         @db.ObjectId
-  name            String         // "Mid-Term", "Final", "Unit Test"
-  type            String         // "MID_TERM", "FINAL", "UNIT_TEST", "ANNUAL"
-  startDate       DateTime
-  endDate         DateTime
-  isPublished     Boolean        @default(false)
-  totalMarks      Float          @default(100)
-  passPercentage  Float          @default(33)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id             String   @id @default(cuid())
+  tenantId       String
+  examId         String
+  academicYearId String
+  name           String // "Mid-Term", "Final", "Unit Test"
+  type           String // "MID_TERM", "FINAL", "UNIT_TEST", "ANNUAL"
+  startDate      DateTime
+  endDate        DateTime
+  isPublished    Boolean  @default(false)
+  totalMarks     Float    @default(100)
+  passPercentage Float    @default(33)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  tenant          Tenant         @relation(fields: [tenantId], references: [tenantId])
-  academicYear    AcademicYear   @relation(fields: [academicYearId], references: [id])
-  subjects        ExamSubject[]
-  results         ExamResult[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [tenantId])
+  academicYear AcademicYear  @relation(fields: [academicYearId], references: [id])
+  subjects     ExamSubject[]
+  results      ExamResult[]
 
   @@unique([tenantId, examId])
   @@index([tenantId, academicYearId])
@@ -351,17 +403,17 @@ model Exam {
 }
 
 model ExamSubject {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  examId        String         @db.ObjectId
-  subjectId     String         @db.ObjectId
-  maxMarks      Float
-  passMarks     Float
-  createdAt     DateTime       @default(now())
+  id        String   @id @default(cuid())
+  tenantId  String
+  examId    String
+  subjectId String
+  maxMarks  Float
+  passMarks Float
+  createdAt DateTime @default(now())
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
-  exam          Exam           @relation(fields: [examId], references: [id])
-  subject       Subject        @relation(fields: [subjectId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [tenantId])
+  exam    Exam    @relation(fields: [examId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
 
   @@unique([tenantId, examId, subjectId])
   @@index([tenantId, examId])
@@ -369,87 +421,89 @@ model ExamSubject {
 }
 
 model ExamResult {
-  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  id               String   @id @default(cuid())
   tenantId         String
-  studentProfileId String         @db.ObjectId
-  academicYearId   String         @db.ObjectId
-  examId           String         @db.ObjectId
-  subjectId        String         @db.ObjectId
+  studentProfileId String
+  academicYearId   String
+  examId           String
+  subjectId        String
   maxMarks         Float
   obtainedMarks    Float
   percentage       Float
   grade            String
   gradePoint       Float
-  status           String         // "PASS", "FAIL", "ABSENT"
+  status           String // "PASS", "FAIL", "ABSENT"
   remarks          String?
-  reExamAllowed    Boolean        @default(false)
+  reExamAllowed    Boolean  @default(false)
   reExamMarks      Float?
   reExamGrade      String?
-  reExamStatus     String?        // "PASS", "FAIL"
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  reExamStatus     String? // "PASS", "FAIL"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  tenant           Tenant         @relation(fields: [tenantId], references: [tenantId])
-  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
-  academicYear     AcademicYear   @relation(fields: [academicYearId], references: [id])
-  exam             Exam           @relation(fields: [examId], references: [id])
-  subject          Subject        @relation(fields: [subjectId], references: [id])
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
+  exam           Exam           @relation(fields: [examId], references: [id])
+  subject        Subject        @relation(fields: [subjectId], references: [id])
 
+  @@unique([tenantId, studentProfileId, examId, subjectId])
   @@index([tenantId, studentProfileId])
   @@index([tenantId, examId])
   @@index([tenantId, academicYearId])
-  @@unique([tenantId, studentProfileId, examId, subjectId])
+  @@index([tenantId, subjectId])
+  @@index([tenantId, createdAt])
 }
 
 // Promotion Models
 model PromotionRule {
-  id                      String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId                String
-  academicYearId          String         @db.ObjectId
-  classId                 String         @db.ObjectId
-  minimumAttendance       Float          @default(75)
-  minimumOverallPercentage Float         @default(40)
-  minimumPerSubject       Float          @default(33)
-  maxFailedSubjects       Int            @default(0)
-  allowConditionalPromotion Boolean      @default(false)
-  autoPromote             Boolean        @default(true)
-  nextClassId             String?        @db.ObjectId
-  isActive                Boolean        @default(true)
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
+  id                        String   @id @default(cuid())
+  tenantId                  String
+  academicYearId            String
+  classId                   String
+  minimumAttendance         Float    @default(75)
+  minimumOverallPercentage  Float    @default(40)
+  minimumPerSubject         Float    @default(33)
+  maxFailedSubjects         Int      @default(0)
+  allowConditionalPromotion Boolean  @default(false)
+  autoPromote               Boolean  @default(true)
+  nextClassId               String?
+  isActive                  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
-  tenant                  Tenant         @relation(fields: [tenantId], references: [tenantId])
-  academicYear            AcademicYear   @relation(fields: [academicYearId], references: [id])
-  class                   Class          @relation(fields: [classId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [tenantId])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  class        Class        @relation(fields: [classId], references: [id])
 
   @@unique([tenantId, academicYearId, classId])
   @@index([tenantId, classId])
 }
 
 model ClassPromotion {
-  id                     String         @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId               String
-  studentProfileId       String         @db.ObjectId
-  fromAcademicYearId     String         @db.ObjectId
-  toAcademicYearId       String         @db.ObjectId
-  fromClassId            String         @db.ObjectId
-  toClassId              String         @db.ObjectId
-  status                 String         // "PROMOTED", "RETAINED", "CONDITIONAL_PROMOTED"
-  reason                 String?
-  reExamRequired         Boolean        @default(false)
-  reExamCompleted        Boolean        @default(false)
-  reExamPassed           Boolean?
-  decidedBy              String         @db.ObjectId
-  decidedAt              DateTime       @default(now())
-  createdAt              DateTime       @default(now())
+  id                 String   @id @default(cuid())
+  tenantId           String
+  studentProfileId   String
+  fromAcademicYearId String
+  toAcademicYearId   String
+  fromClassId        String
+  toClassId          String
+  status             String // "PROMOTED", "RETAINED", "CONDITIONAL_PROMOTED"
+  reason             String?
+  reExamRequired     Boolean  @default(false)
+  reExamCompleted    Boolean  @default(false)
+  reExamPassed       Boolean?
+  decidedBy          String
+  decidedAt          DateTime @default(now())
+  createdAt          DateTime @default(now())
 
-  tenant                 Tenant         @relation(fields: [tenantId], references: [tenantId])
-  studentProfile         StudentProfile @relation(fields: [studentProfileId], references: [id])
-  fromAcademicYear       AcademicYear   @relation("FromAcademicYearPromotions", fields: [fromAcademicYearId], references: [id])
-  toAcademicYear         AcademicYear   @relation("ToAcademicYearPromotions", fields: [toAcademicYearId], references: [id])
-  fromClass              Class          @relation("FromClassPromotions", fields: [fromClassId], references: [id])
-  toClass                Class          @relation("ToClassPromotions", fields: [toClassId], references: [id])
-  decidedByUser          User           @relation(fields: [decidedBy], references: [id])
+  tenant           Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
+  fromAcademicYear AcademicYear   @relation("FromAcademicYearPromotions", fields: [fromAcademicYearId], references: [id])
+  toAcademicYear   AcademicYear   @relation("ToAcademicYearPromotions", fields: [toAcademicYearId], references: [id])
+  fromClass        Class          @relation("FromClassPromotions", fields: [fromClassId], references: [id])
+  toClass          Class          @relation("ToClassPromotions", fields: [toClassId], references: [id])
+  decidedByUser    User           @relation(fields: [decidedBy], references: [id])
 
   @@index([tenantId, studentProfileId])
   @@index([tenantId, fromAcademicYearId])
@@ -460,23 +514,26 @@ model ClassPromotion {
 
 // Academic Management Models
 model Class {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  classId       String
-  name          String
-  classNumber   Int       @default(0)
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String   @id @default(cuid())
+  tenantId    String
+  classId     String
+  name        String
+  classNumber Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  tenant        Tenant    @relation(fields: [tenantId], references: [tenantId])
-  groups        Group[]
-  sections      Section[]
-  studentProfiles StudentProfile[]
-  promotionRules           PromotionRule[]
-  fromClassPromotions      ClassPromotion[] @relation("FromClassPromotions")
-  toClassPromotions        ClassPromotion[] @relation("ToClassPromotions")
-  classSubjects            ClassSubject[]
+  tenant              Tenant           @relation(fields: [tenantId], references: [tenantId])
+  groups              Group[]
+  sections            Section[]
+  studentProfiles     StudentProfile[]
+  promotionRules      PromotionRule[]
+  fromClassPromotions ClassPromotion[] @relation("FromClassPromotions")
+  toClassPromotions   ClassPromotion[] @relation("ToClassPromotions")
+  classSubjects       ClassSubject[]
+  timetables          Timetable[]
+  homeworks           Homework[]
+  enquiries           Enquiry[]
 
   @@unique([tenantId, classId])
   @@unique([tenantId, classNumber])
@@ -484,20 +541,20 @@ model Class {
 }
 
 model Group {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  groupId       String
-  classId       String    @db.ObjectId
-  name          String
-  shortName     String
-  subjects      String[]
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  tenantId  String
+  groupId   String
+  classId   String
+  name      String
+  shortName String
+  subjects  String[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant        Tenant    @relation(fields: [tenantId], references: [tenantId])
-  class         Class     @relation(fields: [classId], references: [id])
-  sections      Section[]
+  tenant          Tenant           @relation(fields: [tenantId], references: [tenantId])
+  class           Class            @relation(fields: [classId], references: [id])
+  sections        Section[]
   studentProfiles StudentProfile[]
 
   @@unique([tenantId, groupId])
@@ -505,25 +562,546 @@ model Group {
 }
 
 model Section {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId      String
-  sectionId     String
-  classId       String    @db.ObjectId
-  groupId       String?   @db.ObjectId
-  name          String
-  shortName     String
-  capacity      Int?
-  roomNumber    String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  tenantId   String
+  sectionId  String
+  classId    String
+  groupId    String?
+  name       String
+  shortName  String
+  capacity   Int?
+  roomNumber String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  tenant        Tenant    @relation(fields: [tenantId], references: [tenantId])
-  class         Class     @relation(fields: [classId], references: [id])
-  group         Group?    @relation(fields: [groupId], references: [id])
+  tenant          Tenant           @relation(fields: [tenantId], references: [tenantId])
+  class           Class            @relation(fields: [classId], references: [id])
+  group           Group?           @relation(fields: [groupId], references: [id])
   studentProfiles StudentProfile[]
+  timetables      Timetable[]
+  homeworks       Homework[]
 
   @@unique([tenantId, sectionId])
   @@index([tenantId, classId])
   @@index([tenantId, groupId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String?
+  userEmail String?
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  timestamp DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId])
+
+  @@index([tenantId, timestamp])
+  @@index([tenantId, entity, entityId])
+}
+
+model ExpenseCategory {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  code        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [tenantId])
+  expenses Expense[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  tenantId      String
+  expenseNumber String
+  title         String
+  categoryId    String
+  amount        Float
+  paymentMethod String   @default("CASH") // CASH, BANK, CHEQUE, DIGITAL
+  expenseDate   DateTime @default(now())
+  payeeName     String?
+  receiptNumber String?
+  notes         String?
+  recordedById  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant     Tenant          @relation(fields: [tenantId], references: [tenantId])
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+  recordedBy User?           @relation(fields: [recordedById], references: [id])
+
+  @@unique([tenantId, expenseNumber])
+  @@index([tenantId, expenseDate])
+  @@index([tenantId, categoryId])
+}
+
+model BankAccount {
+  id             String   @id @default(cuid())
+  tenantId       String
+  accountName    String
+  accountNumber  String
+  bankName       String
+  branchName     String?
+  accountType    String   @default("CHECKING") // CHECKING, SAVINGS, PETTY_CASH
+  openingBalance Float    @default(0)
+  currentBalance Float    @default(0)
+  currency       String   @default("PKR")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId])
+
+  @@index([tenantId, isActive])
+}
+
+model Notice {
+  id            String    @id @default(cuid())
+  tenantId      String
+  scope         String    @default("TENANT") // GLOBAL | TENANT
+  title         String
+  content       String    @db.Text
+  category      String    @default("GENERAL") // ACADEMIC, EXAM, FEE, HOLIDAY, EVENT, MAINTENANCE, SYSTEM_UPDATE, URGENT
+  priority      String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  audience      String    @default("ALL") // ALL, TEACHERS, STUDENTS, PARENTS, SPECIFIC_CLASS, ALL_SCHOOLS, SPECIFIC_TENANTS
+  targetClassId String?
+  targetTenants String[]  @default([])
+  isPinned      Boolean   @default(false)
+  isPublished   Boolean   @default(true)
+  publishDate   DateTime  @default(now())
+  expiresAt     DateTime?
+  authorId      String?
+  authorName    String?
+  authorRole    String?
+  attachmentUrl String?
+  viewsCount    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId, isPublished, publishDate])
+  @@index([scope, isPublished])
+}
+
+model Timetable {
+  id             String   @id @default(cuid())
+  tenantId       String
+  academicYearId String?
+  classId        String
+  sectionId      String?
+  dayOfWeek      String // MONDAY..SATURDAY
+  periodNumber   Int
+  startTime      String // "08:00"
+  endTime        String // "08:45"
+  subjectId      String?
+  staffProfileId String?
+  roomNumber     String?
+  isBreak        Boolean  @default(false)
+  breakLabel     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [tenantId])
+  academicYear AcademicYear? @relation(fields: [academicYearId], references: [id])
+  class        Class         @relation(fields: [classId], references: [id])
+  section      Section?      @relation(fields: [sectionId], references: [id])
+  subject      Subject?      @relation(fields: [subjectId], references: [id])
+  staffProfile StaffProfile? @relation(fields: [staffProfileId], references: [id])
+
+  @@unique([tenantId, academicYearId, classId, sectionId, dayOfWeek, periodNumber])
+  @@index([tenantId, classId, sectionId])
+  @@index([tenantId, staffProfileId, dayOfWeek, periodNumber])
+  @@index([tenantId, dayOfWeek, periodNumber])
+}
+
+model Enquiry {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  studentName        String
+  guardianName       String
+  phone              String
+  email              String?
+  classAppliedId     String?
+  source             String    @default("WALK_IN") // WALK_IN, PHONE, WEBSITE, REFERRAL, SOCIAL, OTHER
+  status             String    @default("NEW") // NEW, CONTACTED, VISITED, ADMITTED, REJECTED
+  followUpDate       DateTime?
+  notes              String?   @db.Text
+  assignedToId       String?
+  convertedStudentId String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tenant           Tenant          @relation(fields: [tenantId], references: [tenantId])
+  classApplied     Class?          @relation(fields: [classAppliedId], references: [id])
+  assignedTo       User?           @relation(fields: [assignedToId], references: [id])
+  convertedStudent StudentProfile? @relation(fields: [convertedStudentId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, followUpDate])
+  @@index([tenantId, classAppliedId])
+  @@index([tenantId, createdAt])
+}
+
+model Book {
+  id              String   @id @default(cuid())
+  tenantId        String
+  title           String
+  author          String
+  isbn            String?
+  publisher       String?
+  category        String   @default("GENERAL") // GENERAL, TEXTBOOK, REFERENCE, STORY, SCIENCE
+  accessionNo     String
+  copies          Int      @default(1)
+  availableCopies Int      @default(1)
+  shelfLocation   String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant      @relation(fields: [tenantId], references: [tenantId])
+  issues BookIssue[]
+
+  @@unique([tenantId, accessionNo])
+  @@unique([tenantId, isbn])
+  @@index([tenantId, category])
+  @@index([tenantId, isActive])
+}
+
+model BookIssue {
+  id               String    @id @default(cuid())
+  tenantId         String
+  bookId           String
+  borrowerType     String    @default("STUDENT") // STUDENT, STAFF
+  studentProfileId String?
+  staffProfileId   String?
+  borrowerName     String
+  borrowerIdNo     String // rollNumber or staffId for display
+  issueDate        DateTime  @default(now())
+  dueDate          DateTime
+  returnDate       DateTime?
+  fineAmount       Float     @default(0)
+  status           String    @default("ISSUED") // ISSUED, RETURNED, OVERDUE
+  issuedById       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [tenantId])
+  book           Book            @relation(fields: [bookId], references: [id])
+  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id])
+  staffProfile   StaffProfile?   @relation(fields: [staffProfileId], references: [id])
+  issuedBy       User?           @relation(fields: [issuedById], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, bookId])
+  @@index([tenantId, studentProfileId])
+  @@index([tenantId, staffProfileId])
+}
+
+model TransportVehicle {
+  id          String   @id @default(cuid())
+  tenantId    String
+  vehicleNo   String
+  type        String   @default("BUS") // BUS, VAN, MINI_BUS, OTHER
+  capacity    Int
+  driverName  String?
+  driverPhone String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [tenantId])
+  routes      TransportRoute[]
+  allocations TransportAllocation[]
+
+  @@unique([tenantId, vehicleNo])
+  @@index([tenantId, isActive])
+}
+
+model TransportRoute {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  stops      String[] @default([]) // ["Mirpur-10", "Kazipara", "Shewrapara"]
+  vehicleId  String?
+  monthlyFee Float    @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [tenantId])
+  vehicle     TransportVehicle?     @relation(fields: [vehicleId], references: [id])
+  allocations TransportAllocation[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+model TransportAllocation {
+  id               String   @id @default(cuid())
+  tenantId         String
+  studentProfileId String
+  routeId          String
+  vehicleId        String?
+  stopName         String
+  monthlyFee       Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile    @relation(fields: [studentProfileId], references: [id])
+  route          TransportRoute    @relation(fields: [routeId], references: [id])
+  vehicle        TransportVehicle? @relation(fields: [vehicleId], references: [id])
+
+  @@unique([tenantId, studentProfileId])
+  @@index([tenantId, routeId])
+  @@index([tenantId, vehicleId])
+}
+
+model Homework {
+  id            String   @id @default(cuid())
+  tenantId      String
+  classId       String
+  sectionId     String?
+  subjectId     String?
+  title         String
+  description   String   @db.Text
+  attachmentUrl String?
+  dueDate       DateTime
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [tenantId])
+  class       Class                @relation(fields: [classId], references: [id])
+  section     Section?             @relation(fields: [sectionId], references: [id])
+  subject     Subject?             @relation(fields: [subjectId], references: [id])
+  createdBy   User?                @relation(fields: [createdById], references: [id])
+  submissions HomeworkSubmission[]
+
+  @@index([tenantId, classId, sectionId])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, createdById])
+}
+
+model HomeworkSubmission {
+  id               String    @id @default(cuid())
+  tenantId         String
+  homeworkId       String
+  studentProfileId String
+  attachmentUrl    String?
+  status           String    @default("PENDING") // PENDING, SUBMITTED, GRADED, LATE
+  grade            String?
+  remarks          String?   @db.Text
+  submittedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  homework       Homework       @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+
+  @@unique([tenantId, homeworkId, studentProfileId])
+  @@index([tenantId, homeworkId])
+  @@index([tenantId, studentProfileId])
+  @@index([tenantId, status])
+}
+
+model LeaveApplication {
+  id               String   @id @default(cuid())
+  tenantId         String
+  applicantType    String   @default("STUDENT") // STUDENT, STAFF
+  studentProfileId String?
+  staffProfileId   String?
+  leaveType        String   @default("SICK") // SICK, CASUAL, EMERGENCY, OTHER
+  fromDate         DateTime
+  toDate           DateTime
+  reason           String   @db.Text
+  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedById     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id])
+  staffProfile   StaffProfile?   @relation(fields: [staffProfileId], references: [id])
+  approvedBy     User?           @relation(fields: [approvedById], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, applicantType])
+  @@index([tenantId, fromDate])
+  @@index([tenantId, studentProfileId])
+  @@index([tenantId, staffProfileId])
+}
+
+model InventoryItem {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  code          String
+  category      String   @default("GENERAL") // GENERAL, STATIONERY, LAB, SPORTS, UNIFORM, BOOKS
+  unit          String   @default("PCS") // PCS, BOX, KG, LTR, SET
+  quantity      Int      @default(0)
+  minStockLevel Int      @default(10)
+  location      String?
+  costPrice     Float    @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant       Tenant                 @relation(fields: [tenantId], references: [tenantId])
+  transactions InventoryTransaction[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, category])
+  @@index([tenantId, isActive])
+}
+
+model InventoryTransaction {
+  id              String   @id @default(cuid())
+  tenantId        String
+  itemId          String
+  transactionType String   @default("PURCHASE") // PURCHASE, ISSUE, ADJUSTMENT, RETURN
+  quantity        Int
+  unitCost        Float?
+  reference       String?
+  notes           String?  @db.Text
+  performedById   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [tenantId])
+  item        InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  performedBy User?         @relation(fields: [performedById], references: [id])
+
+  @@index([tenantId, itemId])
+  @@index([tenantId, transactionType])
+  @@index([tenantId, createdAt])
+}
+
+model Hostel {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  type        String   @default("BOYS") // BOYS, GIRLS, COMBINED
+  wardenName  String?
+  wardenPhone String?
+  address     String?
+  capacity    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [tenantId])
+  rooms       HostelRoom[]
+  allocations HostelAllocation[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+model HostelRoom {
+  id         String   @id @default(cuid())
+  tenantId   String
+  hostelId   String
+  roomNumber String
+  floor      Int      @default(1)
+  capacity   Int      @default(4)
+  roomType   String   @default("GENERAL") // GENERAL, DELUXE, DORMITORY
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [tenantId])
+  hostel      Hostel             @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  allocations HostelAllocation[]
+
+  @@unique([tenantId, hostelId, roomNumber])
+  @@index([tenantId, hostelId])
+}
+
+model HostelAllocation {
+  id               String    @id @default(cuid())
+  tenantId         String
+  hostelId         String
+  roomId           String
+  studentProfileId String
+  bedNumber        String?
+  allocatedAt      DateTime  @default(now())
+  vacatedAt        DateTime?
+  status           String    @default("ACTIVE") // ACTIVE, VACATED
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  hostel         Hostel         @relation(fields: [hostelId], references: [id])
+  room           HostelRoom     @relation(fields: [roomId], references: [id])
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+
+  @@unique([tenantId, studentProfileId])
+  @@index([tenantId, hostelId])
+  @@index([tenantId, roomId])
+}
+
+model Certificate {
+  id                String    @id @default(cuid())
+  tenantId          String
+  studentProfileId  String
+  certificateType   String // TRANSFER, CHARACTER, BONAFIDE, STUDY, MARKSHEET, OTHER
+  certificateNumber String
+  issueDate         DateTime  @default(now())
+  validUntil        DateTime?
+  status            String    @default("ISSUED") // ISSUED, REVOKED, DRAFT
+  purpose           String?
+  remarks           String?   @db.Text
+  issuedById        String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+  issuedBy       User?          @relation(fields: [issuedById], references: [id])
+
+  @@unique([tenantId, certificateNumber])
+  @@index([tenantId, studentProfileId])
+  @@index([tenantId, certificateType])
+  @@index([tenantId, status])
+}
+
+model HealthRecord {
+  id               String    @id @default(cuid())
+  tenantId         String
+  studentProfileId String
+  bloodGroup       String?   // A+, A-, B+, B-, O+, O-, AB+, AB-
+  allergies        String?   @db.Text
+  chronicConditions String?  @db.Text
+  medications      String?   @db.Text
+  vaccinationJson  Json?     // [{ name, date, dose }]
+  heightCm         Float?
+  weightKg         Float?
+  visionLeft       String?
+  visionRight      String?
+  lastCheckupDate  DateTime?
+  remarks          String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile  @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, studentProfileId])
+  @@index([tenantId, bloodGroup])
 }

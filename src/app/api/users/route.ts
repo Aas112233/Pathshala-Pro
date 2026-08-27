@@ -9,6 +9,7 @@ import {
   forbidden,
   notFound,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { createUserSchema, updateUserSchema } from "@/lib/schemas";
 import { hashPassword } from "@/lib/auth";
@@ -79,8 +80,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get users error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -146,7 +146,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(newUser, "User created successfully", 201);
   } catch (error) {
-    console.error("Create user error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

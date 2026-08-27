@@ -2,20 +2,36 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Moon, Sun, Globe, LogOut, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import {
+  Search,
+  Moon,
+  Sun,
+  Globe,
+  LogOut,
+  ChevronDown,
+  HelpCircle,
+  MessageSquare,
+  Building2,
+  Shield,
+  ShieldAlert,
+  Check,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { locales, localeNames, type Locale } from "@/i18n/config";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { HeaderNotificationCenter } from "@/components/layout/header-notification-center";
 
 function getBreadcrumbKey(pathname: string): string {
   if (pathname === "/" || pathname === "/system-admin") return "nav.dashboard";
-  
+
   const segments = pathname.split("/").filter(Boolean);
   const isSystemAdmin = segments[0] === "system-admin";
-  const segment = isSystemAdmin ? (segments[1] || "dashboard") : segments[0];
-  
+  const segment = isSystemAdmin ? segments[1] || "dashboard" : segments[0];
+
   const keyMap: Record<string, string> = {
     dashboard: "nav.dashboard",
     students: "nav.students",
@@ -42,14 +58,19 @@ export function Header() {
   const [localeOpen, setLocaleOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [currentLocale, setCurrentLocale] = useState<Locale>("en");
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Get current locale from cookie on mount
   useEffect(() => {
     const cookieLocale = document.cookie
       .split("; ")
-      .find(row => row.startsWith("locale="))
+      .find((row) => row.startsWith("locale="))
       ?.split("=")[1] as Locale | undefined;
     if (cookieLocale && locales.includes(cookieLocale)) {
       setCurrentLocale(cookieLocale);
@@ -82,58 +103,94 @@ export function Header() {
     window.location.reload();
   }
 
+  const { settings } = useTenantSettings();
+  const institutionName = settings?.name?.trim() || (user as any)?.tenant?.name || "Pathshala Pro";
   const breadcrumbKey = getBreadcrumbKey(pathname);
+  const userRole = user?.role ? user.role.replace("_", " ") : "ADMINISTRATOR";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
-      {/* Left - Breadcrumb */}
-      <div className="flex items-center gap-4">
-        <h1 className="text-lg font-semibold text-foreground">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/95 px-6 backdrop-blur-md">
+      {/* Left - Module & Breadcrumb Context */}
+      <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-2 rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary max-w-[220px]">
+          <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span className="truncate">{institutionName}</span>
+        </div>
+        <div className="h-4 w-[1px] bg-border/80 hidden sm:block" />
+        <h1 className="text-base font-bold tracking-tight text-foreground">
           {t(breadcrumbKey as any) || t("nav.dashboard")}
         </h1>
       </div>
 
-      {/* Right - Actions */}
-      <div className="flex items-center gap-2">
-        {/* Search */}
-        <button className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <Search className="h-4 w-4" />
+      {/* Right - Global Search & Actions */}
+      <div className="flex items-center gap-2.5">
+        {/* Quick Search Shortcut */}
+        <div className="relative hidden md:flex items-center">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+          <input
+            type="text"
+            placeholder="Search here..."
+            readOnly
+            onClick={() => {
+              const event = new KeyboardEvent("keydown", { key: "k", ctrlKey: true });
+              window.dispatchEvent(event);
+            }}
+            className="h-9 w-48 lg:w-60 cursor-pointer rounded-xl border border-border/70 bg-muted/30 pl-9 pr-9 text-xs text-foreground placeholder:text-muted-foreground/60 transition-all hover:bg-muted/50 focus:outline-none"
+          />
+          <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            ⌘K
+          </kbd>
+        </div>
+
+        {/* Help / Docs */}
+        <button
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="Help & Documentation"
+        >
+          <HelpCircle className="h-4 w-4" />
         </button>
+
+        {/* Messages with Badge */}
+        <button
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="Messages"
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span className="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-primary" />
+        </button>
+
+        {/* Categorized Notifications Center */}
+        <HeaderNotificationCenter />
 
         {/* Locale Switcher */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setLocaleOpen(!localeOpen)}
             className={cn(
-              "flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              localeOpen && "bg-accent"
+              "flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-card px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+              localeOpen && "bg-muted text-foreground"
             )}
             title={t("settings.language")}
           >
-            <Globe className="h-4 w-4" />
-            <span className="text-sm font-medium">{localeNames[currentLocale]}</span>
-            <ChevronDown className={cn("h-4 w-4 transition-transform", localeOpen && "rotate-180")} />
+            <Globe className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">{localeNames[currentLocale]}</span>
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", localeOpen && "rotate-180")} />
           </button>
           {localeOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-popover p-1 shadow-lg">
+            <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl border border-border/80 bg-popover p-1 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
               {locales.map((locale) => (
                 <button
                   key={locale}
                   onClick={() => switchLocale(locale)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent",
+                    "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-accent",
                     "text-popover-foreground",
-                    currentLocale === locale && "bg-accent"
+                    currentLocale === locale && "bg-accent font-semibold"
                   )}
                 >
-                  <span className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 opacity-70" />
-                    {localeNames[locale]}
-                  </span>
+                  <span>{localeNames[locale]}</span>
                   {currentLocale === locale && (
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <Check className="h-3.5 w-3.5 text-primary" />
                   )}
                 </button>
               ))}
@@ -144,43 +201,82 @@ export function Header() {
         {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="Toggle Theme"
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
         </button>
 
-        {/* Notifications */}
-        <button className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-        </button>
+        {/* Separator */}
+        <div className="h-6 w-[1px] bg-border/80 mx-0.5 hidden sm:block" />
 
-        {/* User Avatar */}
+        {/* User Profile Pill (Cloudvira & Semper Fi style) */}
         <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
-            title={user?.name || "User"}
+            className={cn(
+              "flex items-center gap-2.5 rounded-xl border border-border/60 bg-card px-2 py-1.5 text-left transition-all hover:bg-muted/60",
+              userMenuOpen && "bg-muted"
+            )}
           >
-            {user?.name?.charAt(0) || "U"}
-          </button>
-          {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-popover p-1 shadow-lg">
-              <div className="border-b border-border px-3 py-2">
-                <p className="text-sm font-medium text-foreground">{user?.name}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-              </div>
-              <button
-                onClick={() => {
-                  logout();
-                  setUserMenuOpen(false);
-                }}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
+            <div className="relative">
+              <div
+                suppressHydrationWarning
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs"
               >
-                <LogOut className="h-4 w-4" />
-                <span>{t("auth.signOut")}</span>
-              </button>
+                {mounted && user?.name ? user.name.charAt(0).toUpperCase() : "U"}
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-background" />
+            </div>
+            <div className="hidden lg:flex flex-col">
+              <span suppressHydrationWarning className="text-xs font-semibold text-foreground leading-tight">
+                {mounted && user?.name ? user.name : "Administrator"}
+              </span>
+              <span suppressHydrationWarning className="text-[10px] font-medium text-muted-foreground capitalize">
+                {mounted && userRole ? userRole.toLowerCase() : "administrator"}
+              </span>
+            </div>
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", userMenuOpen && "rotate-180")} />
+          </button>
+
+          {userMenuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-border/80 bg-popover p-1.5 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
+              <div className="border-b border-border/60 px-3 py-2">
+                <div className="flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    {userRole}
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-foreground mt-1 truncate">
+                  {user?.name}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+              </div>
+              <div className="py-1">
+                {(user?.role === "SUPER_ADMIN" || user?.role === "SYSTEM_ADMIN" || user?.tenantId === "system") && (
+                  <Link
+                    href="/system-admin"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-950/60"
+                  >
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    <span>SuperAdmin Portal</span>
+                  </Link>
+                )}
+
+                <button
+                  onClick={() => {
+                    logout();
+                    setUserMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>{t("auth.signOut")}</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

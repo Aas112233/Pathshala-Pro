@@ -5,8 +5,17 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Wallet, Plus, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Wallet,
+  Plus,
+  Users,
+  Printer,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 
 // View Model
 import { useSalaryViewModel } from "@/viewmodels/salary/use-salary-view-model";
@@ -23,6 +32,8 @@ import {
 } from "@/components/salary";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { usePDFExport, type SalaryPayslipPDFData } from "@/hooks/use-pdf-export";
+import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import type { SalaryLedger, SalaryLedgerWithDetails, CreateSalaryLedgerDTO, PaymentDTO } from "@/types/entities";
 
 // Data fetching for dropdowns
@@ -30,9 +41,10 @@ import { useQuery } from "@tanstack/react-query";
 import { staffApi, academicYearsApi } from "@/lib/api-client";
 
 export default function SalaryPage() {
-  const t = useTranslations('salary');
-  const { formatCurrency } = useTenantFormatting();
-  
+  const t = useTranslations("salary");
+  const { formatCurrency, formatDate } = useTenantFormatting();
+  const { exportSalaryPayslipPDF, exportBatchPayslipsPDF } = usePDFExport();
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -44,10 +56,8 @@ export default function SalaryPage() {
     isLoading,
     pagination,
     filters,
-    viewMode,
     selectedSalary,
     setFilters,
-    setViewMode,
     setPage,
     setSelectedSalary,
     createSalary,
@@ -93,48 +103,177 @@ export default function SalaryPage() {
     }));
   }, [academicYearsData]);
 
-  const handleEdit = useCallback((salaryItem: SalaryLedger) => {
-    // Fetch full details for editing
-    setSelectedSalary(salaryItem as SalaryLedgerWithDetails);
-    setEditingSalary(salaryItem as SalaryLedgerWithDetails);
-    setIsFormOpen(true);
-  }, [setSelectedSalary]);
+  const handleEdit = useCallback(
+    (salaryItem: SalaryLedger) => {
+      setSelectedSalary(salaryItem as SalaryLedgerWithDetails);
+      setEditingSalary(salaryItem as SalaryLedgerWithDetails);
+      setIsFormOpen(true);
+    },
+    [setSelectedSalary]
+  );
 
-  const handleView = useCallback((salaryItem: SalaryLedger) => {
-    setSelectedSalary(salaryItem as SalaryLedgerWithDetails);
-    setIsDetailsOpen(true);
-  }, [setSelectedSalary]);
+  const handleView = useCallback(
+    (salaryItem: SalaryLedger) => {
+      setSelectedSalary(salaryItem as SalaryLedgerWithDetails);
+      setIsDetailsOpen(true);
+    },
+    [setSelectedSalary]
+  );
 
-  const handleDelete = useCallback(async (salaryItem: SalaryLedger) => {
-    if (!confirm(t('confirmDelete'))) return;
-    try {
-      await deleteSalary(salaryItem.id);
-    } catch {
-      // Error handled by view model
+  const handleDelete = useCallback(
+    async (salaryItem: SalaryLedger) => {
+      if (!confirm(t("confirmDelete"))) return;
+      try {
+        await deleteSalary(salaryItem.id);
+        toast.success("Salary record deleted successfully");
+      } catch {}
+    },
+    [deleteSalary, t]
+  );
+
+  const handlePayment = useCallback(
+    (salaryItem: SalaryLedger) => {
+      setSelectedSalary(salaryItem as SalaryLedgerWithDetails);
+      setIsPaymentOpen(true);
+    },
+    [setSelectedSalary]
+  );
+
+  const handleDownloadPayslip = useCallback(
+    (item: SalaryLedger) => {
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+      ];
+      const monthStr = monthNames[(item.month || 1) - 1] || "Month";
+
+      const staff = item.staffProfile;
+      const pdfData: SalaryPayslipPDFData = {
+        schoolName: "Pathshala Pro Academy",
+        currencySymbol: "$",
+        payslipId: `PS-${item.year}-${String(item.month).padStart(2, "0")}-${item.id.slice(0, 6)}`,
+        staffId: staff?.staffId || "STAFF-01",
+        staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || "Staff Member",
+        designation: staff?.designation || "Faculty Member",
+        department: staff?.department || "Academic",
+        bankName: staff?.bankName || "National Commercial Bank",
+        bankAccountNo: staff?.bankAccountNumber || "XXXX-XXXX-XXXX",
+        month: monthStr,
+        year: item.year,
+        paymentDate: item.paymentDate ? formatDate(item.paymentDate) : "Pending",
+        paymentMethod: item.paymentMethod || "Bank Transfer",
+        status: item.status,
+        baseSalary: item.baseSalary || 0,
+        allowances: (item.allowances as any) || [
+          { title: "House Rent Allowance", amount: (item.baseSalary || 0) * 0.15 },
+          { title: "Medical Allowance", amount: 150 },
+        ],
+        totalEarnings:
+          (item.baseSalary || 0) +
+          ((item.allowances as any) || []).reduce((s: number, a: any) => s + (a.amount || 0), 0),
+        deductions: (item.deductionsList as any) || [
+          { title: "Provident Fund Contribution", amount: (item.baseSalary || 0) * 0.05 },
+        ],
+        advances: item.advances || 0,
+        totalDeductions: (item.deductions || 0) + (item.advances || 0),
+        netSalary: item.netPayable || 0,
+        paidAmount: item.paidAmount || 0,
+      };
+
+      exportSalaryPayslipPDF(pdfData);
+      toast.success(`Downloaded Payslip for ${pdfData.staffName}`);
+    },
+    [exportSalaryPayslipPDF, formatDate]
+  );
+
+  const handleDownloadBatchPayslips = useCallback(() => {
+    if (!salary.length) {
+      toast.error("No salary records available for export");
+      return;
     }
-  }, [deleteSalary, t]);
 
-  const handlePayment = useCallback((salaryItem: SalaryLedger) => {
-    setSelectedSalary(salaryItem as SalaryLedgerWithDetails);
-    setIsPaymentOpen(true);
-  }, [setSelectedSalary]);
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December",
+    ];
 
-  const handleSubmit = useCallback(async (data: CreateSalaryLedgerDTO) => {
-    if (editingSalary?.id) {
-      await updateSalary(editingSalary.id, data);
-    } else {
-      await createSalary(data);
-    }
-    setEditingSalary(null);
-  }, [createSalary, updateSalary, editingSalary]);
+    const payslips: SalaryPayslipPDFData[] = salary.map((item: any) => {
+      const monthStr = monthNames[(item.month || 1) - 1] || "Month";
+      const staff = item.staffProfile;
+      return {
+        schoolName: "Pathshala Pro Academy",
+        currencySymbol: "$",
+        payslipId: `PS-${item.year}-${String(item.month).padStart(2, "0")}-${item.id.slice(0, 6)}`,
+        staffId: staff?.staffId || "STAFF-01",
+        staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || "Staff Member",
+        designation: staff?.designation || "Faculty Member",
+        department: staff?.department || "Academic",
+        bankName: staff?.bankName || "National Commercial Bank",
+        bankAccountNo: staff?.bankAccountNumber || "XXXX-XXXX-XXXX",
+        month: monthStr,
+        year: item.year,
+        paymentDate: item.paymentDate ? formatDate(item.paymentDate) : "Pending",
+        paymentMethod: item.paymentMethod || "Bank Transfer",
+        status: item.status,
+        baseSalary: item.baseSalary || 0,
+        allowances: (item.allowances as any) || [
+          { title: "House Rent Allowance", amount: (item.baseSalary || 0) * 0.15 },
+          { title: "Medical Allowance", amount: 150 },
+        ],
+        totalEarnings:
+          (item.baseSalary || 0) +
+          ((item.allowances as any) || []).reduce((s: number, a: any) => s + (a.amount || 0), 0),
+        deductions: (item.deductionsList as any) || [
+          { title: "Provident Fund Contribution", amount: (item.baseSalary || 0) * 0.05 },
+        ],
+        advances: item.advances || 0,
+        totalDeductions: (item.deductions || 0) + (item.advances || 0),
+        netSalary: item.netPayable || 0,
+        paidAmount: item.paidAmount || 0,
+      };
+    });
 
-  const handlePaymentSubmit = useCallback(async (salaryId: string, data: PaymentDTO) => {
-    await recordPayment(salaryId, data);
-  }, [recordPayment]);
+    exportBatchPayslipsPDF(payslips, `Monthly_Payslips_Batch_${Date.now()}.pdf`);
+    toast.success(`Exporting ${payslips.length} Staff Payslips (PDF)...`);
+  }, [salary, exportBatchPayslipsPDF, formatDate]);
 
-  const handleBulkPayrollSubmit = useCallback(async (data: any) => {
-    await processBulkPayroll(data);
-  }, [processBulkPayroll]);
+  const { run: runSalarySubmit } = useSubmitGuard();
+
+  const handleSubmit = useCallback(
+    async (data: CreateSalaryLedgerDTO) => {
+      await runSalarySubmit(async () => {
+        if (editingSalary?.id) {
+          await updateSalary(editingSalary.id, data);
+          toast.success("Salary updated successfully");
+        } else {
+          await createSalary(data);
+          toast.success("Payroll record created");
+        }
+        setEditingSalary(null);
+      });
+    },
+    [createSalary, updateSalary, editingSalary, runSalarySubmit]
+  );
+
+  const handlePaymentSubmit = useCallback(
+    async (salaryId: string, data: PaymentDTO) => {
+      await runSalarySubmit(async () => {
+        await recordPayment(salaryId, data);
+        toast.success("Payment recorded successfully");
+      });
+    },
+    [recordPayment, runSalarySubmit]
+  );
+
+  const handleBulkPayrollSubmit = useCallback(
+    async (data: any) => {
+      await runSalarySubmit(async () => {
+        await processBulkPayroll(data);
+        toast.success("Bulk payroll processed");
+      });
+    },
+    [processBulkPayroll, runSalarySubmit]
+  );
 
   const handleCloseForm = useCallback(async () => {
     setIsFormOpen(false);
@@ -151,102 +290,128 @@ export default function SalaryPage() {
     });
   }, [setFilters]);
 
-  const hasActiveFilters = !!filters.search || !!filters.month || !!filters.year || filters.status !== "ALL" || !!filters.department;
+  const hasActiveFilters =
+    !!filters.search ||
+    !!filters.month ||
+    !!filters.year ||
+    filters.status !== "ALL" ||
+    !!filters.department;
+
+  // KPI Calculations
+  const totalPayroll = salary.reduce((sum, s) => sum + (s.netPayable || 0), 0);
+  const totalPaid = salary.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
+  const totalPending = totalPayroll - totalPaid;
 
   const columns: ColumnDef<SalaryLedger>[] = [
     {
       accessorKey: "staff",
-      header: t('tableColumns.staffMember'),
+      header: t("tableColumns.staffMember"),
       cell: ({ row }) => {
         const staff = row.original.staffProfile;
         return staff ? (
           <div>
-            <div className="font-medium">{`${staff.firstName} ${staff.lastName}`}</div>
-            <div className="text-xs text-muted-foreground">{staff.staffId}</div>
+            <div className="font-bold text-xs text-foreground">{`${staff.firstName} ${staff.lastName}`}</div>
+            <div className="text-[11px] font-mono text-muted-foreground">{staff.staffId}</div>
           </div>
         ) : (
-          <span>-</span>
+          <span className="text-xs text-muted-foreground">-</span>
         );
       },
     },
     {
       accessorKey: "designation",
-      header: t('tableColumns.designation'),
-      cell: ({ row }) => row.original.staffProfile?.designation || "-",
+      header: t("tableColumns.designation"),
+      cell: ({ row }) => (
+        <span className="text-xs">{row.original.staffProfile?.designation || "-"}</span>
+      ),
     },
     {
       accessorKey: "department",
-      header: t('tableColumns.department'),
-      cell: ({ row }) => row.original.staffProfile?.department || "-",
+      header: t("tableColumns.department"),
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-muted text-foreground">
+          {row.original.staffProfile?.department || "-"}
+        </span>
+      ),
     },
     {
       accessorKey: "month",
-      header: t('tableColumns.month'),
+      header: t("tableColumns.month"),
       cell: ({ getValue }) => {
         const monthNames = [
           "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
         ];
-        return monthNames[getValue<number>() - 1];
+        return <span className="text-xs font-medium">{monthNames[getValue<number>() - 1]}</span>;
       },
     },
     {
       accessorKey: "year",
-      header: t('tableColumns.year'),
+      header: t("tableColumns.year"),
+      cell: ({ getValue }) => <span className="text-xs font-mono">{getValue<number>()}</span>,
     },
     {
       accessorKey: "baseSalary",
-      header: t('tableColumns.baseSalary'),
-      cell: ({ getValue }) => formatCurrency(getValue<number>()),
+      header: t("tableColumns.baseSalary"),
+      cell: ({ getValue }) => (
+        <span className="font-mono text-xs">{formatCurrency(getValue<number>())}</span>
+      ),
     },
     {
       accessorKey: "deductions",
-      header: t('tableColumns.deductions'),
+      header: t("tableColumns.deductions"),
       cell: ({ getValue }) => {
         const value = getValue<number>();
-        return value > 0 ? <span className="text-amber-600">-{formatCurrency(value)}</span> : "-";
+        return value > 0 ? (
+          <span className="font-mono text-xs text-amber-600">-{formatCurrency(value)}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        );
       },
     },
     {
       accessorKey: "advances",
-      header: t('tableColumns.advances'),
+      header: t("tableColumns.advances"),
       cell: ({ getValue }) => {
         const value = getValue<number>();
-        return value > 0 ? <span className="text-amber-600">-{formatCurrency(value)}</span> : "-";
+        return value > 0 ? (
+          <span className="font-mono text-xs text-amber-600">-{formatCurrency(value)}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        );
       },
     },
     {
       accessorKey: "netPayable",
-      header: t('tableColumns.netPayable'),
+      header: t("tableColumns.netPayable"),
       cell: ({ getValue }) => (
-        <span className="font-semibold">{formatCurrency(getValue<number>())}</span>
+        <span className="font-mono font-bold text-xs text-foreground">
+          {formatCurrency(getValue<number>())}
+        </span>
       ),
     },
     {
       accessorKey: "paidAmount",
-      header: t('tableColumns.paid'),
+      header: t("tableColumns.paid"),
       cell: ({ row }) => {
         const paid = row.original.paidAmount;
         return paid > 0 ? (
-          <span className="text-green-600">{formatCurrency(paid)}</span>
+          <span className="font-mono font-semibold text-xs text-emerald-600">
+            {formatCurrency(paid)}
+          </span>
         ) : (
-          <span className="text-muted-foreground">-</span>
+          <span className="text-xs text-muted-foreground">-</span>
         );
       },
     },
     {
       accessorKey: "status",
-      header: t('tableColumns.status'),
-      cell: ({ getValue }) => (
-        <StatusBadge
-          status={getValue<string>()}
-          domain="salary"
-        />
-      ),
+      header: t("tableColumns.status"),
+      cell: ({ getValue }) => <StatusBadge status={getValue<string>()} domain="salary" />,
     },
     {
       id: "actions",
-      header: t('tableColumns.actions'),
+      header: t("tableColumns.actions"),
       cell: ({ row }) => (
         <SalaryActionsDropdown
           salary={row.original}
@@ -254,7 +419,7 @@ export default function SalaryPage() {
           onEdit={() => handleEdit(row.original)}
           onDelete={() => handleDelete(row.original)}
           onPayment={() => handlePayment(row.original)}
-          onGenerateSlip={() => toast.info("Slip generation coming soon")}
+          onGenerateSlip={() => handleDownloadPayslip(row.original)}
         />
       ),
     },
@@ -264,25 +429,80 @@ export default function SalaryPage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title={t('title')}
-        description={t('description')}
+        title={t("title")}
+        description={t("description")}
         icon={Wallet}
       >
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            onClick={handleDownloadBatchPayslips}
+            size="sm"
+            className="gap-2"
+          >
+            <Printer className="h-4 w-4" />
+            Batch Payslips (PDF)
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setIsBulkPayrollOpen(true)}
             size="sm"
+            className="gap-2"
           >
-            <Users className="mr-2 h-4 w-4" />
+            <Users className="h-4 w-4" />
             Bulk Payroll
           </Button>
-          <Button onClick={() => setIsFormOpen(true)}>
+          <Button onClick={() => setIsFormOpen(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
-            {t('processPayroll')}
+            {t("processPayroll")}
           </Button>
         </div>
       </PageHeader>
+
+      {/* KPI Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-border">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-muted text-muted-foreground">
+              <Wallet className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold font-mono text-foreground">
+                {formatCurrency(totalPayroll)}
+              </p>
+              <p className="text-xs text-muted-foreground font-medium">{t("netPay")}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-muted text-muted-foreground">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold font-mono text-foreground">
+                {formatCurrency(totalPaid)}
+              </p>
+              <p className="text-xs text-muted-foreground font-medium">{t("disbursed")}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-muted text-muted-foreground">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold font-mono text-foreground">
+                {formatCurrency(Math.max(0, totalPending))}
+              </p>
+              <p className="text-xs text-muted-foreground font-medium">{t("pendingPayroll")}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filters */}
       <SalaryFiltersBar
@@ -313,7 +533,7 @@ export default function SalaryPage() {
           onPageChange={setPage}
           onSearch={(search) => setFilters({ search })}
           isLoading={isLoading}
-          searchPlaceholder={t('searchPlaceholder')}
+          searchPlaceholder={t("searchPlaceholder")}
         />
       )}
 
@@ -332,13 +552,13 @@ export default function SalaryPage() {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         salary={selectedSalary}
-        onEdit={(salary) => {
+        onEdit={(salaryItem) => {
           setIsDetailsOpen(false);
-          handleEdit(salary);
+          handleEdit(salaryItem);
         }}
-        onPayment={(salary) => {
+        onPayment={(salaryItem) => {
           setIsDetailsOpen(false);
-          handlePayment(salary);
+          handlePayment(salaryItem);
         }}
       />
 
@@ -359,10 +579,3 @@ export default function SalaryPage() {
     </div>
   );
 }
-
-// Simple toast placeholder - replace with actual sonner toast
-const toast = {
-  info: (msg: string) => console.info(msg),
-  success: (msg: string) => console.log(msg),
-  error: (msg: string) => console.error(msg),
-};

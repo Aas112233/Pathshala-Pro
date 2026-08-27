@@ -5,6 +5,7 @@ import {
   errorResponse,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { bulkPayrollSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -106,7 +107,6 @@ export async function POST(request: NextRequest) {
       `Processed payroll for ${createdSalaries.length} staff member(s)`
     );
   } catch (error) {
-    console.error("Bulk payroll error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

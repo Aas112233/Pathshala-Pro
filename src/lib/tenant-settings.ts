@@ -1,3 +1,13 @@
+import {
+  formatCurrencyValue,
+  formatCompactCurrencyValue,
+  type FormatCurrencyOptions,
+} from "./currencies";
+import {
+  formatAcademicYear,
+  type AcademicYearData,
+} from "./academic-periods";
+
 export interface TenantSettings {
   id: string;
   tenantId: string;
@@ -19,6 +29,8 @@ export interface TenantSettings {
   firstDayOfWeek: string;
   academicYearStart: string;
   gradingSystem: string;
+  activeAcademicYearId?: string;
+  activeSessionName?: string;
 }
 
 export const DEFAULT_TENANT_SETTINGS: TenantSettings = {
@@ -39,8 +51,22 @@ export const DEFAULT_TENANT_SETTINGS: TenantSettings = {
   gradingSystem: "GPA",
 };
 
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
+const FULL_MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
 function getDateParts(date: Date | string, timezone: string) {
   const value = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(value.getTime())) {
+    return { year: "", month: "", day: "", monthIndex: 0 };
+  }
+
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",
@@ -52,20 +78,31 @@ function getDateParts(date: Date | string, timezone: string) {
   const find = (type: "year" | "month" | "day") =>
     parts.find((part) => part.type === type)?.value ?? "";
 
+  const monthStr = find("month");
+  const monthIndex = parseInt(monthStr, 10) - 1;
+
   return {
     year: find("year"),
-    month: find("month"),
+    month: monthStr,
     day: find("day"),
+    monthIndex: isNaN(monthIndex) ? 0 : monthIndex,
   };
 }
 
 export function formatDateWithSettings(
-  date: Date | string,
-  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS
-) {
+  date: Date | string | null | undefined,
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS,
+  formatOverride?: string
+): string {
+  if (!date) return "";
   const timezone = settings.timezone || DEFAULT_TENANT_SETTINGS.timezone;
-  const dateFormat = settings.dateFormat || DEFAULT_TENANT_SETTINGS.dateFormat;
-  const { year, month, day } = getDateParts(date, timezone);
+  const dateFormat = formatOverride || settings.dateFormat || DEFAULT_TENANT_SETTINGS.dateFormat;
+  const { year, month, day, monthIndex } = getDateParts(date, timezone);
+
+  if (!year || !month || !day) return "";
+
+  const shortMonth = MONTH_NAMES[monthIndex] || month;
+  const fullMonth = FULL_MONTH_NAMES[monthIndex] || month;
 
   switch (dateFormat) {
     case "MM/DD/YYYY":
@@ -74,39 +111,116 @@ export function formatDateWithSettings(
       return `${year}-${month}-${day}`;
     case "DD-MM-YYYY":
       return `${day}-${month}-${year}`;
+    case "DD MMM YYYY":
+      return `${day} ${shortMonth} ${year}`;
+    case "MMM DD, YYYY":
+      return `${shortMonth} ${day}, ${year}`;
+    case "D MMMM YYYY":
+      return `${parseInt(day, 10)} ${fullMonth} ${year}`;
     case "DD/MM/YYYY":
     default:
       return `${day}/${month}/${year}`;
   }
 }
 
-export function formatDateTimeWithSettings(
-  date: Date | string,
-  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS
-) {
+export function formatTimeWithSettings(
+  date: Date | string | null | undefined,
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS,
+  timeFormatOverride?: string
+): string {
+  if (!date) return "";
   const timezone = settings.timezone || DEFAULT_TENANT_SETTINGS.timezone;
-  const timeFormat = settings.timeFormat || DEFAULT_TENANT_SETTINGS.timeFormat;
-  const datePart = formatDateWithSettings(date, settings);
+  const timeFormat = timeFormatOverride || settings.timeFormat || DEFAULT_TENANT_SETTINGS.timeFormat;
   const value = typeof date === "string" ? new Date(date) : date;
-  const timePart = new Intl.DateTimeFormat("en-US", {
+
+  if (isNaN(value.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     hour: "numeric",
     minute: "2-digit",
     hour12: timeFormat === "12h",
   }).format(value);
+}
 
+export function formatDateTimeWithSettings(
+  date: Date | string | null | undefined,
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS
+): string {
+  if (!date) return "";
+  const datePart = formatDateWithSettings(date, settings);
+  const timePart = formatTimeWithSettings(date, settings);
+  if (!datePart) return "";
   return `${datePart} ${timePart}`;
+}
+
+export function formatDateRangeWithSettings(
+  startDate: Date | string,
+  endDate: Date | string,
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS
+): string {
+  const startStr = formatDateWithSettings(startDate, settings);
+  const endStr = formatDateWithSettings(endDate, settings);
+  return `${startStr} – ${endStr}`;
+}
+
+export function formatRelativeTimeWithSettings(
+  date: Date | string | null | undefined
+): string {
+  if (!date) return "";
+  const value = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(value.getTime())) return "";
+
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - value.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "Just now";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) return "Yesterday";
+  if (diffInDays < 30) return `${diffInDays}d ago`;
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths}mo ago`;
+  return `${Math.floor(diffInDays / 365)}y ago`;
 }
 
 export function formatCurrencyWithSettings(
   amount: number,
-  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS
-) {
-  const symbol = settings.currencySymbol || DEFAULT_TENANT_SETTINGS.currencySymbol;
-  const formattedAmount = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS,
+  options?: FormatCurrencyOptions
+): string {
+  const currencyCode = settings.currency || DEFAULT_TENANT_SETTINGS.currency;
+  const symbolOverride = settings.currencySymbol || DEFAULT_TENANT_SETTINGS.currencySymbol;
 
-  return `${symbol}${formattedAmount}`;
+  return formatCurrencyValue(amount, {
+    currencyCode,
+    symbolOverride,
+    ...options,
+  });
+}
+
+export function formatCompactCurrencyWithSettings(
+  amount: number,
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS,
+  options?: FormatCurrencyOptions
+): string {
+  const currencyCode = settings.currency || DEFAULT_TENANT_SETTINGS.currency;
+  const symbolOverride = settings.currencySymbol || DEFAULT_TENANT_SETTINGS.currencySymbol;
+
+  return formatCompactCurrencyValue(amount, {
+    currencyCode,
+    symbolOverride,
+    ...options,
+  });
+}
+
+export function formatAcademicPeriodWithSettings(
+  year: AcademicYearData | string | null | undefined,
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS,
+  prefix?: string
+): string {
+  return formatAcademicYear(year, prefix);
 }

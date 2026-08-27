@@ -93,53 +93,53 @@ export function AppModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Animated Backdrop — fade in/out */}
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-6 overflow-y-auto">
+      {/* Animated Backdrop — fade in/out with blur */}
       <div
         ref={backdropRef}
         className={cn(
-          "fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity",
+          "fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity",
           isVisible
-            ? "opacity-100 duration-200 ease-out"
+            ? "opacity-100 duration-250 ease-out"
             : "opacity-0 duration-200 ease-in"
         )}
         onClick={onClose}
         aria-hidden
       />
 
-      {/* Animated Modal Content — fade + zoom + slide */}
+      {/* Animated Modal Content — top slide down + scale */}
       <div
         role="dialog"
         aria-modal
         aria-labelledby="app-modal-title"
         aria-describedby={description ? "app-modal-description" : undefined}
         className={cn(
-          "relative z-50 w-full rounded-xl border border-border bg-background p-6 shadow-xl shadow-black/10 overflow-hidden",
-          // Animation transition properties
+          "relative z-50 w-full my-auto sm:my-4 rounded-2xl border border-border/80 bg-background p-6 shadow-2xl shadow-black/15 overflow-hidden",
+          // Top slide-down transition
           "transition-all",
           isVisible
-            ? "duration-200 ease-out opacity-100 scale-100 translate-y-0"
-            : "duration-200 ease-in opacity-0 scale-95 -translate-y-2",
+            ? "duration-300 ease-out opacity-100 scale-100 translate-y-0"
+            : "duration-200 ease-in opacity-0 scale-95 -translate-y-8",
           maxWidthClasses[maxWidth],
           className
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between pb-4 mb-4 border-b border-border/60">
           <div className="space-y-1">
-            <h2 id="app-modal-title" className="text-xl font-semibold leading-none tracking-tight">{title}</h2>
+            <h2 id="app-modal-title" className="text-lg font-bold tracking-tight text-foreground">{title}</h2>
             {description && (
-              <p id="app-modal-description" className="text-sm text-muted-foreground">{description}</p>
+              <p id="app-modal-description" className="text-xs text-muted-foreground">{description}</p>
             )}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 -mt-2 -mr-2">
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </Button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="max-h-[70vh] overflow-y-auto px-1 -mx-1">
+        <div className="max-h-[75vh] overflow-y-auto px-0.5">
           {children}
         </div>
       </div>

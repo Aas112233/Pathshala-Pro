@@ -381,15 +381,17 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
           {school.logoUrl ? (
             <Image src={school.logoUrl} style={reportCardStyles.logo} />
           ) : (
-            <View style={reportCardStyles.logo}>
-              <Text style={{ fontSize: 30, textAlign: "center" }}>🏫</Text>
+            <View style={[reportCardStyles.logo, { backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" }]}>
+              <Text style={{ fontSize: 20, color: "#1E3A8A", fontWeight: "bold" }}>
+                {school.name ? school.name.charAt(0).toUpperCase() : "S"}
+              </Text>
             </View>
           )}
           <View style={reportCardStyles.schoolInfo}>
             <Text style={reportCardStyles.schoolName}>{school.name.toUpperCase()}</Text>
             <Text style={reportCardStyles.schoolAddress}>{school.address}</Text>
             <Text style={reportCardStyles.contact}>
-              📞 {school.phone}  |  ✉️ {school.email}
+              Tel: {school.phone}  |  Email: {school.email}
             </Text>
           </View>
         </View>

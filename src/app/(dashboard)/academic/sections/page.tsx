@@ -6,13 +6,14 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
+import { Input } from "@/components/ui/input";
 import { ClipboardList, Plus, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { cn } from "@/lib/utils";
 
 interface SectionData {
   id: string;
@@ -164,8 +165,15 @@ export default function SectionsPage() {
     setFormErrors({});
   };
 
+  const handleClose = () => {
+    setIsModalOpen(false);
+    setEditingSection(null);
+    resetForm();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     const nextErrors: typeof formErrors = {};
     if (!formData.classId) nextErrors.classId = `${t('class')} is required`;
     if (!formData.name.trim()) nextErrors.name = `${t('sectionName')} is required`;
@@ -323,138 +331,111 @@ export default function SectionsPage() {
         searchPlaceholder={t('searchPlaceholder')}
       />
 
-      {/* Add/Edit Modal */}
-      <AppModal
+      {/* Add/Edit Form */}
+      <TopSheet
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingSection(null);
-          resetForm();
-        }}
+        onClose={handleClose}
         title={editingSection ? t('editSection') : t('addSection')}
         description={editingSection ? t('update') : t('description')}
-        maxWidth="md"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('class')}</label>
-            <AppDropdown
-              value={formData.classId}
-              onChange={(val) => {
-                setFormData({ ...formData, classId: val });
-                if (formErrors.classId) setFormErrors((prev) => ({ ...prev, classId: undefined }));
-              }}
-              invalid={Boolean(formErrors.classId)}
-              triggerClassName={formErrors.classId ? "border-destructive ring-1 ring-destructive" : ""}
-              options={[
-                { value: "", label: t('selectClass') },
-                ...classOptions,
-              ]}
-              placeholder={t('selectClass')}
-              searchable
-            />
-            {formErrors.classId && <p className="text-xs text-destructive">{formErrors.classId}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('group')} ({t('noGroupGeneral').split('(')[0].trim()})</label>
-            <AppDropdown
-              value={formData.groupId}
-              onChange={(val) => setFormData({ ...formData, groupId: val })}
-              options={[
-                { value: "", label: t('noGroupGeneral') },
-                ...groupOptions,
-              ]}
-              placeholder={t('selectGroup')}
-              searchable
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t('sectionName')}</label>
-              <input
-                aria-invalid={Boolean(formErrors.name)}
-                value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value });
-                  if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
-                }}
-                placeholder={t('sectionName')}
-                className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.name && "border-destructive focus:ring-destructive")}
-              />
-              {formErrors.name && <p className="text-xs text-destructive">{formErrors.name}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t('shortName')}</label>
-              <input
-                aria-invalid={Boolean(formErrors.shortName)}
-                value={formData.shortName}
-                onChange={(e) => {
-                  setFormData({ ...formData, shortName: e.target.value });
-                  if (formErrors.shortName) setFormErrors((prev) => ({ ...prev, shortName: undefined }));
-                }}
-                placeholder={t('shortName')}
-                className={cn("w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary", formErrors.shortName && "border-destructive focus:ring-destructive")}
-              />
-              {formErrors.shortName && <p className="text-xs text-destructive">{formErrors.shortName}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t('capacity')}</label>
-              <input
-                type="number"
-                value={formData.capacity}
-                onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                placeholder={t('capacityHint')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t('roomNumber')}</label>
-              <input
-                value={formData.roomNumber}
-                onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-                placeholder={t('roomHint')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('status')}</label>
-            <AppDropdown
-              value={formData.isActive ? "ACTIVE" : "INACTIVE"}
-              onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
-              options={[
-                { value: "ACTIVE", label: t('active') },
-                { value: "INACTIVE", label: t('inactive') },
-              ]}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setIsModalOpen(false);
-                setEditingSection(null);
-                resetForm();
-              }}
-            >
+        maxWidth="2xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={handleClose}>
               {t('cancel')}
             </Button>
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+            <Button type="submit" form="section-form" disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending ? t('saving') : editingSection ? t('update') : t('create')}
             </Button>
           </div>
+        }
+      >
+        <form id="section-form" onSubmit={handleSubmit} className="space-y-5">
+          <ERPFormSection>
+            <ERPFormGrid cols={2}>
+              <ERPFormField label={t('class')} required error={formErrors.classId}>
+                <AppDropdown
+                  value={formData.classId}
+                  onChange={(val) => {
+                    setFormData({ ...formData, classId: val });
+                    if (formErrors.classId) setFormErrors((prev) => ({ ...prev, classId: undefined }));
+                  }}
+                  invalid={Boolean(formErrors.classId)}
+                  triggerClassName={formErrors.classId ? "border-destructive ring-1 ring-destructive" : ""}
+                  options={[
+                    { value: "", label: t('selectClass') },
+                    ...classOptions,
+                  ]}
+                  placeholder={t('selectClass')}
+                  searchable
+                />
+              </ERPFormField>
+
+              <ERPFormField label={`${t('group')} (${t('noGroupGeneral').split('(')[0].trim()})`}>
+                <AppDropdown
+                  value={formData.groupId}
+                  onChange={(val) => setFormData({ ...formData, groupId: val })}
+                  options={[
+                    { value: "", label: t('noGroupGeneral') },
+                    ...groupOptions,
+                  ]}
+                  placeholder={t('selectGroup')}
+                  searchable
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('sectionName')} required error={formErrors.name}>
+                <Input
+                  aria-invalid={Boolean(formErrors.name)}
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
+                  placeholder={t('sectionName')}
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('shortName')} required error={formErrors.shortName}>
+                <Input
+                  aria-invalid={Boolean(formErrors.shortName)}
+                  value={formData.shortName}
+                  onChange={(e) => {
+                    setFormData({ ...formData, shortName: e.target.value });
+                    if (formErrors.shortName) setFormErrors((prev) => ({ ...prev, shortName: undefined }));
+                  }}
+                  placeholder={t('shortName')}
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('capacity')} helperText={t('capacityHint')}>
+                <Input
+                  type="number"
+                  value={formData.capacity}
+                  onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('roomNumber')} helperText={t('roomHint')}>
+                <Input
+                  value={formData.roomNumber}
+                  onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+                />
+              </ERPFormField>
+
+              <ERPFormField label={t('status')}>
+                <AppDropdown
+                  value={formData.isActive ? "ACTIVE" : "INACTIVE"}
+                  onChange={(val) => setFormData({ ...formData, isActive: val === "ACTIVE" })}
+                  options={[
+                    { value: "ACTIVE", label: t('active') },
+                    { value: "INACTIVE", label: t('inactive') },
+                  ]}
+                />
+              </ERPFormField>
+            </ERPFormGrid>
+          </ERPFormSection>
         </form>
-      </AppModal>
+      </TopSheet>
     </div>
   );
 }

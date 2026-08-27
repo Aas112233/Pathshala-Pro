@@ -2,11 +2,10 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
-  errorResponse,
-  unauthorized,
-  forbidden,
   notFound,
   badRequest,
+  handleApiError,
+  safeParseBody,
 } from "@/lib/api-response";
 import { updateStudentSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -88,8 +87,7 @@ export async function GET(
 
     return successResponse(student);
   } catch (error) {
-    console.error("Get student error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error, "Failed to retrieve student profile");
   }
 }
 
@@ -108,27 +106,10 @@ export async function PUT(
     const { tenantId } = access.authContext;
     const { id } = await params;
 
-    const body = await request.json();
-
-    // Log the request body for debugging
-    console.log('[PUT /api/students/:id] Request body:', body);
-
-    // For updates, we don't require studentId in the body
     const updateDataSchema = updateStudentSchema.omit({ studentId: true });
-    const validation = updateDataSchema.safeParse(body);
-
-    if (!validation.success) {
-      console.error('[PUT /api/students/:id] Validation error:', validation.error.errors);
-      const errors = validation.error.errors.map((err) => ({
-        field: err.path.join("."),
-        code: err.code,
-        message: err.message,
-      }));
-      return badRequest("Invalid input", errors);
-    }
-
-    const data = validation.data;
-    console.log('[PUT /api/students/:id] Validated data:', data);
+    const bodyResult = await safeParseBody(request, updateDataSchema);
+    if (!bodyResult.success) return bodyResult.errorResponse;
+    const data = bodyResult.data;
 
     // Convert date strings to Date objects if present
     const prismaData: any = { ...data };
@@ -260,8 +241,7 @@ export async function PUT(
 
     return successResponse(updatedStudent, "Student updated successfully");
   } catch (error) {
-    console.error("Update student error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error, "Failed to update student");
   }
 }
 
@@ -307,7 +287,6 @@ export async function DELETE(
 
     return successResponse(null, "Student deleted successfully");
   } catch (error) {
-    console.error("Delete student error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error, "Failed to delete student");
   }
 }

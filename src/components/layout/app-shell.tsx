@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
+import { ImpersonationBanner } from "./impersonation-banner";
+import { GlobalBroadcastBanner } from "./global-broadcast-banner";
+import { LoginAnnouncementsDialog } from "@/components/notices/login-announcements-dialog";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -43,10 +46,13 @@ export function AppShell({ children }: AppShellProps) {
       />
       <div
         className={cn(
-          "flex flex-1 flex-col transition-all duration-300 min-w-0",
+          "flex flex-1 flex-col transition-[padding] duration-200 ease-out min-w-0",
           sidebarCollapsed ? "pl-[68px]" : "pl-[260px]"
         )}
       >
+        <ImpersonationBanner />
+        <GlobalBroadcastBanner />
+        <LoginAnnouncementsDialog />
         <Header />
         <main className="flex-1 p-6">
           {hasAccess ? children : <NotAuthorizedScreen />}

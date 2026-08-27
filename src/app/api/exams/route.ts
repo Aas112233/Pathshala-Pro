@@ -6,6 +6,7 @@ import {
   unauthorized,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { createExamSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -100,8 +101,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(exams, "Exams retrieved successfully");
   } catch (error) {
-    console.error("Get exams error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -206,7 +206,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(exam, "Exam created successfully", 201);
   } catch (error) {
-    console.error("Create exam error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

@@ -6,10 +6,11 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import type { StudentProfile as BaseStudentProfile } from "@/types/entities";
-import type { ExamResult as PrismaExamResult, Subject, Class } from "@prisma/client";
+import type { ExamResult as PrismaExamResult } from "@prisma/client";
 
 interface StudentProfileWithClass extends BaseStudentProfile {
   class?: { classId: string; name: string; classNumber: number } | null;
@@ -17,7 +18,7 @@ interface StudentProfileWithClass extends BaseStudentProfile {
 
 interface ExamResultWithRelations extends PrismaExamResult {
   exam: { name: string; type: string };
-  subject: Subject;
+  subject: { name: string; code: string };
 }
 
 /**
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest) {
         });
 
         // Group results by exam
-        const examGroups = results.reduce((acc: Record<string, ExamResultWithRelations[]>, result: ExamResultWithRelations) => {
+        const examGroups = results.reduce<Record<string, ExamResultWithRelations[]>>((acc, result) => {
           if (!acc[result.examId]) {
             acc[result.examId] = [];
           }
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
 
         // Use the most recent exam results for each subject
         const latestResults = new Map<string, ExamResultWithRelations>();
-        results.forEach((result: ExamResultWithRelations) => {
+        results.forEach((result) => {
           const existing = latestResults.get(result.subjectId);
           if (!existing || new Date(result.createdAt) > new Date(existing.createdAt)) {
             latestResults.set(result.subjectId, result);
@@ -229,7 +230,6 @@ export async function GET(request: NextRequest) {
       "Promotion eligibility calculated successfully"
     );
   } catch (error) {
-    console.error("Calculate promotions error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

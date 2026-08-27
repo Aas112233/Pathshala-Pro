@@ -158,11 +158,83 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     });
   }, [exportData, schoolName, schoolAddress, schoolPhone, schoolEmail]);
 
+  const exportSalaryReport = useCallback(async (
+    data: any[],
+    dateRange?: { from: string; to: string }
+  ) => {
+    const template = ReportTemplates.salaryReport(data, {
+      schoolName,
+      schoolAddress,
+      schoolPhone,
+      schoolEmail,
+      dateRange,
+      subtitle: "Staff payroll, allowances, deductions, and disbursement records",
+    });
+
+    return exportData({
+      title: template.title,
+      subtitle: template.subtitle,
+      columns: template.columns,
+      data: template.data,
+      dateRange,
+      footerNotes: template.footerNotes,
+    });
+  }, [exportData, schoolName, schoolAddress, schoolPhone, schoolEmail]);
+
+  const exportFinancialReport = useCallback(async (
+    data: any[],
+    dateRange?: { from: string; to: string }
+  ) => {
+    const template = ReportTemplates.financialReport(data, {
+      schoolName,
+      schoolAddress,
+      schoolPhone,
+      schoolEmail,
+      dateRange,
+      subtitle: "Comprehensive institutional expenses, receipts, and cash flow audit",
+    });
+
+    return exportData({
+      title: template.title,
+      subtitle: template.subtitle,
+      columns: template.columns,
+      data: template.data,
+      dateRange,
+      footerNotes: template.footerNotes,
+    });
+  }, [exportData, schoolName, schoolAddress, schoolPhone, schoolEmail]);
+
+  const exportAdmissionsReport = useCallback(async (
+    data: any[],
+    dateRange?: { from: string; to: string }
+  ) => {
+    const template = ReportTemplates.admissionsReport(data, {
+      schoolName,
+      schoolAddress,
+      schoolPhone,
+      schoolEmail,
+      dateRange,
+      subtitle: "Lead generation, inquiry status conversion, and admission pipeline",
+    });
+
+    return exportData({
+      title: template.title,
+      subtitle: template.subtitle,
+      columns: template.columns,
+      data: template.data,
+      dateRange,
+      footerNotes: template.footerNotes,
+    });
+  }, [exportData, schoolName, schoolAddress, schoolPhone, schoolEmail]);
+
   return {
     exportData,
     exportFeeReport,
     exportAttendanceReport,
     exportStudentReport,
     exportExamReport,
+    exportSalaryReport,
+    exportFinancialReport,
+    exportAdmissionsReport,
   };
 }

@@ -5,6 +5,7 @@ import {
   errorResponse,
   badRequest,
   unauthorized,
+  handleApiError,
 } from "@/lib/api-response";
 import { loginSchema, createUserSchema } from "@/lib/schemas";
 import { hashPassword, verifyPassword, generateAuthToken } from "@/lib/auth";
@@ -75,8 +76,7 @@ export async function POST(request: NextRequest) {
     setAuthCookie(response, token);
     return response;
   } catch (error) {
-    console.error("Login error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 

@@ -17,6 +17,19 @@ export const paginationSchema = z.object({
 
 export const dateSchema = z.string().transform((val) => new Date(val));
 
+export const CLASS_TEMPLATE_PRESETS = [
+  "K_12",
+  "PRIMARY_1_5",
+  "MIDDLE_6_8",
+  "SECONDARY_9_10",
+  "HIGHER_SEC_11_12",
+  "O_A_LEVELS",
+  "MADRASA",
+  "CUSTOM",
+] as const;
+
+export type ClassTemplatePreset = (typeof CLASS_TEMPLATE_PRESETS)[number];
+
 // Tenant schemas
 export const createTenantSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -28,6 +41,62 @@ export const createTenantSchema = z.object({
 });
 
 export const updateTenantSchema = createTenantSchema.partial();
+
+export const onboardInstituteSchema = z.object({
+  name: z.string().min(2, "School name must be at least 2 characters"),
+  tenantId: z
+    .string()
+    .min(3, "Subdomain/slug must be at least 3 characters")
+    .max(30, "Subdomain/slug must be 30 characters or less")
+    .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens")
+    .optional(),
+  schoolCode: z.string().optional(),
+  address: z.string().min(5, "Address must be at least 5 characters"),
+  phone: z.string().optional(),
+  email: z.preprocess(
+    (val) => (!val || (typeof val === "string" && !val.trim()) ? undefined : typeof val === "string" ? val.trim().toLowerCase() : val),
+    z.string().email("Invalid email format").optional().nullable()
+  ),
+  website: z.preprocess(
+    (val) => {
+      if (!val || (typeof val === "string" && !val.trim())) return undefined;
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        return trimmed.startsWith("http://") || trimmed.startsWith("https://")
+          ? trimmed
+          : `https://${trimmed}`;
+      }
+      return val;
+    },
+    z.string().url("Invalid website URL").optional().nullable()
+  ),
+  motto: z.string().optional(),
+  establishedYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+
+  currency: z.string().default("PKR"),
+  currencySymbol: z.string().default("₨"),
+  taxRate: z.number().min(0).max(100).default(0),
+  dateFormat: z.string().default("DD/MM/YYYY"),
+  timeFormat: z.enum(["12h", "24h"]).default("12h"),
+  timezone: z.string().default("Asia/Karachi"),
+  firstDayOfWeek: z.string().default("monday"),
+  gradingSystem: z.enum(["GPA", "PERCENTAGE", "LETTER"]).default("GPA"),
+
+  academicYearLabel: z.string().min(4, "Academic year label is required"),
+  academicStartDate: z.string().min(1, "Academic start date is required"),
+  academicEndDate: z.string().min(1, "Academic end date is required"),
+  classTemplate: z.enum(CLASS_TEMPLATE_PRESETS).default("K_12"),
+
+  adminName: z.string().min(2, "Admin name must be at least 2 characters"),
+  adminEmail: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim().toLowerCase() : val),
+    z.string().email("Valid admin email is required")
+  ),
+  adminPassword: z.string().min(6, "Password must be at least 6 characters"),
+  adminPhone: z.string().optional(),
+
+  subscriptionStatus: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "EXPIRED"]).default("TRIAL"),
+});
 
 // User schemas
 export const createUserSchema = z.object({
@@ -105,6 +174,22 @@ export const createFeeVoucherSchema = z.object({
 });
 
 export const updateFeeVoucherSchema = createFeeVoucherSchema.partial();
+
+export const batchFeeInvoicingSchema = z.object({
+  academicYearId: z.string().min(1, "Academic Year is required"),
+  feeType: z.string().min(1, "Fee type is required").default("TUITION"),
+  month: z.number().int().min(1).max(12).optional(),
+  year: z.number().int().min(2000).max(2100).optional(),
+  dueDate: z.string().min(1, "Due date is required"),
+  baseAmount: z.number().min(0, "Base amount must be non-negative"),
+  target: z.enum(["ALL_STUDENTS", "CLASS", "SECTION"]).default("ALL_STUDENTS"),
+  classId: z.string().optional(),
+  sectionId: z.string().optional(),
+  carryForwardArrears: z.boolean().default(true),
+  note: z.string().optional(),
+});
+
+export type BatchFeeInvoicingInput = z.infer<typeof batchFeeInvoicingSchema>;
 
 // Transaction schemas
 export const createTransactionSchema = z.object({
@@ -198,7 +283,45 @@ export const updateExamResultSchema = z.object({
   remarks: z.string().optional(),
 });
 
+// Expense Category schemas
+export const createExpenseCategorySchema = z.object({
+  name: z.string().min(2, "Category name is required"),
+  code: z.string().min(2, "Code is required").toUpperCase(),
+  description: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const updateExpenseCategorySchema = createExpenseCategorySchema.partial();
+
+// Expense schemas
+export const createExpenseSchema = z.object({
+  title: z.string().min(2, "Expense title is required"),
+  categoryId: z.string().min(1, "Category is required"),
+  amount: z.number().positive("Amount must be greater than 0"),
+  paymentMethod: z.enum(["CASH", "BANK", "CHEQUE", "DIGITAL"]).default("CASH"),
+  expenseDate: z.string().min(1, "Expense date is required"),
+  payeeName: z.string().optional(),
+  receiptNumber: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateExpenseSchema = createExpenseSchema.partial();
+
+// Bank Account schemas
+export const createBankAccountSchema = z.object({
+  accountName: z.string().min(2, "Account name is required"),
+  accountNumber: z.string().min(2, "Account number is required"),
+  bankName: z.string().min(2, "Bank name is required"),
+  branchName: z.string().optional(),
+  accountType: z.enum(["CHECKING", "SAVINGS", "PETTY_CASH"]).default("CHECKING"),
+  openingBalance: z.number().min(0).default(0),
+  currency: z.string().default("PKR"),
+});
+
+export const updateBankAccountSchema = createBankAccountSchema.partial();
+
 // Type exports
+export type OnboardInstituteInput = z.infer<typeof onboardInstituteSchema>;
 export type CreateTenantInput = z.infer<typeof createTenantSchema>;
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -220,3 +343,8 @@ export type CreateAttendanceInput = z.infer<typeof createAttendanceSchema>;
 export type UpdateAttendanceInput = z.infer<typeof updateAttendanceSchema>;
 export type CreateExamResultInput = z.infer<typeof createExamResultSchema>;
 export type UpdateExamResultInput = z.infer<typeof updateExamResultSchema>;
+export type CreateExpenseCategoryInput = z.infer<typeof createExpenseCategorySchema>;
+export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
+export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
+export type CreateBankAccountInput = z.infer<typeof createBankAccountSchema>;
+

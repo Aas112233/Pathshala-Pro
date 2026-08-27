@@ -5,12 +5,12 @@ import {
   paginatedResponse,
   errorResponse,
   badRequest,
-  unauthorized,
-  forbidden,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
-import { createTransactionSchema, updateTransactionSchema } from "@/lib/schemas";
+import { createTransactionSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { smartRateLimit, dedupeRequest } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 /**
@@ -98,8 +98,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get transactions error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -128,6 +127,18 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
+
+    // 1. Server-side duplicate prevention (3-second re-entry guard)
+    const dedupeKey = `TX_PAY_${tenantId}_${data.feeVoucherId}_${data.amountPaid}`;
+    if (!dedupeRequest(dedupeKey, 3000)) {
+      return errorResponse("Duplicate payment request detected. Please wait a moment.", 409);
+    }
+
+    // 2. Adaptive rate limiting on payment operations
+    const rateCheck = smartRateLimit(`TX_MUT_${tenantId}_${user.id}`, { preset: "mutation" });
+    if (!rateCheck.success) {
+      return errorResponse("Too many payment transactions. Please slow down.", 429);
+    }
 
     // Check if transaction ID already exists
     const existingTransaction = await prisma.transaction.findFirst({
@@ -233,7 +244,6 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error) {
-    console.error("Create transaction error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

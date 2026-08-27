@@ -71,3 +71,6 @@ Thumbs.db
 
 # Misc
 *.pem
+
+# opencode MCP memory store
+.opencode/memory.json

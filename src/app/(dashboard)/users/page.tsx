@@ -110,7 +110,7 @@ export default function UsersPage() {
                 setIsPermissionModalOpen(true);
               }}
             >
-              <ShieldCheck className="h-4 w-4 text-primary" />
+              <ShieldCheck className="h-4 w-4" />
             </Button>
           )}
           {canWriteUsers && (

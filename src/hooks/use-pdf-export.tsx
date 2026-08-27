@@ -7,11 +7,20 @@ import {
   StudentIDCardTemplate,
   MarkSheetTemplate,
   ReportCardTemplate,
+  BatchReportCardDocument,
+  FeeVoucherPDFDocument,
+  TransportManifestPDFDocument,
+  SalaryPayslipDocument,
+  BatchSalaryPayslipPDFDocument,
   StudentReportTemplate,
   FeeReportTemplate,
   AttendanceReportTemplate,
   ExamReportTemplate,
   type PdfFilterItem,
+  type BatchStudentResult,
+  type FeeVoucherPDFData,
+  type TransportManifestPDFData,
+  type SalaryPayslipPDFData,
 } from "@/lib/pdf-templates";
 
 interface SchoolInfo {
@@ -294,6 +303,52 @@ export function usePDFExport() {
     return generatePDF(document, "Exam_Report.pdf");
   }, [generatePDF]);
 
+  const exportBatchReportCardsPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    students: BatchStudentResult[];
+    fileName?: string;
+  }) => {
+    const document = <BatchReportCardDocument school={params.school} students={params.students} />;
+    const fileName = params.fileName || `Class_Report_Cards_${Date.now()}.pdf`;
+    return generatePDF(document, fileName);
+  }, [generatePDF]);
+
+  const exportFeeVouchersPDF = useCallback(async (
+    vouchers: FeeVoucherPDFData[],
+    fileName?: string
+  ) => {
+    const document = <FeeVoucherPDFDocument vouchers={vouchers} />;
+    const name = fileName || `Fee_Vouchers_${Date.now()}.pdf`;
+    return generatePDF(document, name);
+  }, [generatePDF]);
+
+  const exportTransportManifestPDF = useCallback(async (
+    manifest: TransportManifestPDFData,
+    fileName?: string
+  ) => {
+    const document = <TransportManifestPDFDocument manifest={manifest} />;
+    const name = fileName || `Transport_Manifest_${manifest.routeName.replace(/\s+/g, "_")}.pdf`;
+    return generatePDF(document, name);
+  }, [generatePDF]);
+
+  const exportSalaryPayslipPDF = useCallback(async (
+    data: SalaryPayslipPDFData,
+    fileName?: string
+  ) => {
+    const document = <SalaryPayslipDocument data={data} />;
+    const name = fileName || `Payslip_${data.staffId}_${data.month}_${data.year}.pdf`;
+    return generatePDF(document, name);
+  }, [generatePDF]);
+
+  const exportBatchPayslipsPDF = useCallback(async (
+    payslips: SalaryPayslipPDFData[],
+    fileName?: string
+  ) => {
+    const document = <BatchSalaryPayslipPDFDocument payslips={payslips} />;
+    const name = fileName || `Batch_Payslips_${Date.now()}.pdf`;
+    return generatePDF(document, name);
+  }, [generatePDF]);
+
   return {
     exportStudentIDCard,
     exportMarkSheet,
@@ -303,6 +358,11 @@ export function usePDFExport() {
     exportFeeReportPDF,
     exportAttendanceReportPDF,
     exportExamReportPDF,
+    exportBatchReportCardsPDF,
+    exportFeeVouchersPDF,
+    exportTransportManifestPDF,
+    exportSalaryPayslipPDF,
+    exportBatchPayslipsPDF,
   };
 }
 

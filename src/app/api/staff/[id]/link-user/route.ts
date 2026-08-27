@@ -5,6 +5,7 @@ import {
   errorResponse,
   badRequest,
   notFound,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { hashPassword } from "@/lib/auth";
@@ -85,8 +86,7 @@ export async function POST(
 
     return successResponse(result, "User account created and linked to staff member", 201);
   } catch (error) {
-    console.error("Link staff user error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -138,8 +138,7 @@ export async function DELETE(
 
     return successResponse(null, "User account unlinked from staff member");
   } catch (error) {
-    console.error("Unlink staff user error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -184,7 +183,6 @@ export async function GET(
       user: staff.user,
     });
   } catch (error) {
-    console.error("Get staff linked user error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AuthContext } from "@/lib/auth";
 import { getAuthContext } from "@/lib/auth";
 import { forbidden, unauthorized } from "@/lib/api-response";
-import { hasPermission, type PermissionAction } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions, type PermissionAction } from "@/lib/permissions";
 
 type AccessResult =
   | { authContext: AuthContext; response?: never }
@@ -44,9 +44,38 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
       return "attendance";
     case "fees":
     case "transactions":
+    case "accounting":
       return "fees";
     case "salary":
       return "salary";
+    case "notices":
+      return "notices";
+    case "timetables":
+      return "timetable";
+    case "enquiries":
+      return "enquiries";
+    case "library":
+      return "library";
+    case "transport":
+      return "transport";
+    case "homework":
+      return "homework";
+    case "homework-submissions":
+      return "homework";
+    case "leaves":
+      return "leaves";
+    case "inventory":
+      return "inventory";
+    case "hostel":
+    case "hostels":
+    case "hostel-rooms":
+    case "hostel-allocations":
+      return "hostel";
+    case "certificates":
+      return "certificates";
+    case "health":
+    case "health-records":
+      return "health";
     case "settings":
       return "settings";
     case "subjects":
@@ -93,7 +122,7 @@ export async function requireApiAccess(
     return { response: forbidden("System administrators cannot access tenant APIs") };
   }
 
-  if (user.role === "SUPER_ADMIN") {
+  if (user.role === "SUPER_ADMIN" || (options?.allowSystemAdmin && user.role === "SYSTEM_ADMIN")) {
     return { authContext };
   }
 
@@ -107,7 +136,9 @@ export async function requireApiAccess(
     return { authContext };
   }
 
-  if (!hasPermission(user.permissions, moduleName, action)) {
+  const effectivePermissions = getEffectivePermissions(user.role, user.permissions);
+
+  if (!hasPermission(effectivePermissions, moduleName, action)) {
     return {
       response: forbidden(
         `Insufficient ${action} permissions for ${moduleName} module`
@@ -116,4 +147,31 @@ export async function requireApiAccess(
   }
 
   return { authContext };
+}
+
+export async function verifyAuthAndPermission(
+  request: NextRequest,
+  moduleName?: string,
+  action?: PermissionAction
+): Promise<
+  | { authorized: true; authContext: AuthContext; error?: never; status?: never }
+  | { authorized: false; authContext?: never; error: string; status: number }
+> {
+  const result = await requireApiAccess(request, {
+    module: moduleName,
+    action: action,
+  });
+
+  if ("response" in result && result.response) {
+    return {
+      authorized: false,
+      error: "Authentication or permission check failed",
+      status: result.response.status,
+    };
+  }
+
+  return {
+    authorized: true,
+    authContext: result.authContext,
+  };
 }

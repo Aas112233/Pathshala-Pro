@@ -3,15 +3,13 @@ import { prisma } from "@/lib/prisma";
 import {
   successResponse,
   paginatedResponse,
-  errorResponse,
   badRequest,
-  unauthorized,
-  forbidden,
-  validationError,
+  handleApiError,
+  safeParseBody,
 } from "@/lib/api-response";
-import { createStudentSchema, updateStudentSchema } from "@/lib/schemas";
+import { createStudentSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
+import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 /**
  * GET /api/students
@@ -63,53 +61,53 @@ export async function GET(request: NextRequest) {
       where.classId = classId;
     }
 
-    // Get total count
+    // Get total count and students
     const [totalCount, students] = await Promise.all([
       prisma.studentProfile.count({ where }),
       prisma.studentProfile.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { [sortBy]: sortOrder },
-      select: {
-        id: true,
-        studentId: true,
-        rollNumber: true,
-        firstName: true,
-        lastName: true,
-        firstNameBn: true,
-        lastNameBn: true,
-        guardianName: true,
-        guardianContact: true,
-        guardianEmail: true,
-        gender: true,
-        status: true,
-        profilePictureUrl: true,
-        admissionDate: true,
-        classId: true,
-        groupId: true,
-        sectionId: true,
-        createdAt: true,
-        class: {
-          select: {
-            id: true,
-            name: true,
-          }
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: {
+          id: true,
+          studentId: true,
+          rollNumber: true,
+          firstName: true,
+          lastName: true,
+          firstNameBn: true,
+          lastNameBn: true,
+          guardianName: true,
+          guardianContact: true,
+          guardianEmail: true,
+          gender: true,
+          status: true,
+          profilePictureUrl: true,
+          admissionDate: true,
+          classId: true,
+          groupId: true,
+          sectionId: true,
+          createdAt: true,
+          class: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          group: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          section: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
-        group: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
-        section: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
-      },
-    })
+      }),
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -123,11 +121,7 @@ export async function GET(request: NextRequest) {
       hasPreviousPage: page > 1,
     });
   } catch (error) {
-    console.error("Get students error:", error);
-    if (error instanceof Error) {
-      console.error("Error details:", error.message, error.stack);
-    }
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error, "Failed to retrieve students");
   }
 }
 
@@ -142,19 +136,9 @@ export async function POST(request: NextRequest) {
 
     const { tenantId } = access.authContext;
 
-    const body = await request.json();
-    const validation = createStudentSchema.safeParse(body);
-
-    if (!validation.success) {
-      const errors = validation.error.errors.map((err) => ({
-        field: err.path.join("."),
-        code: err.code,
-        message: err.message,
-      }));
-      return validationError(errors);
-    }
-
-    const data = validation.data;
+    const bodyResult = await safeParseBody(request, createStudentSchema);
+    if (!bodyResult.success) return bodyResult.errorResponse;
+    const data = bodyResult.data;
 
     let studentId = data.studentId;
 
@@ -179,7 +163,7 @@ export async function POST(request: NextRequest) {
       // Keep incrementing if it randomly collides due to race conditions or manual entry
       let isUnique = false;
       while (!isUnique) {
-        studentId = `STU-${currentYear}-${nextNumber.toString().padStart(5, "0")}`; // 5-digit padding
+        studentId = `STU-${currentYear}-${nextNumber.toString().padStart(5, "0")}`;
         const collision = await prisma.studentProfile.findFirst({ where: { tenantId, studentId } });
         if (!collision) isUnique = true;
         else nextNumber++;
@@ -215,17 +199,14 @@ export async function POST(request: NextRequest) {
       try {
         const { renameR2Object } = await import("@/lib/r2-storage");
 
-        // R2 keys are like "Tenant_123/student_profiles/temp_12345.jpg"
-        // We want to extract the extension to keep it, and replace the name with the studentId
         const oldKey = data.driveFileId;
         const extension = oldKey.split(".").pop();
         const parts = oldKey.split("/");
-        parts.pop(); // Remove the old temp filename
+        parts.pop();
         const newKey = `${parts.join("/")}/${studentId}.${extension}`;
 
         await renameR2Object(oldKey, newKey);
 
-        // Build the profile picture URL
         const publicDomain = process.env.R2_PUBLIC_DOMAIN;
         if (publicDomain) {
           const cleanDomain = publicDomain.endsWith("/") ? publicDomain.slice(0, -1) : publicDomain;
@@ -235,20 +216,16 @@ export async function POST(request: NextRequest) {
         }
       } catch (renameErr) {
         console.error("Failed to rename object on Cloudflare R2:", renameErr);
-        // Continue anyway so the database record is not lost, but keep the old temp URL
       }
     }
 
-    // Strip driveFileId and admissionDate before passing to Prisma
-    // admissionDate should not be set manually - createdAt is auto-set by DB
     const { driveFileId, admissionDate, ...prismaData } = data as any;
 
-    // Convert dateOfBirth string to Date object if present
     const prismaDataWithDates: any = { ...prismaData };
     if (prismaData.dateOfBirth && prismaData.dateOfBirth.trim() !== '') {
       prismaDataWithDates.dateOfBirth = new Date(prismaData.dateOfBirth);
     } else {
-      delete prismaDataWithDates.dateOfBirth; // Remove empty date
+      delete prismaDataWithDates.dateOfBirth;
     }
 
     const student = await prisma.studentProfile.create({
@@ -257,7 +234,6 @@ export async function POST(request: NextRequest) {
         ...prismaDataWithDates,
         studentId: studentId as string,
         ...(profilePictureUrl && { profilePictureUrl }),
-        // admissionDate defaults to now() in schema if not provided
       },
       select: {
         id: true,
@@ -277,7 +253,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(student, "Student created successfully", 201);
   } catch (error) {
-    console.error("Create student error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error, "Failed to create student");
   }
 }

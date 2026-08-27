@@ -52,18 +52,16 @@ export async function middleware(request: NextRequest) {
     const { payload } = await jwtVerify(token, getJwtSecretKey());
     const role = payload.role as string;
     
-    // System Admin redirection logic
-    if (role === "SYSTEM_ADMIN") {
-      // If system admin is trying to access standard school routes, redirect to system panel
-      // unless it's an asset or public path
-      if (!pathname.startsWith("/system-admin") && !isPublicPath) {
-        return NextResponse.redirect(new URL("/system-admin", request.url));
-      }
-    } else {
-      // If regular user (including Super Admin) tries to access system admin area, block them
-      if (pathname.startsWith("/system-admin")) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
+    // System Admin / Super Admin authorization logic
+    const isSuperOrSystemAdmin =
+      role === "SYSTEM_ADMIN" ||
+      role === "SUPER_ADMIN" ||
+      payload.tenantId === "system" ||
+      !!payload.impersonatedBy;
+
+    if (!isSuperOrSystemAdmin && pathname.startsWith("/system-admin")) {
+      // Regular school users cannot access the SaaS superadmin area
+      return NextResponse.redirect(new URL("/", request.url));
     }
     
     // Valid context, proceed

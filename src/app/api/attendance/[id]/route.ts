@@ -6,6 +6,7 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { updateAttendanceSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -60,8 +61,7 @@ export async function GET(
 
     return successResponse(attendance);
   } catch (error) {
-    console.error("Get attendance error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -125,8 +125,7 @@ export async function PUT(
 
     return successResponse(updatedAttendance, "Attendance updated successfully");
   } catch (error) {
-    console.error("Update attendance error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -159,7 +158,6 @@ export async function DELETE(
 
     return successResponse(null, "Attendance record deleted successfully");
   } catch (error) {
-    console.error("Delete attendance error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

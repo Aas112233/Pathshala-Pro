@@ -6,6 +6,7 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { updateSalaryLedgerSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -60,8 +61,7 @@ export async function GET(
 
     return successResponse(salaryLedger);
   } catch (error) {
-    console.error("Get salary ledger error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -142,8 +142,7 @@ export async function PUT(
 
     return successResponse(updatedLedger, "Salary ledger updated successfully");
   } catch (error) {
-    console.error("Update salary ledger error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -193,7 +192,6 @@ export async function DELETE(
 
     return successResponse(null, "Salary ledger deleted successfully");
   } catch (error) {
-    console.error("Delete salary ledger error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

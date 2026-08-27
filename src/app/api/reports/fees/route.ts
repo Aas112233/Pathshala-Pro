@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { getAuthContext } from "@/lib/auth";
-import { forbidden } from "next/navigation";
-
-const prisma = new PrismaClient();
+import {
+  forbidden,
+  handleApiError,
+} from "@/lib/api-response";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,30 +21,29 @@ export async function GET(request: NextRequest) {
     const toDate = searchParams.get("toDate");
     const status = searchParams.get("status");
 
-    // Build date filter
-    const dateFilter: any = {};
-    if (fromDate) {
-      dateFilter.gte = new Date(fromDate);
-    }
-    if (toDate) {
-      dateFilter.lte = new Date(toDate);
+    // Build filters with a concrete where clause so Prisma keeps full result typing
+    const whereClause: Prisma.FeeVoucherWhereInput = {
+      tenantId: user.tenantId,
+    };
+
+    if (fromDate || toDate) {
+      const createdAt: Prisma.DateTimeFilter = {};
+      if (fromDate) {
+        createdAt.gte = new Date(fromDate);
+      }
+      if (toDate) {
+        createdAt.lte = new Date(toDate);
+      }
+      whereClause.createdAt = createdAt;
     }
 
-    // Build status filter
-    const statusFilter: any = {};
     if (status && status !== "all") {
-      statusFilter.status = status;
+      whereClause.status = status;
     }
 
     // Fetch vouchers with related data
     const vouchers = await prisma.feeVoucher.findMany({
-      where: {
-        tenantId: user.tenantId,
-        ...(Object.keys(dateFilter).length > 0 && {
-          createdAt: dateFilter,
-        }),
-        ...(Object.keys(statusFilter).length > 0 && statusFilter),
-      },
+      where: whereClause,
       include: {
         studentProfile: {
           select: {
@@ -69,10 +70,10 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
     });
+
+    // Sort newest first (kept out of the query so Prisma retains full include typing)
+    vouchers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // Calculate metrics and transform vouchers
     let totalCollected = 0;

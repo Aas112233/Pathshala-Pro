@@ -6,6 +6,7 @@ import {
   unauthorized,
   notFound,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { updateStaffSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -67,8 +68,7 @@ export async function GET(
 
     return successResponse(staff);
   } catch (error) {
-    console.error("Get staff error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -180,8 +180,7 @@ export async function PUT(
 
     return successResponse(updatedStaff, "Staff member updated successfully");
   } catch (error) {
-    console.error("Update staff error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -226,7 +225,6 @@ export async function DELETE(
 
     return successResponse(null, "Staff member deleted successfully");
   } catch (error) {
-    console.error("Delete staff error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

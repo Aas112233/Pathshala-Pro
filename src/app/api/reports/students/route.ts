@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiAccess } from "@/lib/api-auth";
-import { errorResponse, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  successResponse,
+  handleApiError,
+} from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,7 +147,6 @@ export async function GET(request: NextRequest) {
       students: transformedStudents,
     });
   } catch (error) {
-    console.error("Student report error:", error);
-    return errorResponse("Failed to generate student report", 500);
+    return handleApiError(error);
   }
 }

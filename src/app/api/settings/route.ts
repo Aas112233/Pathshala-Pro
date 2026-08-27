@@ -5,6 +5,7 @@ import {
   errorResponse,
   unauthorized,
   badRequest,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 
@@ -51,8 +52,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(tenant, "Settings retrieved successfully");
   } catch (error) {
-    console.error("Get settings error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -125,7 +125,6 @@ export async function PUT(request: NextRequest) {
 
     return successResponse(tenant, "Settings updated successfully");
   } catch (error) {
-    console.error("Update settings error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

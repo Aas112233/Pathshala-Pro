@@ -7,6 +7,7 @@ import {
   notFound,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { z } from "zod";
@@ -57,8 +58,7 @@ export async function GET(
 
     return successResponse(section);
   } catch (error) {
-    console.error("Get section error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -150,8 +150,7 @@ export async function PUT(
 
     return successResponse(updatedSection, "Section updated successfully");
   } catch (error) {
-    console.error("Update section error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -195,7 +194,6 @@ export async function DELETE(
 
     return successResponse(null, "Section deleted successfully");
   } catch (error) {
-    console.error("Delete section error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

@@ -53,12 +53,6 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={cn("font-sans", geist.variable)}
     >
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body>
         <NextIntlClientProvider messages={messages} locale={locale}>
           <ThemeProvider>

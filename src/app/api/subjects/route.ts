@@ -7,6 +7,7 @@ import {
   notFound,
   badRequest,
   validationError,
+  handleApiError,
 } from "@/lib/api-response";
 import { createSubjectSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -37,8 +38,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(subjects, "Subjects retrieved successfully");
   } catch (error) {
-    console.error("Get subjects error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }
 
@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(subject, "Subject created successfully", 201);
   } catch (error) {
-    console.error("Create subject error:", error);
-    return errorResponse("Internal server error", 500);
+    return handleApiError(error);
   }
 }

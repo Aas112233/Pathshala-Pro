@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { AppModal } from "@/components/ui/app-modal";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -224,92 +224,91 @@ export function BulkPayrollModal({
     }
   };
 
-  const inputClass = cn(
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-    "focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary",
-    "transition-colors duration-200"
-  );
-
-  const labelClass = "text-sm font-medium";
-  const errorClass = "text-xs text-destructive mt-1";
-
   const allSelected = filteredEntries.length > 0 && filteredEntries.every(e => e.selected);
   const someSelected = filteredEntries.some(e => e.selected) && !allSelected;
 
   return (
-    <AppModal
+    <TopSheet
       isOpen={isOpen}
       onClose={onClose}
       title="Bulk Payroll Processing"
       description="Process salary for multiple staff members at once"
       maxWidth="6xl"
-      className="max-h-[90vh]"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-        {/* Period Selection */}
-        <div className="grid grid-cols-3 gap-4 p-4 rounded-lg bg-muted/50">
-          <div className="space-y-1.5">
-            <Label htmlFor="academicYearId" className={labelClass}>Academic Year *</Label>
-            <AppDropdown
-              id="academicYearId"
-              value={formData.academicYearId}
-              onChange={(val) => {
-                setFormData(prev => ({ ...prev, academicYearId: val }));
-                if (errors.academicYearId) {
-                  setErrors(prev => ({ ...prev, academicYearId: undefined }));
-                }
-              }}
-              disabled={isLoading}
-              invalid={Boolean(errors.academicYearId)}
-              aria-describedby={errors.academicYearId ? "bulk-payroll-year-error" : undefined}
-              triggerClassName={errors.academicYearId ? "border-destructive ring-1 ring-destructive" : ""}
-              options={academicYears.map(ay => ({
-                value: ay.id,
-                label: `${ay.label}${ay.isClosed ? ' (Closed)' : ''}`,
-                disabled: ay.isClosed,
-              }))}
-              placeholder="Select year"
-            />
-            {errors.academicYearId && <p id="bulk-payroll-year-error" className={errorClass}>{errors.academicYearId}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="month" className={labelClass}>Month *</Label>
-            <AppDropdown
-              id="month"
-              value={formData.month.toString()}
-              onChange={(val) => {
-                setFormData(prev => ({ ...prev, month: parseInt(val) || 1 }));
-                if (errors.month) {
-                  setErrors(prev => ({ ...prev, month: undefined }));
-                }
-              }}
-              disabled={isLoading}
-              invalid={Boolean(errors.month)}
-              aria-describedby={errors.month ? "bulk-payroll-month-error" : undefined}
-              triggerClassName={errors.month ? "border-destructive ring-1 ring-destructive" : ""}
-              options={MONTHS}
-              placeholder="Select month"
-            />
-            {errors.month && <p id="bulk-payroll-month-error" className={errorClass}>{errors.month}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="year" className={labelClass}>Year *</Label>
-            <Input
-              id="year"
-              type="number"
-              name="year"
-              value={formData.year}
-              onChange={handleChange}
-              min={2000}
-              max={2100}
-              disabled={isLoading}
-              className={cn(inputClass, errors.year && "border-destructive focus:ring-destructive")}
-            />
-            {errors.year && <p className={errorClass}>{errors.year}</p>}
-          </div>
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="bulk-payroll-form" disabled={isLoading || totals.totalStaff === 0}>
+            {isLoading ? "Processing..." : `Process Payroll for ${totals.totalStaff} Staff`}
+          </Button>
         </div>
+      }
+    >
+      <form id="bulk-payroll-form" onSubmit={handleSubmit} className="space-y-5">
+        {/* Period Selection */}
+        <ERPFormSection>
+          <ERPFormGrid cols={3}>
+            <ERPFormField label="Academic Year" required htmlFor="academicYearId">
+              <AppDropdown
+                id="academicYearId"
+                value={formData.academicYearId}
+                onChange={(val) => {
+                  setFormData(prev => ({ ...prev, academicYearId: val }));
+                  if (errors.academicYearId) {
+                    setErrors(prev => ({ ...prev, academicYearId: undefined }));
+                  }
+                }}
+                disabled={isLoading}
+                invalid={Boolean(errors.academicYearId)}
+                aria-describedby={errors.academicYearId ? "bulk-payroll-year-error" : undefined}
+                triggerClassName={errors.academicYearId ? "border-destructive ring-1 ring-destructive" : ""}
+                options={academicYears.map(ay => ({
+                  value: ay.id,
+                  label: `${ay.label}${ay.isClosed ? ' (Closed)' : ''}`,
+                  disabled: ay.isClosed,
+                }))}
+                placeholder="Select year"
+              />
+              {errors.academicYearId && <p id="bulk-payroll-year-error" className="text-xs text-destructive mt-1">{errors.academicYearId}</p>}
+            </ERPFormField>
+
+            <ERPFormField label="Month" required htmlFor="month">
+              <AppDropdown
+                id="month"
+                value={formData.month.toString()}
+                onChange={(val) => {
+                  setFormData(prev => ({ ...prev, month: parseInt(val) || 1 }));
+                  if (errors.month) {
+                    setErrors(prev => ({ ...prev, month: undefined }));
+                  }
+                }}
+                disabled={isLoading}
+                invalid={Boolean(errors.month)}
+                aria-describedby={errors.month ? "bulk-payroll-month-error" : undefined}
+                triggerClassName={errors.month ? "border-destructive ring-1 ring-destructive" : ""}
+                options={MONTHS}
+                placeholder="Select month"
+              />
+              {errors.month && <p id="bulk-payroll-month-error" className="text-xs text-destructive mt-1">{errors.month}</p>}
+            </ERPFormField>
+
+            <ERPFormField label="Year" required htmlFor="year">
+              <Input
+                id="year"
+                type="number"
+                name="year"
+                value={formData.year}
+                onChange={handleChange}
+                min={2000}
+                max={2100}
+                disabled={isLoading}
+                aria-invalid={Boolean(errors.year)}
+              />
+              {errors.year && <p className="text-xs text-destructive mt-1">{errors.year}</p>}
+            </ERPFormField>
+          </ERPFormGrid>
+        </ERPFormSection>
 
         {/* Filters */}
         <div className="flex gap-4">
@@ -438,8 +437,8 @@ export function BulkPayrollModal({
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Processing {totals.totalStaff} staff members</p>
               <p className="text-xs text-muted-foreground">
-                Base: {totals.totalBaseSalary.toFixed(2)} | 
-                Deductions: {totals.totalDeductions.toFixed(2)} | 
+                Base: {totals.totalBaseSalary.toFixed(2)} |
+                Deductions: {totals.totalDeductions.toFixed(2)} |
                 Advances: {totals.totalAdvances.toFixed(2)}
               </p>
             </div>
@@ -449,17 +448,7 @@ export function BulkPayrollModal({
             </div>
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading || totals.totalStaff === 0}>
-            {isLoading ? "Processing..." : `Process Payroll for ${totals.totalStaff} Staff`}
-          </Button>
-        </div>
       </form>
-    </AppModal>
+    </TopSheet>
   );
 }
