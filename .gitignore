@@ -1,76 +1,144 @@
-# Dependencies
-/node_modules
+# ==============================================================================
+# PathshalaPro Production Git Ignore
+# ==============================================================================
+
+# --- Dependencies & Package Managers ---
+node_modules/
 /.pnp
 .pnp.*
-
-# Package managers
-/.yarn/*
+.yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-/.yarn/cache
-/.yarn/install-state.gz
-/.yarn/unplugged
-/.yarn/link
-/.yarn/build-state.yml
+.yarn/cache
+.yarn/install-state.gz
+.yarn/unplugged
+.yarn/link
+.yarn/build-state.yml
 
-# Build outputs
-/.next/
-/.next/cache/
-/.next/data/
-/.next/server/pages/
-/out/
-/build/
-/dist/
-/.output/
-/build_output.txt
+# --- Next.js, Turbo & Build Artifacts ---
+.next/
+out/
+build/
+dist/
+.output/
+.turbo/
+.swc/
+.cache/
+build_output.txt
+next-env.d.ts
 
-# Testing and coverage
-/coverage/
-
-# Runtime-generated public assets
-/public/static/
-/public/uploads/
-
-# Environment files
+# --- Environment Variables & Secrets ---
+# Ignore all .env variants by default
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.staging.local
+.env.*
 .env*.local
+
+# Whitelist safe example/template files
 !.env.example
+!.env.template
+!.env.sample
 !.env.local.example
 
-# Local databases
+# Certificates & Private Keys
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.keystore
+
+# Cloud & Service Account Credentials
+service-account*.json
+google-credentials*.json
+firebase-adminsdk*.json
+aws-credentials*.json
+*.secret
+.credentials
+
+# --- Databases & Local Storage ---
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
+prisma/db/
+prisma/*.db
 
-# Logs
+# --- Media, Uploads & Runtime Storage ---
+/public/uploads/
+/public/static/
+/storage/
+/uploads/
+/backups/
+/dumps/
+
+# --- Testing, Coverage & Reports ---
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+cypress/videos/
+cypress/screenshots/
+vitest.config.ts.timestamp-*
+
+# --- Logs & Process Dumps ---
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Deployment
-.vercel
+# --- Deployment Platforms ---
+.vercel/
+.serverless/
+.sst/
+.amplify/
 
-# TypeScript
+# --- TypeScript ---
 *.tsbuildinfo
-next-env.d.ts
 
-# OS and editor files
+# --- OS System Files ---
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
+
+# --- Editor & IDE Files ---
 .idea/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-workspace
+*.sublime-project
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~
 
-# Misc
-*.pem
+# --- AI Tools & Local Agent Data ---
+.claude/
+.opencode/
+.gemini/
+.agents/
+.cursor/
 
-# opencode MCP memory store
-.opencode/memory.json
+# --- Temporary & Scratch Files ---
+*.tmp
+*.temp
+*.bak
+scratch/
