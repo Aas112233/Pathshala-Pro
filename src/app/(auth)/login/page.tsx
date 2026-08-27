@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLogin } from "@/hooks/use-queries";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { toast } from "sonner";
 import {
   Mail,
@@ -75,7 +76,8 @@ export default function LoginPage() {
   const router = useRouter();
   const loginMutation = useLogin();
   const { login } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  // Duplicate-press guard: blocks re-entry even before React re-renders.
+  const { run, isPending } = useSubmitGuard();
   const [showPassword, setShowPassword] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
@@ -113,26 +115,30 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
 
     const email = emailInput.trim();
     const password = passwordInput;
 
-    try {
-      const result = await loginMutation.mutateAsync({ email, password });
+    // Wrapped in the submit guard: rapid double-presses / double-Enter are ignored.
+    void run(async () => {
+      try {
+        const result = await loginMutation.mutateAsync({ email, password });
 
-      if (!result.error) {
-        login(result.data.user);
-        toast.success("Welcome back!");
-        router.push("/");
+        if (!result.error) {
+          login(result.data.user);
+          toast.success("Welcome back!");
+          router.push("/");
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Invalid credentials. Please try again.";
+        toast.error(message);
       }
-    } catch (error: any) {
-      toast.error(error.message || "Invalid credentials. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   const handleQuickFill = (email: string, pass: string) => {
@@ -287,19 +293,17 @@ export default function LoginPage() {
                   calendarDays.map((day, i) => (
                     <div
                       key={i}
-                      className={`flex min-w-[2.75rem] flex-col items-center rounded-2xl p-1.5 transition-colors ${
-                        day.isActive
-                          ? "border border-white/30 bg-white/25 text-white shadow-sm"
-                          : "text-white/70"
-                      }`}
+                      className={`flex min-w-[2.75rem] flex-col items-center rounded-2xl p-1.5 transition-colors ${day.isActive
+                        ? "border border-white/30 bg-white/25 text-white shadow-sm"
+                        : "text-white/70"
+                        }`}
                     >
                       <span className="mb-0.5 text-[10px] font-medium uppercase tracking-wider">
                         {day.label}
                       </span>
                       <span
-                        className={`text-base font-bold ${
-                          day.isActive ? "text-white" : "text-white/90"
-                        }`}
+                        className={`text-base font-bold ${day.isActive ? "text-white" : "text-white/90"
+                          }`}
                       >
                         {day.date}
                       </span>
@@ -410,7 +414,7 @@ export default function LoginPage() {
                     required
                     autoComplete="email"
                     placeholder="admin@school.com"
-                    disabled={isLoading}
+                    disabled={isPending}
                     className="h-12 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 pl-12 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all hover:bg-slate-100/60 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:hover:bg-slate-800 dark:focus:bg-slate-900"
                   />
                 </div>
@@ -449,7 +453,7 @@ export default function LoginPage() {
                     required
                     autoComplete="current-password"
                     placeholder="••••••••••••"
-                    disabled={isLoading}
+                    disabled={isPending}
                     className="h-12 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 pl-12 pr-12 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all hover:bg-slate-100/60 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:hover:bg-slate-800 dark:focus:bg-slate-900"
                   />
                   <button
@@ -465,12 +469,13 @@ export default function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isPending}
+                aria-busy={isPending || undefined}
                 className="group relative mt-2 flex h-12 w-full items-center justify-center overflow-hidden rounded-2xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/35 disabled:pointer-events-none disabled:opacity-70"
               >
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
                 <span className="relative flex items-center gap-2">
-                  {isLoading ? (
+                  {isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Authenticating...</span>
