@@ -16,7 +16,6 @@ import {
   GraduationCap,
   Building2,
   Zap,
-  KeyRound,
   ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
@@ -139,12 +138,6 @@ export default function LoginPage() {
         toast.error(message);
       }
     });
-  };
-
-  const handleQuickFill = (email: string, pass: string) => {
-    setEmailInput(email);
-    setPasswordInput(pass);
-    toast.info(`Filled credentials for ${email}`);
   };
 
   return (
@@ -486,38 +479,7 @@ export default function LoginPage() {
                 </span>
               </button>
 
-              {/* Demo Credentials Quick-Fill Bar */}
-              <div className="mt-4 rounded-xl border border-slate-200/60 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-2">
-                  <KeyRound className="h-3.5 w-3.5 text-primary" />
-                  Quick Fill Demo Credentials:
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("principal@greenwood.edu", "Password123!")}
-                    className="rounded-lg border border-border bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-xs hover:border-primary hover:text-primary dark:bg-slate-900 dark:text-slate-300"
-                  >
-                    Principal / Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("clerk@greenwood.edu", "Password123!")}
-                    className="rounded-lg border border-border bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-xs hover:border-primary hover:text-primary dark:bg-slate-900 dark:text-slate-300"
-                  >
-                    Finance Clerk
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("superadmin@pathshala.pro", "SuperSecret123!")}
-                    className="rounded-lg border border-indigo-200 bg-indigo-50/60 px-2 py-1 text-[11px] font-medium text-indigo-700 shadow-xs hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300"
-                  >
-                    SaaS SuperAdmin
-                  </button>
-                </div>
-              </div>
-
-              <div className="text-center pt-2">
+              <div className="text-center pt-4">
                 <p className="text-xs text-slate-500">
                   New school?{" "}
                   <Link href="/onboarding" className="font-semibold text-primary hover:underline">
