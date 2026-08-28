@@ -205,7 +205,7 @@ export default function SalaryReportPage() {
       header: "Status",
       cell: ({ row }) => {
         const s = row.original.status;
-        const variant = s === "PAID" ? "success" : s === "PARTIAL" ? "warning" : "danger";
+        const variant = s === "PAID" ? "success" : s === "PARTIAL" ? "warning" : "error";
         return <StatusBadge status={s} variant={variant} />;
       },
     },
@@ -230,12 +230,15 @@ export default function SalaryReportPage() {
         title={t("title")}
         description={t("description")}
         icon={Wallet}
-        actions={
-          hasGenerated && data.length > 0 ? (
-            <ExportDropdown onExportExcel={handleExportExcel} />
-          ) : undefined
-        }
-      />
+      >
+        {hasGenerated && data.length > 0 ? (
+          <ExportDropdown
+            onExport={(type) => {
+              if (type === "excel") void handleExportExcel();
+            }}
+          />
+        ) : undefined}
+      </PageHeader>
 
       {/* Filter Bar */}
       <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs space-y-4">
@@ -333,9 +336,10 @@ export default function SalaryReportPage() {
       {hasGenerated && metrics && (
         <>
           <ReportSummaryBar
-            generatedAt={generatedAt}
-            totalRecords={data.length}
-            filters={[
+            dateRangeLabel={`${selectedYear} / ${selectedMonth === "all" ? "All months" : `Month ${selectedMonth}`}`}
+            generatedAtLabel={generatedAt}
+            recordCount={data.length}
+            appliedFilters={[
               { label: "Year", value: selectedYear },
               { label: "Month", value: selectedMonth === "all" ? "All" : `Month ${selectedMonth}` },
             ]}
@@ -347,29 +351,21 @@ export default function SalaryReportPage() {
               title="Total Gross Payroll"
               value={formatCurrency(metrics.totalGross)}
               icon={DollarSign}
-              color="text-indigo-600"
-              bgColor="bg-indigo-50 dark:bg-indigo-950"
             />
             <ReportMetricCard
               title="Net Disbursed"
               value={formatCurrency(metrics.totalPaid)}
               icon={CheckCircle2}
-              color="text-emerald-600"
-              bgColor="bg-emerald-50 dark:bg-emerald-950"
             />
             <ReportMetricCard
               title="Pending Payouts"
               value={formatCurrency(metrics.totalPending)}
               icon={Clock}
-              color="text-amber-600"
-              bgColor="bg-amber-50 dark:bg-amber-950"
             />
             <ReportMetricCard
               title="Total Deductions"
               value={formatCurrency(metrics.totalDeductions)}
               icon={Wallet}
-              color="text-rose-600"
-              bgColor="bg-rose-50 dark:bg-rose-950"
             />
           </div>
 
@@ -390,7 +386,7 @@ export default function SalaryReportPage() {
           {/* Table */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-foreground">Staff Payout Ledger</h3>
-            <ReportTable columns={columns} data={data} searchPlaceholder="Search staff name or ID..." />
+            <ReportTable columns={columns} data={data} />
           </div>
         </>
       )}

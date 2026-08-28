@@ -156,24 +156,19 @@ export default function SalaryPage() {
         staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || "Staff Member",
         designation: staff?.designation || "Faculty Member",
         department: staff?.department || "Academic",
-        bankName: staff?.bankName || "National Commercial Bank",
-        bankAccountNo: staff?.bankAccountNumber || "XXXX-XXXX-XXXX",
+        bankName: "National Commercial Bank",
+        bankAccountNo: "XXXX-XXXX-XXXX",
         month: monthStr,
         year: item.year,
-        paymentDate: item.paymentDate ? formatDate(item.paymentDate) : "Pending",
-        paymentMethod: item.paymentMethod || "Bank Transfer",
+        paymentDate: item.paidAt ? formatDate(item.paidAt) : "Pending",
+        paymentMethod: "Bank Transfer",
         status: item.status,
         baseSalary: item.baseSalary || 0,
-        allowances: (item.allowances as any) || [
-          { title: "House Rent Allowance", amount: (item.baseSalary || 0) * 0.15 },
-          { title: "Medical Allowance", amount: 150 },
-        ],
-        totalEarnings:
-          (item.baseSalary || 0) +
-          ((item.allowances as any) || []).reduce((s: number, a: any) => s + (a.amount || 0), 0),
-        deductions: (item.deductionsList as any) || [
-          { title: "Provident Fund Contribution", amount: (item.baseSalary || 0) * 0.05 },
-        ],
+        allowances: [],
+        totalEarnings: item.baseSalary || 0,
+        deductions: item.deductions
+          ? [{ title: "Deductions", amount: item.deductions }]
+          : [],
         advances: item.advances || 0,
         totalDeductions: (item.deductions || 0) + (item.advances || 0),
         netSalary: item.netPayable || 0,
@@ -208,24 +203,19 @@ export default function SalaryPage() {
         staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || "Staff Member",
         designation: staff?.designation || "Faculty Member",
         department: staff?.department || "Academic",
-        bankName: staff?.bankName || "National Commercial Bank",
-        bankAccountNo: staff?.bankAccountNumber || "XXXX-XXXX-XXXX",
+        bankName: "National Commercial Bank",
+        bankAccountNo: "XXXX-XXXX-XXXX",
         month: monthStr,
         year: item.year,
-        paymentDate: item.paymentDate ? formatDate(item.paymentDate) : "Pending",
-        paymentMethod: item.paymentMethod || "Bank Transfer",
+        paymentDate: item.paidAt ? formatDate(item.paidAt) : "Pending",
+        paymentMethod: "Bank Transfer",
         status: item.status,
         baseSalary: item.baseSalary || 0,
-        allowances: (item.allowances as any) || [
-          { title: "House Rent Allowance", amount: (item.baseSalary || 0) * 0.15 },
-          { title: "Medical Allowance", amount: 150 },
-        ],
-        totalEarnings:
-          (item.baseSalary || 0) +
-          ((item.allowances as any) || []).reduce((s: number, a: any) => s + (a.amount || 0), 0),
-        deductions: (item.deductionsList as any) || [
-          { title: "Provident Fund Contribution", amount: (item.baseSalary || 0) * 0.05 },
-        ],
+        allowances: [],
+        totalEarnings: item.baseSalary || 0,
+        deductions: item.deductions
+          ? [{ title: "Deductions", amount: item.deductions }]
+          : [],
         advances: item.advances || 0,
         totalDeductions: (item.deductions || 0) + (item.advances || 0),
         netSalary: item.netPayable || 0,

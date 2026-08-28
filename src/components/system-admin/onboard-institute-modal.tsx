@@ -46,6 +46,24 @@ const TEMPLATE_DESCRIPTIONS: Record<
   ClassTemplatePreset,
   { label: string; description: string; count: string; icon: LucideIcon }
 > = {
+  PK_FBISE_MATRIC_INTER: {
+    label: "🇵🇰 Pakistan (FBISE Federal Board)",
+    description: "SSC 9-10 (Science/Computer) & HSSC 11-12 (Pre-Med, Pre-Eng, ICS, I.Com)",
+    count: "4 Classes + Streams",
+    icon: Microscope,
+  },
+  IN_CBSE_SECONDARY_SR_SEC: {
+    label: "🇮🇳 India (CBSE Board)",
+    description: "Class 9-10 (Std/Basic Math, Science, Social) & Class 11-12 (Science, Commerce, Arts)",
+    count: "4 Classes + Streams",
+    icon: Landmark,
+  },
+  BD_NCTB_PRIMARY_SSC_HSC: {
+    label: "🇧🇩 Bangladesh (NCTB Curriculum)",
+    description: "Primary (1-5), Junior Secondary (6-8), SSC (9-10) & HSC (11-12) with GPA 5.0 scale",
+    count: "12 Classes + Streams",
+    icon: School,
+  },
   K_12: {
     label: "K-12 Comprehensive",
     description: "Playgroup, Nursery, KG, Grades 1-10 with Sections & Core Subjects",

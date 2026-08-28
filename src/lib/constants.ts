@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   DollarSign,
   Megaphone,
+  Flag,
   Radio,
   FileSpreadsheet,
   Library,
@@ -96,6 +97,11 @@ export const SYSTEM_ADMIN_NAV: NavGroup[] = [
         titleKey: "systemAdmin.broadcasts",
         href: "/system-admin/notices",
         icon: Megaphone,
+      },
+      {
+        titleKey: "systemAdmin.featureFlags",
+        href: "/system-admin/feature-flags",
+        icon: Flag,
       },
       {
         titleKey: "systemAdmin.auditLogs",

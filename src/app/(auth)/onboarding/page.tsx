@@ -63,6 +63,24 @@ const TEMPLATE_DESCRIPTIONS: Record<
     count: "2 Classes",
     icon: Microscope,
   },
+  PK_FBISE_MATRIC_INTER: {
+    label: "Pakistan FBISE (Matric & Intermediate)",
+    description: "FBISE SSC and HSSC classes with science, computer, arts, and commerce groups",
+    count: "4 Classes",
+    icon: Landmark,
+  },
+  IN_CBSE_SECONDARY_SR_SEC: {
+    label: "India CBSE (Secondary & Senior Secondary)",
+    description: "CBSE classes 9–12 with secondary and senior-secondary streams",
+    count: "4 Classes",
+    icon: GraduationCap,
+  },
+  BD_NCTB_PRIMARY_SSC_HSC: {
+    label: "Bangladesh NCTB (Primary to HSC)",
+    description: "NCTB primary, junior, secondary, and higher-secondary curriculum levels",
+    count: "12 Classes",
+    icon: School,
+  },
   HIGHER_SEC_11_12: {
     label: "Higher Secondary (11–12)",
     description: "FSc Pre-Med, Pre-Eng, ICS Computer Science & I.Com",

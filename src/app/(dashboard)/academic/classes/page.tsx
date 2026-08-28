@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   School, Plus, Pencil, Trash2, CheckCircle, XCircle,
-  BookOpen, Eye, Layers, Save
+  BookOpen, Eye, Layers, Save, Loader2
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -29,6 +29,9 @@ interface ClassData {
   name: string;
   classNumber: number;
   isActive: boolean;
+  appAccessEnabled?: boolean;
+  studentAppEnabled?: boolean;
+  parentAppEnabled?: boolean;
   _count?: {
     groups: number;
     sections: number;
@@ -61,7 +64,7 @@ export default function ClassesPage() {
   const [viewOnlySubjects, setViewOnlySubjects] = useState<any[]>([]);
 
   // Form state
-  const [formData, setFormData] = useState({ name: "", classNumber: "" as any, isActive: true });
+  const [formData, setFormData] = useState({ name: "", classNumber: "" as any, isActive: true, appAccessEnabled: false, studentAppEnabled: true, parentAppEnabled: true });
   const [formErrors, setFormErrors] = useState<{ name?: string; classNumber?: string }>({});
   const [classNumberError, setClassNumberError] = useState("");
   const [pendingSubjects, setPendingSubjects] = useState<string[]>([]);
@@ -157,7 +160,7 @@ export default function ClassesPage() {
 
   // ──── Handlers ────
   const resetForm = () => {
-    setFormData({ name: "", classNumber: "" as any, isActive: true });
+    setFormData({ name: "", classNumber: "" as any, isActive: true, appAccessEnabled: false, studentAppEnabled: true, parentAppEnabled: true });
     setFormErrors({});
     setClassNumberError("");
     setPendingSubjects([]);
@@ -190,6 +193,9 @@ export default function ClassesPage() {
       name: classItem.name,
       classNumber: classItem.classNumber.toString() as any,
       isActive: classItem.isActive,
+      appAccessEnabled: (classItem as any).appAccessEnabled ?? false,
+      studentAppEnabled: (classItem as any).studentAppEnabled ?? true,
+      parentAppEnabled: (classItem as any).parentAppEnabled ?? true,
     });
     setIsModalOpen(true);
 
@@ -311,6 +317,18 @@ export default function ClassesPage() {
       },
     },
     {
+      accessorKey: "appAccessEnabled",
+      header: "App Access",
+      cell: ({ row }) => {
+        const c = row.original as any;
+        if (!c.appAccessEnabled) return <Badge variant="outline" className="text-[10px]">Disabled</Badge>;
+        const parts = [];
+        if (c.studentAppEnabled) parts.push("S");
+        if (c.parentAppEnabled) parts.push("P");
+        return <Badge variant="default" className="text-[10px]">App: {parts.join("+") || "On"}</Badge>;
+      },
+    },
+    {
       id: "stats",
       header: t("tableColumns.statistics"),
       cell: ({ row }) => {
@@ -347,8 +365,8 @@ export default function ClassesPage() {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(row.original)}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}>
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
             </Button>
           </div>
         );
@@ -495,6 +513,24 @@ export default function ClassesPage() {
                       { value: "INACTIVE", label: t("inactive") },
                     ]}
                   />
+                </ERPFormField>
+
+                <ERPFormField label="App Access (Principal Gate)">
+                  <div className="space-y-3 rounded-lg border border-border p-3">
+                    <label className="flex items-center justify-between gap-3 cursor-pointer">
+                      <span className="text-sm font-medium">Enable App Access for this Class</span>
+                      <Checkbox checked={formData.appAccessEnabled} onCheckedChange={(v) => setFormData({ ...formData, appAccessEnabled: !!v })} />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 cursor-pointer opacity-90">
+                      <span className="text-xs text-muted-foreground">Student Login</span>
+                      <Checkbox checked={formData.studentAppEnabled} onCheckedChange={(v) => setFormData({ ...formData, studentAppEnabled: !!v })} disabled={!formData.appAccessEnabled} />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 cursor-pointer opacity-90">
+                      <span className="text-xs text-muted-foreground">Parent Login</span>
+                      <Checkbox checked={formData.parentAppEnabled} onCheckedChange={(v) => setFormData({ ...formData, parentAppEnabled: !!v })} disabled={!formData.appAccessEnabled} />
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">Principal controls whether students/parents of this class can log in.</p>
+                  </div>
                 </ERPFormField>
               </ERPFormGrid>
             </ERPFormSection>

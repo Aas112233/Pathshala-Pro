@@ -5,6 +5,8 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { handleApiError } from "@/lib/api-error";
 import { updateNoticeSchema } from "@/lib/schemas";
 
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,17 +19,12 @@ export async function PUT(
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (
-      user.role !== "SUPER_ADMIN" &&
-      user.role !== "SYSTEM_ADMIN" &&
-      user.role !== "ADMIN" &&
-      user.tenantId !== "system"
-    ) {
-      return errorResponse("SuperAdmin access required", 403);
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+      return errorResponse("Platform System Admin access required", 403);
     }
 
     const { id } = await params;
-    const existing = await prisma.notice.findUnique({
+    const existing = await prisma.notice.findFirst({
       where: { id },
     });
 
@@ -80,13 +77,8 @@ export async function DELETE(
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (
-      user.role !== "SUPER_ADMIN" &&
-      user.role !== "SYSTEM_ADMIN" &&
-      user.role !== "ADMIN" &&
-      user.tenantId !== "system"
-    ) {
-      return errorResponse("SuperAdmin access required", 403);
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+      return errorResponse("Platform System Admin access required", 403);
     }
 
     const { id } = await params;

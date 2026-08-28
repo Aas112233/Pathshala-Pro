@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreVertical, Pencil, Trash2, Eye, User } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Eye, User, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StudentProfile } from "@/types/entities";
 
@@ -19,6 +19,7 @@ export function StudentActionsDropdown({
   onDelete,
 }: StudentActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,11 +78,20 @@ export function StudentActionsDropdown({
             )}
             {onDelete && (
               <button
-                onClick={() => handleAction(onDelete)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try {
+                    await onDelete(student);
+                    setIsOpen(false);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={isDeleting}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               >
-                <Trash2 className="h-4 w-4" />
-                <span>Delete</span>
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                <span>{isDeleting ? "Deleting..." : "Delete"}</span>
               </button>
             )}
           </div>

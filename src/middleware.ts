@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { getJwtSecretKey } from "@/lib/jwt";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 
 // Paths that do not require authentication
 const PUBLIC_PATHS = ["/login"];
@@ -52,15 +53,15 @@ export async function middleware(request: NextRequest) {
     const { payload } = await jwtVerify(token, getJwtSecretKey());
     const role = payload.role as string;
     
-    // System Admin / Super Admin authorization logic
-    const isSuperOrSystemAdmin =
+    // Platform Super Admin / System Admin authorization logic
+    const email = payload.email as string | undefined;
+    const isPlatformSystemAdmin =
+      isPlatformOwnerEmail(email) ||
       role === "SYSTEM_ADMIN" ||
-      role === "SUPER_ADMIN" ||
-      payload.tenantId === "system" ||
       !!payload.impersonatedBy;
 
-    if (!isSuperOrSystemAdmin && pathname.startsWith("/system-admin")) {
-      // Regular school users cannot access the SaaS superadmin area
+    if (!isPlatformSystemAdmin && pathname.startsWith("/system-admin")) {
+      // Regular school admins and users cannot access the SaaS superadmin area
       return NextResponse.redirect(new URL("/", request.url));
     }
     

@@ -81,15 +81,19 @@ export default function DashboardPage() {
 
   // Permissions & Queries
   const canReadStudents =
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "students", "read"));
   const canReadStaff =
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "staff", "read"));
   const canReadFees =
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "fees", "read"));
   const canReadAcademic =
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "academic", "read"));
 

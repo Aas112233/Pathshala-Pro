@@ -33,6 +33,9 @@ export function EditTenantModal({
     dateFormat: "DD/MM/YYYY",
     timezone: "Asia/Karachi",
     gradingSystem: "GPA",
+    curriculum: "NCTB",
+    maxGracePerSubject: 5,
+    maxGracePerStudent: 10,
   });
 
   useEffect(() => {
@@ -46,6 +49,9 @@ export function EditTenantModal({
         dateFormat: tenant.dateFormat || "DD/MM/YYYY",
         timezone: tenant.timezone || "Asia/Karachi",
         gradingSystem: tenant.gradingSystem || "GPA",
+        curriculum: tenant.curriculum || "NCTB",
+        maxGracePerSubject: tenant.maxGracePerSubject ?? 5,
+        maxGracePerStudent: tenant.maxGracePerStudent ?? 10,
       });
     }
   }, [tenant]);
@@ -201,6 +207,46 @@ export function EditTenantModal({
               <option value="PERCENTAGE">Percentage Only (0 - 100%)</option>
               <option value="LETTER">Letter Grades (A+, A, B, C, D, F)</option>
             </select>
+          </div>
+
+          {/* Curriculum */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Board Curriculum</Label>
+            <select
+              value={formData.curriculum}
+              onChange={(e) => setFormData({ ...formData, curriculum: e.target.value })}
+              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="NCTB">Bangladesh NCTB</option>
+              <option value="CBSE">India CBSE</option>
+              <option value="FBISE">Pakistan FBISE</option>
+            </select>
+          </div>
+
+          {/* Max Grace Per Subject */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Max Grace / Subject</Label>
+            <Input
+              type="number"
+              min="0"
+              max="20"
+              value={formData.maxGracePerSubject}
+              onChange={(e) => setFormData({ ...formData, maxGracePerSubject: parseFloat(e.target.value) || 0 })}
+              className="h-10 text-sm"
+            />
+          </div>
+
+          {/* Max Grace Per Student */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Max Grace / Student</Label>
+            <Input
+              type="number"
+              min="0"
+              max="50"
+              value={formData.maxGracePerStudent}
+              onChange={(e) => setFormData({ ...formData, maxGracePerStudent: parseFloat(e.target.value) || 0 })}
+              className="h-10 text-sm"
+            />
           </div>
         </div>
 

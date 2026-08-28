@@ -27,7 +27,7 @@ const UNITS = ["PCS", "BOX", "KG", "LTR", "SET", "DOZEN"];
 export default function InventoryPage() {
   const t = useTranslations("inventory");
   const { user } = useAuth();
-  const canManage = user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "inventory", "write"));
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "inventory", "write"));
 
   const [activeTab, setActiveTab] = useState("items");
   const [search, setSearch] = useState("");

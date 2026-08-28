@@ -13,6 +13,8 @@ model Tenant {
   name               String
   address            String
   subscriptionStatus String  @default("TRIAL")
+  subscriptionPlan   String  @default("STARTER") // STARTER | PRO | ENTERPRISE | CUSTOM
+  featureFlags       Json? // { hostel:true, transport:false, library:true, ... }
   fiscalYearStart    Int     @default(1)
   logoUrl            String?
   phone              String?
@@ -38,6 +40,10 @@ model Tenant {
   // Academic Settings
   academicYearStart String @default("january")
   gradingSystem     String @default("GPA")
+  curriculum        String @default("NCTB") // NCTB | CBSE | FBISE
+  maxGracePerSubject Float @default(5)
+  maxGracePerStudent Float @default(10)
+  gpaScale          Json? // optional override of default bands
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,21 +88,43 @@ model Tenant {
   hostelAllocations     HostelAllocation[]
   certificates          Certificate[]
   healthRecords         HealthRecord[]
+  parentStudentLinks    ParentStudentLink[]
+  academicSessions      StudentAcademicSession[]
+  graceLedgers          GraceMarkLedger[]
+  examComponentResults  ExamComponentResult[]
+  subjectComponents     SubjectAssessmentComponent[]
+  fiscalYears           FiscalYear[]
+  financialPeriods      FinancialPeriod[]
+  chartOfAccounts       ChartOfAccount[]
+  journalEntries        JournalEntry[]
+  journalLineItems      JournalLineItem[]
+  tenantVoucherSequences TenantVoucherSequence[]
+  feeHeads              FeeHead[]
+  feeInvoiceItems       FeeInvoiceItem[]
+  teacherSubstitutions  TeacherSubstitution[]
+  academicHolidays      AcademicHoliday[]
+  admissionApplications AdmissionApplication[]
+  applicantDocuments    ApplicantDocument[]
+  vehicleExpenseLogs    VehicleExpenseLog[]
+  subscription          TenantSubscription?
+  featureOverride       TenantFeatureOverride?
 }
 
 model User {
-  id             String    @id @default(cuid())
-  tenantId       String
-  email          String
-  name           String
-  role           String    @default("CLERK")
-  permissions    Json?
-  hash           String
-  isActive       Boolean   @default(true)
-  staffProfileId String?
-  lastLoginAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  tenantId         String
+  email            String
+  name             String
+  role             String    @default("CLERK")
+  accessLevel      Int       @default(7) // 1=SCHOOL_ADMIN .. 7=STUDENT (principal hierarchy)
+  permissions      Json?
+  hash             String
+  isActive         Boolean   @default(true)
+  staffProfileId   String?
+  studentProfileId String?  @unique
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   tenant                Tenant                 @relation(fields: [tenantId], references: [tenantId])
   transactions          Transaction[]
@@ -110,6 +138,11 @@ model User {
   approvedLeaves        LeaveApplication[]
   issuedCertificates    Certificate[]
   enquiries             Enquiry[]
+  parentLinks           ParentStudentLink[]    @relation("ParentUser")
+  studentProfile        StudentProfile?        @relation("StudentUser", fields: [studentProfileId], references: [id])
+  approvedComponentGrace ExamComponentResult[] @relation("GraceApprovedBy")
+  approvedExamGrace      ExamResult[]         @relation("ExamGraceApprovedBy")
+  graceLedgers           GraceMarkLedger[]    @relation("GraceLedgerApprover")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -129,6 +162,11 @@ model StudentProfile {
   guardianName      String
   guardianContact   String
   guardianEmail     String?
+  fatherName        String?
+  motherName        String?
+  emergencyContact  String?
+  bloodGroup        String?
+  birthCertificateNo String?
   dateOfBirth       DateTime?
   gender            String?
   address           String?
@@ -156,6 +194,9 @@ model StudentProfile {
   hostelAllocations    HostelAllocation[]
   certificates         Certificate[]
   healthRecords        HealthRecord[]
+  parentLinks          ParentStudentLink[]
+  linkedUser           User?                 @relation("StudentUser")
+  academicSessions     StudentAcademicSession[]
 
   @@unique([tenantId, studentId])
   @@index([tenantId, rollNumber])
@@ -186,6 +227,10 @@ model AcademicYear {
   fromAcademicYearPromotions ClassPromotion[] @relation("FromAcademicYearPromotions")
   toAcademicYearPromotions   ClassPromotion[] @relation("ToAcademicYearPromotions")
   timetables                 Timetable[]
+  academicSessions           StudentAcademicSession[]
+  teacherSubstitutions       TeacherSubstitution[]
+  academicHolidays           AcademicHoliday[]
+  admissionApplications      AdmissionApplication[]
 
   @@unique([tenantId, yearId])
   @@index([tenantId])
@@ -278,6 +323,8 @@ model StaffProfile {
   bookIssues        BookIssue[]
   leaveApplications LeaveApplication[]
   timetables        Timetable[]
+  originalSubstitutions TeacherSubstitution[] @relation("OriginalStaffSubstitution")
+  substituteAssignments TeacherSubstitution[] @relation("SubstituteStaffAssignment")
 
   @@unique([tenantId, staffId])
   @@index([tenantId])
@@ -291,11 +338,26 @@ model SalaryLedger {
   academicYearId String
   month          Int
   year           Int
-  baseSalary     Float
+  // Legacy floats kept for migration — new Decimal fields are source of truth
+  baseSalary     Float // deprecated: use grossSalary breakdown
   deductions     Float     @default(0)
   advances       Float     @default(0)
   netPayable     Float
   paidAmount     Float     @default(0)
+  // New Decimal-precise payroll breakdown (15,2)
+  grossSalary       Decimal? @db.Decimal(15,2)
+  totalEarnings     Decimal? @db.Decimal(15,2)
+  totalDeductions   Decimal? @db.Decimal(15,2)
+  lopDays           Float?   // unpaid days (attendance + proration)
+  lopAmount         Decimal? @db.Decimal(15,2)
+  pfAmount          Decimal? @db.Decimal(15,2)
+  taxAmount         Decimal? @db.Decimal(15,2)
+  loanRecovery      Decimal? @db.Decimal(15,2)
+  daysInMonth       Int?
+  payableDays       Int?
+  isProrated        Boolean  @default(false)
+  earningsBreakdown Json? // { base, hra, medical, transport, special }
+  deductionsBreakdown Json? // { lop, pf, tax, loan }
   status         String    @default("PENDING")
   paidAt         DateTime?
   createdAt      DateTime  @default(now())
@@ -311,16 +373,20 @@ model SalaryLedger {
 }
 
 model Attendance {
-  id               String   @id @default(cuid())
-  tenantId         String
-  studentProfileId String?
-  staffProfileId   String?
-  date             DateTime
-  status           String
-  note             String?
-  markedById       String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  tenantId              String
+  studentProfileId      String?
+  staffProfileId        String?
+  date                  DateTime
+  status                String    // PRESENT, ABSENT, LATE, HALF_DAY, EXCUSED, HOLIDAY
+  checkInTime           DateTime?
+  checkOutTime          DateTime?
+  lateMinutes           Int       @default(0)
+  earlyDepartureMinutes Int       @default(0)
+  note                  String?
+  markedById            String
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   tenant         Tenant          @relation(fields: [tenantId], references: [tenantId])
   studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id])
@@ -411,9 +477,10 @@ model ExamSubject {
   passMarks Float
   createdAt DateTime @default(now())
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [tenantId])
-  exam    Exam    @relation(fields: [examId], references: [id])
-  subject Subject @relation(fields: [subjectId], references: [id])
+  tenant     Tenant                       @relation(fields: [tenantId], references: [tenantId])
+  exam       Exam                         @relation(fields: [examId], references: [id])
+  subject    Subject                      @relation(fields: [subjectId], references: [id])
+  components SubjectAssessmentComponent[]
 
   @@unique([tenantId, examId, subjectId])
   @@index([tenantId, examId])
@@ -438,6 +505,12 @@ model ExamResult {
   reExamMarks      Float?
   reExamGrade      String?
   reExamStatus     String? // "PASS", "FAIL"
+  // Lock & grace audit
+  isLocked            Boolean @default(false)
+  originalObtained    Float?
+  graceMarksGiven     Float   @default(0)
+  graceReason         String? @db.Text
+  graceApprovedById   String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -446,6 +519,9 @@ model ExamResult {
   academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
   exam           Exam           @relation(fields: [examId], references: [id])
   subject        Subject        @relation(fields: [subjectId], references: [id])
+  graceApprovedBy User?         @relation("ExamGraceApprovedBy", fields: [graceApprovedById], references: [id])
+  componentResults ExamComponentResult[]
+  graceLedgers     GraceMarkLedger[]
 
   @@unique([tenantId, studentProfileId, examId, subjectId])
   @@index([tenantId, studentProfileId])
@@ -453,6 +529,7 @@ model ExamResult {
   @@index([tenantId, academicYearId])
   @@index([tenantId, subjectId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, isLocked])
 }
 
 // Promotion Models
@@ -514,14 +591,18 @@ model ClassPromotion {
 
 // Academic Management Models
 model Class {
-  id          String   @id @default(cuid())
-  tenantId    String
-  classId     String
-  name        String
-  classNumber Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  tenantId          String
+  classId           String
+  name              String
+  classNumber       Int      @default(0)
+  isActive          Boolean  @default(true)
+  // App access control (principal per-class gate)
+  appAccessEnabled  Boolean  @default(false)
+  studentAppEnabled Boolean  @default(true)
+  parentAppEnabled  Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   tenant              Tenant           @relation(fields: [tenantId], references: [tenantId])
   groups              Group[]
@@ -534,6 +615,7 @@ model Class {
   timetables          Timetable[]
   homeworks           Homework[]
   enquiries           Enquiry[]
+  academicSessions    StudentAcademicSession[]
 
   @@unique([tenantId, classId])
   @@unique([tenantId, classNumber])
@@ -556,6 +638,7 @@ model Group {
   class           Class            @relation(fields: [classId], references: [id])
   sections        Section[]
   studentProfiles StudentProfile[]
+  academicSessions StudentAcademicSession[]
 
   @@unique([tenantId, groupId])
   @@index([tenantId, classId])
@@ -581,6 +664,7 @@ model Section {
   studentProfiles StudentProfile[]
   timetables      Timetable[]
   homeworks       Homework[]
+  academicSessions StudentAcademicSession[]
 
   @@unique([tenantId, sectionId])
   @@index([tenantId, classId])
@@ -720,6 +804,7 @@ model Timetable {
   section      Section?      @relation(fields: [sectionId], references: [id])
   subject      Subject?      @relation(fields: [subjectId], references: [id])
   staffProfile StaffProfile? @relation(fields: [staffProfileId], references: [id])
+  substitutions TeacherSubstitution[]
 
   @@unique([tenantId, academicYearId, classId, sectionId, dayOfWeek, periodNumber])
   @@index([tenantId, classId, sectionId])
@@ -826,6 +911,7 @@ model TransportVehicle {
   tenant      Tenant                @relation(fields: [tenantId], references: [tenantId])
   routes      TransportRoute[]
   allocations TransportAllocation[]
+  expenseLogs VehicleExpenseLog[]
 
   @@unique([tenantId, vehicleNo])
   @@index([tenantId, isActive])
@@ -858,6 +944,7 @@ model TransportAllocation {
   vehicleId        String?
   stopName         String
   monthlyFee       Float    @default(0)
+  status           String   @default("ACTIVE") // ACTIVE, VACATED, SUSPENDED
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -1081,6 +1168,122 @@ model Certificate {
   @@index([tenantId, status])
 }
 
+model ParentStudentLink {
+  id               String   @id @default(cuid())
+  tenantId         String
+  parentUserId     String
+  studentProfileId String
+  relation         String   @default("GUARDIAN") // FATHER, MOTHER, GUARDIAN
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  parentUser     User           @relation("ParentUser", fields: [parentUserId], references: [id], onDelete: Cascade)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, parentUserId, studentProfileId])
+  @@index([tenantId, parentUserId])
+  @@index([tenantId, studentProfileId])
+}
+
+model SubjectAssessmentComponent {
+  id            String   @id @default(cuid())
+  tenantId      String
+  examSubjectId String
+  componentType String // THEORY | PRACTICAL | MCQ | CA | INTERNAL | VIVA | PROJECT
+  label         String?
+  maxMarks      Float
+  passMarks     Float
+  weightage     Float    @default(1.0)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [tenantId])
+  examSubject ExamSubject @relation(fields: [examSubjectId], references: [id], onDelete: Cascade)
+  results     ExamComponentResult[]
+
+  @@unique([tenantId, examSubjectId, componentType])
+  @@index([tenantId, examSubjectId])
+}
+
+model ExamComponentResult {
+  id               String   @id @default(cuid())
+  tenantId         String
+  examResultId     String
+  componentId      String
+  obtainedMarks    Float
+  originalMarks    Float?
+  graceMarksGiven  Float    @default(0)
+  graceReason      String?  @db.Text
+  approvedById     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant     Tenant                     @relation(fields: [tenantId], references: [tenantId])
+  examResult ExamResult                 @relation(fields: [examResultId], references: [id], onDelete: Cascade)
+  component  SubjectAssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Restrict)
+  approvedBy User?                      @relation("GraceApprovedBy", fields: [approvedById], references: [id])
+  graceLedgers GraceMarkLedger[]
+
+  @@unique([tenantId, examResultId, componentId])
+  @@index([tenantId, examResultId])
+  @@index([tenantId, componentId])
+}
+
+model StudentAcademicSession {
+  id               String   @id @default(cuid())
+  tenantId         String
+  studentProfileId String
+  academicYearId   String
+  classId          String
+  sectionId        String?
+  groupId          String?
+  rollNumber       String
+  classNumber      Int
+  finalGpa         Float?
+  finalPercentage  Float?
+  totalMarks       Float
+  obtainedMarks    Float
+  promotionStatus  String // PROMOTED | RETAINED | CONDITIONAL | GRADUATED
+  snapshot         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Restrict)
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  class          Class          @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section        Section?       @relation(fields: [sectionId], references: [id])
+  group          Group?         @relation(fields: [groupId], references: [id])
+
+  @@unique([tenantId, studentProfileId, academicYearId])
+  @@unique([tenantId, academicYearId, classId, rollNumber])
+  @@index([tenantId, academicYearId, classId])
+  @@index([tenantId, promotionStatus])
+}
+
+model GraceMarkLedger {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  examComponentResultId String?
+  examResultId          String?
+  originalMarks         Float
+  graceMarks            Float
+  reason                String   @db.Text
+  approvedById          String
+  createdAt             DateTime @default(now())
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [tenantId])
+  examComponentResult ExamComponentResult? @relation(fields: [examComponentResultId], references: [id], onDelete: Cascade)
+  examResult          ExamResult?          @relation(fields: [examResultId], references: [id], onDelete: Cascade)
+  approvedBy          User                 @relation("GraceLedgerApprover", fields: [approvedById], references: [id])
+
+  @@index([tenantId, examResultId])
+  @@index([tenantId, examComponentResultId])
+  @@index([tenantId, approvedById])
+}
+
 model HealthRecord {
   id               String    @id @default(cuid())
   tenantId         String
@@ -1105,3 +1308,534 @@ model HealthRecord {
   @@unique([tenantId, studentProfileId])
   @@index([tenantId, bloodGroup])
 }
+
+// =========================================================================
+// GENERAL LEDGER & FISCAL PERIOD CORE MODELS
+// =========================================================================
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+enum VoucherType {
+  JOURNAL
+  PAYMENT
+  RECEIPT
+  SALES_FEE
+  SALARY
+  PURCHASE
+  CONTRA
+  CLOSING
+}
+
+enum PostingStatus {
+  DRAFT
+  POSTED
+  VOIDED
+}
+
+model FiscalYear {
+  id          String            @id @default(cuid())
+  tenantId    String
+  name        String            // e.g. "FY 2025-2026"
+  startDate   DateTime
+  endDate     DateTime
+  isClosed    Boolean           @default(false)
+  closedAt    DateTime?
+  closedById  String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  periods     FinancialPeriod[]
+  journalEntries JournalEntry[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isClosed])
+}
+
+model FinancialPeriod {
+  id           String       @id @default(cuid())
+  tenantId     String
+  fiscalYearId String
+  periodNumber Int          // 1 to 12 (Months)
+  name         String       // "July 2025", "August 2025"
+  startDate    DateTime
+  endDate      DateTime
+  isClosed     Boolean      @default(false)
+  closedAt     DateTime?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  journalEntries JournalEntry[]
+
+  @@unique([tenantId, fiscalYearId, periodNumber])
+  @@index([tenantId, isClosed])
+}
+
+model ChartOfAccount {
+  id              String           @id @default(cuid())
+  tenantId        String
+  code            String           // "1010", "1030", "2020", "4010", "5010", etc.
+  name            String           // "Main Bank Account", "Tuition Revenue", etc.
+  accountType     AccountType
+  normalBalance   NormalBalance
+  parentAccountId String?
+  isSystem        Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  currency        String           @default("PKR")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  parentAccount   ChartOfAccount?  @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  childAccounts   ChartOfAccount[] @relation("AccountHierarchy")
+  journalLines    JournalLineItem[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, accountType])
+}
+
+model JournalEntry {
+  id                String          @id @default(cuid())
+  tenantId          String
+  entryNumber       String          // e.g. "JV-2026-000001"
+  voucherType       VoucherType     @default(JOURNAL)
+  postingStatus     PostingStatus   @default(POSTED)
+  postingDate       DateTime        @default(now())
+  narration         String
+  reference         String?
+  totalDebit        Decimal         @db.Decimal(15, 2)
+  totalCredit       Decimal         @db.Decimal(15, 2)
+  
+  fiscalYearId      String?
+  financialPeriodId String?
+  createdById       String
+
+  tenant            Tenant          @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  fiscalYear        FiscalYear?     @relation(fields: [fiscalYearId], references: [id])
+  financialPeriod   FinancialPeriod? @relation(fields: [financialPeriodId], references: [id])
+  lineItems         JournalLineItem[]
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([tenantId, entryNumber])
+  @@index([tenantId, postingDate])
+  @@index([tenantId, voucherType])
+}
+
+model JournalLineItem {
+  id             String         @id @default(cuid())
+  tenantId       String
+  journalEntryId String
+  accountId      String
+  debitAmount    Decimal        @default(0.00) @db.Decimal(15, 2)
+  creditAmount   Decimal        @default(0.00) @db.Decimal(15, 2)
+  narration      String?
+
+  studentId      String?
+  staffId        String?
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  journalEntry   JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account        ChartOfAccount @relation(fields: [accountId], references: [id])
+
+  createdAt      DateTime       @default(now())
+
+  @@index([tenantId, accountId])
+  @@index([tenantId, journalEntryId])
+}
+
+model TenantVoucherSequence {
+  id             String      @id @default(cuid())
+  tenantId       String
+  voucherType    VoucherType
+  prefix         String      @default("JV")
+  fiscalYear     Int
+  current_number Int         @default(0)
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  tenant         Tenant      @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, voucherType, fiscalYear])
+  @@index([tenantId, voucherType])
+}
+
+model FeeHead {
+  id          String   @id @default(cuid())
+  tenantId    String
+  code        String   // "TUITION", "ADMISSION", "EXAM", "TRANSPORT", "HOSTEL", "LAB"
+  name        String   // "Monthly Tuition Fee"
+  accountCode String   @default("4010") // Target GL Revenue Account (4010, 4040, 4050, etc.)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  items  FeeInvoiceItem[]
+
+  @@unique([tenantId, code])
+}
+
+model FeeInvoiceItem {
+  id           String     @id @default(cuid())
+  tenantId     String
+  feeVoucherId String
+  feeHeadId    String
+  amount       Decimal    @db.Decimal(15, 2)
+  description  String?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  feeHead    FeeHead    @relation(fields: [feeHeadId], references: [id])
+
+  @@index([tenantId, feeVoucherId])
+}
+
+// =========================================================================
+// TIMETABLE & TEACHER SUBSTITUTION MODELS
+// =========================================================================
+
+enum SubstitutionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model TeacherSubstitution {
+  id                String             @id @default(cuid())
+  tenantId          String
+  academicYearId    String
+  timetableSlotId   String
+  date              DateTime           @db.Date
+  originalStaffId   String
+  substituteStaffId String
+  status            SubstitutionStatus @default(SCHEDULED)
+  reason            String?            // "Medical Leave", "Emergency", "Official Duty"
+  assignedById      String
+  notes             String?
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  academicYear      AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  timetableSlot     Timetable          @relation(fields: [timetableSlotId], references: [id], onDelete: Cascade)
+  originalStaff     StaffProfile       @relation("OriginalStaffSubstitution", fields: [originalStaffId], references: [id])
+  substituteStaff   StaffProfile       @relation("SubstituteStaffAssignment", fields: [substituteStaffId], references: [id])
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@unique([tenantId, timetableSlotId, date])
+  @@index([tenantId, substituteStaffId, date])
+  @@index([tenantId, originalStaffId, date])
+}
+
+// =========================================================================
+// ACADEMIC HOLIDAYS & ATTENDANCE EXTENSIONS
+// =========================================================================
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  EXCUSED
+  HOLIDAY
+}
+
+enum HolidayType {
+  PUBLIC
+  RELIGIOUS
+  TERM_BREAK
+  EXAM_PREP
+  EMERGENCY
+}
+
+model AcademicHoliday {
+  id              String      @id @default(cuid())
+  tenantId        String
+  academicYearId  String
+  title           String      // e.g., "Independence Day", "Eid-ul-Fitr", "Summer Break"
+  holidayType     HolidayType @default(PUBLIC)
+  startDate       DateTime    @db.Date
+  endDate         DateTime    @db.Date
+  affectsStaff    Boolean     @default(true)
+  affectsStudents Boolean     @default(true)
+  description     String?
+
+  tenant          Tenant       @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([tenantId, academicYearId, startDate, endDate])
+}
+
+// =========================================================================
+// STUDENT ADMISSION & APPLICANT DOCUMENT MODELS
+// =========================================================================
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  ENROLLED
+  REJECTED
+  WITHDRAWN
+}
+
+enum DocumentType {
+  BIRTH_CERTIFICATE
+  TRANSFER_CERTIFICATE
+  PREVIOUS_MARKSHEET
+  GUARDIAN_NID
+  MEDICAL_RECORD
+  OTHER
+}
+
+model AdmissionApplication {
+  id                 String            @id @default(cuid())
+  tenantId           String
+  applicationNumber  String            // e.g., "ADM-2026-00045"
+  academicYearId     String
+  targetClassId      String
+
+  // Applicant Details
+  firstName          String
+  lastName           String
+  dateOfBirth        DateTime          @db.Date
+  gender             String            // MALE, FEMALE, OTHER
+  bloodGroup         String?           // A+, A-, B+, B-, O+, O-, AB+, AB-
+  birthCertificateNo String?
+  nationality        String            @default("Bangladeshi")
+  religion           String?
+
+  // Family & Contact
+  fatherName         String?
+  motherName         String?
+  guardianName       String
+  guardianContact    String
+  guardianEmail      String?
+  emergencyContact   String
+  presentAddress     String
+  permanentAddress   String?
+
+  status             ApplicationStatus @default(SUBMITTED)
+  reviewedById       String?
+  rejectionReason    String?
+  notes              String?
+  enrolledStudentId  String?           // Reference to StudentProfile once enrolled
+
+  tenant             Tenant            @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  academicYear       AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  documents          ApplicantDocument[]
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([tenantId, applicationNumber])
+  @@index([tenantId, status, targetClassId])
+}
+
+model ApplicantDocument {
+  id            String               @id @default(cuid())
+  tenantId      String
+  applicationId String
+  documentType  DocumentType
+  fileUrl       String               // Cloudflare R2 object URL or key
+  fileName      String
+  isVerified    Boolean              @default(false)
+  verifiedById  String?
+  verifiedAt    DateTime?
+
+  tenant        Tenant               @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  application   AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime             @default(now())
+
+  @@index([tenantId, applicationId])
+}
+
+// =========================================================================
+// CAMPUS AUXILIARY SERVICES & VEHICLE EXPENSE LOGS
+// =========================================================================
+
+enum BookIssueStatus {
+  ISSUED
+  RETURNED
+  OVERDUE
+  LOST
+  DAMAGED
+}
+
+enum AllocationStatus {
+  ACTIVE
+  VACATED
+  SUSPENDED
+}
+
+enum VehicleExpenseType {
+  FUEL
+  MAINTENANCE
+  INSURANCE
+  FITNESS_TAX
+  OTHER
+}
+
+model VehicleExpenseLog {
+  id              String             @id @default(cuid())
+  tenantId        String
+  vehicleId       String
+  expenseType     VehicleExpenseType @default(FUEL)
+  amount          Decimal            @db.Decimal(15, 2)
+  odometerReading Int?
+  expenseDate     DateTime           @default(now())
+  description     String?
+  paidFromCode    String             @default("1010") // 1010 Bank or 1020 Cash
+  journalEntryId  String?
+  recordedById    String
+
+  tenant          Tenant             @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  vehicle         TransportVehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([tenantId, vehicleId, expenseDate])
+}
+
+// =========================================================================
+// SUPERADMIN PLATFORM CONTROL PLANE, SUBSCRIPTIONS & FEATURE OVERRIDES
+// =========================================================================
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  ARCHIVED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  UNPAID
+}
+
+enum SuperAdminActionType {
+  TENANT_STATUS_CHANGE
+  QUOTA_UPDATE
+  IMPERSONATION_START
+  PLAN_CHANGE
+  FEATURE_FLAG_CHANGE
+  MAINTENANCE_TOGGLE
+}
+
+model SubscriptionPlan {
+  id              String               @id @default(cuid())
+  code            String               @unique // "STARTER", "GROWTH", "ENTERPRISE", "CUSTOM"
+  name            String
+  description     String?
+  monthlyPrice    Decimal              @db.Decimal(15, 2)
+  annualPrice     Decimal              @db.Decimal(15, 2)
+  currency        String               @default("USD")
+
+  maxStudents     Int                  @default(200)
+  maxStaff        Int                  @default(20)
+  maxStorageMb    Int                  @default(5120) // 5 GB
+  maxSmsPerMonth  Int                  @default(500)
+
+  features        Json                 // e.g. { "hostel": false, "transport": true, "payroll": true, "customGrading": true }
+  isActive        Boolean              @default(true)
+
+  subscriptions   TenantSubscription[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+}
+
+model TenantSubscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @unique
+  planId             String
+  billingCycle       BillingCycle       @default(MONTHLY)
+  status             SubscriptionStatus @default(TRIALING)
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean            @default(false)
+
+  customMaxStudents  Int?
+  customMaxStaff     Int?
+  customMaxStorageMb Int?
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id])
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([tenantId, status])
+}
+
+model TenantFeatureOverride {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  hasHostel       Boolean  @default(true)
+  hasTransport    Boolean  @default(true)
+  hasPayroll      Boolean  @default(true)
+  hasBiometric    Boolean  @default(false)
+  hasOnlinePay    Boolean  @default(true)
+  hasCustomReport Boolean  @default(true)
+  customModules   Json?    // Array of active custom feature tags
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  updatedAt       DateTime @updatedAt
+}
+
+model SuperAdminActionLog {
+  id              String               @id @default(cuid())
+  adminUserId     String
+  adminEmail      String
+  targetTenantId  String?
+  actionType      SuperAdminActionType
+  ipAddress       String?
+  userAgent       String?
+  details         Json                 // Before & After state or metadata
+  createdAt       DateTime             @default(now())
+
+  @@index([adminUserId, actionType, createdAt])
+  @@index([targetTenantId, createdAt])
+}
+
+model PlatformSetting {
+  id              String   @id @default(cuid())
+  key             String   @unique // "GLOBAL_MAINTENANCE_MODE", "PLATFORM_BROADCAST_BANNER", etc.
+  value           Json
+  description     String?
+  lastUpdatedById String
+  updatedAt       DateTime @updatedAt
+}
+
+
+
+
+
+

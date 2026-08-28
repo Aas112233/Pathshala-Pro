@@ -10,10 +10,10 @@ import {
 import { loginSchema } from "@/lib/schemas";
 import { verifyPassword, generateAuthToken } from "@/lib/auth";
 import {
-  smartRateLimit,
-  recordRateLimitFailure,
-  recordRateLimitSuccess,
-  dedupeRequest,
+  smartRateLimitAsync,
+  recordRateLimitFailureAsync,
+  recordRateLimitSuccessAsync,
+  dedupeRequestAsync,
 } from "@/lib/rate-limit";
 import { setAuthCookie } from "@/lib/auth-cookies";
 import { getEffectivePermissions } from "@/lib/permissions";
@@ -42,13 +42,13 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for") || "unknown_ip";
 
     // Server-side duplicate prevention: identical login POSTs within 2s are rejected.
-    if (!dedupeRequest(`LOGIN_POST_${ip}_${email}`, 2000)) {
+    if (!(await dedupeRequestAsync(`LOGIN_POST_${ip}_${email}`, 2000))) {
       return errorResponse("Duplicate request detected. Please wait a moment.", 409);
     }
 
     // Smart adaptive rate limiting: tightens automatically as failures accumulate.
     const limitKey = `LOGIN_${ip}_${email}`;
-    const rateCheck = smartRateLimit(limitKey, { preset: "auth" });
+    const rateCheck = await smartRateLimitAsync(limitKey, { preset: "auth" });
 
     if (!rateCheck.success) {
       const minutes = Math.max(1, Math.ceil(rateCheck.retryAfterSeconds / 60));
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Local helper: every auth failure feeds the adaptive backoff.
-    const failAuth = (message: string) => {
-      recordRateLimitFailure(limitKey);
+    const failAuth = async (message: string) => {
+      await recordRateLimitFailureAsync(limitKey);
       return unauthorized(message);
     };
 
@@ -71,21 +71,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return failAuth("Invalid email or password");
+      return await failAuth("Invalid email or password");
     }
 
     if (!user.isActive) {
-      return failAuth("Account is deactivated");
+      return await failAuth("Account is deactivated");
     }
 
     // Verify password
     const isValid = await verifyPassword(password, user.hash);
     if (!isValid) {
-      return failAuth("Invalid email or password");
+      return await failAuth("Invalid email or password");
     }
 
     // Successful authentication — clear any adaptive penalties for this client.
-    recordRateLimitSuccess(limitKey);
+    await recordRateLimitSuccessAsync(limitKey);
 
     // Update last login
     await prisma.user.update({
@@ -93,8 +93,32 @@ export async function POST(request: NextRequest) {
       data: { lastLoginAt: new Date() },
     });
 
+    // Class-level app access gate for PARENT/STUDENT (principal-controlled)
+    if (user.role === "PARENT" || user.role === "STUDENT" || (user as any).accessLevel === 6 || (user as any).accessLevel === 7) {
+      const isStudent = user.role === "STUDENT" || (user as any).accessLevel === 7;
+      let hasClassAccess = false;
+      if (isStudent && (user as any).studentProfileId) {
+        const sp = await prisma.studentProfile.findUnique({
+          where: { id: (user as any).studentProfileId },
+          select: { classId: true, class: { select: { appAccessEnabled: true, studentAppEnabled: true } } },
+        });
+        hasClassAccess = !!(sp?.class?.appAccessEnabled && sp?.class?.studentAppEnabled);
+        if (!sp?.classId) hasClassAccess = false; // no class assigned → deny
+      } else if (!isStudent) {
+        const links = await prisma.parentStudentLink.findMany({
+          where: { parentUserId: user.id, tenantId: user.tenantId },
+          include: { studentProfile: { select: { classId: true, class: { select: { appAccessEnabled: true, parentAppEnabled: true } } } } },
+        });
+        hasClassAccess = links.some((l: any) => l.studentProfile?.class?.appAccessEnabled && l.studentProfile?.class?.parentAppEnabled);
+        if (links.length === 0) hasClassAccess = false;
+      }
+      if (!hasClassAccess) {
+        return await failAuth("App access is disabled for your class by the principal. Contact school admin.");
+      }
+    }
+
     // Generate cryptographically signed JWT NextAuth token
-    const token = await generateAuthToken(user.id, user.tenantId, user.role);
+    const token = await generateAuthToken(user.id, user.tenantId, user.role, user.email);
 
     const response = successResponse(
       {
@@ -103,10 +127,11 @@ export async function POST(request: NextRequest) {
           email: user.email,
           name: user.name,
           role: user.role,
+          accessLevel: (user as any).accessLevel ?? null,
           isActive: user.isActive,
           tenantId: user.tenantId,
           tenantName: user.tenant.name,
-          permissions: getEffectivePermissions(user.role, user.permissions),
+          permissions: getEffectivePermissions(user.role, user.permissions as any, (user as any).accessLevel ?? null),
         },
       },
       "Login successful"

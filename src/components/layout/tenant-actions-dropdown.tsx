@@ -25,6 +25,7 @@ export function TenantActionsDropdown({
 }: TenantActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [isSuspending, setIsSuspending] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -133,14 +134,16 @@ export function TenantActionsDropdown({
           <div className="my-1 border-t border-border" />
 
           <button
-            onClick={() => {
-              setIsOpen(false);
-              if (onSuspend) onSuspend(tenant);
+            onClick={async () => {
+              if (!onSuspend) return;
+              setIsSuspending(true);
+              try { await onSuspend(tenant); setIsOpen(false); } finally { setIsSuspending(false); }
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+            disabled={isSuspending}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
           >
-            <ShieldAlert className="h-4 w-4" />
-            <span>Suspend School</span>
+            {isSuspending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+            <span>{isSuspending ? "Suspending..." : "Suspend School"}</span>
           </button>
         </div>
       )}

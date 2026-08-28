@@ -3,8 +3,8 @@
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { staffApi } from "@/lib/api-client";
+import type { StaffProfile, CreateStaffDTO } from "@/types/entities";
 import type { PaginationParams } from "@/types/api";
-import type { StaffProfile, CreateStaffDTO, UpdateStaffDTO } from "@/types/entities";
 import { toast } from "sonner";
 
 export type StaffViewMode = "table" | "grid";

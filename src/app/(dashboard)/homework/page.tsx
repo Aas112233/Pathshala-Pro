@@ -43,6 +43,7 @@ export default function HomeworkPage() {
   const t = useTranslations("homework");
   const { user } = useAuth();
   const canManage =
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && hasPermission(user.permissions, "homework", "write"));
 

@@ -113,4 +113,33 @@ describe("Permissions Engine & RBAC Matrix", () => {
       expect(getModuleForPath("/custom-module/detail")).toBe("custom-module");
     });
   });
+
+  describe("Fine-Grained Role Permissions & Scopes", () => {
+    it("grants ACCOUNTANT access to fees and accounting but not exams marks", () => {
+      expect(hasPermission("ACCOUNTANT", "fees:read")).toBe(true);
+      expect(hasPermission("ACCOUNTANT", "fees:invoice:create")).toBe(true);
+      expect(hasPermission("ACCOUNTANT", "accounting:journal:post")).toBe(true);
+      expect(hasPermission("ACCOUNTANT", "payroll:disburse")).toBe(true);
+      expect(hasPermission("ACCOUNTANT", "exams:marks:write")).toBe(false);
+    });
+
+    it("grants TEACHER access to attendance and exams marks but not accounting", () => {
+      expect(hasPermission("TEACHER", "attendance:mark")).toBe(true);
+      expect(hasPermission("TEACHER", "exams:marks:write")).toBe(true);
+      expect(hasPermission("TEACHER", "accounting:period:close")).toBe(false);
+      expect(hasPermission("TEACHER", "payroll:process")).toBe(false);
+    });
+
+    it("grants PLATFORM_OWNER and SUPER_ADMIN universal access", () => {
+      expect(hasPermission("PLATFORM_OWNER", ["accounting:period:close", "exams:grade:override"])).toBe(true);
+      expect(hasPermission("SUPER_ADMIN", "academic:promote:execute")).toBe(true);
+    });
+
+    it("restricts STUDENT and PARENT to self portals", () => {
+      expect(hasPermission("STUDENT", "portal:student:self")).toBe(true);
+      expect(hasPermission("STUDENT", "fees:payment:collect")).toBe(false);
+      expect(hasPermission("PARENT", "portal:parent:self")).toBe(true);
+      expect(hasPermission("PARENT", "students:manage")).toBe(false);
+    });
+  });
 });

@@ -3,6 +3,11 @@ import {
   calculateGradeFromPercentage,
   formatRankLabel,
   calculateClassMeritRankings,
+  evaluateSubjectComponents,
+  DEFAULT_GPA_BANDS,
+  NCTB_GPA_BANDS,
+  CBSE_9POINT_BANDS,
+  FBISE_MATRIC_BANDS,
   type SubjectResult,
 } from "@/lib/grading";
 
@@ -49,11 +54,28 @@ describe("Grading & Academic Merit Engine", () => {
       expect(res.gpa).toBe(1.0);
     });
 
-    it("assigns F for failing scores under 40%", () => {
-      const res = calculateGradeFromPercentage(35);
-      expect(res.letterGrade).toBe("F");
-      expect(res.gpa).toBe(0.0);
-      expect(res.remarks).toContain("Improvement");
+    it("calculates CBSE 9-Point grading scale correctly", () => {
+      expect(calculateGradeFromPercentage(95, "CBSE_9_POINT").letterGrade).toBe("A1");
+      expect(calculateGradeFromPercentage(95, "CBSE_9_POINT").gpa).toBe(10.0);
+      expect(calculateGradeFromPercentage(85, "CBSE_9_POINT").letterGrade).toBe("A2");
+      expect(calculateGradeFromPercentage(35, "CBSE_9_POINT").letterGrade).toBe("D");
+      expect(calculateGradeFromPercentage(25, "CBSE_9_POINT").letterGrade).toBe("E");
+    });
+
+    it("calculates Bangladesh NCTB GPA 5.0 scale correctly", () => {
+      expect(calculateGradeFromPercentage(85, "NCTB_GPA_5").letterGrade).toBe("A+");
+      expect(calculateGradeFromPercentage(85, "NCTB_GPA_5").gpa).toBe(5.0);
+      expect(calculateGradeFromPercentage(75, "NCTB_GPA_5").letterGrade).toBe("A");
+      expect(calculateGradeFromPercentage(65, "NCTB_GPA_5").letterGrade).toBe("A-");
+      expect(calculateGradeFromPercentage(35, "NCTB_GPA_5").letterGrade).toBe("D");
+      expect(calculateGradeFromPercentage(20, "NCTB_GPA_5").letterGrade).toBe("F");
+    });
+
+    it("calculates Pakistan FBISE Matric scale correctly", () => {
+      expect(calculateGradeFromPercentage(85, "FBISE_MARKS").letterGrade).toBe("A+");
+      expect(calculateGradeFromPercentage(65, "FBISE_MARKS").letterGrade).toBe("B");
+      expect(calculateGradeFromPercentage(35, "FBISE_MARKS").letterGrade).toBe("E");
+      expect(calculateGradeFromPercentage(30, "FBISE_MARKS").letterGrade).toBe("F");
     });
   });
 
@@ -158,6 +180,56 @@ describe("Grading & Academic Merit Engine", () => {
     it("handles empty results cohort gracefully", () => {
       const rankings = calculateClassMeritRankings([]);
       expect(rankings).toEqual([]);
+    });
+  });
+
+  describe("Sub-Component Pass / Fail Cascade Engine", () => {
+    it("fails the whole subject when a mandatory component fails (even with high total score)", () => {
+      const components = [
+        { componentName: "Theory Exam", obtained: 68, max: 75, passMarks: 25, isMandatory: true },
+        { componentName: "Practical Lab", obtained: 5, max: 25, passMarks: 10, isMandatory: true }, // FAILED
+      ];
+
+      const result = evaluateSubjectComponents(components, "NCTB_GPA_5");
+      expect(result.passed).toBe(false);
+      expect(result.letterGrade).toBe("F");
+      expect(result.gpa).toBe(0.0);
+      expect(result.failedComponents).toContain("Practical Lab");
+      expect(result.remarks).toContain("Failed mandatory component");
+    });
+
+    it("calculates real weighted components contribution accurately", () => {
+      const components = [
+        // 70% weight Theory: 80/100 -> 0.8 * 70 = 56
+        { componentName: "Theory Exam", obtained: 80, max: 100, passMarks: 33, weightage: 70 },
+        // 30% weight Practical: 90/100 -> 0.9 * 30 = 27
+        { componentName: "Practical Lab", obtained: 90, max: 100, passMarks: 33, weightage: 30 },
+      ];
+
+      // Overall: (56 + 27) / 100 * 100 = 83%
+      const result = evaluateSubjectComponents(components, "CBSE_9_POINT");
+      expect(result.passed).toBe(true);
+      expect(result.percentage).toBe(83);
+      expect(result.letterGrade).toBe("A2");
+      expect(result.gpa).toBe(9.0);
+      expect(result.componentResults[0].contribution).toBe(56);
+      expect(result.componentResults[1].contribution).toBe(27);
+    });
+
+    it("falls back cleanly to raw marks addition when weights are omitted", () => {
+      const components = [
+        { componentName: "MCQ Section", obtained: 18, max: 20, passMarks: 7 },
+        { componentName: "Descriptive Section", obtained: 62, max: 80, passMarks: 26 },
+      ];
+
+      // Total = 80/100 = 80%
+      const result = evaluateSubjectComponents(components, "FBISE_MARKS");
+      expect(result.passed).toBe(true);
+      expect(result.totalObtained).toBe(80);
+      expect(result.totalMax).toBe(100);
+      expect(result.percentage).toBe(80);
+      expect(result.letterGrade).toBe("A+");
+      expect(result.gpa).toBe(4.0);
     });
   });
 });

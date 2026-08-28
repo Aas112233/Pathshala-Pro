@@ -239,12 +239,15 @@ export default function FinancialReportPage() {
         title={t("title")}
         description={t("description")}
         icon={Landmark}
-        actions={
-          hasGenerated && data.length > 0 ? (
-            <ExportDropdown onExportExcel={handleExportExcel} />
-          ) : undefined
-        }
-      />
+      >
+        {hasGenerated && data.length > 0 ? (
+          <ExportDropdown
+            onExport={(type) => {
+              if (type === "excel") void handleExportExcel();
+            }}
+          />
+        ) : undefined}
+      </PageHeader>
 
       {/* Filter Control Bar */}
       <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs space-y-4">
@@ -320,9 +323,10 @@ export default function FinancialReportPage() {
       {hasGenerated && metrics && (
         <>
           <ReportSummaryBar
-            generatedAt={generatedAt}
-            totalRecords={data.length}
-            filters={[
+            dateRangeLabel={`${fromDate || "Start"} to ${toDate || "Present"}`}
+            generatedAtLabel={generatedAt}
+            recordCount={data.length}
+            appliedFilters={[
               { label: "Range", value: `${fromDate || "Start"} to ${toDate || "Present"}` },
             ]}
           />
@@ -333,33 +337,21 @@ export default function FinancialReportPage() {
               title="Total Fee Collections"
               value={formatCurrency(metrics.totalIncome)}
               icon={TrendingUp}
-              color="text-emerald-600"
-              bgColor="bg-emerald-50 dark:bg-emerald-950"
             />
             <ReportMetricCard
               title="Total Operational Expenses"
               value={formatCurrency(metrics.totalExpenses)}
               icon={TrendingDown}
-              color="text-rose-600"
-              bgColor="bg-rose-50 dark:bg-rose-950"
             />
             <ReportMetricCard
               title="Net Cash Balance"
               value={formatCurrency(metrics.netBalance)}
               icon={DollarSign}
-              color={metrics.netBalance >= 0 ? "text-indigo-600" : "text-rose-600"}
-              bgColor={
-                metrics.netBalance >= 0
-                  ? "bg-indigo-50 dark:bg-indigo-950"
-                  : "bg-rose-50 dark:bg-rose-950"
-              }
             />
             <ReportMetricCard
               title="Top Expense Category"
               value={metrics.topExpenseCategory}
               icon={PieIcon}
-              color="text-purple-600"
-              bgColor="bg-purple-50 dark:bg-purple-950"
             />
           </div>
 
@@ -383,7 +375,6 @@ export default function FinancialReportPage() {
             <ReportTable
               columns={columns}
               data={data}
-              searchPlaceholder="Search voucher, title or payee..."
             />
           </div>
         </>

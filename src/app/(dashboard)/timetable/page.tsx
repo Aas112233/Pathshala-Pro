@@ -38,6 +38,7 @@ export default function TimetablePage() {
   const { user } = useAuth();
 
   const canManage =
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && hasPermission(user.permissions, "timetable", "write"));
 

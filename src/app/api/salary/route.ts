@@ -10,7 +10,7 @@ import {
 } from "@/lib/api-response";
 import { createSalaryLedgerSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { smartRateLimit, dedupeRequest } from "@/lib/rate-limit";
+import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 /**
@@ -119,14 +119,14 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
-    // 1. Server-side duplicate prevention
+    // 1. Server-side duplicate prevention (distributed)
     const dedupeKey = `SALARY_POST_${tenantId}_${data.staffProfileId}_${data.month}_${data.year}`;
-    if (!dedupeRequest(dedupeKey, 3000)) {
+    if (!(await dedupeRequestAsync(dedupeKey, 3000))) {
       return errorResponse("Duplicate salary record request detected. Please wait a moment.", 409);
     }
 
-    // 2. Adaptive rate limiting
-    const rateCheck = smartRateLimit(`SALARY_MUT_${tenantId}_${user?.id || "anon"}`, { preset: "mutation" });
+    // 2. Adaptive rate limiting (distributed)
+    const rateCheck = await smartRateLimitAsync(`SALARY_MUT_${tenantId}_${user?.id || "anon"}`, { preset: "mutation" });
     if (!rateCheck.success) {
       return errorResponse("Too many salary ledger operations. Please slow down.", 429);
     }

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
@@ -10,9 +11,18 @@ import {
 import { requireApiAccess } from "@/lib/api-auth";
 import { jwtVerify } from "jose";
 import { getJwtSecretKey } from "@/lib/jwt";
-import { onboardInstituteSchema } from "@/lib/schemas";
+import { onboardInstituteSchema, RESERVED_TENANT_SLUGS } from "@/lib/schemas";
 import { getClassTemplateDefinitions, generateTenantSlug, type TemplateClassDef } from "@/lib/onboarding-templates";
+import {
+  seedTenantChartOfAccounts,
+  seedTenantFeeHeads,
+  seedTenantFiscalCalendar,
+  seedTenantVoucherSequences,
+  seedTenantPromotionRules,
+} from "@/lib/tenant-provisioning";
 import bcrypt from "bcryptjs";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 
 /**
  * GET /api/tenants
@@ -26,8 +36,8 @@ export async function GET(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (user.role !== "SYSTEM_ADMIN" && user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
-      return unauthorized("Only system administrators can access this.");
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+      return unauthorized("Only platform system administrators can access tenant directory.");
     }
 
     const tenants = await prisma.tenant.findMany({
@@ -51,7 +61,19 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Optional System Admin authentication verification
+    // Apply IP-based Rate Limiting & deduplication on public tenant onboarding
+    const ip = request.headers.get("x-forwarded-for") || "unknown_ip";
+
+    if (!(await dedupeRequestAsync(`ONBOARD_POST_${ip}`, 3000))) {
+      return badRequest("Duplicate onboarding request detected. Please wait a moment.");
+    }
+
+    const rateCheck = await smartRateLimitAsync(`ONBOARD_${ip}`, { preset: "auth" });
+    if (!rateCheck.success) {
+      const minutes = Math.max(1, Math.ceil(rateCheck.retryAfterSeconds / 60));
+      return badRequest(`Too many onboarding attempts from this IP. Please try again in ${minutes} minutes.`);
+    }
+
     const token =
       request.cookies.get("auth_token")?.value ||
       request.headers.get("authorization")?.substring(7);
@@ -60,17 +82,17 @@ export async function POST(request: NextRequest) {
     if (token) {
       try {
         const { payload } = await jwtVerify(token, getJwtSecretKey());
-        if (payload.role === "SYSTEM_ADMIN") {
+        if (payload.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(payload.email as string)) {
           isSystemAdmin = true;
         }
       } catch {
-        // Continue for public/self-serve onboarding
+        // Continue as public onboarding
       }
     }
 
     const bodyResult = await safeParseBody(request, onboardInstituteSchema);
     if (!bodyResult.success) return bodyResult.errorResponse;
-    const data = bodyResult.data;
+    const data = onboardInstituteSchema.parse(bodyResult.data);
 
     // Determine tenantId slug
     let baseSlug = data.tenantId
@@ -79,10 +101,25 @@ export async function POST(request: NextRequest) {
 
     if (!baseSlug) baseSlug = "school";
 
+    // Strict reserved slug check
+    if (RESERVED_TENANT_SLUGS.includes(baseSlug as any)) {
+      return badRequest("The requested subdomain/slug is reserved by the platform. Please choose a different slug.", [
+        {
+          field: "tenantId",
+          code: "reserved",
+          message: `The slug '${baseSlug}' is a protected platform keyword.`,
+        },
+      ]);
+    }
+
     let tenantId = baseSlug;
     let collisionCount = 1;
     while (await prisma.tenant.findUnique({ where: { tenantId } })) {
       tenantId = `${baseSlug}-${collisionCount++}`;
+    }
+
+    if (RESERVED_TENANT_SLUGS.includes(tenantId as any)) {
+      return badRequest("The resolved tenant slug is reserved by the platform.");
     }
 
     // Check if admin email already exists globally in any user account
@@ -138,14 +175,15 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // 2. Create Super Admin User
+        // 2. Create School Admin User (Highest authority for tenant)
         const adminUser = await tx.user.create({
           data: {
             tenantId: newTenant.tenantId,
             name: data.adminName,
             email: data.adminEmail,
             hash: hashedPassword,
-            role: "SUPER_ADMIN",
+            role: "ADMIN",
+            accessLevel: 1,
             isActive: true,
           },
           select: {
@@ -199,6 +237,7 @@ export async function POST(request: NextRequest) {
 
         let createdClassesCount = 0;
         let createdSectionsCount = 0;
+        const createdClassesList: Array<{ id: string; classNumber: number; name: string }> = [];
 
         for (const def of classDefinitions) {
           const cls = await tx.class.create({
@@ -210,6 +249,7 @@ export async function POST(request: NextRequest) {
             },
           });
           createdClassesCount++;
+          createdClassesList.push({ id: cls.id, classNumber: def.sequence, name: def.name });
 
           const sectionPromises = def.sections.map((secName, secIdx) => {
             const shortName =
@@ -243,6 +283,23 @@ export async function POST(request: NextRequest) {
           });
           await Promise.all(classSubjectPromises);
         }
+
+        // 5. Seed Promotion Rules for Classes
+        const provisioningTx = tx as unknown as Prisma.TransactionClient;
+        await seedTenantPromotionRules(provisioningTx, newTenant.tenantId, academicYear.id, createdClassesList);
+
+        // 6. Seed Standard 5-Tier Chart of Accounts
+        await seedTenantChartOfAccounts(provisioningTx, newTenant.tenantId, newTenant.currency);
+
+        // 7. Seed Default Fee Heads
+        await seedTenantFeeHeads(provisioningTx, newTenant.tenantId);
+
+        // 8. Seed Fiscal Year and 12 Financial Periods Calendar
+        const fiscalYearStartMonth = (data as any).fiscalYearStartMonth || (newTenant.currency === "INR" ? 4 : 7);
+        await seedTenantFiscalCalendar(provisioningTx, newTenant.tenantId, fiscalYearStartMonth);
+
+        // 9. Seed Atomic Voucher Sequence Counters
+        await seedTenantVoucherSequences(provisioningTx, newTenant.tenantId);
 
         return {
           tenant: newTenant,

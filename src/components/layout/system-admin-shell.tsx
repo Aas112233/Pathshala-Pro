@@ -15,11 +15,10 @@ export function SystemAdminShell({ children }: SystemAdminShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, isLoading } = useAuth();
   
-  // Strict System Admin / Super Admin Access Check
+  // Strict System Admin Access Check
   const isAuthorized =
     user?.role === "SYSTEM_ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    user?.tenantId === "system";
+    !!(user as any)?.impersonatedBy;
 
   if (!isLoading && !isAuthorized) {
     return <NotAuthorizedScreen />;

@@ -1,25 +1,21 @@
 import { NextRequest } from "next/server";
-import { getAuthContext } from "@/lib/auth";
-import {
-  forbidden,
-  handleApiError,
-} from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
+import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return forbidden();
-    }
+    const access = await requireApiAccess(request, {
+      permission: "attendance:read",
+    });
+    if ("response" in access) return access.response;
 
-    const { user } = authContext;
+    const { user } = access.authContext;
 
     const searchParams = request.nextUrl.searchParams;
     const fromDate = searchParams.get("fromDate");
     const toDate = searchParams.get("toDate");
 
-    // Build date filter
     const dateFilter: any = {};
     if (fromDate) {
       dateFilter.gte = new Date(fromDate);
@@ -28,7 +24,6 @@ export async function GET(request: NextRequest) {
       dateFilter.lte = new Date(toDate);
     }
 
-    // Fetch attendances with related data
     const attendances = await prisma.attendance.findMany({
       where: {
         tenantId: user.tenantId,

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { successResponse, paginatedResponse, errorResponse, validationError, handleApiError } from "@/lib/api-response";
 import { createHomeworkSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { smartRateLimit, dedupeRequest } from "@/lib/rate-limit";
+import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
@@ -57,14 +57,14 @@ export async function POST(request: NextRequest) {
     }
     const d = parsed.data;
 
-    // 1. Duplicate prevention
+    // 1. Duplicate prevention (distributed)
     const dedupeKey = `HW_CREATE_${tenantId}_${d.classId}_${d.title}`;
-    if (!dedupeRequest(dedupeKey, 3000)) {
+    if (!(await dedupeRequestAsync(dedupeKey, 3000))) {
       return errorResponse("Duplicate homework assignment detected. Please wait a moment.", 409);
     }
 
-    // 2. Adaptive rate limiting
-    const rateCheck = smartRateLimit(`HW_MUT_${tenantId}_${user.id}`, { preset: "mutation" });
+    // 2. Adaptive rate limiting (distributed)
+    const rateCheck = await smartRateLimitAsync(`HW_MUT_${tenantId}_${user.id}`, { preset: "mutation" });
     if (!rateCheck.success) {
       return errorResponse("Too many homework creation requests. Please slow down.", 429);
     }

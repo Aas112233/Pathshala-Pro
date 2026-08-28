@@ -76,10 +76,15 @@ export function handleApiError(
       message: err.message,
     }));
 
+    const summary = details
+      .map((err) => (err.field ? `${err.field}: ${err.message}` : err.message))
+      .filter(Boolean)
+      .join("; ");
+
     return NextResponse.json(
       {
         error: true,
-        message: "Validation failed",
+        message: summary ? `Validation failed: ${summary}` : "Validation failed",
         details,
       },
       { status: 422 }

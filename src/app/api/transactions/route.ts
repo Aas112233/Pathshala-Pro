@@ -10,7 +10,7 @@ import {
 } from "@/lib/api-response";
 import { createTransactionSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { smartRateLimit, dedupeRequest } from "@/lib/rate-limit";
+import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 /**
@@ -128,14 +128,14 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
-    // 1. Server-side duplicate prevention (3-second re-entry guard)
+    // 1. Server-side duplicate prevention (3-second re-entry guard, distributed)
     const dedupeKey = `TX_PAY_${tenantId}_${data.feeVoucherId}_${data.amountPaid}`;
-    if (!dedupeRequest(dedupeKey, 3000)) {
+    if (!(await dedupeRequestAsync(dedupeKey, 3000))) {
       return errorResponse("Duplicate payment request detected. Please wait a moment.", 409);
     }
 
-    // 2. Adaptive rate limiting on payment operations
-    const rateCheck = smartRateLimit(`TX_MUT_${tenantId}_${user.id}`, { preset: "mutation" });
+    // 2. Adaptive rate limiting on payment operations (distributed)
+    const rateCheck = await smartRateLimitAsync(`TX_MUT_${tenantId}_${user.id}`, { preset: "mutation" });
     if (!rateCheck.success) {
       return errorResponse("Too many payment transactions. Please slow down.", 429);
     }

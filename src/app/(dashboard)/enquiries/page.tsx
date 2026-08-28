@@ -47,7 +47,7 @@ function statusColor(s: string) {
 export default function EnquiriesPage() {
   const t = useTranslations("enquiries");
   const { user } = useAuth();
-  const canManage = user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "enquiries", "write"));
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "enquiries", "write"));
 
   const {
     enquiries,

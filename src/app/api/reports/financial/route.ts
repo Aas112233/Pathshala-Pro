@@ -1,17 +1,16 @@
 import { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { getAuthContext } from "@/lib/auth";
-import { forbidden, handleApiError, successResponse } from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
+import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return forbidden();
-    }
-
-    const { user } = authContext;
+    const access = await requireApiAccess(request, {
+      permission: "accounting:read",
+    });
+    if ("response" in access) return access.response;
+    const { user } = access.authContext;
     const searchParams = request.nextUrl.searchParams;
     const fromDate = searchParams.get("fromDate");
     const toDate = searchParams.get("toDate");
@@ -44,19 +43,6 @@ export async function GET(request: NextRequest) {
     const [expenses, txAggregate] = await Promise.all([
       prisma.expense.findMany({
         where: expenseWhere,
-        include: {
-          category: {
-            select: {
-              name: true,
-              code: true,
-            },
-          },
-          recordedBy: {
-            select: {
-              name: true,
-            },
-          },
-        },
         orderBy: { expenseDate: "desc" },
       }),
       prisma.transaction.aggregate({
@@ -66,6 +52,25 @@ export async function GET(request: NextRequest) {
         },
       }),
     ]);
+
+    const [categories, recordedUsers] = await Promise.all([
+      prisma.expenseCategory.findMany({
+        where: {
+          tenantId: user.tenantId,
+          id: { in: expenses.map((expense) => expense.categoryId) },
+        },
+        select: { id: true, name: true, code: true },
+      }),
+      prisma.user.findMany({
+        where: {
+          tenantId: user.tenantId,
+          id: { in: expenses.map((expense) => expense.recordedById).filter((id): id is string => Boolean(id)) },
+        },
+        select: { id: true, name: true },
+      }),
+    ]);
+    const categoryById = new Map(categories.map((category) => [category.id, category]));
+    const recordedUserNames = new Map(recordedUsers.map((recordedUser) => [recordedUser.id, recordedUser.name]));
 
     let totalExpenses = 0;
     let cashExpense = 0;
@@ -80,7 +85,8 @@ export async function GET(request: NextRequest) {
         bankExpense += e.amount;
       }
 
-      const catName = e.category?.name || "Uncategorized";
+      const category = categoryById.get(e.categoryId);
+      const catName = category?.name || "Uncategorized";
       categoryMap.set(catName, (categoryMap.get(catName) || 0) + e.amount);
 
       return {
@@ -88,14 +94,14 @@ export async function GET(request: NextRequest) {
         expenseNumber: e.expenseNumber,
         title: e.title,
         category: catName,
-        categoryCode: e.category?.code || "",
+        categoryCode: category?.code || "",
         amount: e.amount,
         paymentMethod: e.paymentMethod,
         expenseDate: e.expenseDate.toISOString(),
         payeeName: e.payeeName || "N/A",
         receiptNumber: e.receiptNumber || "N/A",
         notes: e.notes || "",
-        recordedByName: e.recordedBy?.name || "System",
+        recordedByName: e.recordedById ? recordedUserNames.get(e.recordedById) || "System" : "System",
       };
     });
 

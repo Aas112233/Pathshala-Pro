@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       return validationError(errors);
     }
 
-    const { email, name, role, password, staffProfileId, isActive } = validation.data;
+    const { email, name, role, password, staffProfileId, studentProfileId, accessLevel, isActive, parentStudentIds } = validation.data as any;
 
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
@@ -119,6 +119,25 @@ export async function POST(request: NextRequest) {
       ]);
     }
 
+    // Validate STUDENT linkage
+    if (role === "STUDENT" && studentProfileId) {
+      const sp = await prisma.studentProfile.findFirst({ where: { id: studentProfileId, tenantId } });
+      if (!sp) return badRequest("Student profile not found for this tenant");
+      const already = await prisma.user.findFirst({ where: { studentProfileId, tenantId } });
+      if (already) return badRequest("Student already has a login account");
+      // Class gate: respect principal's class appAccess
+      const cls = sp.classId ? await prisma.class.findFirst({ where: { id: sp.classId, tenantId } }) : null;
+      if (cls && (!cls.appAccessEnabled || !cls.studentAppEnabled)) {
+        return badRequest("App access is disabled for this student's class by the principal");
+      }
+    }
+
+    // Validate PARENT linkage ids belong to tenant
+    if (role === "PARENT" && parentStudentIds?.length) {
+      const count = await prisma.studentProfile.count({ where: { id: { in: parentStudentIds }, tenantId } });
+      if (count !== parentStudentIds.length) return badRequest("One or more linked students not found");
+    }
+
     // Hash password
     const hash = await hashPassword(password);
 
@@ -129,8 +148,10 @@ export async function POST(request: NextRequest) {
         email,
         name,
         role,
+        accessLevel: accessLevel ?? (role === "STUDENT" ? 7 : role === "PARENT" ? 6 : undefined),
         hash,
-        staffProfileId,
+        staffProfileId: staffProfileId || null,
+        studentProfileId: studentProfileId || null,
         isActive,
       },
       select: {
@@ -138,11 +159,25 @@ export async function POST(request: NextRequest) {
         email: true,
         name: true,
         role: true,
+        accessLevel: true,
         permissions: true,
         isActive: true,
+        studentProfileId: true,
         createdAt: true,
       },
     });
+
+    // Create parent links if PARENT
+    if (role === "PARENT" && parentStudentIds?.length) {
+      await prisma.parentStudentLink.createMany({
+        data: parentStudentIds.map((sid: string) => ({
+          tenantId,
+          parentUserId: newUser.id,
+          studentProfileId: sid,
+        })),
+        skipDuplicates: true,
+      });
+    }
 
     return successResponse(newUser, "User created successfully", 201);
   } catch (error) {

@@ -1,11 +1,12 @@
 "use client";
 
 interface ReportPageShellProps {
-  filters: React.ReactNode;
+  filters?: React.ReactNode;
   summary?: React.ReactNode;
   metrics?: React.ReactNode;
   insights?: React.ReactNode;
-  table: React.ReactNode;
+  table?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function ReportPageShell({
@@ -14,14 +15,19 @@ export function ReportPageShell({
   metrics,
   insights,
   table,
+  children,
 }: ReportPageShellProps) {
   return (
     <div className="space-y-6">
-      {filters}
-      {summary}
-      {metrics}
-      {insights}
-      {table}
+      {children ?? (
+        <>
+          {filters}
+          {summary}
+          {metrics}
+          {insights}
+          {table}
+        </>
+      )}
     </div>
   );
 }

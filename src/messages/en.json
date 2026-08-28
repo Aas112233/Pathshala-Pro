@@ -1069,6 +1069,7 @@
     "broadcasts": "Platform Broadcasts",
     "announcements": "Global Announcements",
     "auditLogs": "Security Audit Stream",
+    "featureFlags": "Feature Flags",
     "system": "System Operations"
   },
   "reports": {
@@ -2162,5 +2163,35 @@
     "totalRecords": "Total Records",
     "withAllergies": "With Allergies",
     "lastCheckup": "Last Checkup"
+  },
+  "educationSystems": {
+    "title": "National Education Systems",
+    "pakistan": {
+      "country": "Pakistan",
+      "board": "Federal Board of Intermediate and Secondary Education (FBISE)",
+      "ssc": "Secondary School Certificate (Matriculation - Class 9-10)",
+      "hssc": "Higher Secondary School Certificate (Intermediate - Class 11-12)",
+      "preMedical": "FSc Pre-Medical",
+      "preEngineering": "FSc Pre-Engineering",
+      "ics": "ICS Computer Science",
+      "icom": "I.Com Commerce"
+    },
+    "india": {
+      "country": "India",
+      "board": "Central Board of Secondary Education (CBSE)",
+      "secondary": "Secondary Level (Class 9-10)",
+      "seniorSecondary": "Senior Secondary Level (Class 11-12)",
+      "scienceStream": "Science Stream (PCM/PCB)",
+      "commerceStream": "Commerce Stream",
+      "humanities": "Humanities / Arts"
+    },
+    "bangladesh": {
+      "country": "Bangladesh",
+      "board": "National Curriculum and Textbook Board (NCTB)",
+      "primary": "Primary Level (Classes 1-5)",
+      "juniorSecondary": "Junior Secondary Level (Classes 6-8)",
+      "ssc": "Secondary School Certificate (SSC - Classes 9-10)",
+      "hsc": "Higher Secondary Certificate (HSC - Classes 11-12)"
+    }
   }
 }

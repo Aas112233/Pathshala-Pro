@@ -39,7 +39,8 @@ describe("API Error Handler & Failsafe Mapping", () => {
       expect(res422.status).toBe(422);
       const json = await res422.json();
       expect(json.error).toBe(true);
-      expect(json.message).toBe("Validation failed");
+      expect(json.message).toContain("email: Invalid email format");
+      expect(json.message).toContain("age: Must be at least 18");
       expect(json.details.length).toBe(2);
       expect(json.details[0].field).toBe("email");
       expect(json.details[1].field).toBe("age");

@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { pdf } from "@react-pdf/renderer";
-import { saveAs } from "file-saver";
+import { downloadBlob } from "@/lib/download-blob";
 import {
   StudentIDCardTemplate,
   MarkSheetTemplate,
@@ -12,6 +12,8 @@ import {
   TransportManifestPDFDocument,
   SalaryPayslipDocument,
   BatchSalaryPayslipPDFDocument,
+  LibraryIssueSlipDocument,
+  HostelManifestPDFDocument,
   StudentReportTemplate,
   FeeReportTemplate,
   AttendanceReportTemplate,
@@ -20,8 +22,22 @@ import {
   type BatchStudentResult,
   type FeeVoucherPDFData,
   type TransportManifestPDFData,
+  type ManifestStudent,
   type SalaryPayslipPDFData,
+  type LibraryIssueSlipData,
+  type HostelManifestPDFData,
+  type HostelResident,
 } from "@/lib/pdf-templates";
+
+export type {
+  FeeVoucherPDFData,
+  TransportManifestPDFData,
+  ManifestStudent,
+  SalaryPayslipPDFData,
+  LibraryIssueSlipData,
+  HostelManifestPDFData,
+  HostelResident,
+};
 
 interface SchoolInfo {
   name: string;
@@ -139,7 +155,7 @@ export function usePDFExport() {
   const generatePDF = useCallback(async (document: React.ReactElement, fileName: string) => {
     try {
       const blob = await pdf(document).toBlob();
-      saveAs(blob, fileName);
+      downloadBlob(blob, fileName);
       return { success: true };
     } catch (error) {
       console.error("PDF generation error:", error);
@@ -349,6 +365,24 @@ export function usePDFExport() {
     return generatePDF(document, name);
   }, [generatePDF]);
 
+  const exportLibrarySlipPDF = useCallback(async (
+    data: LibraryIssueSlipData,
+    fileName?: string
+  ) => {
+    const document = <LibraryIssueSlipDocument data={data} />;
+    const name = fileName || `Library_Slip_${data.slipNumber || Date.now()}.pdf`;
+    return generatePDF(document, name);
+  }, [generatePDF]);
+
+  const exportHostelManifestPDF = useCallback(async (
+    data: HostelManifestPDFData,
+    fileName?: string
+  ) => {
+    const document = <HostelManifestPDFDocument data={data} />;
+    const name = fileName || `Hostel_Manifest_${data.hostelName.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+    return generatePDF(document, name);
+  }, [generatePDF]);
+
   return {
     exportStudentIDCard,
     exportMarkSheet,
@@ -363,6 +397,8 @@ export function usePDFExport() {
     exportTransportManifestPDF,
     exportSalaryPayslipPDF,
     exportBatchPayslipsPDF,
+    exportLibrarySlipPDF,
+    exportHostelManifestPDF,
   };
 }
 

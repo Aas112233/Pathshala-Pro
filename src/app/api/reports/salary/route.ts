@@ -1,17 +1,16 @@
 import { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { getAuthContext } from "@/lib/auth";
-import { forbidden, handleApiError, successResponse } from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
+import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return forbidden();
-    }
-
-    const { user } = authContext;
+    const access = await requireApiAccess(request, {
+      permission: "payroll:read",
+    });
+    if ("response" in access) return access.response;
+    const { user } = access.authContext;
     const searchParams = request.nextUrl.searchParams;
     const year = searchParams.get("year");
     const month = searchParams.get("month");
@@ -39,20 +38,25 @@ export async function GET(request: NextRequest) {
 
     const ledgers = await prisma.salaryLedger.findMany({
       where: whereClause,
-      include: {
-        staffProfile: {
-          select: {
-            staffId: true,
-            firstName: true,
-            lastName: true,
-            department: true,
-            designation: true,
-            phone: true,
-          },
-        },
-      },
       orderBy: [{ year: "desc" }, { month: "desc" }, { createdAt: "desc" }],
     });
+
+    const staffProfiles = await prisma.staffProfile.findMany({
+      where: {
+        tenantId: user.tenantId,
+        id: { in: ledgers.map((ledger) => ledger.staffProfileId) },
+      },
+      select: {
+        id: true,
+        staffId: true,
+        firstName: true,
+        lastName: true,
+        department: true,
+        designation: true,
+        phone: true,
+      },
+    });
+    const staffById = new Map(staffProfiles.map((staffProfile) => [staffProfile.id, staffProfile]));
 
     let totalGross = 0;
     let totalPaid = 0;
@@ -72,7 +76,8 @@ export async function GET(request: NextRequest) {
       totalPending += pending;
       totalDeductions += deductions;
 
-      const dept = l.staffProfile?.department || "General";
+      const staffProfile = staffById.get(l.staffProfileId);
+      const dept = staffProfile?.department || "General";
       const existingDept = deptMap.get(dept) || { total: 0, count: 0 };
       deptMap.set(dept, {
         total: existingDept.total + net,
@@ -81,12 +86,12 @@ export async function GET(request: NextRequest) {
 
       return {
         id: l.id,
-        staffId: l.staffProfile?.staffId || "N/A",
-        staffName: l.staffProfile
-          ? `${l.staffProfile.firstName} ${l.staffProfile.lastName}`.trim()
+        staffId: staffProfile?.staffId || "N/A",
+        staffName: staffProfile
+          ? `${staffProfile.firstName} ${staffProfile.lastName}`.trim()
           : "Unknown Staff",
-        department: l.staffProfile?.department || "N/A",
-        designation: l.staffProfile?.designation || "N/A",
+        department: staffProfile?.department || "N/A",
+        designation: staffProfile?.designation || "N/A",
         month: l.month,
         year: l.year,
         period: `${l.month}/${l.year}`,

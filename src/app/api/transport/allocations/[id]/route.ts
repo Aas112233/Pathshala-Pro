@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(d.routeId !== undefined && { routeId: d.routeId }),
         ...(d.stopName !== undefined && { stopName: d.stopName }),
         ...(d.monthlyFee !== undefined && { monthlyFee: d.monthlyFee }),
-        ...(d.routeId !== undefined && { vehicleId: (await prisma.transportRoute.findUnique({ where: { id: d.routeId! } }))?.vehicleId || null }),
+        ...(d.routeId !== undefined && { vehicleId: (await prisma.transportRoute.findFirst({ where: { id: d.routeId! } }))?.vehicleId || null }),
       },
     });
     return successResponse(updated, "Allocation updated");

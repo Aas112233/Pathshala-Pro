@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AuthContext } from "@/lib/auth";
 import { getAuthContext } from "@/lib/auth";
 import { forbidden, unauthorized } from "@/lib/api-response";
-import { hasPermission, getEffectivePermissions, type PermissionAction } from "@/lib/permissions";
+import { hasPermission, hasRolePermission, getEffectivePermissions, type PermissionAction, type Permission } from "@/lib/permissions";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 
 type AccessResult =
   | { authContext: AuthContext; response?: never }
@@ -59,7 +60,7 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
     case "transport":
       return "transport";
     case "homework":
-      return "homework";
+    case "homeworks":
     case "homework-submissions":
       return "homework";
     case "leaves":
@@ -77,7 +78,11 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
     case "health-records":
       return "health";
     case "settings":
+    case "audit-logs":
+    case "users":
       return "settings";
+    case "upload":
+      return null;
     case "subjects":
       return "subjects";
     case "classes":
@@ -92,11 +97,15 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
     case "promotions":
       return "exams";
     case "reports":
-      if (subresource === "students") return "students";
-      if (subresource === "fees") return "fees";
+      if (subresource === "students" || subresource === "admissions") return "students";
+      if (subresource === "fees" || subresource === "financial") return "fees";
       if (subresource === "attendance") return "attendance";
       if (subresource === "exams") return "exams";
-      return null;
+      if (subresource === "salary") return "salary";
+      return "settings";
+    case "system-admin":
+    case "tenants":
+      return "settings";
     default:
       return null;
   }
@@ -107,6 +116,7 @@ export async function requireApiAccess(
   options?: {
     action?: PermissionAction;
     module?: string | null;
+    permission?: Permission | Permission[];
     allowSystemAdmin?: boolean;
   }
 ): Promise<AccessResult> {
@@ -117,13 +127,22 @@ export async function requireApiAccess(
   }
 
   const { user } = authContext;
+  const isSystemAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email);
+  const isPlatformAdmin = isSystemAdmin;
 
-  if (!options?.allowSystemAdmin && user.role === "SYSTEM_ADMIN") {
+  if (!options?.allowSystemAdmin && isSystemAdmin) {
     return { response: forbidden("System administrators cannot access tenant APIs") };
   }
 
-  if (user.role === "SUPER_ADMIN" || (options?.allowSystemAdmin && user.role === "SYSTEM_ADMIN")) {
+  if (options?.allowSystemAdmin && isPlatformAdmin) {
     return { authContext };
+  }
+
+  if (options?.permission) {
+    if (!hasRolePermission(user.role as string, options.permission)) {
+      const permsStr = Array.isArray(options.permission) ? options.permission.join(", ") : options.permission;
+      return { response: forbidden(`Missing required permission: ${permsStr}`) };
+    }
   }
 
   const action = options?.action ?? getPermissionActionForMethod(request.method);
@@ -133,10 +152,14 @@ export async function requireApiAccess(
       : options.module;
 
   if (!moduleName) {
+    // Fail-closed for security: unmapped API routes require explicit permission option
+    if (!options?.permission && user.role !== "SUPER_ADMIN") {
+      return { response: forbidden("Unmapped API endpoint: access restricted.") };
+    }
     return { authContext };
   }
 
-  const effectivePermissions = getEffectivePermissions(user.role, user.permissions);
+  const effectivePermissions = getEffectivePermissions(user.role as string, user.permissions as any, (user as any).accessLevel ?? null);
 
   if (!hasPermission(effectivePermissions, moduleName, action)) {
     return {

@@ -22,3 +22,12 @@ export {
   BatchSalaryPayslipPDFDocument,
   type SalaryPayslipPDFData,
 } from "./salary-payslip";
+export {
+  LibraryIssueSlipDocument,
+  type LibraryIssueSlipData,
+} from "./library-slip";
+export {
+  HostelManifestPDFDocument,
+  type HostelManifestPDFData,
+  type HostelResident,
+} from "./hostel-manifest";

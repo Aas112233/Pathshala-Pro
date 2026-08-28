@@ -23,7 +23,7 @@ const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
 export default function HealthPage() {
   const t = useTranslations("health");
   const { user } = useAuth();
-  const canManage = user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "health", "write"));
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "health", "write"));
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");

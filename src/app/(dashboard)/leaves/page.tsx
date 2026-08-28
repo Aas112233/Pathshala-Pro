@@ -21,7 +21,7 @@ import { CalendarOff, Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Clock,
 export default function LeavesPage() {
   const t = useTranslations("leaves");
   const { user } = useAuth();
-  const canManage = user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "leaves", "write"));
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "leaves", "write"));
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");

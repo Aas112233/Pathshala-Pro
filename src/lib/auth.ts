@@ -15,8 +15,7 @@ export interface AuthContext {
  * In production, this validates JWT tokens from the Authorization header using jose
  */
 export async function getAuthContext(
-  request: NextRequest,
-  options?: { allowTrustedHeaders?: boolean }
+  request: NextRequest
 ): Promise<AuthContext | null> {
   try {
     // Get authorization header
@@ -30,27 +29,18 @@ export async function getAuthContext(
       return null;
     }
     
-    // For development/production: verify user info from standard JWT token
+    // Cryptographically decode and verify from token using jose
     let userId: string | null = null;
     let tenantId: string | null = null;
 
-    if (options?.allowTrustedHeaders) {
-      // Trusted internal requests can pass pre-validated identity headers.
-      userId = request.headers.get("x-user-id");
-      tenantId = request.headers.get("x-tenant-id");
-    }
+    try {
+      const { payload } = await jwtVerify(token, getJwtSecretKey());
 
-    // If not in headers, cryptographically decode and verify from token using jose
-    if (!userId || !tenantId) {
-      try {
-        const { payload } = await jwtVerify(token, getJwtSecretKey());
-
-        userId = payload.userId as string;
-        tenantId = payload.tenantId as string;
-      } catch (error) {
-        console.warn("Invalid or expired JWT token");
-        return null;
-      }
+      userId = payload.userId as string;
+      tenantId = payload.tenantId as string;
+    } catch (error) {
+      console.warn("Invalid or expired JWT token");
+      return null;
     }
 
     if (!userId || !tenantId) {
@@ -102,11 +92,16 @@ export async function getTenantFromRequest(request: NextRequest): Promise<string
 /**
  * Generate a cryptographically signed JWT token using Jose
  */
-export async function generateAuthToken(userId: string, tenantId: string, role?: string): Promise<string> {
+export async function generateAuthToken(
+  userId: string,
+  tenantId: string,
+  role?: string,
+  email?: string
+): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + 24 * 60 * 60; // 24 hours
 
-  return new SignJWT({ userId, tenantId, role })
+  return new SignJWT({ userId, tenantId, role, email })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setExpirationTime(exp)
     .setIssuedAt(iat)

@@ -18,15 +18,22 @@ import {
   useHostelAllocationsViewModel,
 } from "@/viewmodels/hostel/use-hostel-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { useSubmitGuard } from "@/hooks/use-submit-guard";
+import { usePDFExport, type HostelManifestPDFData, type HostelResident } from "@/hooks/use-pdf-export";
 import { hasPermission } from "@/lib/permissions";
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { BedDouble, Plus, Pencil, Trash2, Search, Building2, Users, DoorOpen } from "lucide-react";
+import { BedDouble, Plus, Pencil, Trash2, Search, Building2, Users, DoorOpen, Printer, Download, ShieldCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 export default function HostelPage() {
   const t = useTranslations("hostel");
   const { user } = useAuth();
-  const canManage = user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "hostel", "write"));
+  const { settings } = useTenantSettings();
+  const { exportHostelManifestPDF } = usePDFExport();
+  const { run: runHostelSubmit, isPending: isGuardedHostel } = useSubmitGuard();
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "hostel", "write"));
 
   const [activeTab, setActiveTab] = useState("hostels");
   const [search, setSearch] = useState("");
@@ -83,18 +90,20 @@ export default function HostelPage() {
     setHostelErrors({});
     setIsHostelSheetOpen(true);
   };
-  const handleHostelSubmit = async (e: React.FormEvent) => {
+  const handleHostelSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!hostelForm.name.trim()) errs.name = "Required";
     setHostelErrors(errs);
     if (Object.keys(errs).length) return;
-    try {
-      const payload: any = { ...hostelForm, capacity: Number(hostelForm.capacity) || 0, wardenName: hostelForm.wardenName || null, wardenPhone: hostelForm.wardenPhone || null, address: hostelForm.address || null };
-      if (editingHostel) await updateHostel(editingHostel.id, payload);
-      else await createHostel(payload);
-      setIsHostelSheetOpen(false);
-    } catch {}
+    void runHostelSubmit(async () => {
+      try {
+        const payload: any = { ...hostelForm, capacity: Number(hostelForm.capacity) || 0, wardenName: hostelForm.wardenName || null, wardenPhone: hostelForm.wardenPhone || null, address: hostelForm.address || null };
+        if (editingHostel) await updateHostel(editingHostel.id, payload);
+        else await createHostel(payload);
+        setIsHostelSheetOpen(false);
+      } catch {}
+    });
   };
   const handleDeleteHostel = async (id: string) => {
     if (!confirm(t("confirmDeleteHostel"))) return;
@@ -113,19 +122,21 @@ export default function HostelPage() {
     setRoomErrors({});
     setIsRoomSheetOpen(true);
   };
-  const handleRoomSubmit = async (e: React.FormEvent) => {
+  const handleRoomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!roomForm.hostelId) errs.hostelId = "Required";
     if (!roomForm.roomNumber.trim()) errs.roomNumber = "Required";
     setRoomErrors(errs);
     if (Object.keys(errs).length) return;
-    try {
-      const payload: any = { ...roomForm, floor: Number(roomForm.floor), capacity: Number(roomForm.capacity) };
-      if (editingRoom) await updateRoom(editingRoom.id, payload);
-      else await createRoom(payload);
-      setIsRoomSheetOpen(false);
-    } catch {}
+    void runHostelSubmit(async () => {
+      try {
+        const payload: any = { ...roomForm, floor: Number(roomForm.floor), capacity: Number(roomForm.capacity) };
+        if (editingRoom) await updateRoom(editingRoom.id, payload);
+        else await createRoom(payload);
+        setIsRoomSheetOpen(false);
+      } catch {}
+    });
   };
   const handleDeleteRoom = async (id: string) => {
     if (!confirm(t("confirmDeleteRoom"))) return;
@@ -137,7 +148,7 @@ export default function HostelPage() {
     setAllocErrors({});
     setIsAllocSheetOpen(true);
   };
-  const handleAllocSubmit = async (e: React.FormEvent) => {
+  const handleAllocSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!allocForm.hostelId) errs.hostelId = "Required";
@@ -145,11 +156,56 @@ export default function HostelPage() {
     if (!allocForm.studentProfileId) errs.studentProfileId = "Required";
     setAllocErrors(errs);
     if (Object.keys(errs).length) return;
-    try {
-      await createAllocation({ hostelId: allocForm.hostelId, roomId: allocForm.roomId, studentProfileId: allocForm.studentProfileId, bedNumber: allocForm.bedNumber || null });
-      setIsAllocSheetOpen(false);
-    } catch {}
+    void runHostelSubmit(async () => {
+      try {
+        await createAllocation({ hostelId: allocForm.hostelId, roomId: allocForm.roomId, studentProfileId: allocForm.studentProfileId, bedNumber: allocForm.bedNumber || null });
+        setIsAllocSheetOpen(false);
+      } catch {}
+    });
   };
+
+  const handlePrintHostelManifest = (hostel: any) => {
+    const hostelAllocs = (allocations || []).filter(
+      (a: any) => a.hostelId === hostel.id || a.hostel?.id === hostel.id
+    );
+    const hostelRoomsList = (rooms || []).filter(
+      (r: any) => r.hostelId === hostel.id
+    );
+    const totalCap = hostelRoomsList.reduce((s: number, r: any) => s + (r.capacity || 0), 0) || hostel.capacity || 0;
+
+    const residents: HostelResident[] = hostelAllocs.map((a: any) => ({
+      rollNumber: a.studentProfile?.rollNumber || "—",
+      studentName: `${a.studentProfile?.firstName || ""} ${a.studentProfile?.lastName || ""}`.trim() || "Resident Student",
+      className: a.studentProfile?.class?.name || "General",
+      sectionName: a.studentProfile?.section?.name,
+      roomNumber: a.room?.roomNumber || "—",
+      bedNumber: a.bedNumber || "Bed",
+      roomType: a.room?.roomType || "GENERAL",
+      guardianName: a.studentProfile?.guardianName,
+      guardianPhone: a.studentProfile?.guardianContact,
+      allocationDate: new Date(a.createdAt || Date.now()).toLocaleDateString(),
+    }));
+
+    const manifestData: HostelManifestPDFData = {
+      schoolName: settings?.name?.trim() || "Pathshala Pro Academy",
+      hostelName: hostel.name,
+      hostelType: hostel.type,
+      wardenName: hostel.wardenName,
+      wardenPhone: hostel.wardenPhone,
+      address: hostel.address,
+      totalCapacity: totalCap,
+      totalOccupied: hostelAllocs.length,
+      totalRooms: hostelRoomsList.length,
+      generatedDate: new Date().toLocaleDateString(),
+      residents,
+    };
+
+    exportHostelManifestPDF(manifestData);
+    toast.success(`Generated Resident Manifest for ${hostel.name}`);
+  };
+
+  const totalCapacitySum = rooms.reduce((acc: number, r: any) => acc + (r.capacity || 0), 0);
+  const totalAllocCount = (allocPagination as any)?.totalCount ?? allocations.length;
 
   const hostelColumns: ColumnDef<any>[] = [
     {
@@ -157,29 +213,41 @@ export default function HostelPage() {
       header: t("hostelName"),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10"><Building2 className="h-4 w-4 text-primary" /></div>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Building2 className="h-4 w-4" />
+          </div>
           <div>
-            <p className="font-medium text-sm">{row.original.name}</p>
-            <p className="text-xs text-muted-foreground">{row.original.type} {row.original.wardenName ? `· ${row.original.wardenName}` : ""}</p>
+            <p className="font-semibold text-sm text-foreground">{row.original.name}</p>
+            <p className="text-xs text-muted-foreground">{row.original.type} {row.original.wardenName ? `· Warden: ${row.original.wardenName}` : ""}</p>
           </div>
         </div>
       ),
     },
-    { accessorKey: "type", header: t("type"), cell: ({ getValue }) => <Badge variant="outline" className="text-xs">{String(getValue())}</Badge> },
-    { accessorKey: "capacity", header: t("capacity") },
+    { accessorKey: "type", header: t("type"), cell: ({ getValue }) => <Badge variant="outline" className="text-xs font-semibold">{String(getValue())}</Badge> },
+    { accessorKey: "capacity", header: t("capacity"), cell: ({ row }) => <span className="font-semibold text-foreground">{row.original.capacity || "—"} beds</span> },
     {
       id: "occupancy",
       header: t("occupancy"),
       cell: ({ row }) => {
         const total = row.original._count?.rooms ?? 0;
-        return <span className="text-sm">{total} rooms</span>;
+        return <span className="text-xs font-medium text-muted-foreground">{total} rooms listed</span>;
       },
     },
     {
       id: "actions",
       header: t("actions"),
       cell: ({ row }) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePrintHostelManifest(row.original)}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+            title="Download Evacuation & Resident Manifest (PDF)"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Manifest</span>
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditHostel(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteHostel(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
         </div>
@@ -188,10 +256,10 @@ export default function HostelPage() {
   ];
 
   const roomColumns: ColumnDef<any>[] = [
-    { accessorKey: "roomNumber", header: t("roomNumber"), cell: ({ row }) => <span className="font-mono text-sm font-semibold">{row.original.roomNumber}</span> },
-    { accessorKey: "hostel", header: t("hostel"), cell: ({ row }) => row.original.hostel?.name || "—" },
-    { accessorKey: "floor", header: t("floor") },
-    { accessorKey: "capacity", header: t("capacity") },
+    { accessorKey: "roomNumber", header: t("roomNumber"), cell: ({ row }) => <span className="font-mono text-sm font-bold text-foreground">Room {row.original.roomNumber}</span> },
+    { accessorKey: "hostel", header: t("hostel"), cell: ({ row }) => <span className="font-medium text-sm text-foreground">{row.original.hostel?.name || "—"}</span> },
+    { accessorKey: "floor", header: t("floor"), cell: ({ row }) => <span className="text-xs text-muted-foreground">Floor {row.original.floor}</span> },
+    { accessorKey: "capacity", header: t("capacity"), cell: ({ row }) => <span className="text-xs font-semibold">{row.original.capacity} Beds</span> },
     {
       accessorKey: "occupancy",
       header: t("occupancy"),
@@ -199,7 +267,17 @@ export default function HostelPage() {
         const occ = row.original.occupancy ?? row.original._count?.allocations ?? 0;
         const cap = row.original.capacity;
         const pct = cap > 0 ? Math.round((occ / cap) * 100) : 0;
-        return <span className={`text-xs font-semibold ${pct >= 90 ? "text-destructive" : pct >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{occ}/{cap} ({pct}%)</span>;
+        return (
+          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold border ${
+            pct >= 100
+              ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300"
+              : pct >= 70
+              ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300"
+              : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300"
+          }`}>
+            {occ}/{cap} ({pct}%)
+          </span>
+        );
       },
     },
     { accessorKey: "roomType", header: t("roomType"), cell: ({ getValue }) => <Badge variant="outline" className="text-xs">{String(getValue())}</Badge> },
@@ -221,17 +299,35 @@ export default function HostelPage() {
       header: t("student"),
       cell: ({ row }) => {
         const s = row.original.studentProfile;
-        return s ? <span className="text-sm font-medium">{s.firstName} {s.lastName} <span className="text-xs text-muted-foreground">({s.rollNumber})</span></span> : "—";
+        return s ? (
+          <div>
+            <p className="text-sm font-semibold text-foreground">{s.firstName} {s.lastName}</p>
+            <p className="text-xs text-muted-foreground">Roll No: {s.rollNumber} {s.class?.name ? `· ${s.class.name}` : ""}</p>
+          </div>
+        ) : "—";
       },
     },
-    { accessorKey: "hostel", header: t("hostel"), cell: ({ row }) => row.original.hostel?.name || "—" },
-    { accessorKey: "room", header: t("room"), cell: ({ row }) => row.original.room?.roomNumber || "—" },
-    { accessorKey: "bedNumber", header: t("bedNumber"), cell: ({ getValue }) => (getValue() as string) || "—" },
+    { accessorKey: "hostel", header: t("hostel"), cell: ({ row }) => <span className="text-sm font-medium">{row.original.hostel?.name || "—"}</span> },
+    { accessorKey: "room", header: t("room"), cell: ({ row }) => <span className="font-mono text-xs font-semibold">Room {row.original.room?.roomNumber || "—"}</span> },
+    { accessorKey: "bedNumber", header: t("bedNumber"), cell: ({ getValue }) => <Badge variant="outline" className="text-xs">{(getValue() as string) || "Bed"}</Badge> },
     {
       id: "actions",
       header: t("actions"),
       cell: ({ row }) => (
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={async () => { if (!confirm(t("confirmDeleteAllocation"))) return; try { const r = await fetch(`/api/hostel-allocations/${row.original.id}`, { method: "DELETE", credentials: "include" }); const j = await r.json(); if (!r.ok) throw new Error(j.message); window.location.reload(); } catch {} }}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={async () => {
+            if (!confirm(t("confirmDeleteAllocation"))) return;
+            try {
+              const r = await fetch(`/api/hostel-allocations/${row.original.id}`, { method: "DELETE", credentials: "include" });
+              const j = await r.json();
+              if (!r.ok) throw new Error(j.message);
+              window.location.reload();
+            } catch {}
+          }}
+        >
           <Trash2 className="h-3.5 w-3.5 text-destructive" />
         </Button>
       ),
@@ -246,10 +342,55 @@ export default function HostelPage() {
         {activeTab === "allocations" && canManage && <Button onClick={openAlloc} className="gap-2"><Plus className="h-4 w-4" />{t("allocateStudent")}</Button>}
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg"><Building2 className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{(pagination as any)?.totalCount ?? 0}</p><p className="text-xs text-muted-foreground">{t("totalHostels")}</p></div></CardContent></Card>
-        <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-emerald-500/10 rounded-lg"><DoorOpen className="h-5 w-5 text-emerald-600" /></div><div><p className="text-2xl font-bold text-emerald-600">{(roomPagination as any)?.totalCount ?? 0}</p><p className="text-xs text-emerald-600">{t("totalRooms")}</p></div></CardContent></Card>
-        <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-blue-500/10 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div><div><p className="text-2xl font-bold text-blue-600">{(allocPagination as any)?.totalCount ?? 0}</p><p className="text-xs text-blue-600">{t("totalAllocations")}</p></div></CardContent></Card>
+      {/* Financial & Operational KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="shadow-xs border-border/80">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-xl">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{(pagination as any)?.totalCount ?? hostels.length}</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("totalHostels")}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs border-border/80">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+              <DoorOpen className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-emerald-600">{(roomPagination as any)?.totalCount ?? rooms.length}</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("totalRooms")}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs border-border/80">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-500/10 rounded-xl">
+              <BedDouble className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-indigo-600">{totalCapacitySum}</p>
+              <p className="text-xs text-muted-foreground font-medium">Total Beds Available</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs border-border/80">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+              <Users className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-600">{totalAllocCount}</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("totalAllocations")}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -260,14 +401,14 @@ export default function HostelPage() {
         </TabsList>
 
         <TabsContent value="hostels" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="shadow-xs border-border/80">
+            <CardContent className="p-4">
               <div className="flex gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setSearch(searchInput), setPage(1))} placeholder={t("searchHostels")} className="pl-9" />
+                  <Input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setSearch(searchInput), setPage(1))} placeholder={t("searchHostels")} className="pl-9 text-xs" />
                 </div>
-                <Button variant="outline" onClick={() => { setSearch(searchInput); setPage(1); }}><Search className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={() => { setSearch(searchInput); setPage(1); }} className="h-9 text-xs"><Search className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -275,14 +416,14 @@ export default function HostelPage() {
         </TabsContent>
 
         <TabsContent value="rooms" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="shadow-xs border-border/80">
+            <CardContent className="p-4">
               <div className="flex gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={roomSearchInput} onChange={(e) => setRoomSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setRoomSearch(roomSearchInput), setRoomPage(1))} placeholder={t("searchRooms")} className="pl-9" />
+                  <Input value={roomSearchInput} onChange={(e) => setRoomSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setRoomSearch(roomSearchInput), setRoomPage(1))} placeholder={t("searchRooms")} className="pl-9 text-xs" />
                 </div>
-                <Button variant="outline" onClick={() => { setRoomSearch(roomSearchInput); setRoomPage(1); }}><Search className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={() => { setRoomSearch(roomSearchInput); setRoomPage(1); }} className="h-9 text-xs"><Search className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -290,14 +431,14 @@ export default function HostelPage() {
         </TabsContent>
 
         <TabsContent value="allocations" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="shadow-xs border-border/80">
+            <CardContent className="p-4">
               <div className="flex gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={allocSearchInput} onChange={(e) => setAllocSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setAllocSearch(allocSearchInput), setAllocPage(1))} placeholder={t("searchAllocations")} className="pl-9" />
+                  <Input value={allocSearchInput} onChange={(e) => setAllocSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setAllocSearch(allocSearchInput), setAllocPage(1))} placeholder={t("searchAllocations")} className="pl-9 text-xs" />
                 </div>
-                <Button variant="outline" onClick={() => { setAllocSearch(allocSearchInput); setAllocPage(1); }}><Search className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={() => { setAllocSearch(allocSearchInput); setAllocPage(1); }} className="h-9 text-xs"><Search className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -306,7 +447,26 @@ export default function HostelPage() {
       </Tabs>
 
       {/* Hostel Sheet */}
-      <TopSheet isOpen={isHostelSheetOpen} onClose={() => setIsHostelSheetOpen(false)} title={editingHostel ? t("editHostel") : t("addHostel")} description={t("description")} maxWidth="2xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsHostelSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="hostel-form" disabled={isHostelMutating}>{t("save")}</Button></div>}>
+      <TopSheet
+        isOpen={isHostelSheetOpen}
+        onClose={() => setIsHostelSheetOpen(false)}
+        title={editingHostel ? t("editHostel") : t("addHostel")}
+        description={t("description")}
+        maxWidth="2xl"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsHostelSheetOpen(false)}>{t("cancel")}</Button>
+            <Button
+              type="submit"
+              form="hostel-form"
+              disabled={isHostelMutating || isGuardedHostel}
+              aria-busy={isHostelMutating || isGuardedHostel || undefined}
+            >
+              {isHostelMutating || isGuardedHostel ? "Saving..." : t("save")}
+            </Button>
+          </div>
+        }
+      >
         <form id="hostel-form" onSubmit={handleHostelSubmit} className="space-y-6">
           <ERPFormSection>
             <ERPFormGrid cols={2}>
@@ -322,7 +482,26 @@ export default function HostelPage() {
       </TopSheet>
 
       {/* Room Sheet */}
-      <TopSheet isOpen={isRoomSheetOpen} onClose={() => setIsRoomSheetOpen(false)} title={editingRoom ? t("editRoom") : t("addRoom")} description={t("description")} maxWidth="2xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsRoomSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="room-form" disabled={isRoomMutating}>{t("save")}</Button></div>}>
+      <TopSheet
+        isOpen={isRoomSheetOpen}
+        onClose={() => setIsRoomSheetOpen(false)}
+        title={editingRoom ? t("editRoom") : t("addRoom")}
+        description={t("description")}
+        maxWidth="2xl"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsRoomSheetOpen(false)}>{t("cancel")}</Button>
+            <Button
+              type="submit"
+              form="room-form"
+              disabled={isRoomMutating || isGuardedHostel}
+              aria-busy={isRoomMutating || isGuardedHostel || undefined}
+            >
+              {isRoomMutating || isGuardedHostel ? "Saving..." : t("save")}
+            </Button>
+          </div>
+        }
+      >
         <form id="room-form" onSubmit={handleRoomSubmit} className="space-y-6">
           <ERPFormSection>
             <ERPFormGrid cols={2}>
@@ -339,7 +518,26 @@ export default function HostelPage() {
       </TopSheet>
 
       {/* Allocation Sheet */}
-      <TopSheet isOpen={isAllocSheetOpen} onClose={() => setIsAllocSheetOpen(false)} title={t("allocateStudent")} description={t("description")} maxWidth="xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsAllocSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="alloc-form2">{t("save")}</Button></div>}>
+      <TopSheet
+        isOpen={isAllocSheetOpen}
+        onClose={() => setIsAllocSheetOpen(false)}
+        title={t("allocateStudent")}
+        description={t("description")}
+        maxWidth="xl"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsAllocSheetOpen(false)}>{t("cancel")}</Button>
+            <Button
+              type="submit"
+              form="alloc-form2"
+              disabled={isGuardedHostel}
+              aria-busy={isGuardedHostel || undefined}
+            >
+              {isGuardedHostel ? "Allocating..." : t("save")}
+            </Button>
+          </div>
+        }
+      >
         <form id="alloc-form2" onSubmit={handleAllocSubmit} className="space-y-6">
           <ERPFormSection>
             <ERPFormGrid cols={2}>

@@ -23,7 +23,7 @@ const CERT_TYPES = ["TRANSFER", "CHARACTER", "BONAFIDE", "STUDY", "MARKSHEET", "
 export default function CertificatesPage() {
   const t = useTranslations("certificates");
   const { user } = useAuth();
-  const canManage = user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "certificates", "write"));
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "certificates", "write"));
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");

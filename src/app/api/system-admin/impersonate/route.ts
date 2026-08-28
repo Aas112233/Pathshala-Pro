@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
-  successResponse,
   unauthorized,
   badRequest,
   handleApiError,
@@ -9,6 +8,8 @@ import {
 import { requireApiAccess } from "@/lib/api-auth";
 import { jwtVerify, SignJWT } from "jose";
 import { getJwtSecretKey } from "@/lib/jwt";
+import { generateTenantImpersonationToken } from "@/lib/superadmin-service";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 
 /**
  * POST /api/system-admin/impersonate
@@ -23,14 +24,14 @@ export async function POST(request: NextRequest) {
 
     const { user } = access.authContext;
 
-    // Only actual Admins/System Admins can initiate impersonation
+    // Only Platform System Admins can initiate impersonation
     if (
       user.role !== "SYSTEM_ADMIN" &&
       user.role !== "SUPER_ADMIN" &&
-      user.role !== "ADMIN" &&
-      user.tenantId !== "system"
+      user.tenantId?.toLowerCase() !== "system" &&
+      !isPlatformOwnerEmail(user.email)
     ) {
-      return unauthorized("Only system administrators can impersonate tenants.");
+      return unauthorized("Only platform system administrators can impersonate tenants.");
     }
 
     const body = await request.json();
@@ -40,66 +41,35 @@ export async function POST(request: NextRequest) {
       return badRequest("targetTenantId is required");
     }
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { tenantId: targetTenantId },
-      include: {
-        users: {
-          where: { role: "SUPER_ADMIN", isActive: true },
-          take: 1,
-        },
+    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined;
+    const userAgent = request.headers.get("user-agent") || undefined;
+
+    const result = await generateTenantImpersonationToken(prisma, {
+      targetTenantId,
+      context: {
+        adminUserId: user.id,
+        adminEmail: user.email,
+        ipAddress,
+        userAgent,
       },
     });
-
-    if (!tenant) {
-      return badRequest("Target school tenant was not found.");
-    }
-
-    const targetUser = tenant.users[0] || {
-      id: "impersonated-admin",
-      email: `admin@${tenant.tenantId}.pathshala.pro`,
-      name: `${tenant.name} Administrator`,
-      role: "SUPER_ADMIN",
-    };
-
-    // Issue impersonation token
-    const originalAdminEmail = (payload.impersonatedBy as string) || (payload.email as string);
-    const impersonationToken = await new SignJWT({
-      userId: targetUser.id,
-      tenantId: tenant.tenantId,
-      email: targetUser.email,
-      role: "SUPER_ADMIN",
-      impersonatedBy: originalAdminEmail,
-      impersonatedTenantName: tenant.name,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("4h")
-      .sign(getJwtSecretKey());
 
     const response = NextResponse.json({
       success: true,
       data: {
-        user: {
-          id: targetUser.id,
-          tenantId: tenant.tenantId,
-          email: targetUser.email,
-          name: targetUser.name,
-          role: "SUPER_ADMIN",
-          tenantName: tenant.name,
-          impersonatedBy: originalAdminEmail,
-        },
-        targetTenantName: tenant.name,
+        targetTenantName: result.targetTenantName,
+        impersonatedUserEmail: result.impersonatedUserEmail,
       },
-      message: `Now viewing as ${tenant.name}`,
+      message: `Now viewing as ${result.targetTenantName}`,
     });
 
     // Set cookie
-    response.cookies.set("auth_token", impersonationToken, {
+    response.cookies.set("auth_token", result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 4 * 60 * 60, // 4 hours
+      maxAge: 2 * 60 * 60, // 2 hours
     });
 
     return response;

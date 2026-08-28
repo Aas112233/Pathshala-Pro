@@ -6,6 +6,9 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { TopSheet } from "@/components/ui/top-sheet";
+import { ERPFormField, ERPFormGrid, ERPFormSection } from "@/components/ui/erp-form-layout";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { toast } from "sonner";
 import {
   DollarSign,
@@ -29,6 +32,10 @@ export default function SystemAdminBillingPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
+  const [editTenant, setEditTenant] = useState<any>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editStatus, setEditStatus] = useState("ACTIVE");
+  const [editPlan, setEditPlan] = useState("STARTER");
 
   const fetchBillingData = async () => {
     setIsLoading(true);
@@ -68,6 +75,41 @@ export default function SystemAdminBillingPage() {
     } catch {
       toast.error(t("saasAdmin.billing.networkError"));
     }
+  };
+
+  const handleEditBilling = (row: any) => {
+    setEditTenant(row);
+    setEditStatus(row.status);
+    setEditPlan(row.plan || "STARTER");
+    setIsEditOpen(true);
+  };
+
+  const handleSaveBilling = async () => {
+    if (!editTenant) return;
+    try {
+      const res = await fetch("/api/system-admin/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId: editTenant.tenantId, status: editStatus, plan: editPlan }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        toast.success("Billing updated");
+        setIsEditOpen(false);
+        fetchBillingData();
+      } else toast.error(json.error?.message || "Update failed");
+    } catch { toast.error("Network error"); }
+  };
+
+  const handleExport = () => {
+    const rows = filteredSubscriptions;
+    const header = ["School", "TenantId", "Plan", "Status", "Students", "MonthlyPrice"];
+    const csv = [header.join(","), ...rows.map((r: any) => [r.name, r.tenantId, r.plan, r.status, r.studentsCount, r.estimatedMonthlyPrice].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `billing-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const metrics = data?.metrics || {
@@ -154,6 +196,7 @@ export default function SystemAdminBillingPage() {
       className: "text-right",
       cell: (row) => (
         <div className="flex items-center justify-end gap-1.5">
+          <Button size="sm" variant="ghost" onClick={() => handleEditBilling(row)} className="h-7 text-[11px]">Edit</Button>
           {row.status !== "ACTIVE" && (
             <Button
               size="sm"
@@ -266,6 +309,12 @@ export default function SystemAdminBillingPage() {
         </Card>
       </div>
 
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExport} className="h-8 text-xs gap-1.5">
+          <Filter className="h-3.5 w-3.5" /> Export CSV
+        </Button>
+      </div>
+
       {/* Subscriptions Table */}
       <ERPDataTable<any>
         title={t("saasAdmin.billing.tableTitle")}
@@ -277,6 +326,31 @@ export default function SystemAdminBillingPage() {
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />
+
+      <TopSheet
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        title={`Edit Billing — ${editTenant?.name ?? ""}`}
+        description={`Tenant ${editTenant?.tenantId ?? ""}`}
+        maxWidth="lg"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveBilling}>Save Plan</Button>
+          </div>
+        }
+      >
+        <ERPFormSection title="Plan & Status">
+          <ERPFormGrid cols={2}>
+            <ERPFormField label="Subscription Status">
+              <AppDropdown value={editStatus} onChange={setEditStatus} options={[{value:"ACTIVE",label:"ACTIVE"},{value:"TRIAL",label:"TRIAL"},{value:"SUSPENDED",label:"SUSPENDED"},{value:"EXPIRED",label:"EXPIRED"}]} />
+            </ERPFormField>
+            <ERPFormField label="Plan Tier">
+              <AppDropdown value={editPlan} onChange={setEditPlan} options={[{value:"STARTER",label:"STARTER 149"},{value:"PRO",label:"PRO 299"},{value:"ENTERPRISE",label:"ENTERPRISE 599"}]} />
+            </ERPFormField>
+          </ERPFormGrid>
+        </ERPFormSection>
+      </TopSheet>
     </div>
   );
 }

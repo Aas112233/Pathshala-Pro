@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { saveAs } from "file-saver";
+import { downloadBlob } from "@/lib/download-blob";
 import { exportToExcel, ReportTemplates, type ExcelExportOptions, type ExcelColumn } from "@/lib/excel-exporter";
 
 interface UseExcelExportOptions {
@@ -57,7 +57,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
       });
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-").split("T")[0];
-      saveAs(blob, `${fileName}_${timestamp}.xlsx`);
+      downloadBlob(blob, `${fileName}_${timestamp}.xlsx`);
       
       return { success: true };
     } catch (error) {

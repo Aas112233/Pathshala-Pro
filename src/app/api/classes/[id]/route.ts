@@ -22,7 +22,10 @@ import {
 const updateClassSchema = z.object({
   name: z.string().min(2, "Class name must be at least 2 characters").optional(),
   classNumber: z.number().int().positive("Class number must be positive").optional(),
-  isActive: z.boolean().default(true).optional(),
+  isActive: z.boolean().optional(),
+  appAccessEnabled: z.boolean().optional(),
+  studentAppEnabled: z.boolean().optional(),
+  parentAppEnabled: z.boolean().optional(),
 });
 
 /**

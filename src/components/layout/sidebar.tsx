@@ -167,8 +167,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
-        {/* System Admin Portal Switcher for Super Admin */}
-        {mounted && (user?.role === "SUPER_ADMIN" || user?.role === "SYSTEM_ADMIN" || user?.tenantId === "system") && (
+        {/* System Admin Portal Switcher for Platform Super Admin */}
+        {mounted && (user?.role === "SYSTEM_ADMIN" || !!(user as any)?.impersonatedBy) && (
           <div className="mb-4">
             <Link
               href="/system-admin"

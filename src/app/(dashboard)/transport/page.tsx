@@ -43,6 +43,7 @@ export default function TransportPage() {
   const t = useTranslations("transport");
   const { user } = useAuth();
   const canManage =
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && hasPermission(user.permissions, "transport", "write"));
   const { exportTransportManifestPDF } = usePDFExport();

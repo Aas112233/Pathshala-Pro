@@ -5,6 +5,8 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { handleApiError } from "@/lib/api-error";
 import { createNoticeSchema } from "@/lib/schemas";
 
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+
 export async function GET(req: NextRequest) {
   try {
     const access = await requireApiAccess(req, {
@@ -14,13 +16,8 @@ export async function GET(req: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (
-      user.role !== "SUPER_ADMIN" &&
-      user.role !== "SYSTEM_ADMIN" &&
-      user.role !== "ADMIN" &&
-      user.tenantId !== "system"
-    ) {
-      return errorResponse("SuperAdmin access required", 403);
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+      return errorResponse("Platform System Admin access required", 403);
     }
 
     const broadcasts = await prisma.notice.findMany({
@@ -60,13 +57,8 @@ export async function POST(req: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (
-      user.role !== "SUPER_ADMIN" &&
-      user.role !== "SYSTEM_ADMIN" &&
-      user.role !== "ADMIN" &&
-      user.tenantId !== "system"
-    ) {
-      return errorResponse("SuperAdmin access required", 403);
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+      return errorResponse("Platform System Admin access required", 403);
     }
 
     const body = await req.json();

@@ -1,20 +1,16 @@
 import { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { getAuthContext } from "@/lib/auth";
-import {
-  forbidden,
-  handleApiError,
-} from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
+import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return forbidden();
-    }
-
-    const { user } = authContext;
+    const access = await requireApiAccess(request, {
+      permission: "fees:read",
+    });
+    if ("response" in access) return access.response;
+    const { user } = access.authContext;
 
     const searchParams = request.nextUrl.searchParams;
     const fromDate = searchParams.get("fromDate");

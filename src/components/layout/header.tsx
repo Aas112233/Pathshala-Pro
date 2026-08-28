@@ -255,7 +255,7 @@ export function Header() {
                 <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
               </div>
               <div className="py-1">
-                {(user?.role === "SUPER_ADMIN" || user?.role === "SYSTEM_ADMIN" || user?.tenantId === "system") && (
+                {(user?.role === "SYSTEM_ADMIN" || !!(user as any)?.impersonatedBy) && (
                   <Link
                     href="/system-admin"
                     onClick={() => setUserMenuOpen(false)}

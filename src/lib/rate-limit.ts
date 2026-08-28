@@ -1,5 +1,7 @@
+import { getRedis } from "@/lib/redis";
+
 /**
- * In-Memory Rate Limiting Suite.
+ * In-Memory Rate Limiting Suite with Redis-backed distributed fallback.
  *
  * 1. `rateLimit()`          — Legacy fixed-window limiter (kept for backward compatibility).
  * 2. `smartRateLimit()`     — Dynamic, adaptive limiter with named presets and
@@ -9,8 +11,10 @@
  * 4. `dedupeRequest()`      — Short-window duplicate-entry guard (blocks accidental
  *                             double-submits of the same payload/key).
  *
- * Note: Works correctly in a single-instance Node.js setting.
- * For scaled serverless environments (Vercel edge/lambdas), consider Upstash Redis or Vercel KV.
+ * DISTRIBUTED MODE: When UPSTASH_REDIS_REST_URL + TOKEN (or KV_REST_API_URL/TOKEN)
+ * are set, use the `*Async` variants (e.g. smartRateLimitAsync) for cross-instance
+ * consistency on Vercel / serverless. The sync variants remain as in-memory fallback
+ * for local dev and tests.
  */
 
 type RateLimitEntry = {
@@ -255,4 +259,203 @@ export function dedupeRequest(key: string, windowMs: number = 5000): boolean {
   }
   dedupeMap.set(key, now);
   return true;
+}
+
+// ── Distributed (Redis-backed) async variants ─────────────────────────────
+// When UPSTASH_REDIS_REST_URL is not configured, these transparently fall back
+// to the in-memory Maps above so local dev & tests require zero setup.
+
+const REDIS_PREFIX = "rl:";
+const DEDUPE_PREFIX = "dedupe:";
+
+async function redisGetEntry(redis: NonNullable<ReturnType<typeof getRedis>>, key: string): Promise<RateLimitEntry | null> {
+  const raw = await redis.get(key);
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as RateLimitEntry;
+    } catch {
+      return null;
+    }
+  }
+  return raw as RateLimitEntry;
+}
+
+async function redisSetEntry(
+  redis: NonNullable<ReturnType<typeof getRedis>>,
+  key: string,
+  entry: RateLimitEntry,
+  ttlMs: number
+): Promise<void> {
+  const ttlSec = Math.max(1, Math.ceil(ttlMs / 1000));
+  await redis.set(key, JSON.stringify(entry), { ex: ttlSec });
+}
+
+export async function rateLimitAsync(
+  ip: string,
+  limit: number = 5,
+  windowMs: number = 15 * 60 * 1000
+): Promise<{ success: boolean; remaining: number; reset: number }> {
+  const redis = getRedis();
+  if (!redis) return rateLimit(ip, limit, windowMs);
+
+  const key = `${REDIS_PREFIX}fixed:${ip}`;
+  const now = Date.now();
+  try {
+    const record = await redisGetEntry(redis, key);
+    if (!record || record.resetAt < now) {
+      const entry: RateLimitEntry = { count: 1, resetAt: now + windowMs };
+      await redisSetEntry(redis, key, entry, windowMs);
+      return { success: true, remaining: limit - 1, reset: entry.resetAt };
+    }
+    const newCount = record.count + 1;
+    record.count = newCount;
+    const ttlMs = Math.max(1000, record.resetAt - now);
+    await redisSetEntry(redis, key, record, ttlMs);
+    if (newCount > limit) {
+      return { success: false, remaining: 0, reset: record.resetAt };
+    }
+    return { success: true, remaining: limit - newCount, reset: record.resetAt };
+  } catch {
+    // Redis failure → graceful fallback
+    return rateLimit(ip, limit, windowMs);
+  }
+}
+
+export async function smartRateLimitAsync(
+  key: string,
+  options: {
+    preset?: RateLimitPreset;
+    limit?: number;
+    windowMs?: number;
+    maxPenaltyMultiplier?: number;
+  } = {}
+): Promise<SmartRateLimitResult> {
+  const redis = getRedis();
+  if (!redis) return smartRateLimit(key, options);
+
+  const preset = RATE_LIMIT_PRESETS[options.preset ?? "mutation"];
+  const baseLimit = options.limit ?? preset.limit;
+  const windowMs = options.windowMs ?? preset.windowMs;
+  const maxPenalty = options.maxPenaltyMultiplier ?? 8;
+  const now = Date.now();
+  const redisKey = `${REDIS_PREFIX}smart:${key}`;
+
+  try {
+    const record = await redisGetEntry(redis, redisKey);
+
+    if (!record || record.resetAt < now) {
+      const carriedMultiplier = record?.penaltyMultiplier ?? 1;
+      const entry: RateLimitEntry = {
+        count: 1,
+        resetAt: now + windowMs * carriedMultiplier,
+        failures: record?.failures ?? 0,
+        penaltyMultiplier: carriedMultiplier,
+      };
+      const ttlMs = windowMs * carriedMultiplier;
+      await redisSetEntry(redis, redisKey, entry, ttlMs);
+      const effectiveLimit = Math.max(1, Math.floor(baseLimit / carriedMultiplier));
+      return {
+        success: true,
+        remaining: effectiveLimit - 1,
+        reset: entry.resetAt,
+        retryAfterSeconds: 0,
+        penaltyActive: carriedMultiplier > 1,
+      };
+    }
+
+    const multiplier = Math.min(record.penaltyMultiplier ?? 1, maxPenalty);
+    const effectiveLimit = Math.max(1, Math.floor(baseLimit / multiplier));
+    const newCount = record.count + 1;
+    record.count = newCount;
+    const ttlMs = Math.max(1000, record.resetAt - now);
+    await redisSetEntry(redis, redisKey, record, ttlMs);
+
+    if (newCount > effectiveLimit) {
+      return {
+        success: false,
+        remaining: 0,
+        reset: record.resetAt,
+        retryAfterSeconds: Math.max(1, Math.ceil((record.resetAt - now) / 1000)),
+        penaltyActive: multiplier > 1,
+      };
+    }
+
+    return {
+      success: true,
+      remaining: effectiveLimit - newCount,
+      reset: record.resetAt,
+      retryAfterSeconds: 0,
+      penaltyActive: multiplier > 1,
+    };
+  } catch {
+    return smartRateLimit(key, options);
+  }
+}
+
+export async function recordRateLimitFailureAsync(key: string, maxPenaltyMultiplier: number = 8): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return recordRateLimitFailure(key, maxPenaltyMultiplier);
+
+  const redisKey = `${REDIS_PREFIX}smart:${key}`;
+  const now = Date.now();
+  try {
+    const record = await redisGetEntry(redis, redisKey);
+    const failures = (record?.failures ?? 0) + 1;
+    const multiplier = Math.min(Math.pow(2, failures), maxPenaltyMultiplier);
+
+    if (!record || record.resetAt < now) {
+      const entry: RateLimitEntry = {
+        count: 0,
+        resetAt: now,
+        failures,
+        penaltyMultiplier: multiplier,
+      };
+      // Store with extended lockout TTL
+      const ttlMs = Math.min(multiplier * 15 * 1000, 15 * 60 * 1000);
+      await redisSetEntry(redis, redisKey, entry, ttlMs || 15000);
+      return;
+    }
+
+    record.failures = failures;
+    record.penaltyMultiplier = multiplier;
+    record.resetAt = Math.max(record.resetAt, now + Math.min(multiplier * 15 * 1000, 15 * 60 * 1000));
+    const ttlMs = Math.max(1000, record.resetAt - now);
+    await redisSetEntry(redis, redisKey, record, ttlMs);
+  } catch {
+    recordRateLimitFailure(key, maxPenaltyMultiplier);
+  }
+}
+
+export async function recordRateLimitSuccessAsync(key: string): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return recordRateLimitSuccess(key);
+
+  const redisKey = `${REDIS_PREFIX}smart:${key}`;
+  try {
+    const record = await redisGetEntry(redis, redisKey);
+    if (record) {
+      record.failures = 0;
+      record.penaltyMultiplier = 1;
+      const ttlMs = Math.max(1000, record.resetAt - Date.now());
+      await redisSetEntry(redis, redisKey, record, ttlMs);
+    }
+  } catch {
+    recordRateLimitSuccess(key);
+  }
+}
+
+export async function dedupeRequestAsync(key: string, windowMs: number = 5000): Promise<boolean> {
+  const redis = getRedis();
+  if (!redis) return dedupeRequest(key, windowMs);
+
+  const redisKey = `${DEDUPE_PREFIX}${key}`;
+  const ttlSec = Math.max(1, Math.ceil(windowMs / 1000));
+  try {
+    // SET NX returns "OK" if set, null if already exists
+    const result = await redis.set(redisKey, "1", { ex: ttlSec, nx: true });
+    return result === "OK" || result === "Ok";
+  } catch {
+    return dedupeRequest(key, windowMs);
+  }
 }

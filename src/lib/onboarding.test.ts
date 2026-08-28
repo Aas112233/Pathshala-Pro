@@ -55,6 +55,34 @@ describe("Institute Onboarding & Tenant Provisioning", () => {
       ]);
     });
 
+    it("returns Pakistan FBISE curriculum with Matric and Intermediate streams", () => {
+      const classes = getClassTemplateDefinitions("PK_FBISE_MATRIC_INTER");
+      expect(classes.length).toBe(4);
+      expect(classes[0].name).toContain("Class 9 (SSC-I");
+      expect(classes[0].subjects.some((s) => s.code === "ENG-9")).toBe(true);
+      expect(classes[0].subjects.some((s) => s.code === "ISL-9" && s.totalMarks === 75)).toBe(true);
+      expect(classes[2].subjects.some((s) => s.code === "ACC-11" && s.totalMarks === 200)).toBe(true);
+    });
+
+    it("returns India CBSE curriculum with Std/Basic Math and Commerce streams", () => {
+      const classes = getClassTemplateDefinitions("IN_CBSE_SECONDARY_SR_SEC");
+      expect(classes.length).toBe(4);
+      expect(classes[0].name).toContain("Class 9 (CBSE Secondary)");
+      expect(classes[0].subjects.some((s) => s.code === "CBSE-184")).toBe(true);
+      expect(classes[0].subjects.some((s) => s.code === "CBSE-041")).toBe(true);
+      expect(classes[2].subjects.some((s) => s.code === "CBSE-055")).toBe(true);
+    });
+
+    it("returns Bangladesh NCTB curriculum from Primary (1-5) to HSC (11-12)", () => {
+      const classes = getClassTemplateDefinitions("BD_NCTB_PRIMARY_SSC_HSC");
+      expect(classes.length).toBe(12);
+      expect(classes[0].name).toContain("Class 1");
+      expect(classes[0].subjects.some((s) => s.code === "BD-101-P")).toBe(true);
+      expect(classes[5].subjects.some((s) => s.code === "BD-154-J")).toBe(true);
+      expect(classes[8].subjects.some((s) => s.code === "BD-101-SSC")).toBe(true);
+      expect(classes[10].subjects.some((s) => s.code === "BD-101-HSC")).toBe(true);
+    });
+
     it("returns religious curriculum for Madrasa preset", () => {
       const classes = getClassTemplateDefinitions("MADRASA");
       expect(classes.length).toBe(4);
@@ -115,6 +143,15 @@ describe("Institute Onboarding & Tenant Provisioning", () => {
       const invalid = { ...validPayload, tenantId: "Crescent Model School" };
       const parsed = onboardInstituteSchema.safeParse(invalid);
       expect(parsed.success).toBe(false);
+    });
+
+    it("strictly rejects reserved platform slugs such as 'system', 'admin', 'api', 'platform'", () => {
+      const reservedSlugs = ["system", "admin", "api", "app", "platform", "root", "superadmin", "null"];
+      for (const slug of reservedSlugs) {
+        const invalid = { ...validPayload, tenantId: slug };
+        const parsed = onboardInstituteSchema.safeParse(invalid);
+        expect(parsed.success).toBe(false);
+      }
     });
   });
 });

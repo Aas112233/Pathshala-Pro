@@ -10,6 +10,7 @@ import {
 import { loginSchema, createUserSchema } from "@/lib/schemas";
 import { hashPassword, verifyPassword, generateAuthToken } from "@/lib/auth";
 import { setAuthCookie } from "@/lib/auth-cookies";
+import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/login
@@ -31,7 +32,25 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = validation.data;
 
-    // Find user by email (we'll use the first tenant for now)
+    // Apply IP-based Rate Limiting
+    const ip = request.headers.get("x-forwarded-for") || "unknown_ip";
+
+    if (!(await dedupeRequestAsync(`AUTH_POST_${ip}_${email}`, 2000))) {
+      return errorResponse("Duplicate request detected. Please wait a moment.", 409);
+    }
+
+    const limitKey = `AUTH_${ip}_${email}`;
+    const rateCheck = await smartRateLimitAsync(limitKey, { preset: "auth" });
+
+    if (!rateCheck.success) {
+      const minutes = Math.max(1, Math.ceil(rateCheck.retryAfterSeconds / 60));
+      return errorResponse(
+        `Too many login attempts. Please try again in ${minutes} minute${minutes > 1 ? "s" : ""}.`,
+        429
+      );
+    }
+
+    // Find user by email
     const user = await prisma.user.findFirst({
       where: { email },
       include: { tenant: true },

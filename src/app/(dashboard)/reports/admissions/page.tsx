@@ -208,7 +208,7 @@ export default function AdmissionsReportPage() {
       cell: ({ row }) => {
         const s = row.original.status;
         const variant =
-          s === "ADMITTED" ? "success" : s === "REJECTED" ? "danger" : s === "VISITED" ? "primary" : "warning";
+          s === "ADMITTED" ? "success" : s === "REJECTED" ? "error" : s === "VISITED" ? "info" : "warning";
         return <StatusBadge status={s} variant={variant} />;
       },
     },
@@ -256,12 +256,15 @@ export default function AdmissionsReportPage() {
         title={t("title")}
         description={t("description")}
         icon={UserPlus}
-        actions={
-          hasGenerated && data.length > 0 ? (
-            <ExportDropdown onExportExcel={handleExportExcel} />
-          ) : undefined
-        }
-      />
+      >
+        {hasGenerated && data.length > 0 ? (
+          <ExportDropdown
+            onExport={(type) => {
+              if (type === "excel") void handleExportExcel();
+            }}
+          />
+        ) : undefined}
+      </PageHeader>
 
       {/* Filter Control Bar */}
       <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs space-y-4">
@@ -354,9 +357,10 @@ export default function AdmissionsReportPage() {
       {hasGenerated && metrics && (
         <>
           <ReportSummaryBar
-            generatedAt={generatedAt}
-            totalRecords={data.length}
-            filters={[
+            dateRangeLabel={`${fromDate || "Start"} to ${toDate || "Present"}`}
+            generatedAtLabel={generatedAt}
+            recordCount={data.length}
+            appliedFilters={[
               { label: "Range", value: `${fromDate || "Start"} to ${toDate || "Present"}` },
             ]}
           />
@@ -367,29 +371,21 @@ export default function AdmissionsReportPage() {
               title="Total Enquiries"
               value={metrics.totalEnquiries}
               icon={Users}
-              color="text-indigo-600"
-              bgColor="bg-indigo-50 dark:bg-indigo-950"
             />
             <ReportMetricCard
               title="Admitted Students"
               value={metrics.admittedCount}
               icon={CheckCircle2}
-              color="text-emerald-600"
-              bgColor="bg-emerald-50 dark:bg-emerald-950"
             />
             <ReportMetricCard
               title="Conversion Rate"
               value={`${metrics.conversionRate}%`}
               icon={TrendingUp}
-              color="text-purple-600"
-              bgColor="bg-purple-50 dark:bg-purple-950"
             />
             <ReportMetricCard
               title="Pending Follow-ups"
               value={metrics.pendingFollowups}
               icon={Clock}
-              color="text-amber-600"
-              bgColor="bg-amber-50 dark:bg-amber-950"
             />
           </div>
 
@@ -413,7 +409,6 @@ export default function AdmissionsReportPage() {
             <ReportTable
               columns={columns}
               data={data}
-              searchPlaceholder="Search applicant, guardian or phone..."
             />
           </div>
         </>

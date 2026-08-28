@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreVertical, Pencil, Trash2, Eye, UserCheck, UserX } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Eye, UserCheck, UserX, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StaffProfile } from "@/types/entities";
 
@@ -21,6 +21,8 @@ export function StaffActionsDropdown({
   onToggleStatus,
 }: StaffActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,34 +81,33 @@ export function StaffActionsDropdown({
             )}
             {onToggleStatus && (
               <button
-                onClick={() => handleAction(onToggleStatus)}
+                onClick={async () => {
+                  setIsToggling(true);
+                  try { await onToggleStatus(staff); setIsOpen(false); } finally { setIsToggling(false); }
+                }}
+                disabled={isToggling}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                  "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors disabled:opacity-50",
                   staff.isActive 
                     ? "text-amber-600 hover:bg-amber-50" 
                     : "text-green-600 hover:bg-green-50"
                 )}
               >
-                {staff.isActive ? (
-                  <>
-                    <UserX className="h-4 w-4" />
-                    <span>Deactivate</span>
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="h-4 w-4" />
-                    <span>Activate</span>
-                  </>
-                )}
+                {isToggling ? <Loader2 className="h-4 w-4 animate-spin" /> : staff.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                <span>{isToggling ? "Updating..." : staff.isActive ? "Deactivate" : "Activate"}</span>
               </button>
             )}
             {onDelete && (
               <button
-                onClick={() => handleAction(onDelete)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try { await onDelete(staff); setIsOpen(false); } finally { setIsDeleting(false); }
+                }}
+                disabled={isDeleting}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               >
-                <Trash2 className="h-4 w-4" />
-                <span>Delete</span>
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                <span>{isDeleting ? "Deleting..." : "Delete"}</span>
               </button>
             )}
           </div>

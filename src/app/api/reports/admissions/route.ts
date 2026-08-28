@@ -1,17 +1,16 @@
 import { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { getAuthContext } from "@/lib/auth";
-import { forbidden, handleApiError, successResponse } from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
+import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await getAuthContext(request);
-    if (!authContext) {
-      return forbidden();
-    }
-
-    const { user } = authContext;
+    const access = await requireApiAccess(request, {
+      permission: "students:read",
+    });
+    if ("response" in access) return access.response;
+    const { user } = access.authContext;
     const searchParams = request.nextUrl.searchParams;
     const fromDate = searchParams.get("fromDate");
     const toDate = searchParams.get("toDate");
@@ -42,26 +41,35 @@ export async function GET(request: NextRequest) {
 
     const enquiries = await prisma.enquiry.findMany({
       where: whereClause,
-      include: {
-        classApplied: {
-          select: {
-            name: true,
-          },
-        },
-        assignedTo: {
-          select: {
-            name: true,
-          },
-        },
-        convertedStudent: {
-          select: {
-            studentId: true,
-            rollNumber: true,
-          },
-        },
-      },
       orderBy: { createdAt: "desc" },
     });
+
+    const [classes, assignedUsers, convertedStudents] = await Promise.all([
+      prisma.class.findMany({
+        where: {
+          tenantId: user.tenantId,
+          id: { in: enquiries.map((enquiry) => enquiry.classAppliedId).filter((id): id is string => Boolean(id)) },
+        },
+        select: { id: true, name: true },
+      }),
+      prisma.user.findMany({
+        where: {
+          tenantId: user.tenantId,
+          id: { in: enquiries.map((enquiry) => enquiry.assignedToId).filter((id): id is string => Boolean(id)) },
+        },
+        select: { id: true, name: true },
+      }),
+      prisma.studentProfile.findMany({
+        where: {
+          tenantId: user.tenantId,
+          id: { in: enquiries.map((enquiry) => enquiry.convertedStudentId).filter((id): id is string => Boolean(id)) },
+        },
+        select: { id: true, studentId: true },
+      }),
+    ]);
+    const classNames = new Map(classes.map((schoolClass) => [schoolClass.id, schoolClass.name]));
+    const assignedUserNames = new Map(assignedUsers.map((assignedUser) => [assignedUser.id, assignedUser.name]));
+    const convertedStudentIds = new Map(convertedStudents.map((student) => [student.id, student.studentId]));
 
     let admittedCount = 0;
     let pendingFollowups = 0;
@@ -83,12 +91,12 @@ export async function GET(request: NextRequest) {
         guardianName: e.guardianName,
         phone: e.phone,
         email: e.email || "N/A",
-        className: e.classApplied?.name || "General",
+        className: e.classAppliedId ? classNames.get(e.classAppliedId) || "General" : "General",
         source: e.source,
         status: e.status,
         followUpDate: e.followUpDate ? e.followUpDate.toISOString() : null,
-        assignedToName: e.assignedTo?.name || "Unassigned",
-        convertedStudentId: e.convertedStudent?.studentId || null,
+        assignedToName: e.assignedToId ? assignedUserNames.get(e.assignedToId) || "Unassigned" : "Unassigned",
+        convertedStudentId: e.convertedStudentId ? convertedStudentIds.get(e.convertedStudentId) || null : null,
         createdAt: e.createdAt.toISOString(),
       };
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,15 +27,61 @@ export default function SystemAdminSettingsPage() {
     defaultTrialDays: 30,
     allowPublicRegistration: true,
     maintenanceMode: false,
+    defaultCurriculum: "NCTB",
+    defaultGradingSystem: "GPA",
+    defaultGracePerSubject: 5,
+    defaultGracePerStudent: 10,
+    gpaScaleJson: '[{"min":80,"grade":"A+","point":5},{"min":70,"grade":"A","point":4},{"min":60,"grade":"A-","point":3.5},{"min":50,"grade":"B","point":3},{"min":40,"grade":"C","point":2},{"min":33,"grade":"D","point":1},{"min":0,"grade":"F","point":0}]',
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  // Load platform defaults from SYSTEM tenant
+  useEffect(() => {
+    fetch("/api/tenants/SYSTEM", { credentials: "include" })
+      .then((r) => r.json())
+      .then((json) => {
+        const t = json?.data;
+        if (t) {
+          setPlatformConfig((prev) => ({
+            ...prev,
+            defaultCurriculum: t.curriculum || prev.defaultCurriculum,
+            defaultGradingSystem: t.gradingSystem || prev.defaultGradingSystem,
+            defaultGracePerSubject: t.maxGracePerSubject ?? prev.defaultGracePerSubject,
+            defaultGracePerStudent: t.maxGracePerStudent ?? prev.defaultGracePerStudent,
+            ...(t.gpaScale ? { gpaScaleJson: JSON.stringify(t.gpaScale, null, 2) } : {}),
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      let gpaScale: any = undefined;
+      if (platformConfig.gpaScaleJson.trim()) {
+        try { gpaScale = JSON.parse(platformConfig.gpaScaleJson); } catch { toast.error("Invalid GPA Scale JSON"); setIsSaving(false); return; }
+      }
+      const res = await fetch("/api/tenants/SYSTEM", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          curriculum: platformConfig.defaultCurriculum,
+          gradingSystem: platformConfig.defaultGradingSystem,
+          maxGracePerSubject: Number(platformConfig.defaultGracePerSubject),
+          maxGracePerStudent: Number(platformConfig.defaultGracePerStudent),
+          gpaScale,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Save failed");
+      toast.success("Platform settings updated — new schools will inherit these defaults");
+    } catch (err: any) {
+      toast.error(err.message || "Network error");
+    } finally {
       setIsSaving(false);
-      toast.success("Platform settings updated successfully!");
-    }, 600);
+    }
   };
 
   return (
@@ -98,6 +144,49 @@ export default function SystemAdminSettingsPage() {
                     ENABLED
                   </Badge>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Academic Engine Defaults */}
+        <Card className="border border-border/80 shadow-xs">
+          <CardHeader className="p-4 pb-2 border-b border-border/50">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-amber-600" />
+              Academic Engine — Platform Defaults for New Schools
+            </CardTitle>
+            <CardDescription className="text-xs">Curriculum, grading & grace caps inherited on school onboarding (edit per-tenant via Tenants → Configure)</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Default Board Curriculum</Label>
+                <select value={platformConfig.defaultCurriculum} onChange={(e) => setPlatformConfig({ ...platformConfig, defaultCurriculum: e.target.value })} className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring">
+                  <option value="NCTB">Bangladesh NCTB</option>
+                  <option value="CBSE">India CBSE</option>
+                  <option value="FBISE">Pakistan FBISE</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Default Grading System</Label>
+                <select value={platformConfig.defaultGradingSystem} onChange={(e) => setPlatformConfig({ ...platformConfig, defaultGradingSystem: e.target.value })} className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring">
+                  <option value="GPA">GPA 5.0</option>
+                  <option value="PERCENTAGE">Percentage</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Max Grace / Subject</Label>
+                <Input type="number" min="0" max="20" value={platformConfig.defaultGracePerSubject} onChange={(e) => setPlatformConfig({ ...platformConfig, defaultGracePerSubject: parseFloat(e.target.value) || 0 })} className="h-10 text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Max Grace / Student</Label>
+                <Input type="number" min="0" max="50" value={platformConfig.defaultGracePerStudent} onChange={(e) => setPlatformConfig({ ...platformConfig, defaultGracePerStudent: parseFloat(e.target.value) || 0 })} className="h-10 text-xs" />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs font-semibold">GPA Scale JSON (advanced)</Label>
+                <textarea value={platformConfig.gpaScaleJson} onChange={(e) => setPlatformConfig({ ...platformConfig, gpaScaleJson: e.target.value })} rows={4} className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring" placeholder='[{"min":80,"grade":"A+","point":5}]' />
+                <p className="text-[10px] text-muted-foreground">Leave empty for default NCTB bands. Valid JSON array required.</p>
               </div>
             </div>
           </CardContent>

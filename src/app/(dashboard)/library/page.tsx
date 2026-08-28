@@ -15,7 +15,11 @@ import { DataTable } from "@/components/shared/data-table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useBooksViewModel, useBookIssuesViewModel } from "@/viewmodels/library/use-library-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useTenantSettings, useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useSubmitGuard } from "@/hooks/use-submit-guard";
+import { usePDFExport, type LibraryIssueSlipData } from "@/hooks/use-pdf-export";
 import { hasPermission } from "@/lib/permissions";
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Library,
@@ -29,6 +33,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  Printer,
+  Download,
+  Bookmark,
+  DollarSign,
 } from "lucide-react";
 
 const CATEGORIES = ["GENERAL", "TEXTBOOK", "REFERENCE", "STORY", "SCIENCE", "HISTORY", "COMPUTER"];
@@ -36,7 +44,10 @@ const CATEGORIES = ["GENERAL", "TEXTBOOK", "REFERENCE", "STORY", "SCIENCE", "HIS
 export default function LibraryPage() {
   const t = useTranslations("library");
   const { user } = useAuth();
-  const canManage = user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "library", "write"));
+  const { settings } = useTenantSettings();
+  const { exportLibrarySlipPDF } = usePDFExport();
+  const { run: runLibrarySubmit, isPending: isGuardedLibrary } = useSubmitGuard();
+  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "library", "write"));
 
   const [activeTab, setActiveTab] = useState("books");
   const [search, setSearch] = useState("");
@@ -74,7 +85,7 @@ export default function LibraryPage() {
     setBookErrors({});
     setIsBookSheetOpen(true);
   };
-  const handleBookSubmit = async (e: React.FormEvent) => {
+  const handleBookSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!bookForm.title.trim()) errs.title = "Required";
@@ -82,12 +93,14 @@ export default function LibraryPage() {
     if (!bookForm.accessionNo.trim()) errs.accessionNo = "Required";
     setBookErrors(errs);
     if (Object.keys(errs).length) return;
-    try {
-      const payload: any = { ...bookForm, copies: Number(bookForm.copies), isbn: bookForm.isbn || null, publisher: bookForm.publisher || null, shelfLocation: bookForm.shelfLocation || null };
-      if (editingBook) await updateBook(editingBook.id, payload);
-      else await createBook(payload);
-      setIsBookSheetOpen(false);
-    } catch {}
+    void runLibrarySubmit(async () => {
+      try {
+        const payload: any = { ...bookForm, copies: Number(bookForm.copies), isbn: bookForm.isbn || null, publisher: bookForm.publisher || null, shelfLocation: bookForm.shelfLocation || null };
+        if (editingBook) await updateBook(editingBook.id, payload);
+        else await createBook(payload);
+        setIsBookSheetOpen(false);
+      } catch {}
+    });
   };
   const handleDeleteBook = async (id: string) => {
     if (!confirm(t("confirmDeleteBook"))) return;
@@ -99,7 +112,7 @@ export default function LibraryPage() {
     setIssueErrors({});
     setIsIssueSheetOpen(true);
   };
-  const handleIssueSubmit = async (e: React.FormEvent) => {
+  const handleIssueSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!issueForm.bookId) errs.bookId = "Required";
@@ -108,17 +121,49 @@ export default function LibraryPage() {
     if (!issueForm.dueDate) errs.dueDate = "Required";
     setIssueErrors(errs);
     if (Object.keys(errs).length) return;
-    try {
-      await issueBook({ ...issueForm, dueDate: new Date(issueForm.dueDate).toISOString() });
-      setIsIssueSheetOpen(false);
-    } catch {}
+    void runLibrarySubmit(async () => {
+      try {
+        await issueBook({ ...issueForm, dueDate: new Date(issueForm.dueDate).toISOString() });
+        setIsIssueSheetOpen(false);
+      } catch {}
+    });
   };
-  const handleReturn = async (id: string) => {
-    try { await returnBook(id); } catch {}
+  const handleReturn = (id: string) => {
+    void runLibrarySubmit(async () => {
+      try {
+        await returnBook(id);
+        toast.success("Book returned and inventory updated");
+      } catch {}
+    });
+  };
+
+  const handlePrintSlip = (issue: any) => {
+    const slipData: LibraryIssueSlipData = {
+      schoolName: settings?.name?.trim() || "Pathshala Pro Academy",
+      slipNumber: `LIB-${new Date().getFullYear()}-${issue.id.slice(0, 6).toUpperCase()}`,
+      issueDate: new Date(issue.issueDate).toLocaleDateString(),
+      dueDate: new Date(issue.dueDate).toLocaleDateString(),
+      returnDate: issue.returnDate ? new Date(issue.returnDate).toLocaleDateString() : undefined,
+      borrowerName: issue.borrowerName,
+      borrowerIdNo: issue.borrowerIdNo,
+      borrowerType: issue.borrowerType,
+      bookTitle: issue.book?.title || "Library Catalog Item",
+      bookAuthor: issue.book?.author || "Author",
+      accessionNo: issue.book?.accessionNo || "ACC-01",
+      shelfLocation: issue.book?.shelfLocation,
+      status: issue.status,
+      fineAmount: issue.fineAmount || 0,
+      currencySymbol: settings?.currencySymbol || "৳",
+    };
+
+    exportLibrarySlipPDF(slipData);
+    toast.success(`Generated Circulation Slip for ${issue.borrowerName}`);
   };
 
   const totalBooks = (pagination as any)?.totalCount ?? books.length;
   const overdueCount = issues.filter((i: any) => i.computedStatus === "OVERDUE" || (i.status === "ISSUED" && new Date(i.dueDate) < new Date())).length;
+  const totalAvailable = books.reduce((s: number, b: any) => s + (b.availableCopies || 0), 0);
+  const totalIssued = issues.filter((i: any) => i.status === "ISSUED").length;
 
   const bookColumns: ColumnDef<any>[] = [
     {
@@ -126,26 +171,30 @@ export default function LibraryPage() {
       header: t("titleLabel"),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10"><BookOpen className="h-4 w-4 text-primary" /></div>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <BookOpen className="h-4 w-4" />
+          </div>
           <div>
-            <p className="font-medium text-sm">{row.original.title}</p>
-            <p className="text-xs text-muted-foreground">{row.original.author} · {row.original.accessionNo}</p>
+            <p className="font-semibold text-sm text-foreground">{row.original.title}</p>
+            <p className="text-xs text-muted-foreground">{row.original.author} · Accession: {row.original.accessionNo}</p>
           </div>
         </div>
       ),
     },
-    { accessorKey: "category", header: t("category"), cell: ({ getValue }) => <Badge variant="outline" className="text-xs">{String(getValue())}</Badge> },
+    { accessorKey: "category", header: t("category"), cell: ({ getValue }) => <Badge variant="outline" className="text-xs font-semibold">{String(getValue())}</Badge> },
     {
       accessorKey: "copies",
       header: t("copies"),
       cell: ({ row }) => (
         <span className="text-sm">
-          <span className={row.original.availableCopies === 0 ? "text-destructive font-bold" : "font-semibold"}>{row.original.availableCopies}</span>
-          <span className="text-muted-foreground"> / {row.original.copies}</span>
+          <span className={row.original.availableCopies === 0 ? "text-destructive font-bold" : "font-semibold text-emerald-600 dark:text-emerald-400"}>
+            {row.original.availableCopies} avail
+          </span>
+          <span className="text-muted-foreground"> / {row.original.copies} total</span>
         </span>
       ),
     },
-    { accessorKey: "shelfLocation", header: t("shelfLocation"), cell: ({ getValue }) => (getValue() as string) || "—" },
+    { accessorKey: "shelfLocation", header: t("shelfLocation"), cell: ({ getValue }) => (getValue() as string) || "General Stack" },
     {
       id: "actions",
       header: t("actions"),
@@ -162,14 +211,19 @@ export default function LibraryPage() {
     {
       accessorKey: "book",
       header: t("titleLabel"),
-      cell: ({ row }) => <span className="text-sm font-medium">{row.original.book?.title || "—"}</span>,
+      cell: ({ row }) => (
+        <div>
+          <span className="text-sm font-semibold text-foreground">{row.original.book?.title || "—"}</span>
+          <p className="text-[11px] text-muted-foreground">{row.original.book?.accessionNo || "—"}</p>
+        </div>
+      ),
     },
     {
       accessorKey: "borrowerName",
       header: t("borrower"),
       cell: ({ row }) => (
         <div>
-          <p className="text-sm font-medium">{row.original.borrowerName}</p>
+          <p className="text-sm font-semibold text-foreground">{row.original.borrowerName}</p>
           <p className="text-xs text-muted-foreground">{row.original.borrowerIdNo} · {row.original.borrowerType}</p>
         </div>
       ),
@@ -180,7 +234,14 @@ export default function LibraryPage() {
       cell: ({ row }) => {
         const d = new Date(row.original.dueDate);
         const overdue = row.original.computedStatus === "OVERDUE";
-        return <span className={`text-xs ${overdue ? "text-destructive font-bold" : ""}`}>{d.toLocaleDateString()}</span>;
+        return (
+          <div>
+            <span className={`text-xs font-semibold ${overdue ? "text-rose-600 font-bold" : "text-foreground"}`}>
+              {d.toLocaleDateString()}
+            </span>
+            {overdue && <p className="text-[10px] text-rose-500 font-bold">OVERDUE</p>}
+          </div>
+        );
       },
     },
     {
@@ -188,21 +249,38 @@ export default function LibraryPage() {
       header: t("status"),
       cell: ({ row }) => {
         const s = row.original.computedStatus || row.original.status;
-        const color = s === "ISSUED" ? "bg-blue-50 text-blue-700 border-blue-200" : s === "OVERDUE" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200";
-        return <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${color}`}>{s}</span>;
+        const color = s === "ISSUED" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300" : s === "OVERDUE" ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300" : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300";
+        return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold border ${color}`}>{s}</span>;
       },
     },
     {
       id: "actions",
       header: t("actions"),
-      cell: ({ row }) =>
-        row.original.status === "ISSUED" ? (
-          <Button variant="outline" size="sm" onClick={() => handleReturn(row.original.id)} className="h-7 text-xs gap-1">
-            <CheckCircle className="h-3.5 w-3.5" /> {t("returnBook")}
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5">
+          {row.original.status === "ISSUED" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isGuardedLibrary}
+              onClick={() => handleReturn(row.original.id)}
+              className="h-7 text-xs gap-1 font-semibold"
+            >
+              <CheckCircle className="h-3.5 w-3.5 text-emerald-600" /> {t("returnBook")}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handlePrintSlip(row.original)}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+            title="Download Issue Slip (PDF)"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Slip</span>
           </Button>
-        ) : (
-          <span className="text-xs text-muted-foreground">{row.original.fineAmount ? `৳${row.original.fineAmount}` : "—"}</span>
-        ),
+        </div>
+      ),
     },
   ];
 
@@ -220,11 +298,54 @@ export default function LibraryPage() {
       </PageHeader>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg"><BookOpen className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{totalBooks}</p><p className="text-xs text-muted-foreground">{t("totalBooks")}</p></div></CardContent></Card>
-        <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-emerald-500/10 rounded-lg"><CheckCircle className="h-5 w-5 text-emerald-600" /></div><div><p className="text-2xl font-bold text-emerald-600">{books.reduce((s: number, b: any) => s + (b.availableCopies || 0), 0)}</p><p className="text-xs text-emerald-600">{t("availableBooks")}</p></div></CardContent></Card>
-        <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-blue-500/10 rounded-lg"><Clock className="h-5 w-5 text-blue-600" /></div><div><p className="text-2xl font-bold text-blue-600">{issues.filter((i: any) => i.status === "ISSUED").length}</p><p className="text-xs text-blue-600">{t("issuedBooks")}</p></div></CardContent></Card>
-        <Card className={overdueCount > 0 ? "border-rose-200 bg-rose-50/50 dark:bg-rose-950/20" : ""}><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-rose-500/10 rounded-lg"><AlertTriangle className="h-5 w-5 text-rose-600" /></div><div><p className="text-2xl font-bold text-rose-600">{overdueCount}</p><p className="text-xs text-rose-600">{t("overdueBooks")}</p></div></CardContent></Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="shadow-xs border-border/80">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 rounded-xl">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{totalBooks}</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("totalBooks")}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs border-border/80">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-emerald-600">{totalAvailable}</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("availableBooks")}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs border-border/80">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+              <Clock className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-600">{totalIssued}</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("issuedBooks")}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`shadow-xs border-border/80 ${overdueCount > 0 ? "border-rose-300 bg-rose-50/40 dark:bg-rose-950/20" : ""}`}>
+          <CardContent className="pt-5 pb-5 flex items-center gap-3">
+            <div className="p-2.5 bg-rose-500/10 rounded-xl">
+              <AlertTriangle className="h-5 w-5 text-rose-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-rose-600">{overdueCount}</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("overdueBooks")}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -234,15 +355,15 @@ export default function LibraryPage() {
         </TabsList>
 
         <TabsContent value="books" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="shadow-xs border-border/80">
+            <CardContent className="p-4">
               <div className="flex flex-wrap gap-3">
                 <div className="relative flex-1 min-w-[220px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setSearch(searchInput), setPage(1))} placeholder={t("searchBooks")} className="pl-9" />
+                  <Input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setSearch(searchInput), setPage(1))} placeholder={t("searchBooks")} className="pl-9 text-xs" />
                 </div>
                 <AppDropdown value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setPage(1); }} options={[{ value: "", label: "All Categories" }, ...CATEGORIES.map((c) => ({ value: c, label: c }))]} placeholder={t("category")} />
-                <Button variant="outline" onClick={() => { setSearch(searchInput); setPage(1); }}><Search className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={() => { setSearch(searchInput); setPage(1); }} className="h-9 text-xs"><Search className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -250,15 +371,15 @@ export default function LibraryPage() {
         </TabsContent>
 
         <TabsContent value="issues" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="shadow-xs border-border/80">
+            <CardContent className="p-4">
               <div className="flex flex-wrap gap-3">
                 <div className="relative flex-1 min-w-[220px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={issueSearchInput} onChange={(e) => setIssueSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setIssueSearch(issueSearchInput), setIssuePage(1))} placeholder={t("searchIssues")} className="pl-9" />
+                  <Input value={issueSearchInput} onChange={(e) => setIssueSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setIssueSearch(issueSearchInput), setIssuePage(1))} placeholder={t("searchIssues")} className="pl-9 text-xs" />
                 </div>
                 <AppDropdown value={issueStatus} onChange={(v) => { setIssueStatus(v); setIssuePage(1); }} options={[{ value: "", label: "All Statuses" }, { value: "ISSUED", label: t("issued") }, { value: "OVERDUE", label: t("overdue") }, { value: "RETURNED", label: t("returned") }]} placeholder={t("status")} />
-                <Button variant="outline" onClick={() => { setIssueSearch(issueSearchInput); setIssuePage(1); }}><Search className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={() => { setIssueSearch(issueSearchInput); setIssuePage(1); }} className="h-9 text-xs"><Search className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -267,7 +388,26 @@ export default function LibraryPage() {
       </Tabs>
 
       {/* Add/Edit Book Sheet */}
-      <TopSheet isOpen={isBookSheetOpen} onClose={() => setIsBookSheetOpen(false)} title={editingBook ? t("editBook") : t("addBook")} description={t("description")} maxWidth="2xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsBookSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="book-form" disabled={isBookMutating}>{t("save")}</Button></div>}>
+      <TopSheet
+        isOpen={isBookSheetOpen}
+        onClose={() => setIsBookSheetOpen(false)}
+        title={editingBook ? t("editBook") : t("addBook")}
+        description={t("description")}
+        maxWidth="2xl"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsBookSheetOpen(false)}>{t("cancel")}</Button>
+            <Button
+              type="submit"
+              form="book-form"
+              disabled={isBookMutating || isGuardedLibrary}
+              aria-busy={isBookMutating || isGuardedLibrary || undefined}
+            >
+              {isBookMutating || isGuardedLibrary ? "Saving..." : t("save")}
+            </Button>
+          </div>
+        }
+      >
         <form id="book-form" onSubmit={handleBookSubmit} className="space-y-6">
           <ERPFormSection>
             <ERPFormGrid cols={2}>
@@ -285,7 +425,26 @@ export default function LibraryPage() {
       </TopSheet>
 
       {/* Issue Book Sheet */}
-      <TopSheet isOpen={isIssueSheetOpen} onClose={() => setIsIssueSheetOpen(false)} title={t("issueBook")} description={t("description")} maxWidth="xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsIssueSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="issue-form">{t("issueBook")}</Button></div>}>
+      <TopSheet
+        isOpen={isIssueSheetOpen}
+        onClose={() => setIsIssueSheetOpen(false)}
+        title={t("issueBook")}
+        description={t("description")}
+        maxWidth="xl"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setIsIssueSheetOpen(false)}>{t("cancel")}</Button>
+            <Button
+              type="submit"
+              form="issue-form"
+              disabled={isIssueMutating || isGuardedLibrary}
+              aria-busy={isIssueMutating || isGuardedLibrary || undefined}
+            >
+              {isIssueMutating || isGuardedLibrary ? "Issuing..." : t("issueBook")}
+            </Button>
+          </div>
+        }
+      >
         <form id="issue-form" onSubmit={handleIssueSubmit} className="space-y-6">
           <ERPFormSection>
             <ERPFormGrid cols={2}>

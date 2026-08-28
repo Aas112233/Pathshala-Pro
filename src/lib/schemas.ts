@@ -10,11 +10,28 @@ export const createUserSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   name: z.string().min(1, "Name is required"),
-  role: z.enum(["SUPER_ADMIN", "ADMIN", "TEACHER", "CLERK", "STUDENT", "PRINCIPAL", "MANAGER", "AUDITOR"]),
+  role: z.enum([
+    "SUPER_ADMIN",
+    "SYSTEM_ADMIN",
+    "ADMIN",
+    "SCHOOL_ADMIN",
+    "PRINCIPAL",
+    "MANAGER",
+    "ACCOUNTANT",
+    "ACADEMIC_COORDINATOR",
+    "TEACHER",
+    "CLERK",
+    "PARENT",
+    "STUDENT",
+    "AUDITOR",
+  ]),
+  accessLevel: z.number().int().min(1).max(7).optional(),
   tenantId: z.string().optional(),
   staffProfileId: z.string().optional(),
+  studentProfileId: z.string().optional(),
   isActive: z.boolean().optional(),
   permissions: z.any().optional(),
+  parentStudentIds: z.array(z.string()).optional(), // for PARENT linking
 });
 
 export const updateUserSchema = createUserSchema.partial();
@@ -265,12 +282,38 @@ export const CLASS_TEMPLATE_PRESETS = [
   "MIDDLE_6_8",
   "SECONDARY_9_10",
   "HIGHER_SEC_11_12",
+  "PK_FBISE_MATRIC_INTER",
+  "IN_CBSE_SECONDARY_SR_SEC",
+  "BD_NCTB_PRIMARY_SSC_HSC",
   "O_A_LEVELS",
   "MADRASA",
   "CUSTOM",
 ] as const;
 
 export type ClassTemplatePreset = (typeof CLASS_TEMPLATE_PRESETS)[number];
+
+export const RESERVED_TENANT_SLUGS = [
+  "system",
+  "admin",
+  "api",
+  "www",
+  "app",
+  "platform",
+  "root",
+  "superuser",
+  "superadmin",
+  "null",
+  "undefined",
+  "dashboard",
+  "auth",
+  "login",
+  "register",
+  "support",
+  "help",
+  "public",
+  "assets",
+  "static",
+] as const;
 
 export const onboardInstituteSchema = z.object({
   name: z.string().min(2, "School name must be at least 2 characters"),
@@ -279,6 +322,12 @@ export const onboardInstituteSchema = z.object({
     .min(3, "Subdomain/slug must be at least 3 characters")
     .max(30, "Subdomain/slug must be 30 characters or less")
     .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens")
+    .refine(
+      (slug) => !RESERVED_TENANT_SLUGS.includes(slug.toLowerCase().trim() as any),
+      {
+        message: "This subdomain/slug is reserved by the platform. Please choose a different slug.",
+      }
+    )
     .optional(),
   schoolCode: z.string().optional(),
   address: z.string().min(5, "Address must be at least 5 characters"),

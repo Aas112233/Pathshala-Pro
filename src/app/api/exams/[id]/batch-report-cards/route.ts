@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthContext } from "@/lib/api-auth";
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
+import { errorResponse, successResponse } from "@/lib/api-response";
 import { calculateClassMeritRankings, calculateGradeFromPercentage } from "@/lib/grading";
 
 export async function GET(
@@ -9,25 +9,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await getAuthContext(request);
-    if (!auth) {
-      return apiError("Unauthorized", 401);
+    const access = await requireApiAccess(request);
+    if ("response" in access) {
+      return access.response;
     }
 
+    const { tenantId } = access.authContext;
     const { id: examId } = await params;
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
     const sectionId = searchParams.get("sectionId");
 
     if (!classId) {
-      return apiError("classId is required to generate class batch report cards", 400);
+      return errorResponse("classId is required to generate class batch report cards", 400);
     }
 
     // 1. Fetch Exam & Academic Year
     const exam = await prisma.exam.findFirst({
       where: {
         id: examId,
-        tenantId: auth.tenantId,
+        tenantId,
       },
       include: {
         academicYear: true,
@@ -40,45 +41,38 @@ export async function GET(
     });
 
     if (!exam) {
-      return apiError("Exam not found", 404);
+      return errorResponse("Exam not found", 404);
     }
 
     // 2. Fetch Tenant / School Info
     const tenant = await prisma.tenant.findUnique({
-      where: { tenantId: auth.tenantId },
+      where: { tenantId },
     });
 
     // 3. Fetch Class & Section Details
     const targetClass = await prisma.class.findFirst({
-      where: { id: classId, tenantId: auth.tenantId },
+      where: { id: classId, tenantId },
     });
 
     if (!targetClass) {
-      return apiError("Class not found", 404);
+      return errorResponse("Class not found", 404);
     }
 
     // 4. Fetch Students in Class
-    const studentWhere: any = {
-      tenantId: auth.tenantId,
+    const studentWhere = {
+      tenantId,
       classId,
       status: "ACTIVE",
+      ...(sectionId && sectionId !== "all" ? { sectionId } : {}),
     };
-    if (sectionId && sectionId !== "all") {
-      studentWhere.sectionId = sectionId;
-    }
 
     const students = await prisma.studentProfile.findMany({
       where: studentWhere,
-      include: {
-        class: true,
-        section: true,
-        guardian: true,
-      },
       orderBy: [{ rollNumber: "asc" }, { firstName: "asc" }],
     });
 
     if (students.length === 0) {
-      return apiSuccess({
+      return successResponse({
         school: {
           name: tenant?.name || "Pathshala Pro School",
           address: tenant?.address || "Main Campus",
@@ -88,7 +82,7 @@ export async function GET(
         exam: {
           id: exam.id,
           name: exam.name,
-          academicYear: exam.academicYear?.name || "",
+          academicYear: exam.academicYear?.label || "",
         },
         class: {
           id: targetClass.id,
@@ -105,11 +99,19 @@ export async function GET(
     }
 
     const studentIds = students.map((s) => s.id);
+    const sections = await prisma.section.findMany({
+      where: {
+        tenantId,
+        id: { in: students.map((student) => student.sectionId).filter((id): id is string => Boolean(id)) },
+      },
+      select: { id: true, name: true },
+    });
+    const sectionNames = new Map(sections.map((section) => [section.id, section.name]));
 
     // 5. Fetch Exam Results for cohort
     const results = await prisma.examResult.findMany({
       where: {
-        tenantId: auth.tenantId,
+        tenantId,
         examId,
         studentProfileId: { in: studentIds },
       },
@@ -121,7 +123,7 @@ export async function GET(
     // 6. Fetch Attendance Records for students
     const attendanceRecords = await prisma.attendance.findMany({
       where: {
-        tenantId: auth.tenantId,
+        tenantId,
         studentProfileId: { in: studentIds },
       },
     });
@@ -129,6 +131,7 @@ export async function GET(
     // Group attendance by student
     const attendanceMap = new Map<string, { present: number; total: number }>();
     for (const att of attendanceRecords) {
+      if (!att.studentProfileId) continue;
       const curr = attendanceMap.get(att.studentProfileId) || { present: 0, total: 0 };
       curr.total += 1;
       if (att.status === "PRESENT" || att.status === "LATE") {
@@ -217,15 +220,15 @@ export async function GET(
         student: {
           id: st.id,
           name: `${st.firstName} ${st.lastName}`.trim(),
-          admissionNumber: st.admissionNumber || "ADM-001",
+          admissionNumber: st.studentId,
           rollNumber: st.rollNumber || "—",
-          className: st.class?.name || targetClass.name,
-          section: st.section?.name || "",
-          guardianName: st.guardianName || (st.guardian ? `${st.guardian.firstName} ${st.guardian.lastName}` : "Parent/Guardian"),
-          guardianContact: st.guardianContact || st.phone || "",
+          className: targetClass.name,
+          section: st.sectionId ? sectionNames.get(st.sectionId) || "" : "",
+          guardianName: st.guardianName,
+          guardianContact: st.guardianContact,
         },
         examName: exam.name,
-        academicYear: exam.academicYear?.name || "Current Session",
+        academicYear: exam.academicYear?.label || "Current Session",
         subjects,
         totalMaxMarks: totalMax,
         totalObtainedMarks: totalObtained,
@@ -246,7 +249,7 @@ export async function GET(
 
     const classAverage = students.length > 0 ? Number((totalCohortPercentage / students.length).toFixed(1)) : 0;
 
-    return apiSuccess({
+    return successResponse({
       school: {
         name: tenant?.name || "Pathshala Pro School",
         address: tenant?.address || "Main Campus",
@@ -256,7 +259,7 @@ export async function GET(
       exam: {
         id: exam.id,
         name: exam.name,
-        academicYear: exam.academicYear?.name || "",
+        academicYear: exam.academicYear?.label || "",
       },
       class: {
         id: targetClass.id,
@@ -273,6 +276,6 @@ export async function GET(
     });
   } catch (error) {
     console.error("Batch report cards error:", error);
-    return apiError("Failed to generate batch report cards", 500);
+    return errorResponse("Failed to generate batch report cards", 500);
   }
 }

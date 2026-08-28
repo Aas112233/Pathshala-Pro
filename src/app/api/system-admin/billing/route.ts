@@ -8,6 +8,14 @@ import {
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { logAuditEvent } from "@/lib/audit-logger";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+
+const PLAN_RATES: Record<string, number> = {
+  FREE: 0,
+  STARTER: 99,
+  PRO: 299,
+  ENTERPRISE: 599,
+};
 
 const PLAN_PRICING = {
   TRIAL: 0,
@@ -28,23 +36,28 @@ export async function GET(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (
-      user.role !== "SYSTEM_ADMIN" &&
-      user.role !== "SUPER_ADMIN" &&
-      user.role !== "ADMIN" &&
-      user.tenantId !== "system"
-    ) {
-      return unauthorized("Only system administrators can access SaaS billing.");
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+      return unauthorized("Only platform system administrators can access SaaS billing.");
     }
 
     const tenants = await prisma.tenant.findMany({
       orderBy: { createdAt: "desc" },
-      include: {
-        _count: {
-          select: { studentProfiles: true, users: true },
-        },
-      },
     });
+    const tenantCounts = await Promise.all(
+      tenants.map(async (tenant) => {
+        const [students, users] = await Promise.all([
+          prisma.studentProfile.count({ where: { tenantId: tenant.tenantId } }),
+          prisma.user.count({ where: { tenantId: tenant.tenantId } }),
+        ]);
+        return { tenantId: tenant.tenantId, students, users };
+      })
+    );
+    const studentsByTenant = new Map(
+      tenantCounts.map((count) => [count.tenantId, count.students])
+    );
+    const usersByTenant = new Map(
+      tenantCounts.map((count) => [count.tenantId, count.users])
+    );
 
     const activeCount = tenants.filter((t) => t.subscriptionStatus === "ACTIVE").length;
     const trialCount = tenants.filter((t) => t.subscriptionStatus === "TRIAL").length;
@@ -61,18 +74,21 @@ export async function GET(request: NextRequest) {
       const daysActive = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
       const trialDaysRemaining = Math.max(0, 30 - daysActive);
 
+      const studentCount = studentsByTenant.get(t.tenantId) || 0;
+      const usersCount = usersByTenant.get(t.tenantId) || 0;
+
       return {
         id: t.id,
         tenantId: t.tenantId,
         name: t.name,
         currency: t.currency,
         status: t.subscriptionStatus,
-        studentsCount: t._count.studentProfiles,
-        usersCount: t._count.users,
+        studentsCount: studentCount,
+        usersCount,
         createdAt: t.createdAt,
         trialDaysRemaining: t.subscriptionStatus === "TRIAL" ? trialDaysRemaining : null,
-        plan: t._count.studentProfiles > 500 ? "ENTERPRISE" : t._count.studentProfiles > 150 ? "PRO" : "STARTER",
-        estimatedMonthlyPrice: t.subscriptionStatus === "ACTIVE" ? (t._count.studentProfiles > 500 ? 599 : t._count.studentProfiles > 150 ? 299 : 149) : 0,
+        plan: studentCount > 500 ? "ENTERPRISE" : studentCount > 150 ? "PRO" : "STARTER",
+        estimatedMonthlyPrice: t.subscriptionStatus === "ACTIVE" ? (studentCount > 500 ? 599 : studentCount > 150 ? 299 : 149) : 0,
       };
     });
 
@@ -106,17 +122,12 @@ export async function POST(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (
-      user.role !== "SYSTEM_ADMIN" &&
-      user.role !== "SUPER_ADMIN" &&
-      user.role !== "ADMIN" &&
-      user.tenantId !== "system"
-    ) {
-      return unauthorized("Only system administrators can modify billing.");
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+      return unauthorized("Only platform system administrators can modify billing.");
     }
 
     const body = await request.json();
-    const { tenantId, status } = body;
+    const { tenantId, status, plan } = body;
 
     if (!tenantId || !status) {
       return badRequest("tenantId and status are required");
@@ -130,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     const updated = await prisma.tenant.update({
       where: { tenantId },
-      data: { subscriptionStatus: status },
+      data: { subscriptionStatus: status, ...(plan ? { subscriptionPlan: plan } : {}) },
     });
 
     await logAuditEvent({

@@ -1,63 +1,48 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { apiPost, apiPut, apiDelete } from "@/lib/api-fetch";
 
 export function useLeavesViewModel(filters: { search?: string; status?: string; applicantType?: string; page?: number } = {}) {
   const { search, status, applicantType, page = 1 } = filters;
   const qc = useQueryClient();
   const queryKey = ["leaves", { search: search || "", status: status || "", applicantType: applicantType || "", page }] as const;
 
-  const buildQuery = () => {
-    const p = new URLSearchParams({ page: String(page), limit: "20" });
-    if (search) p.set("search", search);
-    if (status) p.set("status", status);
-    if (applicantType) p.set("applicantType", applicantType);
-    return p.toString();
-  };
+  const qs = new URLSearchParams({
+    page: String(page),
+    limit: "20",
+    ...(search ? { search } : {}),
+    ...(status ? { status } : {}),
+    ...(applicantType ? { applicantType } : {}),
+  }).toString();
 
   const { data, isLoading, error } = useQuery({
     queryKey,
-    queryFn: async () => {
-      const r = await fetch(`/api/leaves?${buildQuery()}`, { credentials: "include" });
-      if (!r.ok) throw new Error("Failed to fetch leaves");
-      return r.json();
-    },
+    queryFn: () => fetch(`/api/leaves?${qs}`, { credentials: "include" }).then(async (r) => {
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "Failed to fetch leaves");
+      return j;
+    }),
   });
 
   const leaves = (data as any)?.data ?? [];
   const pagination = (data as any)?.pagination ?? null;
 
   const createMutation = useMutation({
-    mutationFn: async (payload: any) => {
-      const r = await fetch("/api/leaves", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(payload) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.message || "Failed to create");
-      return j.data;
-    },
+    mutationFn: (p: any) => apiPost("/api/leaves", p),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["leaves"] }); toast.success("Leave request submitted"); },
     onError: (e: any) => toast.error(e.message || "Failed"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...payload }: any) => {
-      const r = await fetch(`/api/leaves/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(payload) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.message || "Failed to update");
-      return j.data;
-    },
+    mutationFn: ({ id, ...p }: any) => apiPut(`/api/leaves/${id}`, p),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["leaves"] }); toast.success("Leave updated"); },
     onError: (e: any) => toast.error(e.message || "Failed"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const r = await fetch(`/api/leaves/${id}`, { method: "DELETE", credentials: "include" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.message || "Failed to delete");
-      return j;
-    },
+    mutationFn: (id: string) => apiDelete(`/api/leaves/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["leaves"] }); toast.success("Leave deleted"); },
     onError: (e: any) => toast.error(e.message || "Failed"),
   });

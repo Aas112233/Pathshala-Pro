@@ -109,12 +109,34 @@ export async function GET(req: NextRequest) {
           studentProfileId: student.id,
           tenantId,
         },
-        include: {
-          transactions: true,
-          academicYear: true,
-        },
         orderBy: { createdAt: "asc" },
       });
+
+      const [academicYears, transactions] = await Promise.all([
+        prisma.academicYear.findMany({
+          where: {
+            tenantId,
+            id: { in: vouchers.map((voucher) => voucher.academicYearId) },
+          },
+          select: { id: true, label: true },
+        }),
+        prisma.transaction.findMany({
+          where: {
+            tenantId,
+            feeVoucherId: { in: vouchers.map((voucher) => voucher.id) },
+          },
+          orderBy: { timestamp: "asc" },
+        }),
+      ]);
+      const academicYearLabels = new Map(
+        academicYears.map((academicYear) => [academicYear.id, academicYear.label])
+      );
+      const transactionsByVoucherId = new Map<string, typeof transactions>();
+      for (const transaction of transactions) {
+        const voucherTransactions = transactionsByVoucherId.get(transaction.feeVoucherId) || [];
+        voucherTransactions.push(transaction);
+        transactionsByVoucherId.set(transaction.feeVoucherId, voucherTransactions);
+      }
 
       let runningBalance = 0;
       let totalBilled = 0;
@@ -132,7 +154,7 @@ export async function GET(req: NextRequest) {
           refId: v.voucherId,
           type: "DEBIT",
           category: "FEE_BILLING",
-          description: `${v.feeType} (${v.academicYear?.label || "General"})`,
+          description: `${v.feeType} (${academicYearLabels.get(v.academicYearId) || "General"})`,
           debit: v.totalDue,
           credit: 0,
           runningBalance,
@@ -146,7 +168,8 @@ export async function GET(req: NextRequest) {
         });
 
         // Credit: Transactions / Payments Made
-        v.transactions.forEach((tx) => {
+        const voucherTransactions = transactionsByVoucherId.get(v.id) || [];
+        voucherTransactions.forEach((tx) => {
           runningBalance -= tx.amountPaid;
           totalPaid += tx.amountPaid;
 
@@ -359,23 +382,50 @@ export async function GET(req: NextRequest) {
       // 1. Fee collection deposits (Inflow / Debit to Bank)
       const transactions = await prisma.transaction.findMany({
         where: { tenantId },
-        include: { feeVoucher: true },
         orderBy: { timestamp: "asc" },
       });
+      const feeVouchers = await prisma.feeVoucher.findMany({
+        where: {
+          tenantId,
+          id: { in: transactions.map((transaction) => transaction.feeVoucherId) },
+        },
+        select: { id: true, voucherId: true },
+      });
+      const voucherIds = new Map(
+        feeVouchers.map((voucher) => [voucher.id, voucher.voucherId])
+      );
 
       // 2. Expenses (Outflow / Credit from Bank)
       const expenses = await prisma.expense.findMany({
         where: { tenantId },
-        include: { category: true },
         orderBy: { expenseDate: "asc" },
       });
+      const expenseCategories = await prisma.expenseCategory.findMany({
+        where: {
+          tenantId,
+          id: { in: expenses.map((expense) => expense.categoryId) },
+        },
+        select: { id: true, name: true },
+      });
+      const expenseCategoryNames = new Map(
+        expenseCategories.map((category) => [category.id, category.name])
+      );
 
       // 3. Paid Salary Disbursements (Outflow)
       const salaries = await prisma.salaryLedger.findMany({
         where: { tenantId, status: "PAID", paidAmount: { gt: 0 } },
-        include: { staffProfile: true },
         orderBy: { paidAt: "asc" },
       });
+      const staffProfiles = await prisma.staffProfile.findMany({
+        where: {
+          tenantId,
+          id: { in: salaries.map((salary) => salary.staffProfileId) },
+        },
+        select: { id: true, firstName: true, lastName: true, designation: true },
+      });
+      const staffById = new Map(
+        staffProfiles.map((staffProfile) => [staffProfile.id, staffProfile])
+      );
 
       let runningBalance = account.openingBalance || 0;
       const allEntries: any[] = [];
@@ -404,7 +454,7 @@ export async function GET(req: NextRequest) {
           refId: tx.receiptNumber || tx.transactionId,
           type: "DEBIT",
           category: "FEE_COLLECTION",
-          description: `Fee Deposit: ${tx.feeVoucher?.voucherId || "Tuition Collection"} (${tx.note || "Direct Deposit"})`,
+          description: `Fee Deposit: ${voucherIds.get(tx.feeVoucherId) || "Tuition Collection"} (${tx.note || "Direct Deposit"})`,
           debit: tx.amountPaid,
           credit: 0,
           runningBalance,
@@ -422,7 +472,7 @@ export async function GET(req: NextRequest) {
           refId: exp.expenseNumber,
           type: "CREDIT",
           category: "EXPENSE_PAYOUT",
-          description: `Expense: ${exp.title} (${exp.category?.name || "General"})`,
+          description: `Expense: ${exp.title} (${expenseCategoryNames.get(exp.categoryId) || "General"})`,
           debit: 0,
           credit: exp.amount,
           runningBalance,
@@ -434,13 +484,14 @@ export async function GET(req: NextRequest) {
       // Outflow: Salary Payouts
       salaries.forEach((sal) => {
         runningBalance -= sal.paidAmount;
+        const staffProfile = staffById.get(sal.staffProfileId);
         allEntries.push({
           id: `sal-${sal.id}`,
           date: sal.paidAt || sal.updatedAt,
           refId: `PAY-${sal.year}-${String(sal.month).padStart(2, "0")}`,
           type: "CREDIT",
           category: "PAYROLL_DISBURSEMENT",
-          description: `Payroll Disbursement: ${sal.staffProfile?.firstName} ${sal.staffProfile?.lastName} (${sal.staffProfile?.designation})`,
+          description: `Payroll Disbursement: ${staffProfile?.firstName || "Staff"} ${staffProfile?.lastName || ""} (${staffProfile?.designation || "Payroll"})`,
           debit: 0,
           credit: sal.paidAmount,
           runningBalance,
