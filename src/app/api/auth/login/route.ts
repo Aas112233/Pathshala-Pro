@@ -94,8 +94,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Class-level app access gate for PARENT/STUDENT (principal-controlled)
-    if (user.role === "PARENT" || user.role === "STUDENT" || (user as any).accessLevel === 6 || (user as any).accessLevel === 7) {
-      const isStudent = user.role === "STUDENT" || (user as any).accessLevel === 7;
+    if (user.role === "PARENT" || user.role === "STUDENT") {
+      const isStudent = user.role === "STUDENT";
       let hasClassAccess = false;
       if (isStudent && (user as any).studentProfileId) {
         const sp = await prisma.studentProfile.findUnique({

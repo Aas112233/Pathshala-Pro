@@ -19,6 +19,7 @@ node_modules/
 
 # --- Next.js, Turbo & Build Artifacts ---
 .next/
+.next*/
 out/
 build/
 dist/
@@ -151,3 +152,5 @@ Desktop.ini
 *.temp
 *.bak
 scratch/
+.vercel
+.env*
