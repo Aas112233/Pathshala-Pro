@@ -387,7 +387,7 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
                 attendancePct,
                 ruleId: rule.id,
                 gracePolicy,
-              },
+              } as any,
             },
           });
 

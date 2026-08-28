@@ -172,41 +172,41 @@ export default function AdmissionsReportPage() {
     {
       accessorKey: "studentName",
       header: "Applicant / Student",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <div>
-          <p className="font-semibold text-foreground text-xs">{row.original.studentName}</p>
-          <p className="text-[11px] text-muted-foreground">Guardian: {row.original.guardianName}</p>
+          <p className="font-semibold text-foreground text-xs">{info?.row?.original?.studentName ?? info?.studentName ?? "-"}</p>
+          <p className="text-[11px] text-muted-foreground">Guardian: {info?.row?.original?.guardianName ?? info?.guardianName ?? "-"}</p>
         </div>
       ),
     },
     {
       accessorKey: "phone",
       header: "Contact Phone",
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.phone}</span>,
+      cell: (info: any) => <span className="font-mono text-xs">{info?.row?.original?.phone ?? info?.phone ?? "-"}</span>,
     },
     {
       accessorKey: "className",
       header: "Target Grade",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-md">
-          {row.original.className}
+          {info?.row?.original?.className ?? info?.className ?? "-"}
         </span>
       ),
     },
     {
       accessorKey: "source",
       header: "Lead Source",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs font-mono uppercase text-muted-foreground">
-          {row.original.source}
+          {info?.row?.original?.source ?? info?.source ?? "-"}
         </span>
       ),
     },
     {
       accessorKey: "status",
       header: "Pipeline Status",
-      cell: ({ row }) => {
-        const s = row.original.status;
+      cell: (info: any) => {
+        const s = info?.row?.original?.status ?? info?.status ?? "ENQUIRY";
         const variant =
           s === "ADMITTED" ? "success" : s === "REJECTED" ? "error" : s === "VISITED" ? "info" : "warning";
         return <StatusBadge status={s} variant={variant} />;
@@ -215,16 +215,16 @@ export default function AdmissionsReportPage() {
     {
       accessorKey: "assignedToName",
       header: "Admission Officer",
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">{row.original.assignedToName}</span>
+      cell: (info: any) => (
+        <span className="text-xs text-muted-foreground">{info?.row?.original?.assignedToName ?? info?.assignedToName ?? "-"}</span>
       ),
     },
     {
       accessorKey: "createdAt",
       header: "Enquiry Date",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs font-mono text-muted-foreground">
-          {formatDate(row.original.createdAt)}
+          {formatDate(info?.row?.original?.createdAt ?? info?.createdAt ?? "")}
         </span>
       ),
     },

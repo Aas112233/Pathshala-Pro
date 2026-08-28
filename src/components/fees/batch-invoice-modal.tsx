@@ -49,6 +49,7 @@ export function BatchInvoiceModal({
     classId: "",
     sectionId: "",
     baseAmount: 3500,
+    useClassFeeStructure: true,
     dueDate: new Date(Date.now() + 15 * 86400000).toISOString().split("T")[0],
     carryForwardArrears: true,
     note: "Monthly Institutional Tuition Fee",
@@ -66,7 +67,7 @@ export function BatchInvoiceModal({
       return;
     }
 
-    if (formData.baseAmount <= 0) {
+    if (!formData.useClassFeeStructure && formData.baseAmount <= 0) {
       toast.error(t("feesExtras.batchInvoice.errAmount"));
       return;
     }
@@ -79,7 +80,7 @@ export function BatchInvoiceModal({
         body: JSON.stringify({
           ...formData,
           academicYearId: activeAyId,
-          baseAmount: Number(formData.baseAmount),
+          baseAmount: Number(formData.baseAmount) || 0,
         }),
       });
 
@@ -134,13 +135,21 @@ export function BatchInvoiceModal({
             <CardContent className="p-4 space-y-2.5 text-xs">
               <div className="flex justify-between border-b border-border pb-2">
                 <span className="text-muted-foreground">{t("feesExtras.batchInvoice.totalInvoicedLabel")}</span>
-                <span className="font-bold text-foreground">
+                <span className="font-bold text-foreground font-mono">
                   {formatCurrency(resultSummary.totalInvoiceAmount)}
                 </span>
               </div>
+              {resultSummary.totalConcessionsApplied > 0 && (
+                <div className="flex justify-between border-b border-border pb-2">
+                  <span className="text-muted-foreground">Concessions & Scholarships Deducted:</span>
+                  <span className="font-semibold text-emerald-600 font-mono">
+                    -{formatCurrency(resultSummary.totalConcessionsApplied)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between border-b border-border pb-2">
                 <span className="text-muted-foreground">Historical Arrears Rolled:</span>
-                <span className="font-semibold text-rose-600">
+                <span className="font-semibold text-rose-600 font-mono">
                   +{formatCurrency(resultSummary.totalArrearsIncluded)}
                 </span>
               </div>
@@ -258,23 +267,8 @@ export function BatchInvoiceModal({
               </div>
             )}
 
-            {/* Base Amount */}
-            <div className="space-y-1.5">
-              <Label htmlFor="base-amt" className="text-xs font-semibold">
-                Base Fee per Student ({currencySymbol})
-              </Label>
-              <Input
-                id="base-amt"
-                type="number"
-                min="0"
-                value={formData.baseAmount}
-                onChange={(e) => setFormData({ ...formData, baseAmount: parseFloat(e.target.value) || 0 })}
-                className="h-10 text-sm font-semibold"
-              />
-            </div>
-
             {/* Due Date */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="due-dt" className="text-xs font-semibold">
                 Payment Due Date
               </Label>
@@ -287,6 +281,43 @@ export function BatchInvoiceModal({
               />
             </div>
           </div>
+
+          {/* Use Class Fee Structure Option */}
+          <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800 flex items-start gap-3">
+            <Checkbox
+              id="structure-toggle"
+              checked={formData.useClassFeeStructure}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, useClassFeeStructure: checked === true })
+              }
+              className="mt-0.5"
+            />
+            <div className="text-xs space-y-1 flex-1">
+              <label htmlFor="structure-toggle" className="font-semibold text-foreground cursor-pointer block">
+                Use Configured Class Tuition Rates & Student Concessions (Recommended)
+              </label>
+              <p className="text-muted-foreground leading-relaxed">
+                Pulls each student's class fee schedule automatically (e.g. Class 1 = $2,000, Class 10 = $5,000) and deducts active sibling/scholarship discounts.
+              </p>
+            </div>
+          </div>
+
+          {/* Fallback Manual Base Amount (if not using structure) */}
+          {!formData.useClassFeeStructure && (
+            <div className="space-y-1.5 p-3.5 bg-muted/20 rounded-xl border border-border">
+              <Label htmlFor="base-amt" className="text-xs font-semibold">
+                Uniform Base Fee per Student ({currencySymbol})
+              </Label>
+              <Input
+                id="base-amt"
+                type="number"
+                min="0"
+                value={formData.baseAmount}
+                onChange={(e) => setFormData({ ...formData, baseAmount: parseFloat(e.target.value) || 0 })}
+                className="h-10 text-sm font-semibold"
+              />
+            </div>
+          )}
 
           {/* Arrears Rollover Option */}
           <div className="p-3.5 bg-primary/5 rounded-xl border border-primary/15 flex items-start gap-3">

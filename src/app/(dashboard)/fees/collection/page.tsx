@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 
 export default function FeeCollectionPage() {
+  const t = useTranslations("fees.collection");
   const qc = useQueryClient();
   const { formatCurrency, formatDate } = useTenantFormatting();
   const { exportFeeVouchersPDF } = usePDFExport();

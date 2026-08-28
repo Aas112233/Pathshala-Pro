@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ import { useProfitLoss } from "@/hooks/use-queries";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 export default function ProfitLossPage() {
+  const t = useTranslations("accounting.profitLoss");
   const { formatCurrency, currencySymbol } = useTenantFormatting();
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -46,8 +48,8 @@ export default function ProfitLossPage() {
   return (
     <div className="space-y-6 pb-12">
       <PageHeader
-        title="Institutional Profit & Loss (P&L) Statement"
-        description="Comprehensive Revenue vs Operating Expenditure & Surplus Analysis"
+        title={t("title")}
+        description={t("description")}
         icon={BarChart3}
       >
         <div className="flex items-center gap-2.5">
@@ -58,7 +60,7 @@ export default function ProfitLossPage() {
           >
             {[2024, 2025, 2026, 2027].map((y) => (
               <option key={y} value={y}>
-                Fiscal Year {y}
+                {t("fiscalYear", { year: y })}
               </option>
             ))}
           </select>
@@ -69,7 +71,7 @@ export default function ProfitLossPage() {
             onClick={() => window.print()}
             className="text-xs gap-1.5 h-9"
           >
-            <Download className="h-3.5 w-3.5" /> Print Statement
+            <Download className="h-3.5 w-3.5" /> {t("printStatement")}
           </Button>
         </div>
       </PageHeader>
@@ -81,7 +83,7 @@ export default function ProfitLossPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Total Operating Revenue
+                {t("revenue")}
               </span>
               <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                 <Receipt className="h-4 w-4" />
@@ -93,7 +95,7 @@ export default function ProfitLossPage() {
               {formatCurrency(summary.totalIncome)}
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              Realized Student Tuition & Fee Collections
+              {t("revenueCaption")}
             </p>
           </CardContent>
         </Card>
@@ -103,7 +105,7 @@ export default function ProfitLossPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Staff Payroll & Salaries
+                {t("salaries")}
               </span>
               <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
                 <Users className="h-4 w-4" />
@@ -115,7 +117,7 @@ export default function ProfitLossPage() {
               {formatCurrency(summary.payrollExpenses)}
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              Faculty, Administration, and Support Staff
+              {t("salariesCaption")}
             </p>
           </CardContent>
         </Card>
@@ -125,7 +127,7 @@ export default function ProfitLossPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Campus Operational Expenses
+                {t("operations")}
               </span>
               <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
                 <Wallet className="h-4 w-4" />
@@ -137,7 +139,7 @@ export default function ProfitLossPage() {
               {formatCurrency(summary.operationalExpenses)}
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              Utilities, Maintenance, Rent, and Transport
+              {t("operationsCaption")}
             </p>
           </CardContent>
         </Card>
@@ -153,7 +155,7 @@ export default function ProfitLossPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Net Operating Surplus
+                {t("netSurplus")}
               </span>
               <div
                 className={`p-1.5 rounded-lg ${
@@ -179,7 +181,7 @@ export default function ProfitLossPage() {
               {formatCurrency(summary.netSurplus)}
             </h3>
             <p className="text-[11px] font-semibold text-muted-foreground">
-              Operating Margin: {summary.profitMargin}%
+              {t("operatingMargin", { margin: summary.profitMargin })}
             </p>
           </CardContent>
         </Card>
@@ -191,19 +193,19 @@ export default function ProfitLossPage() {
         <Card className="border border-border/70 shadow-xs">
           <CardHeader className="pb-3 border-b border-border/50">
             <CardTitle className="text-sm font-bold text-foreground">
-              Revenue Stream Breakdown
+              {t("revenueBreakdown")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
             {incomeBreakdown.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">
-                No fee collection data in this fiscal period.
+                {t("noRevenueData")}
               </p>
             ) : (
               incomeBreakdown.map((item: any, idx: number) => (
                 <div key={idx} className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-foreground">{item.type} Fee</span>
+                    <span className="font-semibold text-foreground">{t("feeType", { type: item.type })}</span>
                     <span className="font-bold text-foreground">
                       {formatCurrency(item.amount)} ({item.percentage}%)
                     </span>
@@ -224,13 +226,13 @@ export default function ProfitLossPage() {
         <Card className="border border-border/70 shadow-xs">
           <CardHeader className="pb-3 border-b border-border/50">
             <CardTitle className="text-sm font-bold text-foreground">
-              Operational Expenditure Breakdown
+              {t("expenditureBreakdown")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
             {expenseBreakdown.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">
-                No operational expenses recorded in this period.
+                {t("noExpenseData")}
               </p>
             ) : (
               expenseBreakdown.map((item: any, idx: number) => (
@@ -259,10 +261,10 @@ export default function ProfitLossPage() {
         <CardHeader className="pb-3 border-b border-border/50">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-bold text-foreground">
-              12-Month Comparative Financial Ledger ({selectedYear})
+              {t("ledgerTitle", { year: selectedYear })}
             </CardTitle>
             <Badge variant="outline" className="text-xs font-mono">
-              Monthly Audit View
+              {t("monthlyAuditView")}
             </Badge>
           </div>
         </CardHeader>
@@ -271,12 +273,12 @@ export default function ProfitLossPage() {
             <table className="w-full text-xs">
               <thead className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
                 <tr>
-                  <th className="py-2.5 px-4 text-left">MONTH</th>
-                  <th className="py-2.5 px-4 text-right">REVENUE ({currencySymbol})</th>
-                  <th className="py-2.5 px-4 text-right">SALARIES ({currencySymbol})</th>
-                  <th className="py-2.5 px-4 text-right">OPERATIONS ({currencySymbol})</th>
-                  <th className="py-2.5 px-4 text-right">TOTAL EXPENSES ({currencySymbol})</th>
-                  <th className="py-2.5 px-4 text-right">NET SURPLUS ({currencySymbol})</th>
+                  <th className="py-2.5 px-4 text-left">{t("thMonth")}</th>
+                  <th className="py-2.5 px-4 text-right">{t("thRevenue", { symbol: currencySymbol })}</th>
+                  <th className="py-2.5 px-4 text-right">{t("thSalaries", { symbol: currencySymbol })}</th>
+                  <th className="py-2.5 px-4 text-right">{t("thOperations", { symbol: currencySymbol })}</th>
+                  <th className="py-2.5 px-4 text-right">{t("thTotalExpenses", { symbol: currencySymbol })}</th>
+                  <th className="py-2.5 px-4 text-right">{t("thNetSurplus", { symbol: currencySymbol })}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 font-mono">

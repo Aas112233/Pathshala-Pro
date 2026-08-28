@@ -7,7 +7,7 @@ import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 // Paths that do not require authentication
 const PUBLIC_PATHS = ["/login"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow all API routes - they have their own auth checks
@@ -41,9 +41,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // No token on protected route — redirect to login
-
   if (!token) {
-    // Redirect to login if no token
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
@@ -68,7 +66,7 @@ export async function middleware(request: NextRequest) {
     // Valid context, proceed
     return NextResponse.next();
   } catch (error: any) {
-    console.warn("Middleware JWT verification failed:", error?.code || error?.message || error);
+    console.warn("Proxy JWT verification failed:", error?.code || error?.message || error);
     // Invalid/expired token, force a hard re-login by clearing the cookie
     const loginUrl = new URL("/login", request.url);
     const response = NextResponse.redirect(loginUrl);
@@ -76,6 +74,9 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 }
+
+// Keep export for backwards compatibility
+export const middleware = proxy;
 
 export const config = {
   matcher: [

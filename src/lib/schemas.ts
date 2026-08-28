@@ -39,15 +39,25 @@ export const updateUserSchema = createUserSchema.partial();
 // Student schemas
 export const createStudentSchema = z.object({
   studentId: z.string().optional(),
-  profilePictureUrl: z.string().url().optional(),
+  profilePictureUrl: z.string().url().optional().or(z.literal("")),
   driveFileId: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  firstNameBn: z.string().optional(),
+  lastNameBn: z.string().optional(),
   dateOfBirth: z.string().optional(),
-  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional().or(z.literal("")),
   address: z.string().optional(),
   guardianName: z.string().min(1, "Guardian name is required"),
   guardianContact: z.string().min(1, "Guardian contact is required"),
+  guardianEmail: z.string().email().optional().or(z.literal("")),
+  fatherName: z.string().optional(),
+  motherName: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  birthCertificateNo: z.string().optional(),
+  classId: z.string().optional().nullable(),
+  groupId: z.string().optional().nullable(),
+  sectionId: z.string().optional().nullable(),
   rollNumber: z.string().min(1, "Roll number is required"),
   bloodGroup: z.string().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "GRADUATED", "TRANSFERRED"]).default("ACTIVE"),
@@ -77,7 +87,8 @@ export const batchFeeInvoicingSchema = z.object({
   month: z.number().int().min(1).max(12).optional(),
   year: z.number().int().min(2000).max(2100).optional(),
   dueDate: z.string().min(1, "Due date is required"),
-  baseAmount: z.number().min(0, "Base amount must be non-negative"),
+  baseAmount: z.number().min(0, "Base amount must be non-negative").default(0),
+  useClassFeeStructure: z.boolean().default(true),
   target: z.enum(["ALL_STUDENTS", "CLASS", "SECTION"]).default("ALL_STUDENTS"),
   classId: z.string().optional(),
   sectionId: z.string().optional(),
@@ -87,17 +98,70 @@ export const batchFeeInvoicingSchema = z.object({
 
 export type BatchFeeInvoicingInput = z.infer<typeof batchFeeInvoicingSchema>;
 
+// Class Fee Structure schemas
+export const createClassFeeStructureSchema = z.object({
+  academicYearId: z.string().min(1, "Academic Year is required"),
+  classId: z.string().min(1, "Class is required"),
+  tuitionFee: z.number().min(0, "Tuition fee must be non-negative").default(0),
+  labFee: z.number().min(0).default(0),
+  computerFee: z.number().min(0).default(0),
+  examFee: z.number().min(0).default(0),
+  sportsFee: z.number().min(0).default(0),
+  libraryFee: z.number().min(0).default(0),
+  otherFee: z.number().min(0).default(0),
+  billingCycle: z.enum(["MONTHLY", "QUARTERLY", "BI_ANNUAL", "ANNUAL"]).default("MONTHLY"),
+  notes: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const updateClassFeeStructureSchema = createClassFeeStructureSchema.partial();
+export type CreateClassFeeStructureInput = z.infer<typeof createClassFeeStructureSchema>;
+export type UpdateClassFeeStructureInput = z.infer<typeof updateClassFeeStructureSchema>;
+
+// Student Fee Concession schemas
+export const createStudentFeeConcessionSchema = z.object({
+  studentProfileId: z.string().min(1, "Student is required"),
+  concessionType: z.enum(["SIBLING", "STAFF_CHILD", "MERIT", "NEED_BASED", "CUSTOM"]).default("CUSTOM"),
+  discountType: z.enum(["PERCENTAGE", "FIXED_AMOUNT"]).default("PERCENTAGE"),
+  discountValue: z.number().min(0, "Discount value must be non-negative"),
+  reason: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const updateStudentFeeConcessionSchema = createStudentFeeConcessionSchema.partial();
+export type CreateStudentFeeConcessionInput = z.infer<typeof createStudentFeeConcessionSchema>;
+export type UpdateStudentFeeConcessionInput = z.infer<typeof updateStudentFeeConcessionSchema>;
+
 // Transaction schemas
+export const paymentMethodSchema = z.enum([
+  "CASH",
+  "DIGITAL",
+  "ONLINE",
+  "BANK",
+  "BANK_TRANSFER",
+  "POS_CARD",
+  "CARD",
+  "CHEQUE",
+  "EASYPAISA",
+  "JAZZCASH",
+  "BKASH",
+  "NAGAD",
+  "UPI",
+  "OTHER",
+]);
+
 export const createTransactionSchema = z.object({
   transactionId: z.string().min(1, "Transaction ID is required"),
   feeVoucherId: z.string().min(1, "Fee voucher is required"),
   amountPaid: z.number().positive("Amount must be positive"),
-  paymentMethod: z.enum(["CASH", "DIGITAL"]),
+  paymentMethod: paymentMethodSchema.or(z.string().min(1)),
   receiptNumber: z.string().min(1, "Receipt number is required"),
   note: z.string().optional(),
 });
 
 export const updateTransactionSchema = createTransactionSchema.partial();
+export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
+export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
 
 // Staff schemas
 export const createStaffSchema = z.object({
@@ -710,6 +774,3 @@ export const createNoticeSchema = z.object({
 });
 
 export const updateNoticeSchema = createNoticeSchema.partial();
-
-
-

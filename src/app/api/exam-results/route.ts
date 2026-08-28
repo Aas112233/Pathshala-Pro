@@ -53,12 +53,13 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Filter params
+    const search = searchParams.get("search") || "";
+    const status = searchParams.get("status");
     const examId = searchParams.get("examId");
     const subjectId = searchParams.get("subjectId");
     const studentProfileId = searchParams.get("studentProfileId");
     const academicYearId = searchParams.get("academicYearId");
-    const status = searchParams.get("status");
-    const search = searchParams.get("search");
+    const classId = searchParams.get("classId");
 
     const where: any = { tenantId };
 
@@ -68,9 +69,16 @@ export async function GET(request: NextRequest) {
     if (academicYearId) where.academicYearId = academicYearId;
     if (status) where.status = status;
 
+    if (classId) {
+      where.studentProfile = {
+        classId,
+      };
+    }
+
     // Text search on student name / studentId
     if (search && search.trim()) {
       where.studentProfile = {
+        ...(where.studentProfile || {}),
         OR: [
           { firstName: { contains: search.trim(), mode: "insensitive" } },
           { lastName: { contains: search.trim(), mode: "insensitive" } },
@@ -94,6 +102,13 @@ export async function GET(request: NextRequest) {
               lastNameBn: true,
               rollNumber: true,
               classId: true,
+              class: {
+                select: {
+                  id: true,
+                  name: true,
+                  classId: true,
+                },
+              },
             },
           },
           exam: {
@@ -202,15 +217,6 @@ export async function POST(request: NextRequest) {
           field: `results[${index}].examId`,
           code: "not_found",
           message: "Exam not found",
-        });
-        continue;
-      }
-
-      if (exam.isPublished) {
-        errors.push({
-          field: `results[${index}].examId`,
-          code: "locked",
-          message: "Results cannot be created because the exam is already published.",
         });
         continue;
       }
@@ -352,7 +358,7 @@ export async function PUT(request: NextRequest) {
       const exam = await prisma.exam.findUnique({
         where: { id: data.examId, tenantId },
         select: {
-          isPublished: true,
+          id: true,
         },
       });
 
@@ -361,15 +367,6 @@ export async function PUT(request: NextRequest) {
           field: `results[${index}].examId`,
           code: "not_found",
           message: "Exam not found",
-        });
-        continue;
-      }
-
-      if (exam.isPublished) {
-        errors.push({
-          field: `results[${index}].examId`,
-          code: "locked",
-          message: "Results cannot be changed because the exam is already published.",
         });
         continue;
       }

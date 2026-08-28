@@ -52,6 +52,7 @@ export default function ExamResultsPage() {
   const [listSearch, setListSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterExam, setFilterExam] = useState("");
+  const [filterClass, setFilterClass] = useState("");
   const [filterSubject, setFilterSubject] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [listPage, setListPage] = useState(1);
@@ -69,7 +70,7 @@ export default function ExamResultsPage() {
   // Reset page when filters change
   useEffect(() => {
     setListPage(1);
-  }, [filterExam, filterSubject, filterStatus]);
+  }, [filterExam, filterClass, filterSubject, filterStatus]);
 
   // Selection state
   const [selectedExam, setSelectedExam] = useState("");
@@ -102,7 +103,7 @@ export default function ExamResultsPage() {
 
   // Fetch results for the list view with server-side pagination & filters
   const { data: allResultsData, isLoading: isResultsLoading } = useQuery({
-    queryKey: ["all-exam-results", listPage, debouncedSearch, filterExam, filterSubject, filterStatus],
+    queryKey: ["all-exam-results", listPage, debouncedSearch, filterExam, filterClass, filterSubject, filterStatus],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(listPage),
@@ -110,6 +111,7 @@ export default function ExamResultsPage() {
       });
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (filterExam) params.set("examId", filterExam);
+      if (filterClass) params.set("classId", filterClass);
       if (filterSubject) params.set("subjectId", filterSubject);
       if (filterStatus) params.set("status", filterStatus);
 
@@ -145,6 +147,14 @@ export default function ExamResultsPage() {
   );
 
   // Build filter dropdown options from the exams data (already fetched)
+  const listClassFilterOptions = useMemo(() => [
+    { value: "", label: t("filterAllClasses") || "All Classes" },
+    ...classes.map((c: any) => ({
+      value: c.id,
+      label: c.name,
+    })),
+  ], [classes, t]);
+
   const listExamFilterOptions = useMemo(() => [
     { value: "", label: t("filterAllExams") },
     ...exams.map((e: any) => ({
@@ -177,12 +187,13 @@ export default function ExamResultsPage() {
     [t]
   );
 
-  const hasActiveFilters = listSearch || filterExam || filterSubject || filterStatus;
+  const hasActiveFilters = listSearch || filterExam || filterClass || filterSubject || filterStatus;
 
   const clearAllFilters = () => {
     setListSearch("");
     setDebouncedSearch("");
     setFilterExam("");
+    setFilterClass("");
     setFilterSubject("");
     setFilterStatus("");
     setListPage(1);
@@ -490,8 +501,20 @@ export default function ExamResultsPage() {
       cell: ({ row }) => {
         const sp = row.original.studentProfile;
         return (
-          <span>
+          <span className="font-medium text-foreground">
             {sp ? formatStudentName(sp.firstName, sp.lastName, sp.firstNameBn, sp.lastNameBn) : "-"}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "studentProfile.class.name",
+      header: t("className") || "Class",
+      cell: ({ row }) => {
+        const className = row.original.studentProfile?.class?.name;
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground border border-border/60">
+            {className || row.original.studentProfile?.classId || "-"}
           </span>
         );
       },
@@ -500,7 +523,7 @@ export default function ExamResultsPage() {
       accessorKey: "exam.name",
       header: t("examName"),
       cell: ({ row }) => (
-        <span>{row.original.exam?.name || "-"}</span>
+        <span className="font-medium text-foreground">{row.original.exam?.name || "-"}</span>
       ),
     },
     {
@@ -615,6 +638,15 @@ export default function ExamResultsPage() {
 
               {/* Filter Dropdowns Row */}
               <div className="flex flex-wrap items-center gap-3">
+                <div className="w-44">
+                  <AppDropdown
+                    value={filterClass}
+                    onChange={setFilterClass}
+                    options={listClassFilterOptions}
+                    placeholder={t("filterAllClasses") || "All Classes"}
+                    searchable
+                  />
+                </div>
                 <div className="w-48">
                   <AppDropdown
                     value={filterExam}
@@ -633,7 +665,7 @@ export default function ExamResultsPage() {
                     searchable
                   />
                 </div>
-                <div className="w-40">
+                <div className="w-36">
                   <AppDropdown
                     value={filterStatus}
                     onChange={setFilterStatus}

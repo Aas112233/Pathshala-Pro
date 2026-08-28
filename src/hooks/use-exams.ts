@@ -96,6 +96,7 @@ export interface PromotionRule {
   allowConditionalPromotion: boolean;
   autoPromote: boolean;
   nextClassId?: string | null;
+  nextClassName?: string | null;
   isActive: boolean;
   academicYear?: {
     yearId: string;
@@ -106,6 +107,12 @@ export interface PromotionRule {
     name: string;
     classNumber: number;
   };
+  nextClass?: {
+    id: string;
+    classId: string;
+    name: string;
+    classNumber: number;
+  } | null;
 }
 
 export interface PromotionEligibility {
@@ -129,6 +136,7 @@ export interface PromotionEligibility {
     grade: string;
   }>;
   suggestedNextClassId?: string | null;
+  suggestedNextClassName?: string | null;
   reExamAllowed: boolean;
 }
 
@@ -204,6 +212,12 @@ export function useUpdateSubject() {
       queryClient.invalidateQueries({ queryKey: ["subjects"] });
       toast.success("Subject updated successfully");
     },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to update subject", {
+        description: description !== error?.message ? description : undefined,
+      });
+    },
   });
 }
 
@@ -217,6 +231,12 @@ export function useDeleteSubject() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subjects"] });
       toast.success("Subject deleted successfully");
+    },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to delete subject", {
+        description: description !== error?.message ? description : undefined,
+      });
     },
   });
 }
@@ -258,6 +278,12 @@ export function useCreateExam() {
       queryClient.invalidateQueries({ queryKey: ["academic-years"] });
       toast.success("Exam created successfully");
     },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to create exam", {
+        description: description !== error?.message ? description : undefined,
+      });
+    },
   });
 }
 
@@ -272,6 +298,12 @@ export function useUpdateExam() {
       queryClient.invalidateQueries({ queryKey: ["exams"] });
       toast.success("Exam updated successfully");
     },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to update exam", {
+        description: description !== error?.message ? description : undefined,
+      });
+    },
   });
 }
 
@@ -285,6 +317,12 @@ export function useDeleteExam() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exams"] });
       toast.success("Exam deleted successfully");
+    },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to delete exam", {
+        description: description !== error?.message ? description : undefined,
+      });
     },
   });
 }
@@ -315,6 +353,12 @@ export function useCreateExamResults() {
       queryClient.invalidateQueries({ queryKey: ["exam-results"] });
       toast.success("Exam results saved successfully");
     },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to save exam results", {
+        description: description !== error?.message ? description : undefined,
+      });
+    },
   });
 }
 
@@ -343,6 +387,12 @@ export function useCreatePromotionRule() {
       queryClient.invalidateQueries({ queryKey: ["promotion-rules"] });
       toast.success("Promotion rule created successfully");
     },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to create promotion rule", {
+        description: description !== error?.message ? description : undefined,
+      });
+    },
   });
 }
 
@@ -355,6 +405,7 @@ export function usePromotionCalculation(classId?: string, academicYearId?: strin
       const searchParams = new URLSearchParams({ classId, academicYearId });
       const response = await api.get<{
         class: { classId: string; name: string; classNumber: number };
+        nextClass?: { id: string; classId: string; name: string; classNumber: number } | null;
         academicYearId: string;
         promotionRule: PromotionRule;
         totalStudents: number;
@@ -380,6 +431,12 @@ export function useExecutePromotions() {
       queryClient.invalidateQueries({ queryKey: ["promotion-calculation"] });
       queryClient.invalidateQueries({ queryKey: ["students"] });
       toast.success("Promotions executed successfully");
+    },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to execute promotions", {
+        description: description !== error?.message ? description : undefined,
+      });
     },
   });
 }

@@ -226,7 +226,13 @@ export default function ExamReportPage() {
     {
       accessorKey: "rollNumber",
       header: "Roll No.",
-      cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span>,
+      cell: (info: any) => (
+        <span className="font-medium">
+          {typeof info?.getValue === "function"
+            ? info.getValue()
+            : info?.row?.original?.rollNumber ?? "-"}
+        </span>
+      ),
     },
     { accessorKey: "studentName", header: "Student Name" },
     { accessorKey: "className", header: "Class" },
@@ -236,17 +242,27 @@ export default function ExamReportPage() {
     {
       accessorKey: "marksObtained",
       header: "Marks",
-      cell: ({ getValue, row }) => (
-        <span className="font-medium">
-          {getValue<number>()} / {row.original.maxMarks}
-        </span>
-      ),
+      cell: (info: any) => {
+        const marks =
+          typeof info?.getValue === "function"
+            ? info.getValue()
+            : info?.row?.original?.marksObtained ?? "-";
+        const maxMarks = info?.row?.original?.maxMarks ?? "-";
+        return (
+          <span className="font-medium">
+            {marks} / {maxMarks}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "percentage",
       header: "%",
-      cell: ({ getValue }) => {
-        const percentage = getValue<number>();
+      cell: (info: any) => {
+        const percentage =
+          typeof info?.getValue === "function"
+            ? info.getValue()
+            : info?.row?.original?.percentage ?? 0;
         let colorClass = "text-green-600";
         if (percentage < 40) colorClass = "text-red-600";
         else if (percentage < 60) colorClass = "text-yellow-600";
@@ -257,8 +273,11 @@ export default function ExamReportPage() {
     {
       accessorKey: "grade",
       header: "Grade",
-      cell: ({ getValue }) => {
-        const grade = getValue<string>();
+      cell: (info: any) => {
+        const grade =
+          typeof info?.getValue === "function"
+            ? info.getValue()
+            : info?.row?.original?.grade ?? "-";
         const gradeColors: Record<string, string> = {
           "A+": "bg-green-600 text-white",
           A: "bg-green-500 text-white",
@@ -282,8 +301,11 @@ export default function ExamReportPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ getValue }) => {
-        const status = getValue<string>();
+      cell: (info: any) => {
+        const status =
+          typeof info?.getValue === "function"
+            ? info.getValue()
+            : info?.row?.original?.status ?? "-";
         const statusColors: Record<string, string> = {
           PASS: "bg-green-100 text-green-800",
           FAIL: "bg-red-100 text-red-800",

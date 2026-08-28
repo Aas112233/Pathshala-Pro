@@ -228,6 +228,11 @@ export async function POST(request: NextRequest) {
       delete prismaDataWithDates.dateOfBirth;
     }
 
+    // Convert empty string foreign keys to null
+    if (!prismaDataWithDates.classId) prismaDataWithDates.classId = null;
+    if (!prismaDataWithDates.groupId) prismaDataWithDates.groupId = null;
+    if (!prismaDataWithDates.sectionId) prismaDataWithDates.sectionId = null;
+
     const student = await prisma.studentProfile.create({
       data: {
         tenantId,
@@ -247,6 +252,27 @@ export async function POST(request: NextRequest) {
         guardianContact: true,
         status: true,
         admissionDate: true,
+        classId: true,
+        groupId: true,
+        sectionId: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        section: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdAt: true,
       },
     });

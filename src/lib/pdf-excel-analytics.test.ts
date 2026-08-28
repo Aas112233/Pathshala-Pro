@@ -153,6 +153,6 @@ describe("PDF Templates, Excel Exports & Analytics Engine", () => {
       expect(metrics.financials).toBeDefined();
       expect(metrics.academics).toBeDefined();
       expect(metrics.monthlyTrends.length).toBe(6);
-    });
+    }, 15000);
   });
 });

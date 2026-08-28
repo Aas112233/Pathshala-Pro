@@ -217,6 +217,10 @@ export async function PUT(
       }
     }
 
+    if (prismaData.classId === "") prismaData.classId = null;
+    if (prismaData.groupId === "") prismaData.groupId = null;
+    if (prismaData.sectionId === "") prismaData.sectionId = null;
+
     const updatedStudent = await prisma.studentProfile.update({
       where: { id },
       data: prismaData,
@@ -235,6 +239,27 @@ export async function PUT(
         address: true,
         profilePictureUrl: true,
         status: true,
+        classId: true,
+        groupId: true,
+        sectionId: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        section: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         updatedAt: true,
       },
     });

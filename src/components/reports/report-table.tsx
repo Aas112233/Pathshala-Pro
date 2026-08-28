@@ -159,14 +159,39 @@ export function ReportTable<TData>({
               ) : (
                 data.map((row, rowIndex) => (
                   <TableRow key={rowIndex}>
-                    {columns.map((column: any, columnIndex) => (
-                      <TableCell key={columnIndex}>
-                        {flexRender(
-                          column.cell,
-                          { getValue: () => (row as any)[column.accessorKey as string] }
-                        )}
-                      </TableCell>
-                    ))}
+                    {columns.map((column: any, columnIndex) => {
+                      const getVal = () =>
+                        column.accessorFn
+                          ? column.accessorFn(row)
+                          : column.accessorKey
+                          ? (row as any)[column.accessorKey as string]
+                          : undefined;
+
+                      const cellContext = {
+                        getValue: <TValue = unknown,>() => getVal() as TValue,
+                        renderValue: <TValue = unknown,>() => getVal() as TValue,
+                        row: {
+                          original: row,
+                          index: rowIndex,
+                          getValue: (key: string) => (row as any)[key],
+                        },
+                        cell: {
+                          id: `${rowIndex}_${column.id || column.accessorKey || columnIndex}`,
+                          getValue: getVal,
+                          row: { original: row, index: rowIndex },
+                        },
+                        column,
+                        table: {} as any,
+                      };
+
+                      return (
+                        <TableCell key={columnIndex}>
+                          {column.cell
+                            ? flexRender(column.cell, cellContext)
+                            : (getVal() ?? "")}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))
               )}

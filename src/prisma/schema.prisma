@@ -54,6 +54,8 @@ model Tenant {
   timetables            Timetable[]
   feeVouchers           FeeVoucher[]
   transactions          Transaction[]
+  classFeeStructures    ClassFeeStructure[]
+  studentFeeConcessions StudentFeeConcession[]
   staffProfiles         StaffProfile[]
   salaryLedgers         SalaryLedger[]
   attendances           Attendance[]
@@ -197,6 +199,7 @@ model StudentProfile {
   parentLinks          ParentStudentLink[]
   linkedUser           User?                 @relation("StudentUser")
   academicSessions     StudentAcademicSession[]
+  concessions          StudentFeeConcession[]
 
   @@unique([tenantId, studentId])
   @@index([tenantId, rollNumber])
@@ -224,6 +227,7 @@ model AcademicYear {
   examResults                ExamResult[]
   exams                      Exam[]
   promotionRules             PromotionRule[]
+  classFeeStructures         ClassFeeStructure[]
   fromAcademicYearPromotions ClassPromotion[] @relation("FromAcademicYearPromotions")
   toAcademicYearPromotions   ClassPromotion[] @relation("ToAcademicYearPromotions")
   timetables                 Timetable[]
@@ -288,6 +292,54 @@ model Transaction {
   @@index([tenantId, timestamp])
   @@index([tenantId, feeVoucherId])
   @@index([tenantId, collectedById])
+}
+
+model ClassFeeStructure {
+  id              String       @id @default(cuid())
+  tenantId        String
+  academicYearId  String
+  classId         String
+  tuitionFee      Float        @default(0)
+  labFee          Float        @default(0)
+  computerFee     Float        @default(0)
+  examFee         Float        @default(0)
+  sportsFee       Float        @default(0)
+  libraryFee      Float        @default(0)
+  otherFee        Float        @default(0)
+  totalMonthlyFee Float        @default(0)
+  billingCycle    String       @default("MONTHLY") // MONTHLY | QUARTERLY | BI_ANNUAL | ANNUAL
+  notes           String?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [tenantId])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  class        Class        @relation(fields: [classId], references: [id])
+
+  @@unique([tenantId, academicYearId, classId])
+  @@index([tenantId, academicYearId])
+  @@index([tenantId, classId])
+}
+
+model StudentFeeConcession {
+  id               String         @id @default(cuid())
+  tenantId         String
+  studentProfileId String
+  concessionType   String         // SIBLING | STAFF_CHILD | MERIT | NEED_BASED | CUSTOM
+  discountType     String         // PERCENTAGE | FIXED_AMOUNT
+  discountValue    Float          // e.g. 20 (for 20%) or 500 (for $500 off)
+  reason           String?
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+
+  @@unique([tenantId, studentProfileId])
+  @@index([tenantId])
+  @@index([tenantId, concessionType])
 }
 
 model StaffProfile {
@@ -612,6 +664,7 @@ model Class {
   fromClassPromotions ClassPromotion[] @relation("FromClassPromotions")
   toClassPromotions   ClassPromotion[] @relation("ToClassPromotions")
   classSubjects       ClassSubject[]
+  classFeeStructures  ClassFeeStructure[]
   timetables          Timetable[]
   homeworks           Homework[]
   enquiries           Enquiry[]

@@ -83,7 +83,37 @@ export async function GET(
       return notFound("Exam not found");
     }
 
-    return successResponse(exam, "Exam retrieved successfully");
+    // Find associated class based on subjects
+    const subjectIds = exam.subjects.map((s) => s.subjectId);
+    let classInfo: { id: string; classId: string; name: string } | null = null;
+    if (subjectIds.length > 0) {
+      const classSubject = await prisma.classSubject.findFirst({
+        where: {
+          tenantId,
+          subjectId: { in: subjectIds },
+        },
+        select: {
+          class: {
+            select: {
+              id: true,
+              classId: true,
+              name: true,
+            },
+          },
+        },
+      });
+      if (classSubject) {
+        classInfo = classSubject.class;
+      }
+    }
+
+    const examWithClass = {
+      ...exam,
+      classId: classInfo?.id || null,
+      class: classInfo,
+    };
+
+    return successResponse(examWithClass, "Exam retrieved successfully");
   } catch (error) {
     return handleApiError(error);
   }

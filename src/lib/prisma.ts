@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { withAccelerate } from "@prisma/extension-accelerate";
 
 // High-performance pooled client with Accelerate extension
-function createClient() {
+function createClient(): PrismaClient {
   const basePrisma = new PrismaClient({
     log:
       process.env.NODE_ENV === "development" && process.env.DEBUG_PRISMA === "true"
@@ -10,13 +10,18 @@ function createClient() {
         : ["error"],
   });
 
-  return basePrisma.$extends(withAccelerate());
+  const url = process.env.DATABASE_URL || "";
+  if (url.startsWith("prisma://") || url.startsWith("prisma+postgres://")) {
+    return basePrisma.$extends(withAccelerate()) as unknown as PrismaClient;
+  }
+
+  return basePrisma;
 }
 
-export type AcceleratePrismaClient = ReturnType<typeof createClient>;
+export type AcceleratePrismaClient = PrismaClient;
 
 const globalForPrisma = globalThis as unknown as {
-  prisma?: AcceleratePrismaClient;
+  prisma?: PrismaClient;
 };
 
 export const prisma = globalForPrisma.prisma ?? createClient();

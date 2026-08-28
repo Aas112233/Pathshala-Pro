@@ -27,10 +27,6 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31536000,
   },
-  // Disable ESLint during build to avoid memory issues
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   output: undefined,
 };
 

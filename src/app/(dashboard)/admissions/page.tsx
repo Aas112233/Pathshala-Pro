@@ -195,16 +195,23 @@ export default function AdmissionsPage() {
     }));
 
     setAdmissionItems([...admissionItems, ...newItems]);
-    toast.success(t('admissions.addStudentsSuccess').replace('{count}', students.length.toString()));
+    toast.success(t('admissions.addStudentsSuccess', { count: students.length }));
   };
 
   const handleCreateStudent = async (data: CreateStudentDTO) => {
+    const payload = {
+      ...data,
+      classId: selectedClass || data.classId || undefined,
+      groupId: selectedGroup || data.groupId || undefined,
+      sectionId: selectedSection || data.sectionId || undefined,
+    };
+
     const res = await fetch("/api/students", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -217,9 +224,9 @@ export default function AdmissionsPage() {
     // Add the newly created student to the admission list
     const newItem: AdmissionItem = {
       student: createdStudent.data,
-      classId: selectedClass,
-      groupId: selectedGroup || undefined,
-      sectionId: selectedSection || undefined,
+      classId: selectedClass || createdStudent.data.classId,
+      groupId: selectedGroup || createdStudent.data.groupId || undefined,
+      sectionId: selectedSection || createdStudent.data.sectionId || undefined,
     };
 
     setAdmissionItems([...admissionItems, newItem]);
@@ -255,7 +262,7 @@ export default function AdmissionsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      toast.success(t('admissions.admissionCompleted').replace('{count}', admissionItems.length.toString()));
+      toast.success(t('admissions.admissionCompleted', { count: admissionItems.length }));
       setIsFormOpen(false);
       setAdmissionItems([]);
     },

@@ -11,12 +11,16 @@ import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { Toaster } from "sonner";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { PageTitleUpdater } from "@/components/layout/page-title-updater";
 import { locales, isRtl } from "@/i18n/config";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Pathshala Pro - School Management ERP",
+  title: {
+    default: "Pathshala Pro - School Management ERP",
+    template: "%s | Pathshala Pro",
+  },
   description:
     "Ultra-fast, multi-tenant school management SaaS for South Asian schools. Manage fees, students, staff, and academics.",
 };
@@ -60,6 +64,7 @@ export default async function RootLayout({
               <TenantSettingsProvider>
                 <QueryProvider>
                   <ErrorBoundary>
+                    <PageTitleUpdater />
                     {children}
                     <Toaster richColors position="top-right" />
                   </ErrorBoundary>

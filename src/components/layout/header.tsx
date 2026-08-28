@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Search,
   Moon,
   Sun,
   Globe,
@@ -111,37 +110,19 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/95 px-6 backdrop-blur-md">
       {/* Left - Module & Breadcrumb Context */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary max-w-[220px]">
+      <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
+        <div className="hidden sm:flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary w-fit max-w-full">
           <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span className="truncate">{institutionName}</span>
+          <span className="whitespace-nowrap tracking-tight">{institutionName}</span>
         </div>
-        <div className="h-4 w-[1px] bg-border/80 hidden sm:block" />
-        <h1 className="text-base font-bold tracking-tight text-foreground">
+        <div className="h-4 w-[1px] bg-border/80 hidden sm:block shrink-0" />
+        <h1 className="text-base font-bold tracking-tight text-foreground whitespace-nowrap">
           {t(breadcrumbKey as any) || t("nav.dashboard")}
         </h1>
       </div>
 
-      {/* Right - Global Search & Actions */}
-      <div className="flex items-center gap-2.5">
-        {/* Quick Search Shortcut */}
-        <div className="relative hidden md:flex items-center">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
-          <input
-            type="text"
-            placeholder="Search here..."
-            readOnly
-            onClick={() => {
-              const event = new KeyboardEvent("keydown", { key: "k", ctrlKey: true });
-              window.dispatchEvent(event);
-            }}
-            className="h-9 w-48 lg:w-60 cursor-pointer rounded-xl border border-border/70 bg-muted/30 pl-9 pr-9 text-xs text-foreground placeholder:text-muted-foreground/60 transition-all hover:bg-muted/50 focus:outline-none"
-          />
-          <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            ⌘K
-          </kbd>
-        </div>
-
+      {/* Right - Global Actions */}
+      <div className="flex items-center gap-2.5 shrink-0">
         {/* Help / Docs */}
         <button
           className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

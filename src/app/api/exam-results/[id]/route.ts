@@ -128,20 +128,6 @@ export async function PUT(
       return notFound("Exam result not found");
     }
 
-    if (existingResult.exam.isPublished) {
-      return integrityViolation(
-        lockedUpdateMessage("Exam result", "the parent exam has already been published"),
-        [
-          {
-            field: "id",
-            code: "locked",
-            message:
-              "Published exam results cannot be edited directly. Unpublish the exam or use a controlled correction workflow.",
-          },
-        ]
-      );
-    }
-
     // Validate required fields
     const { obtainedMarks, maxMarks, reExamAllowed } = body;
 

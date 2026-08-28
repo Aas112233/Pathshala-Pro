@@ -222,7 +222,14 @@ export default function ExamsPage() {
     if (!confirm(t('confirmDelete'))) {
       return;
     }
-    deleteExam.mutate(id);
+    deleteExam.mutate(id, {
+      onError: (error: any) => {
+        const description = error?.details?.[0]?.message;
+        toast.error(error?.message || t('deleteError'), {
+          description: description !== error?.message ? description : undefined,
+        });
+      },
+    });
   }
 
   function handleViewExam(exam: Exam) {

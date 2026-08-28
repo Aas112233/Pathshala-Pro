@@ -53,7 +53,33 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return successResponse(rules, "Promotion rules retrieved successfully");
+    const nextClassIds = rules
+      .map((r) => r.nextClassId)
+      .filter((id): id is string => Boolean(id));
+
+    let nextClassMap = new Map<string, { id: string; classId: string; name: string; classNumber: number }>();
+    if (nextClassIds.length > 0) {
+      const nextClasses = await prisma.class.findMany({
+        where: {
+          tenantId,
+          id: { in: nextClassIds },
+        },
+        select: {
+          id: true,
+          classId: true,
+          name: true,
+          classNumber: true,
+        },
+      });
+      nextClassMap = new Map(nextClasses.map((c) => [c.id, c]));
+    }
+
+    const rulesWithNextClass = rules.map((r) => ({
+      ...r,
+      nextClass: r.nextClassId ? nextClassMap.get(r.nextClassId) || null : null,
+    }));
+
+    return successResponse(rulesWithNextClass, "Promotion rules retrieved successfully");
   } catch (error) {
     return handleApiError(error);
   }
@@ -163,7 +189,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return successResponse(rule, "Promotion rule created successfully", 201);
+    let nextClassObj = null;
+    if (rule.nextClassId) {
+      nextClassObj = await prisma.class.findUnique({
+        where: { id: rule.nextClassId, tenantId },
+        select: {
+          id: true,
+          classId: true,
+          name: true,
+          classNumber: true,
+        },
+      });
+    }
+
+    return successResponse({ ...rule, nextClass: nextClassObj }, "Promotion rule created successfully", 201);
   } catch (error) {
     return handleApiError(error);
   }

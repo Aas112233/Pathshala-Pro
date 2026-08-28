@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp
 type StatementType = "STUDENT" | "STAFF" | "ACCOUNT";
 
 export default function AccountingStatementsPage() {
+  const t = useTranslations("accounting.statements");
   const [statementType, setStatementType] = useState<StatementType>("STUDENT");
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
@@ -58,10 +60,10 @@ export default function AccountingStatementsPage() {
           setSelectedEntityId(json.data.entity.id);
         }
       } else {
-        toast.error("Failed to load account statement");
+        toast.error(t("loadFailed"));
       }
     } catch {
-      toast.error("Network error loading statement");
+      toast.error(t("networkError"));
     } finally {
       setIsLoading(false);
     }
@@ -116,11 +118,11 @@ export default function AccountingStatementsPage() {
 
   const handleExportCSV = () => {
     if (!data?.statement?.entries || data.statement.entries.length === 0) {
-      toast.error("No statement entries to export");
+      toast.error(t("noEntriesToExport"));
       return;
     }
 
-    const headers = ["Date", "Ref ID", "Category", "Description", "Debit", "Credit", "Running Balance", "Status", "Payment Method"];
+    const headers = [t("csvDate"), t("csvRefId"), t("csvCategory"), t("csvDescription"), t("csvDebit"), t("csvCredit"), t("csvBalance"), t("csvStatus"), t("csvPaymentMethod")];
     const rows = data.statement.entries.map((e: any) => [
       new Date(e.date).toLocaleDateString(),
       `"${e.refId}"`,
@@ -141,7 +143,7 @@ export default function AccountingStatementsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Statement exported to CSV");
+    toast.success(t("exportedCsv"));
   };
 
   const entity = data?.entity;
@@ -157,7 +159,7 @@ export default function AccountingStatementsPage() {
   const columns: ColumnDef<any>[] = [
     {
       key: "date",
-      header: "DATE",
+      header: t("dateHeader"),
       cell: (row) => (
         <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
           {new Date(row.date).toLocaleDateString()}
@@ -166,7 +168,7 @@ export default function AccountingStatementsPage() {
     },
     {
       key: "refId",
-      header: "REF / VOUCHER #",
+      header: t("refHeader"),
       cell: (row) => (
         <Badge variant="outline" className="text-[10px] font-mono whitespace-nowrap">
           {row.refId}
@@ -175,7 +177,7 @@ export default function AccountingStatementsPage() {
     },
     {
       key: "description",
-      header: "PARTICULARS / DESCRIPTION",
+      header: t("descriptionHeader"),
       cell: (row) => (
         <div>
           <p className="text-xs font-semibold text-foreground">{row.description}</p>
@@ -185,7 +187,7 @@ export default function AccountingStatementsPage() {
     },
     {
       key: "debit",
-      header: "DEBIT (+)",
+      header: t("debitHeader"),
       cell: (row) => (
         <span className={`text-xs font-bold font-mono ${row.debit > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}>
           {row.debit > 0 ? `+${row.debit.toLocaleString()}` : "-"}
@@ -194,7 +196,7 @@ export default function AccountingStatementsPage() {
     },
     {
       key: "credit",
-      header: "CREDIT (-)",
+      header: t("creditHeader"),
       cell: (row) => (
         <span className={`text-xs font-bold font-mono ${row.credit > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
           {row.credit > 0 ? `-${row.credit.toLocaleString()}` : "-"}
@@ -203,7 +205,7 @@ export default function AccountingStatementsPage() {
     },
     {
       key: "runningBalance",
-      header: "BALANCE",
+      header: t("balanceHeader"),
       cell: (row) => (
         <span className={`text-xs font-extrabold font-mono ${row.runningBalance > 0 ? "text-foreground" : "text-emerald-600 dark:text-emerald-400"}`}>
           {row.runningBalance.toLocaleString()}
@@ -212,7 +214,7 @@ export default function AccountingStatementsPage() {
     },
     {
       key: "status",
-      header: "STATUS",
+      header: t("statusHeader"),
       cell: (row) => {
         const variant =
           row.status === "PAID" || row.status === "CLEARED"
@@ -225,7 +227,7 @@ export default function AccountingStatementsPage() {
     },
     {
       key: "paymentMethod",
-      header: "METHOD",
+      header: t("methodHeader"),
       cell: (row) => (
         <span className="text-[11px] text-muted-foreground font-mono uppercase">
           {row.paymentMethod}
@@ -239,8 +241,8 @@ export default function AccountingStatementsPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
-          title="Account Statement & General Ledger"
-          description="Comprehensive running-balance statements for students, staff payroll, and bank/cash accounts."
+          title={t("title")}
+          description={t("description")}
           icon={FileSpreadsheet}
         />
         <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -251,14 +253,14 @@ export default function AccountingStatementsPage() {
             className="text-xs h-9 gap-1.5 cursor-pointer"
           >
             <Download className="h-3.5 w-3.5" />
-            Export CSV
+            {t("exportCsv")}
           </Button>
           <Button
             onClick={handlePrint}
             className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm text-xs h-9 cursor-pointer"
           >
             <Printer className="h-3.5 w-3.5" />
-            Print Statement
+            {t("printStatement")}
           </Button>
         </div>
       </div>
@@ -275,7 +277,7 @@ export default function AccountingStatementsPage() {
           }`}
         >
           <GraduationCap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-          <span>Student Fee Statement</span>
+          <span>{t("studentStatement")}</span>
         </button>
 
         <button
@@ -288,7 +290,7 @@ export default function AccountingStatementsPage() {
           }`}
         >
           <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-          <span>Staff Salary Ledger</span>
+          <span>{t("staffLedger")}</span>
         </button>
 
         <button
@@ -301,7 +303,7 @@ export default function AccountingStatementsPage() {
           }`}
         >
           <Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Bank & Cash Ledger</span>
+          <span>{t("accountLedger")}</span>
         </button>
       </div>
 
@@ -315,10 +317,10 @@ export default function AccountingStatementsPage() {
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
                   {statementType === "STUDENT"
-                    ? "Select Student"
+                    ? t("selectStudent")
                     : statementType === "STAFF"
-                    ? "Select Staff Member"
-                    : "Select Bank / Cash Account"}
+                    ? t("selectStaff")
+                    : t("selectAccount")}
                 </Label>
 
                 {statementType === "STUDENT" && (
@@ -368,7 +370,7 @@ export default function AccountingStatementsPage() {
               <div className="md:col-span-3 space-y-1.5">
                 <Label htmlFor="start-date" className="text-xs font-semibold flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  From Date
+                  {t("fromDate")}
                 </Label>
                 <Input
                   id="start-date"
@@ -382,7 +384,7 @@ export default function AccountingStatementsPage() {
               <div className="md:col-span-3 space-y-1.5">
                 <Label htmlFor="end-date" className="text-xs font-semibold flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  To Date
+                  {t("toDate")}
                 </Label>
                 <Input
                   id="end-date"
@@ -402,12 +404,12 @@ export default function AccountingStatementsPage() {
 
             {/* Quick Presets */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-[11px] font-semibold text-muted-foreground">Quick Filters:</span>
+              <span className="text-[11px] font-semibold text-muted-foreground">{t("quickFilters")}</span>
               {[
-                { label: "This Month", value: "THIS_MONTH" as const },
-                { label: "Last Month", value: "LAST_MONTH" as const },
-                { label: "This Year", value: "THIS_YEAR" as const },
-                { label: "All Records", value: "ALL" as const },
+                { label: t("thisMonth"), value: "THIS_MONTH" as const },
+                { label: t("lastMonth"), value: "LAST_MONTH" as const },
+                { label: t("thisYear"), value: "THIS_YEAR" as const },
+                { label: t("allRecords"), value: "ALL" as const },
               ].map((p) => (
                 <button
                   key={p.value}
@@ -452,25 +454,25 @@ export default function AccountingStatementsPage() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
                 {statementType === "STUDENT" && (
                   <>
-                    <span>Student ID: <strong className="text-foreground font-mono">{entity.studentId}</strong></span>
-                    {entity.guardianName && <span>Guardian: <strong className="text-foreground">{entity.guardianName}</strong></span>}
-                    {entity.guardianContact && <span>Contact: <strong className="text-foreground font-mono">{entity.guardianContact}</strong></span>}
+                    <span>{t("studentId")}: <strong className="text-foreground font-mono">{entity.studentId}</strong></span>
+                    {entity.guardianName && <span>{t("guardian")}: <strong className="text-foreground">{entity.guardianName}</strong></span>}
+                    {entity.guardianContact && <span>{t("contact")}: <strong className="text-foreground font-mono">{entity.guardianContact}</strong></span>}
                   </>
                 )}
 
                 {statementType === "STAFF" && (
                   <>
-                    <span>Staff ID: <strong className="text-foreground font-mono">{entity.staffId}</strong></span>
-                    <span>Department: <strong className="text-foreground">{entity.department}</strong></span>
-                    <span>Base Salary: <strong className="text-foreground font-mono">{entity.baseSalary?.toLocaleString()}</strong></span>
+                    <span>{t("staffId")}: <strong className="text-foreground font-mono">{entity.staffId}</strong></span>
+                    <span>{t("department")}: <strong className="text-foreground">{entity.department}</strong></span>
+                    <span>{t("baseSalary")}: <strong className="text-foreground font-mono">{entity.baseSalary?.toLocaleString()}</strong></span>
                   </>
                 )}
 
                 {statementType === "ACCOUNT" && (
                   <>
-                    <span>Bank: <strong className="text-foreground">{entity.bankName}</strong></span>
-                    <span>Account #: <strong className="text-foreground font-mono">{entity.accountNumber}</strong></span>
-                    <span>Currency: <strong className="text-foreground font-mono">{entity.currency}</strong></span>
+                    <span>{t("bank")}: <strong className="text-foreground">{entity.bankName}</strong></span>
+                    <span>{t("accountNumber")}: <strong className="text-foreground font-mono">{entity.accountNumber}</strong></span>
+                    <span>{t("currency")}: <strong className="text-foreground font-mono">{entity.currency}</strong></span>
                   </>
                 )}
               </div>
@@ -478,7 +480,7 @@ export default function AccountingStatementsPage() {
           </div>
 
           <div className="text-right border-t md:border-t-0 pt-3 md:pt-0 border-border">
-            <span className="text-xs text-muted-foreground font-semibold uppercase">Net Running Balance</span>
+            <span className="text-xs text-muted-foreground font-semibold uppercase">{t("netRunningBalance")}</span>
             <h4 className={`text-2xl font-extrabold font-mono ${statement.closingBalance > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
               {statement.closingBalance.toLocaleString()}
             </h4>
@@ -491,14 +493,14 @@ export default function AccountingStatementsPage() {
         <Card className="border border-border/80 shadow-xs">
           <CardHeader className="p-4 pb-2">
             <span className="text-xs font-semibold text-muted-foreground uppercase">
-              Opening Balance
+              {t("openingBalance")}
             </span>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <h3 className="text-2xl font-extrabold text-foreground font-mono">
               {statement.openingBalance.toLocaleString()}
             </h3>
-            <p className="text-[11px] text-muted-foreground">Balance before selected range</p>
+            <p className="text-[11px] text-muted-foreground">{t("openingDescription")}</p>
           </CardContent>
         </Card>
 
@@ -506,7 +508,7 @@ export default function AccountingStatementsPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase">
-                {statementType === "STUDENT" ? "Total Billed (Debits)" : statementType === "STAFF" ? "Total Disbursed" : "Total Deposits / Inflows"}
+                {statementType === "STUDENT" ? t("totalBilled") : statementType === "STAFF" ? t("totalDisbursed") : t("totalDeposits")}
               </span>
               <div className="p-1 rounded-md bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -517,7 +519,7 @@ export default function AccountingStatementsPage() {
             <h3 className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono">
               +{statement.totalDebit.toLocaleString()}
             </h3>
-            <p className="text-[11px] text-muted-foreground">Charges / incoming debits</p>
+            <p className="text-[11px] text-muted-foreground">{t("debitDescription")}</p>
           </CardContent>
         </Card>
 
@@ -525,7 +527,7 @@ export default function AccountingStatementsPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase">
-                {statementType === "STUDENT" ? "Total Collected (Credits)" : statementType === "STAFF" ? "Salary Accrued" : "Total Outflow / Expenses"}
+                {statementType === "STUDENT" ? t("totalCollected") : statementType === "STAFF" ? t("salaryAccrued") : t("totalOutflow")}
               </span>
               <div className="p-1 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                 <ArrowDownLeft className="h-3.5 w-3.5" />
@@ -536,33 +538,33 @@ export default function AccountingStatementsPage() {
             <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
               -{statement.totalCredit.toLocaleString()}
             </h3>
-            <p className="text-[11px] text-muted-foreground">Payments / outflows cleared</p>
+            <p className="text-[11px] text-muted-foreground">{t("creditDescription")}</p>
           </CardContent>
         </Card>
 
         <Card className="border border-border/80 shadow-xs">
           <CardHeader className="p-4 pb-2">
             <span className="text-xs font-semibold text-muted-foreground uppercase">
-              Closing / Net Balance
+              {t("closingBalance")}
             </span>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <h3 className="text-2xl font-extrabold text-foreground font-mono">
               {statement.closingBalance.toLocaleString()}
             </h3>
-            <p className="text-[11px] text-muted-foreground">Net outstanding closing position</p>
+            <p className="text-[11px] text-muted-foreground">{t("closingDescription")}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Ledger Table */}
       <ERPDataTable<any>
-        title="Chronological Transaction Ledger"
-        subtitle={`Showing ${statement.entries?.length || 0} financial transactions`}
+        title={t("ledgerTitle")}
+        subtitle={t("showingTransactions", { count: statement.entries?.length || 0 })}
         data={statement.entries || []}
         columns={columns}
         keyExtractor={(row) => row.id}
-        searchPlaceholder="Filter statement entries..."
+        searchPlaceholder={t("filterPlaceholder")}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />

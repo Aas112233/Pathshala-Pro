@@ -72,6 +72,9 @@ export default function StudentsPage() {
       driveFileId: student.driveFileId,
       dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : undefined,
       address: student.address,
+      classId: student.classId || (student.class ? student.class.id : undefined),
+      groupId: student.groupId,
+      sectionId: student.sectionId,
     });
     setIsFormOpen(true);
   }, []);

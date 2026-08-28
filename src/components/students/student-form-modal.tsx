@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { AppDropdown } from "@/components/ui/app-dropdown";
@@ -59,7 +60,74 @@ export function StudentFormModal({
     driveFileId: "",
     dateOfBirth: "",
     address: "",
+    classId: "",
+    groupId: "",
+    sectionId: "",
   });
+
+  // Query classes for student assignment
+  const { data: classesData } = useQuery({
+    queryKey: ["classes-dropdown"],
+    queryFn: async () => {
+      const res = await fetch("/api/classes?limit=100&isActive=true");
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    enabled: isOpen,
+  });
+
+  // Query groups filtered by selected class
+  const { data: groupsData } = useQuery({
+    queryKey: ["groups-dropdown", { classId: formData.classId }],
+    queryFn: async () => {
+      if (!formData.classId) return { data: [] };
+      const res = await fetch(`/api/groups?limit=100&classId=${formData.classId}`);
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    enabled: isOpen && !!formData.classId,
+  });
+
+  // Query sections filtered by selected class and group
+  const { data: sectionsData } = useQuery({
+    queryKey: ["sections-dropdown", { classId: formData.classId, groupId: formData.groupId }],
+    queryFn: async () => {
+      if (!formData.classId) return { data: [] };
+      const params = new URLSearchParams({
+        limit: "100",
+        classId: formData.classId,
+        ...(formData.groupId && { groupId: formData.groupId }),
+      });
+      const res = await fetch(`/api/sections?${params}`);
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    enabled: isOpen && !!formData.classId,
+  });
+
+  const classOptions = useMemo(() => {
+    const list = ("data" in (classesData || {})) ? (classesData as any).data : [];
+    return [
+      { value: "", label: "No Class Assigned" },
+      ...list.map((c: any) => ({ value: c.id, label: c.name })),
+    ];
+  }, [classesData]);
+
+  const groupOptions = useMemo(() => {
+    const list = ("data" in (groupsData || {})) ? (groupsData as any).data : [];
+    return [
+      { value: "", label: "No Group / General" },
+      ...list.map((g: any) => ({ value: g.id, label: g.name })),
+    ];
+  }, [groupsData]);
+
+  const sectionOptions = useMemo(() => {
+    const list = ("data" in (sectionsData || {})) ? (sectionsData as any).data : [];
+    return [
+      { value: "", label: "No Section Assigned" },
+      ...list.map((s: any) => ({ value: s.id, label: s.name })),
+    ];
+  }, [sectionsData]);
 
   // Reset form data when initialData changes (for edit mode)
   // Or reset to empty when initialData is null/undefined (for new student mode)
@@ -80,6 +148,9 @@ export function StudentFormModal({
         driveFileId: initialData.driveFileId || "",
         dateOfBirth: initialData.dateOfBirth || "",
         address: initialData.address || "",
+        classId: initialData.classId || "",
+        groupId: initialData.groupId || "",
+        sectionId: initialData.sectionId || "",
       });
     } else {
       // Reset to empty form for new student
@@ -98,6 +169,9 @@ export function StudentFormModal({
         driveFileId: "",
         dateOfBirth: "",
         address: "",
+        classId: "",
+        groupId: "",
+        sectionId: "",
       });
       setTempFileId(null);
       setSelectedFile(null);
@@ -247,6 +321,9 @@ export function StudentFormModal({
       // reject e.g. profilePictureUrl: "" ("Invalid url") otherwise.
       const payload: CreateStudentDTO = {
         ...formData,
+        classId: formData.classId || undefined,
+        groupId: formData.groupId || undefined,
+        sectionId: formData.sectionId || undefined,
         profilePictureUrl: formData.profilePictureUrl || undefined,
         driveFileId: formData.driveFileId || undefined,
         dateOfBirth: formData.dateOfBirth || undefined,
@@ -271,6 +348,9 @@ export function StudentFormModal({
         driveFileId: "",
         dateOfBirth: "",
         address: "",
+        classId: "",
+        groupId: "",
+        sectionId: "",
       });
       setSelectedFile(null);
       setUploadProgress(0);
@@ -530,6 +610,51 @@ export function StudentFormModal({
                       { value: "INACTIVE", label: "Inactive" },
                       { value: "SUSPENDED", label: "Suspended" },
                     ]}
+                  />
+                </ERPFormField>
+              </ERPFormGrid>
+            </ERPFormSection>
+
+            {/* Academic Placement */}
+            <ERPFormSection title="Academic Placement">
+              <ERPFormGrid cols={3}>
+                <ERPFormField label="Class" htmlFor="student-classId">
+                  <AppDropdown
+                    value={formData.classId}
+                    onChange={(val) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        classId: val,
+                        groupId: "",
+                        sectionId: "",
+                      }));
+                    }}
+                    disabled={isLoading || isUploading}
+                    options={classOptions}
+                  />
+                </ERPFormField>
+
+                <ERPFormField label="Group / Stream" htmlFor="student-groupId">
+                  <AppDropdown
+                    value={formData.groupId}
+                    onChange={(val) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        groupId: val,
+                        sectionId: "",
+                      }));
+                    }}
+                    disabled={isLoading || isUploading || !formData.classId}
+                    options={groupOptions}
+                  />
+                </ERPFormField>
+
+                <ERPFormField label="Section" htmlFor="student-sectionId">
+                  <AppDropdown
+                    value={formData.sectionId}
+                    onChange={(val) => handleDropdownChange("sectionId", val)}
+                    disabled={isLoading || isUploading || !formData.classId}
+                    options={sectionOptions}
                   />
                 </ERPFormField>
               </ERPFormGrid>

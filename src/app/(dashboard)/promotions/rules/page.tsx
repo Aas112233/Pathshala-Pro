@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Plus, GraduationCap, TrendingUp } from "lucide-react";
 import { usePromotionRules, useCreatePromotionRule, type PromotionRule } from "@/hooks/use-exams";
-import { useAcademicYears } from "@/hooks/use-queries";
-import { useStudents } from "@/hooks/use-queries";
+import { useAcademicYears, useStudents } from "@/hooks/use-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,8 +24,16 @@ import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+interface ClassOption {
+  id: string;
+  classId?: string;
+  name: string;
+  classNumber?: number;
+}
+
 export default function PromotionRulesPage() {
   const router = useRouter();
+  const t = useTranslations("promotions.ruleManager");
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>("");
 
@@ -34,14 +42,42 @@ export default function PromotionRulesPage() {
   const { data: studentsData } = useStudents();
   const createRule = useCreatePromotionRule();
 
+  const [classesList, setClassesList] = useState<ClassOption[]>([]);
+
+  useEffect(() => {
+    async function loadClasses() {
+      try {
+        const res = await fetch("/api/classes?limit=100&isActive=true");
+        if (res.ok) {
+          const json = await res.json();
+          const items = json?.data?.items || json?.data || [];
+          if (Array.isArray(items)) {
+            setClassesList(items);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load classes", err);
+      }
+    }
+    loadClasses();
+  }, []);
+
   // Extract data from API response
   const rules = Array.isArray(rulesData) ? rulesData : (rulesData as any)?.data;
   const academicYears = Array.isArray(academicYearsData) ? academicYearsData : (academicYearsData as any)?.data;
   const students = Array.isArray(studentsData) ? studentsData : (studentsData as any)?.data;
 
-  // Get unique classes from students
-  const classes = Array.from(new Map(students?.map((s: any) => [s.classId, s.class]).filter(([_, v]: any) => v)).values())
-    .filter(Boolean);
+  // Fallback to unique classes from students if classesList is empty
+  const classes =
+    classesList.length > 0
+      ? classesList
+      : Array.from(
+          new Map(
+            students
+              ?.map((s: any) => [s.classId, s.class])
+              .filter(([_, v]: any) => v)
+          ).values()
+        ).filter(Boolean);
 
   const [formData, setFormData] = useState({
     academicYearId: "",
@@ -73,7 +109,7 @@ export default function PromotionRulesPage() {
     e.preventDefault();
 
     if (!formData.academicYearId || !formData.classId) {
-      toast.error("Please select academic year and class");
+      toast.error(t("selectYearAndClass"));
       return;
     }
 
@@ -94,14 +130,14 @@ export default function PromotionRulesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Promotion Rules</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Configure promotion criteria for each class
+            {t("description")}
           </p>
         </div>
         <Button onClick={() => { resetForm(); setCreateOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
-          Create Rule
+          {t("createRule")}
         </Button>
       </div>
 
@@ -109,7 +145,7 @@ export default function PromotionRulesPage() {
       <div className="flex items-center gap-4">
         <Select value={selectedYear} onValueChange={setSelectedYear}>
           <SelectTrigger className="w-[300px]">
-            <SelectValue placeholder="Select academic year" />
+            <SelectValue placeholder={t("selectAcademicYear")} />
           </SelectTrigger>
           <SelectContent>
             {academicYears?.map((year: any) => (
@@ -130,44 +166,49 @@ export default function PromotionRulesPage() {
         ) : rules?.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No promotion rules found</p>
+            <p className="text-muted-foreground">{t("noRulesFound")}</p>
             <Button variant="link" onClick={() => { resetForm(); setCreateOpen(true); }}>
-              Create your first promotion rule
+              {t("createFirstRule")}
             </Button>
           </div>
         ) : (
           rules?.map((rule: any) => (
             <Card key={rule.id} className="relative">
               <CardHeader>
-                <CardTitle className="text-lg">{rule.class?.name}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{rule.class?.name}</CardTitle>
+                  <Badge variant="outline" className="text-xs border-primary/20 bg-primary/5 text-primary">
+                    {rule.nextClass?.name ? t("nextClassValue", { name: rule.nextClass.name }) : t("finalGrade")}
+                  </Badge>
+                </div>
                 <CardDescription>{rule.academicYear?.label}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Attendance</p>
+                    <p className="text-muted-foreground">{t("attendance")}</p>
                     <p className="font-medium">{rule.minimumAttendance}%</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Overall %</p>
+                    <p className="text-muted-foreground">{t("overall")}</p>
                     <p className="font-medium">{rule.minimumOverallPercentage}%</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Per Subject</p>
+                    <p className="text-muted-foreground">{t("perSubject")}</p>
                     <p className="font-medium">{rule.minimumPerSubject}%</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Max Fails</p>
+                    <p className="text-muted-foreground">{t("maxFails")}</p>
                     <p className="font-medium">{rule.maxFailedSubjects}</p>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-1 pt-2">
                   {rule.allowConditionalPromotion && (
-                    <Badge variant="secondary">Conditional OK</Badge>
+                    <Badge variant="secondary">{t("conditionalOk")}</Badge>
                   )}
                   {rule.autoPromote && (
-                    <Badge variant="outline">Auto Promote</Badge>
+                    <Badge variant="outline">{t("autoPromote")}</Badge>
                   )}
                 </div>
 
@@ -178,7 +219,7 @@ export default function PromotionRulesPage() {
                     onClick={() => handleCalculatePromotions(rule)}
                   >
                     <TrendingUp className="h-3 w-3 mr-1" />
-                    Calculate
+                    {t("calculate")}
                   </Button>
                 </div>
               </CardContent>
@@ -191,16 +232,16 @@ export default function PromotionRulesPage() {
       <TopSheet
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="Create Promotion Rule"
-        description="Define promotion criteria for a class"
+        title={t("createRuleTitle")}
+        description={t("createRuleDescription")}
         maxWidth="2xl"
         footer={
           <div className="flex items-center justify-end gap-3 w-full">
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" form="promotion-rule-form" disabled={createRule.isPending}>
-              {createRule.isPending ? "Creating..." : "Create Rule"}
+              {createRule.isPending ? t("creating") : t("createRule")}
             </Button>
           </div>
         }
@@ -208,13 +249,13 @@ export default function PromotionRulesPage() {
         <form id="promotion-rule-form" onSubmit={handleSubmit} className="space-y-5">
           <ERPFormSection>
             <ERPFormGrid cols={2}>
-              <ERPFormField label="Academic Year" required htmlFor="academicYearId">
+              <ERPFormField label={t("academicYear")} required htmlFor="academicYearId">
                 <Select
                   value={formData.academicYearId}
                   onValueChange={(value) => setFormData({ ...formData, academicYearId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
+                    <SelectValue placeholder={t("selectYear")} />
                   </SelectTrigger>
                   <SelectContent>
                     {academicYears?.map((year: any) => (
@@ -225,13 +266,13 @@ export default function PromotionRulesPage() {
                   </SelectContent>
                 </Select>
               </ERPFormField>
-              <ERPFormField label="Class" required htmlFor="classId">
+              <ERPFormField label={t("class")} required htmlFor="classId">
                 <Select
                   value={formData.classId}
                   onValueChange={(value) => setFormData({ ...formData, classId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select class" />
+                    <SelectValue placeholder={t("selectClass")} />
                   </SelectTrigger>
                   <SelectContent>
                     {classes.map((cls: any) => (
@@ -245,7 +286,7 @@ export default function PromotionRulesPage() {
             </ERPFormGrid>
 
             <ERPFormGrid cols={3}>
-              <ERPFormField label="Min Attendance %" htmlFor="minimumAttendance">
+              <ERPFormField label={t("minAttendance")} htmlFor="minimumAttendance">
                 <Input
                   id="minimumAttendance"
                   type="number"
@@ -253,7 +294,7 @@ export default function PromotionRulesPage() {
                   onChange={(e) => setFormData({ ...formData, minimumAttendance: Number(e.target.value) })}
                 />
               </ERPFormField>
-              <ERPFormField label="Min Overall %" htmlFor="minimumOverallPercentage">
+              <ERPFormField label={t("minOverall")} htmlFor="minimumOverallPercentage">
                 <Input
                   id="minimumOverallPercentage"
                   type="number"
@@ -261,7 +302,7 @@ export default function PromotionRulesPage() {
                   onChange={(e) => setFormData({ ...formData, minimumOverallPercentage: Number(e.target.value) })}
                 />
               </ERPFormField>
-              <ERPFormField label="Min Per Subject %" htmlFor="minimumPerSubject">
+              <ERPFormField label={t("minPerSubject")} htmlFor="minimumPerSubject">
                 <Input
                   id="minimumPerSubject"
                   type="number"
@@ -272,7 +313,7 @@ export default function PromotionRulesPage() {
             </ERPFormGrid>
 
             <ERPFormGrid cols={2}>
-              <ERPFormField label="Max Failed Subjects" htmlFor="maxFailedSubjects">
+              <ERPFormField label={t("maxFailedSubjects")} htmlFor="maxFailedSubjects">
                 <Input
                   id="maxFailedSubjects"
                   type="number"
@@ -280,16 +321,16 @@ export default function PromotionRulesPage() {
                   onChange={(e) => setFormData({ ...formData, maxFailedSubjects: Number(e.target.value) })}
                 />
               </ERPFormField>
-              <ERPFormField label="Next Class" htmlFor="nextClassId">
+              <ERPFormField label={t("nextClass")} htmlFor="nextClassId">
                 <Select
                   value={formData.nextClassId}
                   onValueChange={(value) => setFormData({ ...formData, nextClassId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select next class" />
+                    <SelectValue placeholder={t("selectNextClass")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Next Class (Final)</SelectItem>
+                    <SelectItem value="">{t("noNextClass")}</SelectItem>
                     {classes.map((cls: any) => (
                       <SelectItem key={cls.id} value={cls.id}>
                         {cls.name}
@@ -303,9 +344,9 @@ export default function PromotionRulesPage() {
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Allow Conditional Promotion</Label>
+                  <Label>{t("allowConditionalPromotion")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Allow promotion with re-exam for borderline cases
+                    {t("conditionalPromotionDescription")}
                   </p>
                 </div>
                 <Switch
@@ -316,9 +357,9 @@ export default function PromotionRulesPage() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Auto Promote</Label>
+                  <Label>{t("autoPromote")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Automatically promote eligible students
+                    {t("autoPromoteDescription")}
                   </p>
                 </div>
                 <Switch

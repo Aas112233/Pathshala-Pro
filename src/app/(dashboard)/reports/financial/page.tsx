@@ -162,61 +162,61 @@ export default function FinancialReportPage() {
     {
       accessorKey: "expenseNumber",
       header: "Voucher #",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="font-mono text-xs font-semibold text-foreground">
-          {row.original.expenseNumber}
+          {info?.row?.original?.expenseNumber ?? info?.expenseNumber ?? "-"}
         </span>
       ),
     },
     {
       accessorKey: "title",
       header: "Description / Purpose",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <div>
-          <p className="font-medium text-foreground text-xs">{row.original.title}</p>
-          <p className="text-[11px] text-muted-foreground">Payee: {row.original.payeeName}</p>
+          <p className="font-medium text-foreground text-xs">{info?.row?.original?.title ?? info?.title ?? "-"}</p>
+          <p className="text-[11px] text-muted-foreground">Payee: {info?.row?.original?.payeeName ?? info?.payeeName ?? "-"}</p>
         </div>
       ),
     },
     {
       accessorKey: "category",
       header: "Category",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs bg-muted px-2 py-0.5 rounded-md font-medium">
-          {row.original.category}
+          {info?.row?.original?.category ?? info?.category ?? "-"}
         </span>
       ),
     },
     {
       accessorKey: "amount",
       header: "Amount",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs font-bold text-foreground">
-          {formatCurrency(row.original.amount)}
+          {formatCurrency(info?.row?.original?.amount ?? info?.amount ?? 0)}
         </span>
       ),
     },
     {
       accessorKey: "paymentMethod",
       header: "Method",
-      cell: ({ row }) => (
-        <span className="text-xs font-mono font-medium">{row.original.paymentMethod}</span>
+      cell: (info: any) => (
+        <span className="text-xs font-mono font-medium">{info?.row?.original?.paymentMethod ?? info?.paymentMethod ?? "-"}</span>
       ),
     },
     {
       accessorKey: "expenseDate",
       header: "Date",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs text-muted-foreground font-mono">
-          {formatDate(row.original.expenseDate)}
+          {formatDate(info?.row?.original?.expenseDate ?? info?.expenseDate ?? "")}
         </span>
       ),
     },
     {
       accessorKey: "recordedByName",
       header: "Recorded By",
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">{row.original.recordedByName}</span>
+      cell: (info: any) => (
+        <span className="text-xs text-muted-foreground">{info?.row?.original?.recordedByName ?? info?.recordedByName ?? "-"}</span>
       ),
     },
   ];

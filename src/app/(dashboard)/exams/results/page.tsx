@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Save, Upload, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { useExamResults, useCreateExamResults, useExams, useExam, type ExamResult } from "@/hooks/use-exams";
@@ -40,6 +41,7 @@ interface StudentResult {
 }
 
 export default function ExamResultsPage() {
+  const t = useTranslations("exams.resultsEntry");
   const router = useRouter();
   const searchParams = useSearchParams();
   const examId = searchParams.get("examId");
@@ -97,7 +99,7 @@ export default function ExamResultsPage() {
     const maxMarks = subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks || 100;
     
     if (marks > maxMarks) {
-      toast.error(`Marks cannot exceed ${maxMarks}`);
+      toast.error(t("marksExceed", { max: maxMarks }));
       return;
     }
 
@@ -133,7 +135,7 @@ export default function ExamResultsPage() {
 
   async function handleSave() {
     if (!exam || !selectedSubject) {
-      toast.error("Please select exam and subject");
+      toast.error(t("selectExamSubject"));
       return;
     }
 
@@ -153,15 +155,15 @@ export default function ExamResultsPage() {
         }));
 
       if (resultsToSave.length === 0) {
-        toast.error("No results to save. Mark at least one student as present.");
+        toast.error(t("noResultsToSave"));
         setIsSaving(false);
         return;
       }
 
       await createResults.mutateAsync(resultsToSave);
-      toast.success(`Saved results for ${resultsToSave.length} students`);
+      toast.success(t("savedResults", { count: resultsToSave.length }));
     } catch (error) {
-      toast.error("Failed to save results");
+      toast.error(t("saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -176,13 +178,13 @@ export default function ExamResultsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Exam Results</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
           <p className="text-muted-foreground mt-1">
-            Enter and manage examination results
+            {t("description")}
           </p>
         </div>
         <Button onClick={() => router.push("/exams")}>
-          Back to Exams
+          {t("backToExams")}
         </Button>
       </div>
 
@@ -190,8 +192,8 @@ export default function ExamResultsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Select Exam</CardTitle>
-            <CardDescription>Choose the examination</CardDescription>
+            <CardTitle className="text-lg">{t("selectExam")}</CardTitle>
+            <CardDescription>{t("chooseExam")}</CardDescription>
           </CardHeader>
           <CardContent>
             {isExamsLoading ? (
@@ -203,7 +205,7 @@ export default function ExamResultsPage() {
                 setResults([]);
               }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an exam" />
+                  <SelectValue placeholder={t("selectExamPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {exams?.map((exam: any) => (
@@ -219,8 +221,8 @@ export default function ExamResultsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Select Subject</CardTitle>
-            <CardDescription>Choose the subject</CardDescription>
+            <CardTitle className="text-lg">{t("selectSubject")}</CardTitle>
+            <CardDescription>{t("chooseSubject")}</CardDescription>
           </CardHeader>
           <CardContent>
             <Select 
@@ -232,7 +234,7 @@ export default function ExamResultsPage() {
               disabled={!selectedExam}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a subject" />
+                <SelectValue placeholder={t("selectSubjectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {subjects.map((es: any) => (
@@ -252,25 +254,25 @@ export default function ExamResultsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-2xl font-bold">{results.length}</div>
-              <p className="text-muted-foreground">Total Students</p>
+              <p className="text-muted-foreground">{t("totalStudents")}</p>
             </CardContent>
           </Card>
           <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-green-600">{passCount}</div>
-              <p className="text-green-600">Pass</p>
+              <p className="text-green-600">{t("pass")}</p>
             </CardContent>
           </Card>
           <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-red-600">{failCount}</div>
-              <p className="text-red-600">Fail</p>
+              <p className="text-red-600">{t("fail")}</p>
             </CardContent>
           </Card>
           <Card className="border-gray-200 bg-gray-50 dark:bg-gray-950/20">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-gray-600">{absentCount}</div>
-              <p className="text-gray-600">Absent</p>
+              <p className="text-gray-600">{t("absent")}</p>
             </CardContent>
           </Card>
         </div>
@@ -280,15 +282,15 @@ export default function ExamResultsPage() {
       {selectedExam && selectedSubject && results.length === 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Initialize Results Entry</CardTitle>
+            <CardTitle>{t("initializeTitle")}</CardTitle>
             <CardDescription>
-              Click below to load the student list for results entry
+              {t("initializeDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={initializeResults} size="lg">
               <Upload className="h-4 w-4 mr-2" />
-              Load Student List
+              {t("loadStudents")}
             </Button>
           </CardContent>
         </Card>
@@ -299,8 +301,8 @@ export default function ExamResultsPage() {
           {/* Bulk Actions */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Bulk Actions</CardTitle>
-              <CardDescription>Quick actions for all students</CardDescription>
+              <CardTitle className="text-base">{t("bulkActions")}</CardTitle>
+              <CardDescription>{t("bulkDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex gap-2">
@@ -310,7 +312,7 @@ export default function ExamResultsPage() {
                   onClick={() => handleBulkUpdate("pass")}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                  Mark All Pass
+                  {t("markAllPass")}
                 </Button>
                 <Button
                   variant="outline"
@@ -318,7 +320,7 @@ export default function ExamResultsPage() {
                   onClick={() => handleBulkUpdate("fail")}
                 >
                   <XCircle className="h-4 w-4 mr-2 text-red-600" />
-                  Mark All Fail
+                  {t("markAllFail")}
                 </Button>
                 <Button
                   variant="outline"
@@ -326,7 +328,7 @@ export default function ExamResultsPage() {
                   onClick={() => handleBulkUpdate("absent")}
                 >
                   <AlertCircle className="h-4 w-4 mr-2" />
-                  Mark All Absent
+                  {t("markAllAbsent")}
                 </Button>
               </div>
             </CardContent>
@@ -344,14 +346,14 @@ export default function ExamResultsPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Student Results</CardTitle>
+                  <CardTitle>{t("studentResults")}</CardTitle>
                   <CardDescription>
-                    Enter marks for each student (Max: {subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks})
+                    {t("enterMarks", { max: subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks || 100 })}
                   </CardDescription>
                 </div>
                 <Button type="submit" disabled={isSaving}>
                   <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Results"}
+                  {isSaving ? t("saving") : t("saveResults")}
                 </Button>
               </div>
             </CardHeader>
@@ -359,11 +361,11 @@ export default function ExamResultsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Roll No</TableHead>
-                    <TableHead>Student Name</TableHead>
-                    <TableHead>Marks</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t("rollNo")}</TableHead>
+                    <TableHead>{t("studentName")}</TableHead>
+                    <TableHead>{t("marks")}</TableHead>
+                    <TableHead>{t("grade")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -381,7 +383,7 @@ export default function ExamResultsPage() {
                             const value = e.target.value === "" ? 0 : Number(e.target.value);
                             handleUpdateMarks(result.studentId, value);
                           }}
-                          placeholder="Absent"
+                          placeholder={t("absentPlaceholder")}
                           className="w-24"
                         />
                       </TableCell>

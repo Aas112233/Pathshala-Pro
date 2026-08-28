@@ -101,25 +101,34 @@ export default function EditExamPage() {
     : academicYearsData?.data ?? []) as AcademicYearOption[];
   const classes = classesData;
 
-  // Fetch all classes with their subjects to find matching class for saved subjects
+  // Fetch all classes with their subjects in parallel to find matching class for saved subjects
   const { data: allClassSubjectsData } = useQuery<Map<string, ClassSubjectOption[]>>({
-    queryKey: ["all-classes-subjects-for-edit"],
+    queryKey: ["all-classes-subjects-for-edit", classes.map((c) => c.id).join(",")],
     queryFn: async () => {
-      // Fetch subjects for each class
       const classSubjectsMap = new Map<string, ClassSubjectOption[]>();
+      if (!classes.length) return classSubjectsMap;
 
-      for (const classItem of classes) {
-        try {
-          const response = await api.get<ClassSubjectOption[]>(`/api/class-subjects?classId=${classItem.id}`) as ApiSuccessResponse<ClassSubjectOption[]>;
-          classSubjectsMap.set(classItem.id, response.data || []);
-        } catch (error) {
-          console.error(`Failed to fetch subjects for class ${classItem.name}:`, error);
-        }
+      const responses = await Promise.all(
+        classes.map(async (classItem) => {
+          try {
+            const response = (await api.get<ClassSubjectOption[]>(
+              `/api/class-subjects?classId=${classItem.id}`
+            )) as ApiSuccessResponse<ClassSubjectOption[]>;
+            return { classId: classItem.id, data: response.data || [] };
+          } catch (error) {
+            console.error(`Failed to fetch subjects for class ${classItem.name}:`, error);
+            return { classId: classItem.id, data: [] };
+          }
+        })
+      );
+
+      for (const res of responses) {
+        classSubjectsMap.set(res.classId, res.data);
       }
 
       return classSubjectsMap;
     },
-    enabled: !!examData && classes.length > 0 && !hasAutoSelectedClass,
+    enabled: !!examData && classes.length > 0,
   });
 
   const [formData, setFormData] = useState({
@@ -138,94 +147,99 @@ export default function EditExamPage() {
     endDate?: string;
   }>({});
 
-  // Get selected subjects - either from current class selection or default (prefilled)
+  // Get selected subjects - either from current class selection or default (prefilled from examData)
   const selectedSubjectIds = selectedClassId
-    ? (subjectSelectionByClass[selectedClassId] ?? classSubjects.map((item) => item.subjectId))
-    : (subjectSelectionByClass.default ?? []);
+    ? (subjectSelectionByClass[selectedClassId] ?? (
+        examData?.subjects && examData.subjects.length > 0
+          ? classSubjects
+              .filter((cs) => examData.subjects?.some((s: any) => (s.subjectId || s.subject?.subjectId) === cs.subjectId))
+              .map((cs) => cs.subjectId)
+          : classSubjects.map((item) => item.subjectId)
+      ))
+    : (subjectSelectionByClass.default ?? (
+        examData?.subjects
+          ? examData.subjects.map((s: any) => s.subjectId || s.subject?.subjectId).filter(Boolean)
+          : []
+      ));
 
-  // Load exam data and auto-select class based on saved subjects
+  // 1. Immediately prefill all core form fields & class as soon as examData is loaded
   useEffect(() => {
-    if (examData && allClassSubjectsData && allClassSubjectsData.size > 0 && !hasAutoSelectedClass && !isDataLoaded) {
-      try {
-        // The exam data is directly in examData
-        const exam = examData as any;
+    if (examData) {
+      const exam = examData as any;
+      const parseDateStr = (d: any) => {
+        if (!d) return "";
+        if (typeof d === "string") return d.split("T")[0];
+        return new Date(d).toISOString().split("T")[0];
+      };
 
-        console.log('=== LOADING EXAM DATA ===');
-        console.log('Exam:', exam);
-        console.log('Exam subjects:', exam.subjects);
-        console.log('All class subjects map:', allClassSubjectsData);
+      setFormData({
+        academicYearId: exam.academicYearId || "",
+        name: exam.name || "",
+        type: exam.type || "MID_TERM",
+        startDate: parseDateStr(exam.startDate),
+        endDate: parseDateStr(exam.endDate),
+        isPublished: Boolean(exam.isPublished),
+      });
 
-        // Prefill form data with existing exam data
-        setFormData({
-          academicYearId: exam.academicYearId || "",
-          name: exam.name || "",
-          type: exam.type || "MID_TERM",
-          startDate: exam.startDate ? exam.startDate.split('T')[0] : "",
-          endDate: exam.endDate ? exam.endDate.split('T')[0] : "",
-          isPublished: exam.isPublished || false,
-        });
+      if (exam.classId) {
+        setSelectedClassId(exam.classId);
+        setHasAutoSelectedClass(true);
+      }
 
-        console.log('Form data set:', formData);
+      if (exam.subjects && exam.subjects.length > 0) {
+        const savedSubjectIds = exam.subjects
+          .map((s: any) => s.subjectId || s.subject?.subjectId)
+          .filter(Boolean);
 
-        // Get saved subject IDs from exam
+        setSubjectSelectionByClass((prev) => ({
+          ...prev,
+          default: savedSubjectIds,
+          ...(exam.classId ? { [exam.classId]: savedSubjectIds } : {}),
+        }));
+      }
+      setIsDataLoaded(true);
+    }
+  }, [examData]);
+
+  // 2. Fallback auto-detection if exam has no direct classId
+  useEffect(() => {
+    if (examData && !selectedClassId) {
+      const exam = examData as any;
+      if (exam.classId) {
+        setSelectedClassId(exam.classId);
+        setHasAutoSelectedClass(true);
+      } else if (allClassSubjectsData && allClassSubjectsData.size > 0 && !hasAutoSelectedClass) {
         if (exam.subjects && exam.subjects.length > 0) {
-          const savedSubjectIds = exam.subjects.map((s: any) => s.subjectId || s.subject?.subjectId).filter(Boolean);
-          console.log('Saved subject IDs:', savedSubjectIds);
+          const savedSubjectIds = exam.subjects
+            .map((s: any) => s.subjectId || s.subject?.subjectId)
+            .filter(Boolean);
 
-          // Find class with most matching subjects
           let bestMatchingClassId = "";
           let maxMatchCount = 0;
 
           allClassSubjectsData.forEach((subjects, classId) => {
-            const subjectIds = subjects.map(s => s.subjectId);
-            const matchCount = subjectIds.filter(id => savedSubjectIds.includes(id)).length;
-            console.log(`Class ${classId}: ${matchCount} matches out of ${subjects.length} subjects`);
+            const subjectIds = subjects.map((s) => s.subjectId);
+            const matchCount = subjectIds.filter((id) => savedSubjectIds.includes(id)).length;
             if (matchCount > maxMatchCount) {
               maxMatchCount = matchCount;
               bestMatchingClassId = classId;
             }
           });
 
-          console.log('Best matching class:', bestMatchingClassId, 'with', maxMatchCount, 'matches');
-
-          // Auto-select the best matching class
           if (bestMatchingClassId) {
             setSelectedClassId(bestMatchingClassId);
-
-            // Pre-select the matching subjects for this class
-            const matchingSubjects = allClassSubjectsData.get(bestMatchingClassId) || [];
-            const matchingSubjectIds = matchingSubjects
-              .filter(s => savedSubjectIds.includes(s.subjectId))
-              .map(s => s.subjectId);
-
-            console.log('Setting selected subjects:', matchingSubjectIds);
-
-            setSubjectSelectionByClass({
-              [bestMatchingClassId]: matchingSubjectIds,
-              default: savedSubjectIds,
-            });
-
             setHasAutoSelectedClass(true);
-            setIsDataLoaded(true);
-            console.log('=== DATA LOADED SUCCESSFULLY ===');
-          } else {
-            // If no matching class found, just store the subject IDs
-            console.log('No matching class found, storing default subjects');
-            setSubjectSelectionByClass({
-              default: savedSubjectIds,
-            });
-            setIsDataLoaded(true);
+          } else if (classes.length > 0) {
+            setSelectedClassId(classes[0].id);
           }
-        } else {
-          console.log('No exam subjects found');
-          setIsDataLoaded(true);
+        } else if (classes.length > 0) {
+          setSelectedClassId(classes[0].id);
         }
-      } catch (error) {
-        console.error('Error loading exam data:', error);
-        setIsDataLoaded(true);
+      } else if (classes.length > 0 && !allClassSubjectsData) {
+        setSelectedClassId(classes[0].id);
       }
     }
-  }, [examData, allClassSubjectsData, hasAutoSelectedClass, isDataLoaded]);
+  }, [examData, allClassSubjectsData, classes, hasAutoSelectedClass, selectedClassId]);
 
   function handleSubjectToggle(subjectId: string) {
     if (!selectedClassId) {
@@ -311,20 +325,72 @@ export default function EditExamPage() {
     );
   }
 
-  if (isExamLoading) {
+  const isPageLoading =
+    isExamLoading ||
+    (examData && (!isDataLoaded || !formData.name || (classes.length > 0 && !selectedClassId)));
+
+  if (isPageLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6" aria-busy="true">
-        <Skeleton className="h-9 w-72" />
-        <div className="grid gap-4 md:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="space-y-3 rounded-lg border border-border bg-card p-5"
-            >
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-10 w-full" />
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-9 w-20 rounded-lg" />
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-72" />
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* Form Body Skeleton */}
+        <div className="rounded-lg border border-border bg-card p-6 space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-32 w-full rounded-md" />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Skeleton className="h-5 w-10 rounded-full" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Skeleton className="h-9 w-20 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+          </div>
         </div>
       </div>
     );

@@ -252,6 +252,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: Receipt,
       },
       {
+        titleKey: "nav.feeStructures",
+        href: "/fees/structures",
+        icon: Layers,
+      },
+      {
         titleKey: "nav.feeCollection",
         href: "/fees/collection",
         icon: CreditCard,
@@ -400,7 +405,12 @@ export const MAX_PAGE_SIZE = 100;
 
 export const PAYMENT_METHODS = [
   { value: "CASH", labelKey: "collection.cash" },
+  { value: "BANK_TRANSFER", labelKey: "collection.bankTransfer" },
+  { value: "POS_CARD", labelKey: "collection.posCard" },
   { value: "DIGITAL", labelKey: "collection.digital" },
+  { value: "CHEQUE", labelKey: "collection.cheque" },
+  { value: "EASYPAISA", labelKey: "collection.easypaisa" },
+  { value: "JAZZCASH", labelKey: "collection.jazzcash" },
 ] as const;
 
 export const VOUCHER_STATUSES = [

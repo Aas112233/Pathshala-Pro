@@ -2,10 +2,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
-  errorResponse,
-  unauthorized,
-  notFound,
   badRequest,
+  notFound,
   handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -62,8 +60,25 @@ export async function GET(request: NextRequest) {
       return notFound("Promotion rule not found for this class and academic year");
     }
 
+    // If nextClassId exists, fetch nextClass details
+    let nextClass: { id: string; classId: string; name: string; classNumber: number } | null = null;
+    if (promotionRule.nextClassId) {
+      nextClass = await prisma.class.findUnique({
+        where: {
+          id: promotionRule.nextClassId,
+          tenantId,
+        },
+        select: {
+          id: true,
+          classId: true,
+          name: true,
+          classNumber: true,
+        },
+      });
+    }
+
     // Get all students in this class
-    const students = await prisma.studentProfile.findMany({
+    const students = (await prisma.studentProfile.findMany({
       where: {
         tenantId,
         classId,
@@ -78,7 +93,9 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-    }) as StudentProfileWithClass[];
+    })) as StudentProfileWithClass[];
+
+    const isFinalClass = !promotionRule.nextClassId;
 
     const promotionEligibility = await Promise.all(
       students.map(async (student: StudentProfileWithClass) => {
@@ -183,7 +200,6 @@ export async function GET(request: NextRequest) {
         }
 
         // If no next class ID (final year), mark as graduated
-        const isFinalClass = !promotionRule.nextClassId;
         if (isFinalClass) {
           action = "RETAINED";
           reasons.push("Final class - No promotion needed");
@@ -205,6 +221,7 @@ export async function GET(request: NextRequest) {
           },
           subjectDetails,
           suggestedNextClassId: promotionRule.nextClassId,
+          suggestedNextClassName: nextClass?.name || (isFinalClass ? "Graduated / Final Class" : null),
           reExamAllowed: action === "CONDITIONAL_PROMOTED" && !isFinalClass,
         };
       })
@@ -213,6 +230,7 @@ export async function GET(request: NextRequest) {
     return successResponse(
       {
         class: promotionRule.class,
+        nextClass,
         academicYearId,
         promotionRule: {
           minimumAttendance: promotionRule.minimumAttendance,
@@ -220,6 +238,8 @@ export async function GET(request: NextRequest) {
           minimumPerSubject: promotionRule.minimumPerSubject,
           maxFailedSubjects: promotionRule.maxFailedSubjects,
           allowConditionalPromotion: promotionRule.allowConditionalPromotion,
+          nextClassId: promotionRule.nextClassId,
+          nextClassName: nextClass?.name || (isFinalClass ? "Graduated / Final Class" : null),
         },
         totalStudents: students.length,
         eligibleCount: promotionEligibility.filter((e) => e.eligible && e.action === "PROMOTED").length,

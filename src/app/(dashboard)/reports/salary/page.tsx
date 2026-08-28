@@ -138,73 +138,76 @@ export default function SalaryReportPage() {
     {
       accessorKey: "staffId",
       header: "Staff ID",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs font-semibold">{row.original.staffId}</span>
+      cell: (info: any) => (
+        <span className="font-mono text-xs font-semibold">{info?.row?.original?.staffId ?? info?.staffId ?? "-"}</span>
       ),
     },
     {
       accessorKey: "staffName",
       header: "Employee Name",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <div>
-          <p className="font-medium text-foreground">{row.original.staffName}</p>
-          <p className="text-xs text-muted-foreground">{row.original.designation}</p>
+          <p className="font-medium text-foreground">{info?.row?.original?.staffName ?? info?.staffName ?? "-"}</p>
+          <p className="text-xs text-muted-foreground">{info?.row?.original?.designation ?? info?.designation ?? ""}</p>
         </div>
       ),
     },
     {
       accessorKey: "department",
       header: "Department",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs bg-muted px-2 py-0.5 rounded-md font-medium">
-          {row.original.department}
+          {info?.row?.original?.department ?? info?.department ?? "-"}
         </span>
       ),
     },
     {
       accessorKey: "period",
       header: "Period",
-      cell: ({ row }) => <span className="text-xs font-mono">{row.original.period}</span>,
+      cell: (info: any) => <span className="text-xs font-mono">{info?.row?.original?.period ?? info?.period ?? "-"}</span>,
     },
     {
       accessorKey: "baseSalary",
       header: "Gross Base",
-      cell: ({ row }) => (
-        <span className="text-xs font-medium">{formatCurrency(row.original.baseSalary)}</span>
+      cell: (info: any) => (
+        <span className="text-xs font-medium">{formatCurrency(info?.row?.original?.baseSalary ?? info?.baseSalary ?? 0)}</span>
       ),
     },
     {
       accessorKey: "deductions",
       header: "Deductions",
-      cell: ({ row }) => (
-        <span className="text-xs text-rose-600 font-medium">
-          {row.original.deductions > 0 ? `-${formatCurrency(row.original.deductions)}` : "—"}
-        </span>
-      ),
+      cell: (info: any) => {
+        const deductions = info?.row?.original?.deductions ?? info?.deductions ?? 0;
+        return (
+          <span className="text-xs text-rose-600 font-medium">
+            {deductions > 0 ? `-${formatCurrency(deductions)}` : "—"}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "netPayable",
       header: "Net Payable",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs font-bold text-foreground">
-          {formatCurrency(row.original.netPayable)}
+          {formatCurrency(info?.row?.original?.netPayable ?? info?.netPayable ?? 0)}
         </span>
       ),
     },
     {
       accessorKey: "paidAmount",
       header: "Paid Amount",
-      cell: ({ row }) => (
+      cell: (info: any) => (
         <span className="text-xs font-semibold text-emerald-600">
-          {formatCurrency(row.original.paidAmount)}
+          {formatCurrency(info?.row?.original?.paidAmount ?? info?.paidAmount ?? 0)}
         </span>
       ),
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => {
-        const s = row.original.status;
+      cell: (info: any) => {
+        const s = info?.row?.original?.status ?? info?.status ?? "UNPAID";
         const variant = s === "PAID" ? "success" : s === "PARTIAL" ? "warning" : "error";
         return <StatusBadge status={s} variant={variant} />;
       },

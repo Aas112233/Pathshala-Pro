@@ -57,12 +57,20 @@ export interface CreateStudentDTO {
   guardianName: string;
   guardianContact: string;
   guardianEmail?: string;
+  fatherName?: string;
+  motherName?: string;
+  emergencyContact?: string;
+  birthCertificateNo?: string;
+  bloodGroup?: string;
   gender: string;
   status: string;
   profilePictureUrl?: string;
   driveFileId?: string;
   dateOfBirth?: string;
   address?: string;
+  classId?: string;
+  groupId?: string;
+  sectionId?: string;
 }
 
 export interface UpdateStudentDTO extends Partial<CreateStudentDTO> {

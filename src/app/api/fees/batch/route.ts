@@ -63,6 +63,27 @@ export async function POST(request: NextRequest) {
       return badRequest("No active students found matching the selected target criteria.");
     }
 
+    // Fetch class fee structures for this academic year if using structure
+    const feeStructures = await prisma.classFeeStructure.findMany({
+      where: {
+        tenantId,
+        academicYearId: data.academicYearId,
+        isActive: true,
+      },
+    });
+    const structureMap = new Map(feeStructures.map((s) => [s.classId, s]));
+
+    // Fetch student concessions for all matching students
+    const studentIds = students.map((s) => s.id);
+    const concessions = await prisma.studentFeeConcession.findMany({
+      where: {
+        tenantId,
+        studentProfileId: { in: studentIds },
+        isActive: true,
+      },
+    });
+    const concessionMap = new Map(concessions.map((c) => [c.studentProfileId, c]));
+
     // Find starting sequence number for this year's vouchers
     const currentYear = data.year || new Date().getFullYear();
     const latestVoucher = await prisma.feeVoucher.findFirst({
@@ -87,6 +108,7 @@ export async function POST(request: NextRequest) {
     // Calculate vouchers payload
     let totalGeneratedDue = 0;
     let totalArrearsRolled = 0;
+    let totalConcessionsApplied = 0;
     const vouchersToCreate: any[] = [];
 
     for (const student of students) {
@@ -107,9 +129,27 @@ export async function POST(request: NextRequest) {
         totalArrearsRolled += arrears;
       }
 
-      const baseAmount = data.baseAmount;
-      const discountAmount = 0;
-      const totalDue = baseAmount - discountAmount + arrears;
+      // Determine base fee from class structure or fallback
+      let baseAmount = data.baseAmount || 0;
+      if (data.useClassFeeStructure !== false && student.classId && structureMap.has(student.classId)) {
+        const struct = structureMap.get(student.classId)!;
+        baseAmount = struct.totalMonthlyFee || struct.tuitionFee || data.baseAmount || 0;
+      }
+
+      // Determine concession/discount
+      let discountAmount = 0;
+      if (concessionMap.has(student.id)) {
+        const conc = concessionMap.get(student.id)!;
+        if (conc.discountType === "PERCENTAGE") {
+          discountAmount = Math.round(((baseAmount * conc.discountValue) / 100) * 100) / 100;
+        } else {
+          discountAmount = Math.min(conc.discountValue, baseAmount);
+        }
+      }
+      totalConcessionsApplied += discountAmount;
+
+      const netBase = Math.max(0, baseAmount - discountAmount);
+      const totalDue = netBase + arrears;
       totalGeneratedDue += totalDue;
 
       const voucherId = `VCH-${currentYear}-${nextSequence.toString().padStart(5, "0")}`;
@@ -146,11 +186,11 @@ export async function POST(request: NextRequest) {
         totalVouchersCreated: vouchersToCreate.length,
         totalInvoiceAmount: totalGeneratedDue,
         totalArrearsIncluded: totalArrearsRolled,
-        baseFeePerStudent: data.baseAmount,
+        totalConcessionsApplied,
         dueDate: data.dueDate,
         target: data.target,
       },
-      `Successfully generated ${vouchersToCreate.length} fee vouchers!`,
+      `Successfully generated ${vouchersToCreate.length} individualized fee vouchers!`,
       201
     );
   } catch (error) {
