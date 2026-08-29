@@ -184,11 +184,11 @@ export function FastAttendanceGrid({
   };
 
   return (
-    <Card className="border border-border shadow-sm rounded-xl overflow-hidden">
+    <Card className="border border-border shadow-sm rounded-lg overflow-hidden">
       <CardHeader className="bg-muted/30 border-b border-border/70 py-4 px-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Calendar className="h-5 w-5" />
             </div>
             <div>
@@ -269,7 +269,7 @@ export function FastAttendanceGrid({
               size="sm"
               onClick={handleSaveAttendance}
               disabled={isSaving || totalStudents === 0}
-              className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm"
+              className="h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
             >
               {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               {t("attendanceExtras.fastGrid.saveAttendance")}

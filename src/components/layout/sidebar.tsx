@@ -146,7 +146,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search menu..."
+              placeholder={t("sidebar.search.placeholder")}
               className="h-8 w-full rounded-lg border border-sidebar-border bg-sidebar-accent/50 pl-8 pr-8 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/35 outline-none transition-all focus:border-primary/50 focus:bg-sidebar-accent focus:ring-1 focus:ring-primary/25"
             />
             {searchQuery ? (
@@ -175,24 +175,24 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               className={cn(
                 "flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-bold transition-all border shadow-xs",
                 pathname.startsWith("/system-admin")
-                  ? "bg-indigo-600 text-white border-indigo-700 shadow-indigo-500/20"
-                  : "bg-indigo-50/90 text-indigo-700 border-indigo-200/90 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-primary/10 text-primary border-primary/20 hover:bg-primary/15"
               )}
-              title={collapsed ? "SuperAdmin Command Center" : undefined}
+              title={collapsed ? t("sidebar.systemAdmin.title") : undefined}
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shrink-0 shadow-xs">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
                 <ShieldAlert className="h-4 w-4" />
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="truncate font-bold">SuperAdmin Portal</span>
-                    <span className="text-[9px] bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-1 py-0.5 rounded font-mono font-bold">
-                      SAAS
+                    <span className="truncate font-semibold">{t("sidebar.systemAdmin.label")}</span>
+                    <span className="text-[9px] bg-sidebar px-1 py-0.5 rounded font-mono font-medium text-muted-foreground">
+                      SYSTEM
                     </span>
                   </div>
                   <p className="text-[10px] text-muted-foreground truncate font-normal">
-                    Manage 1,000+ Schools
+                    {t("sidebar.systemAdmin.description")}
                   </p>
                 </div>
               )}
@@ -256,12 +256,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           /* No results state */
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Search className="h-8 w-8 text-sidebar-foreground/20 mb-2" />
-            <p className="text-xs text-sidebar-foreground/40">No menu items found</p>
+            <p className="text-xs text-sidebar-foreground/40">{t("sidebar.search.noResults")}</p>
             <button
               onClick={clearSearch}
               className="mt-2 text-xs text-primary hover:text-primary/80 transition-colors"
             >
-              Clear search
+              {t("sidebar.search.clear")}
             </button>
           </div>
         )}

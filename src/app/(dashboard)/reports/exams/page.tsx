@@ -109,17 +109,17 @@ export default function ExamReportPage() {
     logoUrl: settings.logoUrl,
   };
   const dateRange = {
-    from: filters.fromDate || "Start",
-    to: filters.toDate || "Present",
+    from: filters.fromDate || tExam("start"),
+    to: filters.toDate || tExam("present"),
   };
   const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
   const appliedFilters = [
-    filters.classId && filters.classId !== "all" ? { label: "Class", value: filters.classId } : null,
+    filters.classId && filters.classId !== "all" ? { label: tExam("className"), value: filters.classId } : null,
     filters.sectionId && filters.sectionId !== "all"
-      ? { label: "Section", value: filters.sectionId }
+      ? { label: tExam("section"), value: filters.sectionId }
       : null,
     filters.examType && filters.examType !== "all"
-      ? { label: "Exam type", value: filters.examType }
+      ? { label: tExam("examType"), value: filters.examType }
       : null,
   ].filter((value): value is { label: string; value: string } => Boolean(value));
 
@@ -146,7 +146,7 @@ export default function ExamReportPage() {
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate exam report:", error);
-      toast.error("Failed to generate exam report");
+      toast.error(tExam("generateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -173,10 +173,10 @@ export default function ExamReportPage() {
   const handleExportExcel = async () => {
     const result = await exportExamReport(data, dateRange);
     if (result.success) {
-      toast.success("Exam report exported");
+      toast.success(tExam("exported"));
       return;
     }
-    toast.error("Failed to export exam report");
+    toast.error(tExam("exportFailed"));
   };
 
   const handleExportPdf = async () => {
@@ -208,10 +208,10 @@ export default function ExamReportPage() {
     });
 
     if (result.success) {
-      toast.success("Exam report exported");
+      toast.success(tExam("exported"));
       return;
     }
-    toast.error("Failed to export exam report");
+    toast.error(tExam("exportFailed"));
   };
 
   const handleExport = async (type: "excel" | "pdf") => {
@@ -225,7 +225,7 @@ export default function ExamReportPage() {
   const columns: ColumnDef<ExamResult>[] = [
     {
       accessorKey: "rollNumber",
-      header: "Roll No.",
+      header: tExam("rollNo"),
       cell: (info: any) => (
         <span className="font-medium">
           {typeof info?.getValue === "function"
@@ -234,14 +234,14 @@ export default function ExamReportPage() {
         </span>
       ),
     },
-    { accessorKey: "studentName", header: "Student Name" },
-    { accessorKey: "className", header: "Class" },
-    { accessorKey: "section", header: "Section" },
-    { accessorKey: "examName", header: "Exam" },
-    { accessorKey: "subject", header: "Subject" },
+    { accessorKey: "studentName", header: tExam("studentName") },
+    { accessorKey: "className", header: tExam("className") },
+    { accessorKey: "section", header: tExam("section") },
+    { accessorKey: "examName", header: tExam("exam") },
+    { accessorKey: "subject", header: tExam("subject") },
     {
       accessorKey: "marksObtained",
-      header: "Marks",
+      header: tExam("marks"),
       cell: (info: any) => {
         const marks =
           typeof info?.getValue === "function"
@@ -272,7 +272,7 @@ export default function ExamReportPage() {
     },
     {
       accessorKey: "grade",
-      header: "Grade",
+      header: tExam("grade"),
       cell: (info: any) => {
         const grade =
           typeof info?.getValue === "function"
@@ -290,7 +290,7 @@ export default function ExamReportPage() {
         return (
           <span
             className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold ${
-              gradeColors[grade] || "bg-gray-100 text-gray-800"
+              gradeColors[grade] || "bg-muted text-muted-foreground"
             }`}
           >
             {grade}
@@ -300,7 +300,7 @@ export default function ExamReportPage() {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: tExam("status"),
       cell: (info: any) => {
         const status =
           typeof info?.getValue === "function"
@@ -314,7 +314,7 @@ export default function ExamReportPage() {
         return (
           <span
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              statusColors[status] || "bg-gray-100 text-gray-800"
+              statusColors[status] || "bg-muted text-muted-foreground"
             }`}
           >
             {status}
@@ -452,8 +452,8 @@ export default function ExamReportPage() {
           hasGenerated || isLoading ? (
             data.length > 0 || isLoading ? (
               <ReportTable
-                title="Exam Results Details"
-                description="Detailed exam results for the selected filters."
+                title={tExam("reportDetailsTitle")}
+                description={tExam("reportDetailsDescription")}
                 columns={columns}
                 data={data}
                 isLoading={isLoading}
@@ -462,15 +462,15 @@ export default function ExamReportPage() {
               />
             ) : (
               <ReportEmptyState
-                title="No exam results found"
-                description="Try another exam type, section, or reporting period."
+                title={tExam("noResults")}
+                description={tExam("noResultsDescription")}
               />
             )
           ) : (
             <ReportEmptyState
-              title="Generate an exam report"
-              description="Select the reporting period and optional class filters to review exam performance and export the report."
-              actionLabel="Generate report"
+              title={tExam("generateTitle")}
+              description={tExam("generateDescription")}
+              actionLabel={tExam("generateAction")}
               onAction={handleGenerateReport}
             />
           )

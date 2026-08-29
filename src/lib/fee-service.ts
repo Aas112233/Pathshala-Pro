@@ -114,9 +114,16 @@ export async function generateFeeInvoice(
   // Generate Concurrency-Safe Invoice Number
   const voucherNumber = await getNextVoucherNumber(tx, tenantId, "SALES_FEE", billingYear);
 
-  // Resolve Revenue Account mappings
+  // Resolve configured FeeHead revenue mappings. Explicit caller overrides remain supported.
+  const feeHeads = tx.feeHead?.findMany
+    ? await tx.feeHead.findMany({
+        where: { tenantId, code: { in: Array.from(new Set(items.map((item) => item.feeHeadCode))) }, isActive: true },
+        select: { code: true, accountCode: true },
+      })
+    : [];
+  const feeHeadAccountMap = new Map(feeHeads.map((head) => [head.code, head.accountCode]));
   const revenueAccountCodes = Array.from(
-    new Set(items.map((i) => i.revenueAccountCode || "4010"))
+    new Set(items.map((item) => item.revenueAccountCode || feeHeadAccountMap.get(item.feeHeadCode) || "4010"))
   );
   const neededCodes = [arAccountCode, ...revenueAccountCodes];
   if (discount.greaterThan(0)) {
@@ -178,7 +185,7 @@ export async function generateFeeInvoice(
 
   // Leg 3: Credit Respective Revenue Heads
   for (const item of items) {
-    const headCode = item.revenueAccountCode || "4010";
+    const headCode = item.revenueAccountCode || feeHeadAccountMap.get(item.feeHeadCode) || "4010";
     const revAccId = accountMap.get(headCode);
     if (!revAccId) {
       throw new Error(`Revenue account (${headCode}) for item '${item.title}' not configured.`);
@@ -226,6 +233,183 @@ export async function generateFeeInvoice(
     status: "UNPAID",
     journalEntryId: journal.id,
   };
+}
+
+/**
+ * Posts accrual for legacy FeeVoucher records that do not use FeeInvoice.
+ * New revenue is credited using the tenant's FeeHead mapping.
+ */
+export async function postLegacyFeeInvoiceAccrual(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    studentProfileId: string;
+    feeHeadCode: string;
+    amount: number | Prisma.Decimal;
+    discountAmount?: number | Prisma.Decimal;
+    executedById: string;
+    reference: string;
+    dueDate?: Date;
+  }
+): Promise<{ journalEntryId: string; voucherNumber: string } | null> {
+  const gross = new Prisma.Decimal(params.amount);
+  const discount = new Prisma.Decimal(params.discountAmount || 0);
+  if (gross.lessThanOrEqualTo(0)) return null;
+  if (discount.lessThan(0) || discount.greaterThan(gross)) {
+    throw new Error(`Invalid fee discount (${discount.toString()}) for ${gross.toString()}.`);
+  }
+
+  const [feeHead, accounts] = await Promise.all([
+    tx.feeHead.findUnique({
+      where: { tenantId_code: { tenantId: params.tenantId, code: params.feeHeadCode } },
+      select: { accountCode: true },
+    }),
+    tx.chartOfAccount.findMany({
+      where: { tenantId: params.tenantId, code: { in: ["1030", "5060"] }, isActive: true },
+    }),
+  ]);
+  const revenueCode = feeHead?.accountCode || "4010";
+  const revenueAccount = await tx.chartOfAccount.findFirst({
+    where: { tenantId: params.tenantId, code: revenueCode, isActive: true },
+  });
+  const accountMap = new Map(accounts.map((account) => [account.code, account]));
+  if (!accountMap.has("1030")) throw new Error("Accounts Receivable account (1030) not configured.");
+  if (!revenueAccount) throw new Error(`Revenue account (${revenueCode}) not configured.`);
+  if (discount.greaterThan(0) && !accountMap.has("5060")) {
+    throw new Error("Fee Concession account (5060) not configured.");
+  }
+
+  const net = gross.minus(discount);
+  const voucherNumber = await getNextVoucherNumber(tx, params.tenantId, "SALES_FEE");
+  const lineItems = [];
+  if (net.greaterThan(0)) {
+    lineItems.push({
+      tenantId: params.tenantId,
+      accountId: accountMap.get("1030")!.id,
+      debitAmount: net,
+      creditAmount: new Prisma.Decimal(0),
+      narration: `Student Fee Voucher Receivable - ${params.reference}`,
+      studentId: params.studentProfileId,
+    });
+  }
+  if (discount.greaterThan(0)) {
+    lineItems.push({
+      tenantId: params.tenantId,
+      accountId: accountMap.get("5060")!.id,
+      debitAmount: discount,
+      creditAmount: new Prisma.Decimal(0),
+      narration: `Fee Concession - ${params.reference}`,
+      studentId: params.studentProfileId,
+    });
+  }
+  lineItems.push({
+    tenantId: params.tenantId,
+    accountId: revenueAccount.id,
+    debitAmount: new Prisma.Decimal(0),
+    creditAmount: gross,
+    narration: `Fee Revenue: ${params.feeHeadCode} - ${params.reference}`,
+    studentId: params.studentProfileId,
+  });
+
+  const journal = await tx.journalEntry.create({
+    data: {
+      tenantId: params.tenantId,
+      entryNumber: voucherNumber,
+      voucherType: "SALES_FEE",
+      postingDate: params.dueDate || new Date(),
+      postingStatus: "POSTED",
+      narration: `Fee Voucher Accrual - ${params.reference}`,
+      reference: params.reference,
+      totalDebit: gross,
+      totalCredit: gross,
+      createdById: params.executedById,
+      lineItems: { create: lineItems },
+    },
+  });
+
+  return { journalEntryId: journal.id, voucherNumber };
+}
+
+/**
+ * Posts a receipt journal for legacy FeeVoucher transactions.
+ */
+export async function postLegacyFeePaymentJournal(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    studentProfileId: string;
+    feeVoucherId: string;
+    amount: number | Prisma.Decimal;
+    appliedToInvoice: number | Prisma.Decimal;
+    excessToWallet?: number | Prisma.Decimal;
+    paymentMethod: string;
+    receiptNumber: string;
+    executedById: string;
+    note?: string;
+  }
+): Promise<{ journalEntryId: string; voucherNumber: string }> {
+  const payment = new Prisma.Decimal(params.amount);
+  const applied = new Prisma.Decimal(params.appliedToInvoice);
+  const excess = new Prisma.Decimal(params.excessToWallet || 0);
+  if (payment.lessThanOrEqualTo(0) || !applied.plus(excess).equals(payment)) {
+    throw new Error("Invalid fee payment journal amounts.");
+  }
+
+  const bankCode = params.paymentMethod === "CASH" ? "1020" : "1010";
+  const requiredCodes = [bankCode];
+  if (applied.greaterThan(0)) requiredCodes.push("1030");
+  if (excess.greaterThan(0)) requiredCodes.push("2050");
+  const accounts = await tx.chartOfAccount.findMany({
+    where: { tenantId: params.tenantId, code: { in: requiredCodes }, isActive: true },
+  });
+  const accountMap = new Map(accounts.map((account) => [account.code, account]));
+  for (const code of requiredCodes) {
+    if (!accountMap.has(code)) throw new Error(`Account (${code}) not configured.`);
+  }
+
+  const voucherNumber = await getNextVoucherNumber(tx, params.tenantId, "RECEIPT");
+  const lines = [{
+    tenantId: params.tenantId,
+    accountId: accountMap.get(bankCode)!.id,
+    debitAmount: payment,
+    creditAmount: new Prisma.Decimal(0),
+    narration: `Fee Payment Received via ${params.paymentMethod} [Rcpt: ${params.receiptNumber}]`,
+  }];
+  if (applied.greaterThan(0)) {
+    lines.push({
+      tenantId: params.tenantId,
+      accountId: accountMap.get("1030")!.id,
+      debitAmount: new Prisma.Decimal(0),
+      creditAmount: applied,
+      narration: `Settlement of Fee Voucher ${params.feeVoucherId}`,
+    });
+  }
+  if (excess.greaterThan(0)) {
+    lines.push({
+      tenantId: params.tenantId,
+      accountId: accountMap.get("2050")!.id,
+      debitAmount: new Prisma.Decimal(0),
+      creditAmount: excess,
+      narration: `Excess Fee Payment Wallet Credit - ${params.feeVoucherId}`,
+    });
+  }
+
+  const journal = await tx.journalEntry.create({
+    data: {
+      tenantId: params.tenantId,
+      entryNumber: voucherNumber,
+      voucherType: "RECEIPT",
+      postingDate: new Date(),
+      postingStatus: "POSTED",
+      narration: `Fee Collection Receipt - ${params.receiptNumber}${params.note ? ` | ${params.note}` : ""}`,
+      reference: params.receiptNumber,
+      totalDebit: payment,
+      totalCredit: payment,
+      createdById: params.executedById,
+      lineItems: { create: lines },
+    },
+  });
+  return { journalEntryId: journal.id, voucherNumber };
 }
 
 /**

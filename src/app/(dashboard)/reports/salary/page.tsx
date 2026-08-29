@@ -244,7 +244,7 @@ export default function SalaryReportPage() {
       </PageHeader>
 
       {/* Filter Bar */}
-      <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs space-y-4">
+      <div className="rounded-lg border border-border/80 bg-card p-4 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase">Year</label>

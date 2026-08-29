@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { ImagePreviewModal } from "@/components/shared/image-preview-modal";
@@ -24,6 +25,7 @@ export function StudentDetailsModal({
   onEdit,
 }: StudentDetailsModalProps) {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const t = useTranslations("students");
   const { formatDate } = useTenantFormatting();
 
   if (!student) return null;
@@ -62,8 +64,8 @@ export function StudentDetailsModal({
       <AppModal
         isOpen={isOpen}
         onClose={onClose}
-        title="Student Details"
-        description="View complete student information"
+        title={t("details.title")}
+        description={t("details.description")}
         maxWidth="lg"
       >
         <div className="space-y-6">
@@ -83,8 +85,8 @@ export function StudentDetailsModal({
                   setIsImagePreviewOpen(true);
                 }
               }}
-              aria-label={hasImage ? `Click to preview ${fullName}'s photo` : undefined}
-              title={hasImage ? "Click to preview photo" : undefined}
+              aria-label={hasImage ? t("details.clickPreviewPhoto") : undefined}
+              title={hasImage ? t("details.clickPreviewPhoto") : undefined}
             >
               {student.profilePictureUrl ? (
                 <>
@@ -113,11 +115,11 @@ export function StudentDetailsModal({
               <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Hash className="h-3 w-3" />
-                  Roll: {student.rollNumber}
+                  {t("details.rollLabel")}: {student.rollNumber}
                 </span>
                 <span className="flex items-center gap-1">
                   <IdCard className="h-3 w-3" />
-                  ID: {student.studentId}
+                  {t("details.idLabel")}: {student.studentId}
                 </span>
               </div>
             </div>
@@ -127,21 +129,21 @@ export function StudentDetailsModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Personal Information */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Personal Information</h4>
+              <h4 className="text-sm font-semibold text-foreground">{t("details.personalInfo")}</h4>
               <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                 <DetailRow
                   icon={User}
-                  label="Gender"
+                  label={t("gender")}
                   value={student.gender}
                 />
                 <DetailRow
                   icon={Calendar}
-                  label="Date of Birth"
+                  label={t("dateOfBirth")}
                   value={student.dateOfBirth ? formatDate(student.dateOfBirth) : null}
                 />
                 <DetailRow
                   icon={MapPin}
-                  label="Address"
+                  label={t("address")}
                   value={student.address}
                 />
               </div>
@@ -149,21 +151,21 @@ export function StudentDetailsModal({
 
             {/* Guardian Information */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Guardian Information</h4>
+              <h4 className="text-sm font-semibold text-foreground">{t("details.guardianInfo")}</h4>
               <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                 <DetailRow
                   icon={User}
-                  label="Guardian Name"
+                  label={t("guardianName")}
                   value={student.guardianName}
                 />
                 <DetailRow
                   icon={Phone}
-                  label="Contact Number"
+                  label={t("details.contactNumber")}
                   value={student.guardianContact}
                 />
                 <DetailRow
                   icon={Mail}
-                  label="Email Address"
+                  label={t("details.emailAddress")}
                   value={student.guardianEmail}
                 />
               </div>
@@ -172,16 +174,16 @@ export function StudentDetailsModal({
 
           {/* Admission Information */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground">Admission Information</h4>
+            <h4 className="text-sm font-semibold text-foreground">{t("details.admissionInfo")}</h4>
             <div className="rounded-lg border border-border bg-card p-3">
               <DetailRow
                 icon={Calendar}
-                label="Admission Date"
+                label={t("tableColumns.admissionDate")}
                 value={student.admissionDate ? formatDate(student.admissionDate) : null}
               />
               <DetailRow
                 icon={User}
-                label="Status"
+                label={t("status")}
                 value={student.status}
               />
             </div>
@@ -190,11 +192,11 @@ export function StudentDetailsModal({
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={onClose}>
-              Close
+              {t("close")}
             </Button>
             {onEdit && (
               <Button onClick={onEdit}>
-                Edit Student
+                {t("editStudent")}
               </Button>
             )}
           </div>
@@ -205,7 +207,7 @@ export function StudentDetailsModal({
         isOpen={isImagePreviewOpen}
         onClose={() => setIsImagePreviewOpen(false)}
         src={student.profilePictureUrl || ""}
-        alt={`${fullName}'s profile photo`}
+        alt={t("details.photoAlt")}
         title={fullName}
       />
     </>

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { Users, Plus } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 // View Model
 import { useStaffViewModel } from "@/viewmodels/staff/use-staff-view-model";
@@ -45,6 +47,12 @@ export default function StaffPage() {
     deleteStaff,
     toggleStaffStatus,
   } = useStaffViewModel();
+
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadStaff = hasPermission(perms, "staff", "read");
+  const canWriteStaff = hasPermission(perms, "staff", "write");
+  const canManageStaff = hasPermission(perms, "staff", "manage");
 
   const handleEdit = useCallback((staffMember: StaffProfile) => {
     setEditingStaff({
@@ -175,8 +183,8 @@ export default function StaffPage() {
         <StaffActionsDropdown
           staff={row.original}
           onView={() => handleView(row.original)}
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original)}
+          onEdit={canWriteStaff ? () => handleEdit(row.original) : undefined}
+          onDelete={canManageStaff ? () => handleDelete(row.original) : undefined}
           onToggleStatus={() => handleToggleStatus(row.original)}
         />
       ),
@@ -199,13 +207,19 @@ export default function StaffPage() {
           >
             {viewMode === "table" ? "Grid view" : "Table view"}
           </Button>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('addStaff')}
-          </Button>
+          {canWriteStaff && (
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('addStaff')}
+            </Button>
+          )}
         </div>
       </PageHeader>
 
+      {!isAuthLoading && !canReadStaff ? (
+        <div className="rounded-lg border border-border bg-card p-6"><h2 className="text-lg font-semibold">Access restricted</h2><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view staff.</p></div>
+      ) : (
+        <>
       {/* Filters */}
       <StaffFiltersBar
         department={filters.department}
@@ -243,11 +257,13 @@ export default function StaffPage() {
               key={staffMember.id}
               staff={staffMember}
               onView={() => handleView(staffMember)}
-              onEdit={() => handleEdit(staffMember)}
-              onDelete={() => handleDelete(staffMember)}
+              onEdit={canWriteStaff ? () => handleEdit(staffMember) : undefined}
+              onDelete={canManageStaff ? () => handleDelete(staffMember) : undefined}
             />
           ))}
         </div>
+      )}
+        </>
       )}
 
       {/* Modals */}

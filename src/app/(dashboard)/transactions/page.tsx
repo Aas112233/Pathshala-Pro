@@ -11,6 +11,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { formatStudentName } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function TransactionsPage() {
   const t = useTranslations('transactions');
@@ -18,6 +20,11 @@ export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const { formatCurrency, formatDate } = useTenantFormatting();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadFees = hasPermission(perms, "fees", "read");
+  const canWriteFees = hasPermission(perms, "fees", "write");
+  const canManageFees = hasPermission(perms, "fees", "manage");
 
   const { data, isLoading } = useTransactions({
     page,
@@ -62,14 +69,14 @@ export default function TransactionsPage() {
         return student ? (
           <span>{formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn)}</span>
         ) : (
-          <span>-</span>
+          <span>{t("notAvailable")}</span>
         );
       },
     },
     {
       accessorKey: "feeType",
       header: t('tableColumns.feeType'),
-      cell: ({ row }) => row.original.feeVoucher?.feeType || "-",
+      cell: ({ row }) => row.original.feeVoucher?.feeType || t("notAvailable"),
     },
     {
       accessorKey: "amountPaid",
@@ -88,7 +95,7 @@ export default function TransactionsPage() {
     {
       accessorKey: "collectedBy",
       header: t('tableColumns.collectedBy'),
-      cell: ({ row }) => row.original.collectedBy?.name || "-",
+      cell: ({ row }) => row.original.collectedBy?.name || t("notAvailable"),
     },
     {
       accessorKey: "timestamp",
@@ -99,13 +106,15 @@ export default function TransactionsPage() {
       id: "actions",
       header: t('tableColumns.actions'),
       cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => handleDelete(row.original.id)}
-        >
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
+        canManageFees ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleDelete(row.original.id)}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        ) : null
       ),
     },
   ];
@@ -122,15 +131,22 @@ export default function TransactionsPage() {
         icon={ArrowLeftRight}
       />
 
-      <DataTable
-        columns={columns}
-        data={("data" in (data || {})) ? (data as any).data : []}
-        pagination={pagination}
-        onPageChange={setPage}
-        onSearch={setSearch}
-        isLoading={isLoading}
-        searchPlaceholder={t('searchPlaceholder')}
-      />
+      {!isAuthLoading && !canReadFees ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view transactions.</p>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={("data" in (data || {})) ? (data as any).data : []}
+          pagination={pagination}
+          onPageChange={setPage}
+          onSearch={setSearch}
+          isLoading={isLoading}
+          searchPlaceholder={t('searchPlaceholder')}
+        />
+      )}
     </div>
   );
 }

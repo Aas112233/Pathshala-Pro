@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flag, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 const FLAG_KEYS = ["hostel", "transport", "library", "inventory", "health", "certificates", "homework", "timetable"] as const;
 
 export default function FeatureFlagsPage() {
+  const t = useTranslations("systemAdminPages");
   const queryClient = useQueryClient();
   const [edits, setEdits] = useState<Record<string, Record<string, boolean>>>({});
 
@@ -41,7 +43,7 @@ export default function FeatureFlagsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feature-flags"] });
-      toast.success("Feature flags updated");
+      toast.success(t("flagsUpdated"));
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -64,14 +66,14 @@ export default function FeatureFlagsPage() {
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2"><Flag className="h-5 w-5 text-indigo-600" /> Feature Flags</h1>
-        <p className="text-xs text-muted-foreground">Per-tenant module toggles — disable hostel/transport/library etc without code deploy</p>
+        <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2"><Flag className="h-5 w-5 text-primary" /> {t("featureFlags")}</h1>
+        <p className="text-xs text-muted-foreground">{t("featureDescription")}</p>
       </div>
 
       {isLoading ? (
-        <div className="text-xs text-muted-foreground">Loading tenants...</div>
+        <div className="text-xs text-muted-foreground">{t("loadingTenants")}</div>
       ) : tenants.length === 0 ? (
-        <div className="text-xs text-muted-foreground">No tenants</div>
+        <div className="text-xs text-muted-foreground">{t("noTenants")}</div>
       ) : (
         <div className="grid gap-4">
           {tenants.map((tenant) => {
@@ -84,7 +86,7 @@ export default function FeatureFlagsPage() {
                     <p className="text-[11px] text-muted-foreground">{tenant.subscriptionStatus}</p>
                   </div>
                   {hasEdits(tenant.tenantId) && (
-                    <Button size="sm" onClick={() => handleSave(tenant)} disabled={mutation.isPending} className="h-7 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Button size="sm" onClick={() => handleSave(tenant)} disabled={mutation.isPending} className="h-7 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground">
                       <Save className="h-3.5 w-3.5" /> Save
                     </Button>
                   )}

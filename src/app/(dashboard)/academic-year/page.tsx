@@ -30,6 +30,8 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 interface AcademicYearFormData {
   yearId: string;
@@ -49,6 +51,11 @@ const INITIAL_FORM: AcademicYearFormData = {
 
 export default function AcademicYearPage() {
   const t = useTranslations("academicYear");
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "academic-years", "read");
+  const canWrite = hasPermission(perms, "academic-years", "write");
+  const canManage = hasPermission(perms, "academic-years", "manage");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const { formatDate } = useTenantFormatting();
@@ -102,17 +109,17 @@ export default function AcademicYearPage() {
     e.preventDefault();
 
     if (!formData.yearId.trim() || !formData.label.trim()) {
-      toast.error("Please provide Year ID and Session Label");
+      toast.error(t("validationYearLabel"));
       return;
     }
 
     if (!formData.startDate || !formData.endDate) {
-      toast.error("Please select start and end dates");
+      toast.error(t("validationDates"));
       return;
     }
 
     if (new Date(formData.startDate) >= new Date(formData.endDate)) {
-      toast.error("End date must be after start date");
+      toast.error(t("validationDateOrder"));
       return;
     }
 
@@ -149,7 +156,7 @@ export default function AcademicYearPage() {
             handleCloseSheet();
           },
           onError: (err: any) => {
-            toast.error(err.message || "Failed to create academic year");
+            toast.error(err.message || t("createError"));
           },
         }
       );
@@ -237,24 +244,28 @@ export default function AcademicYearPage() {
       header: t("tableColumns.actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpenEdit(row.original)}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
-            title={t("editAcademicYear")}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(row.original.id)}
-            className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-            title="Delete session"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {canWrite && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpenEdit(row.original)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+              title={t("editAcademicYear")}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(row.original.id)}
+              className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+              title={t("deleteSession")}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -267,45 +278,54 @@ export default function AcademicYearPage() {
         description={t("description")}
         icon={CalendarRange}
       >
-        <Button onClick={handleOpenCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("addAcademicYear")}
-        </Button>
+        {canWrite && (
+          <Button onClick={handleOpenCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("addAcademicYear")}
+          </Button>
+        )}
       </PageHeader>
 
-      {/* KPI Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <ERPMetricCard
-          title={t("metrics.totalSessions")}
-          value={totalSessions}
-          icon={Layers}
-          trend={{ value: `${activeSessions} active`, isPositive: true }}
-          subtitle="All sessions"
-        />
-        <ERPMetricCard
-          title={t("metrics.activeSession")}
-          value={currentActive}
-          icon={CheckCircle2}
-          subtitle="Session open for admissions and fees"
-        />
-        <ERPMetricCard
-          title={t("metrics.closedSessions")}
-          value={closedSessions}
-          icon={Archive}
-          subtitle="Closed and archived sessions"
-        />
-      </div>
+      {!isAuthLoading && !canRead ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2>Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+        </div>
+      ) : (
+        <>
+          {/* KPI Metric Cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <ERPMetricCard
+              title={t("metrics.totalSessions")}
+              value={totalSessions}
+              unit={t("sessionsUnit")}
+              icon={Layers}
+            />
+            <ERPMetricCard
+              title={t("metrics.activeSession")}
+              value={currentActive}
+              icon={CheckCircle2}
+            />
+            <ERPMetricCard
+              title={t("metrics.closedSessions")}
+              value={closedSessions}
+              unit={t("sessionsUnit")}
+              icon={Archive}
+            />
+          </div>
 
-      {/* Main Data Table */}
-      <DataTable
-        columns={columns}
-        data={rawData}
-        pagination={pagination}
-        onPageChange={setPage}
-        onSearch={setSearch}
-        isLoading={isLoading}
-        searchPlaceholder={t("searchPlaceholder")}
-      />
+          {/* Main Data Table */}
+          <DataTable
+            columns={columns}
+            data={rawData}
+            pagination={pagination}
+            onPageChange={setPage}
+            onSearch={setSearch}
+            isLoading={isLoading}
+            searchPlaceholder={t("searchPlaceholder")}
+          />
+        </>
+      )}
 
       {/* Add / Edit Academic Year TopSheet Drawer */}
       <TopSheet
@@ -321,7 +341,7 @@ export default function AcademicYearPage() {
               onClick={handleCloseSheet}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               type="submit"
@@ -329,7 +349,7 @@ export default function AcademicYearPage() {
               disabled={isSubmitting}
             >
               {isSubmitting
-                ? "Saving..."
+                ? t("saving")
                 : editingId
                 ? t("editAcademicYear")
                 : t("addAcademicYear")}
@@ -343,14 +363,14 @@ export default function AcademicYearPage() {
           className="space-y-6 p-6"
         >
           <ERPFormSection
-            title="Session Identification"
-            description="Provide standard session identifiers and display titles."
+            title={t("sessionIdentification")}
+            description={t("sessionIdentificationDescription")}
           >
             <ERPFormGrid cols={2}>
               <ERPFormField
                 label={t("yearId")}
                 required
-                helperText="Unique identifier code for system indexing (e.g. 2026-2027)"
+                helperText={t("yearIdHelper")}
               >
                 <Input
                   value={formData.yearId}
@@ -367,7 +387,7 @@ export default function AcademicYearPage() {
               <ERPFormField
                 label={t("label")}
                 required
-                helperText="Official title displayed on report cards and fee slips"
+                helperText={t("labelHelper")}
               >
                 <Input
                   value={formData.label}
@@ -383,14 +403,14 @@ export default function AcademicYearPage() {
           </ERPFormSection>
 
           <ERPFormSection
-            title="Session Schedule & Timeline"
-            description="Specify the official start and conclusion dates for this academic term."
+            title={t("scheduleTitle")}
+            description={t("scheduleDescription")}
           >
             <ERPFormGrid cols={2}>
               <ERPFormField
                 label={t("startDate")}
                 required
-                helperText="Session orientation and term opening date"
+                helperText={t("startDateHelper")}
               >
                 <Input
                   type="date"
@@ -406,7 +426,7 @@ export default function AcademicYearPage() {
               <ERPFormField
                 label={t("endDate")}
                 required
-                helperText="Term conclusion and final promotion date"
+                helperText={t("endDateHelper")}
               >
                 <Input
                   type="date"
@@ -423,10 +443,10 @@ export default function AcademicYearPage() {
 
           {editingId && (
             <ERPFormSection
-              title="Lifecycle Status"
-              description="Control whether this academic session is open for active transactions."
+              title={t("lifecycleTitle")}
+              description={t("lifecycleDescription")}
             >
-              <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">
+              <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card">
                 <input
                   type="checkbox"
                   id="isClosed"
@@ -441,7 +461,7 @@ export default function AcademicYearPage() {
                     {t("isClosed")}
                   </span>
                   <span className="text-xs text-muted-foreground block">
-                    Mark this session as archived. Closed sessions cannot accept new admissions or fee vouchers.
+                    {t("closedHelper")}
                   </span>
                 </Label>
               </div>

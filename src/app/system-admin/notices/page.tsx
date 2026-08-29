@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import { CreateBroadcastModal } from "@/components/system-admin/create-broadcast
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
 
 export default function SystemAdminNoticesPage() {
+  const t = useTranslations("systemAdminPages");
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,10 +41,10 @@ export default function SystemAdminNoticesPage() {
       if (json.success) {
         setData(json.data);
       } else {
-        toast.error("Failed to load platform broadcasts");
+        toast.error(t("loadBroadcastsFailed"));
       }
     } catch {
-      toast.error("Network error");
+      toast.error(t("networkError"));
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +55,7 @@ export default function SystemAdminNoticesPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this broadcast?")) return;
+    if (!confirm(t("confirmDeleteBroadcast"))) return;
 
     try {
       const res = await fetch(`/api/system-admin/notices/${id}`, {
@@ -61,13 +63,13 @@ export default function SystemAdminNoticesPage() {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        toast.success("Broadcast removed");
+        toast.success(t("broadcastRemoved"));
         fetchBroadcasts();
       } else {
-        toast.error(json.error?.message || "Failed to remove broadcast");
+        toast.error(json.error?.message || t("removeBroadcastFailed"));
       }
     } catch {
-      toast.error("Error deleting broadcast");
+      toast.error(t("deleteBroadcastError"));
     }
   };
 
@@ -80,11 +82,11 @@ export default function SystemAdminNoticesPage() {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        toast.success(broadcast.isPublished ? "Broadcast deactivated" : "Broadcast activated");
+        toast.success(broadcast.isPublished ? t("broadcastDeactivated") : t("broadcastActivated"));
         fetchBroadcasts();
       }
     } catch {
-      toast.error("Error updating broadcast state");
+      toast.error(t("updateBroadcastError"));
     }
   };
 
@@ -98,13 +100,13 @@ export default function SystemAdminNoticesPage() {
   const columns: ColumnDef<any>[] = [
     {
       key: "title",
-      header: "ANNOUNCEMENT & DETAILS",
+      header: t("announcementDetails"),
       cell: (row) => (
         <div>
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-foreground">{row.title}</span>
             {row.isPinned && (
-              <Badge className="bg-indigo-600 text-white text-[9px] px-1 py-0">PINNED</Badge>
+              <Badge className="bg-primary text-primary-foreground text-[9px] px-1 py-0">{t("pinned")}</Badge>
             )}
           </div>
           <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{row.content}</p>
@@ -113,7 +115,7 @@ export default function SystemAdminNoticesPage() {
     },
     {
       key: "category",
-      header: "TYPE",
+      header: t("type"),
       cell: (row) => (
         <Badge variant="outline" className="text-[10px] font-mono uppercase">
           {row.category}
@@ -122,7 +124,7 @@ export default function SystemAdminNoticesPage() {
     },
     {
       key: "priority",
-      header: "SEVERITY",
+      header: t("severity"),
       cell: (row) => {
         const variant =
           row.priority === "URGENT"
@@ -135,16 +137,16 @@ export default function SystemAdminNoticesPage() {
     },
     {
       key: "audience",
-      header: "TARGET SCHOOLS",
+      header: t("targetSchools"),
       cell: (row) => (
         <div className="flex items-center gap-1 text-xs">
           {row.audience === "ALL_SCHOOLS" ? (
-            <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-semibold">
-              <Globe2 className="h-3.5 w-3.5" /> All Schools Globally
+            <span className="flex items-center gap-1 text-primary font-semibold">
+              <Globe2 className="h-3.5 w-3.5" /> {t("allSchools")}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-muted-foreground font-mono">
-              <Building2 className="h-3.5 w-3.5" /> {row.targetTenants?.length || 0} Schools
+              <Building2 className="h-3.5 w-3.5" /> {row.targetTenants?.length || 0} {t("schools")}
             </span>
           )}
         </div>
@@ -152,15 +154,15 @@ export default function SystemAdminNoticesPage() {
     },
     {
       key: "isPublished",
-      header: "STATUS",
+      header: t("broadcastStatus"),
       cell: (row) => (
         <button
           onClick={() => handleTogglePublished(row)}
           className="cursor-pointer"
-          title="Click to toggle active broadcast"
+          title={t("toggleBroadcast")}
         >
           <ERPStatusPill
-            status={row.isPublished ? "BROADCASTING" : "DRAFT"}
+            status={row.isPublished ? t("broadcasting") : t("draft")}
             variant={row.isPublished ? "emerald" : "subtle"}
           />
         </button>
@@ -168,7 +170,7 @@ export default function SystemAdminNoticesPage() {
     },
     {
       key: "publishDate",
-      header: "PUBLISHED",
+      header: t("published"),
       cell: (row) => (
         <span className="text-xs text-muted-foreground font-mono">
           {new Date(row.publishDate).toLocaleDateString()}
@@ -177,7 +179,7 @@ export default function SystemAdminNoticesPage() {
     },
     {
       key: "actions",
-      header: "ACTIONS",
+      header: t("actions"),
       cell: (row) => (
         <div className="flex items-center justify-end gap-1">
           <Button
@@ -188,7 +190,7 @@ export default function SystemAdminNoticesPage() {
               setIsModalOpen(true);
             }}
             className="h-7 w-7 p-0"
-            title="Edit"
+            title={t("edit")}
           >
             <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
@@ -197,7 +199,7 @@ export default function SystemAdminNoticesPage() {
             variant="ghost"
             onClick={() => handleDelete(row.id)}
             className="h-7 w-7 p-0 text-destructive"
-            title="Delete"
+            title={t("delete")}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -210,8 +212,8 @@ export default function SystemAdminNoticesPage() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
-          title="Platform Announcements & Global Broadcasts"
-          description="Emergency banners, maintenance announcements, and system notices transmitted to all school instances."
+          title={t("platformTitle")}
+          description={t("platformDescription")}
           icon={Radio}
         />
         <Button
@@ -219,10 +221,10 @@ export default function SystemAdminNoticesPage() {
             setEditingBroadcast(null);
             setIsModalOpen(true);
           }}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm text-xs h-9 cursor-pointer self-start sm:self-auto"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 text-xs h-9 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="h-4 w-4" />
-          New Global Broadcast
+          {t("newBroadcast")}
         </Button>
       </div>
 
@@ -232,7 +234,7 @@ export default function SystemAdminNoticesPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Active Broadcasts
+                {t("activeBroadcasts")}
               </span>
               <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                 <Radio className="h-4 w-4" />
@@ -241,7 +243,7 @@ export default function SystemAdminNoticesPage() {
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <h3 className="text-2xl font-extrabold text-foreground">{metrics.activeBroadcasts}</h3>
-            <p className="text-[11px] text-muted-foreground">Currently live across tenant apps</p>
+            <p className="text-[11px] text-muted-foreground">{t("liveTenantApps")}</p>
           </CardContent>
         </Card>
 
@@ -249,7 +251,7 @@ export default function SystemAdminNoticesPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Urgent Banners
+                {t("urgentBanners")}
               </span>
               <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
                 <AlertTriangle className="h-4 w-4" />
@@ -258,7 +260,7 @@ export default function SystemAdminNoticesPage() {
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <h3 className="text-2xl font-extrabold text-foreground">{metrics.urgentAlerts}</h3>
-            <p className="text-[11px] text-muted-foreground">Top-of-screen emergency ribbons</p>
+            <p className="text-[11px] text-muted-foreground">{t("emergencyRibbons")}</p>
           </CardContent>
         </Card>
 
@@ -266,27 +268,27 @@ export default function SystemAdminNoticesPage() {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Total Transmissions
+                {t("totalTransmissions")}
               </span>
-              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <Megaphone className="h-4 w-4" />
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <h3 className="text-2xl font-extrabold text-foreground">{metrics.totalBroadcasts}</h3>
-            <p className="text-[11px] text-muted-foreground">Platform announcements</p>
+            <p className="text-[11px] text-muted-foreground">{t("platformAnnouncements")}</p>
           </CardContent>
         </Card>
       </div>
 
       <ERPDataTable<any>
-        title="Active Broadcast Transmissions"
-        subtitle="Global platform messages sent to school ERP dashboards"
+        title={t("broadcastTableTitle")}
+        subtitle={t("broadcastTableDescription")}
         data={broadcasts}
         columns={columns}
         keyExtractor={(row) => row.id}
-        searchPlaceholder="Filter broadcast notices by title or content..."
+        searchPlaceholder={t("filterBroadcasts")}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />

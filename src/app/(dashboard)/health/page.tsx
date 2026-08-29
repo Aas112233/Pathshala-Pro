@@ -14,7 +14,7 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { DataTable } from "@/components/shared/data-table";
 import { useHealthViewModel } from "@/viewmodels/health/use-health-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import { HeartPulse, Plus, Pencil, Trash2, Search } from "lucide-react";
 
@@ -22,8 +22,11 @@ const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
 
 export default function HealthPage() {
   const t = useTranslations("health");
-  const { user } = useAuth();
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "health", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "health", "read");
+  const canWrite = hasPermission(perms, "health", "write");
+  const canManage = hasPermission(perms, "health", "manage");
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -172,8 +175,8 @@ export default function HealthPage() {
       header: t("actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+          {canWrite && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>}
+          {canManage && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
         </div>
       ),
     },
@@ -182,10 +185,18 @@ export default function HealthPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={HeartPulse}>
-        {canManage && <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("addRecord")}</Button>}
+        {canWrite && <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("addRecord")}</Button>}
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view health records.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
         <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg"><HeartPulse className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{(pagination as any)?.totalCount ?? records.length}</p><p className="text-xs text-muted-foreground">{t("totalRecords")}</p></div></CardContent></Card>
         <Card className={withAllergies > 0 ? "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20" : ""}><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-amber-500/10 rounded-lg"><HeartPulse className="h-5 w-5 text-amber-600" /></div><div><p className="text-2xl font-bold text-amber-600">{withAllergies}</p><p className="text-xs text-amber-600">{t("withAllergies")}</p></div></CardContent></Card>
         <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-emerald-500/10 rounded-lg"><HeartPulse className="h-5 w-5 text-emerald-600" /></div><div><p className="text-2xl font-bold text-emerald-600">{records.filter((r: any) => r.lastCheckupDate).length}</p><p className="text-xs text-emerald-600">{t("lastCheckup")}</p></div></CardContent></Card>
@@ -204,6 +215,8 @@ export default function HealthPage() {
       </Card>
 
       <DataTable columns={columns as any} data={records} pagination={pagination} onPageChange={setPage} onSearch={(v) => { setSearch(v); setPage(1); }} isLoading={isLoading} searchPlaceholder={t("searchPlaceholder")} />
+        </>
+      )}
 
       <TopSheet isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)} title={editing ? t("editRecord") : t("addRecord")} description={t("description")} maxWidth="2xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="health-form" disabled={isMutating}>{t("save")}</Button></div>}>
         <form id="health-form" onSubmit={handleSubmit} className="space-y-6">

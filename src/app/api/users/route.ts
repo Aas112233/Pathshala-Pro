@@ -15,6 +15,13 @@ import { createUserSchema, updateUserSchema } from "@/lib/schemas";
 import { hashPassword } from "@/lib/auth";
 import { requireApiAccess } from "@/lib/api-auth";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+import {
+  canAssignRole,
+  canAssignAccessLevel,
+  canGrantPermissions,
+  getEffectivePermissions,
+} from "@/lib/permissions";
 
 /**
  * GET /api/users
@@ -60,6 +67,7 @@ export async function GET(request: NextRequest) {
         email: true,
         name: true,
         role: true,
+        accessLevel: true,
         permissions: true,
         isActive: true,
         lastLoginAt: true,
@@ -106,7 +114,27 @@ export async function POST(request: NextRequest) {
       return validationError(errors);
     }
 
-    const { email, name, role, password, staffProfileId, studentProfileId, accessLevel, isActive, parentStudentIds } = validation.data as any;
+    const { email, name, role, password, staffProfileId, studentProfileId, accessLevel, isActive, parentStudentIds, permissions } = validation.data as any;
+
+    // ── Privilege-escalation guards ──
+    const requester: any = (access as any).authContext.user;
+    const isRequesterPlatformOwner = isPlatformOwnerEmail(requester.email);
+    const requesterEffectivePerms = getEffectivePermissions(requester.role, requester.permissions, requester.accessLevel);
+    if (!canAssignRole(requester.role, isRequesterPlatformOwner, role)) {
+      return forbidden("You are not allowed to assign this role");
+    }
+    if (!canAssignAccessLevel(requester.accessLevel, accessLevel)) {
+      return forbidden("You cannot assign a more privileged access level than your own");
+    }
+    if (permissions) {
+      const grant = canGrantPermissions(requesterEffectivePerms, permissions);
+      if (!grant.allowed) {
+        return forbidden(`You cannot grant ${grant.action} permission for ${grant.module} module`);
+      }
+    }
+    if (isPlatformOwnerEmail(email) && !isRequesterPlatformOwner) {
+      return forbidden("Cannot create a platform owner account from tenant context");
+    }
 
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
@@ -153,6 +181,7 @@ export async function POST(request: NextRequest) {
         staffProfileId: staffProfileId || null,
         studentProfileId: studentProfileId || null,
         isActive,
+        ...(permissions ? { permissions } : {}),
       },
       select: {
         id: true,

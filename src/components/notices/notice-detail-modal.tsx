@@ -82,10 +82,10 @@ export function NoticeDetailModal({
     >
       <div className="space-y-6">
         {/* Header Metadata Ribbon */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-muted/20 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-lg border border-border bg-muted/20 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             {notice.isPinned && (
-              <Badge className="bg-indigo-600 text-white gap-1 text-[10px]">
+              <Badge className="bg-primary text-primary-foreground gap-1 text-[10px]">
                 <Pin className="h-3 w-3" /> Pinned
               </Badge>
             )}
@@ -113,7 +113,7 @@ export function NoticeDetailModal({
         </div>
 
         {/* Content Body */}
-        <div className="p-5 rounded-2xl border border-border/80 bg-card text-foreground whitespace-pre-wrap text-sm leading-relaxed font-sans shadow-xs">
+        <div className="p-5 rounded-lg border border-border/80 bg-card text-foreground whitespace-pre-wrap text-sm leading-relaxed font-sans">
           {notice.content}
         </div>
 
@@ -163,7 +163,7 @@ export function NoticeDetailModal({
             type="button"
             size="sm"
             onClick={onClose}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs h-8"
           >
             Done
           </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { Wallet, Plus, Search, Filter } from "lucide-react";
 
 interface SalaryEmptyStateProps {
@@ -16,6 +17,7 @@ export function SalaryEmptyState({
   onProcessPayroll,
   onBulkPayroll,
 }: SalaryEmptyStateProps) {
+  const t = useTranslations("salary");
   if (hasActiveFilters) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -23,13 +25,13 @@ export function SalaryEmptyState({
           <Filter className="h-12 w-12 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">
-          No salary records found
+          {t("ui.empty.noRecords")}
         </h3>
         <p className="text-sm text-muted-foreground max-w-md mb-4">
-          We couldn&apos;t find any salary records matching your current filters. Try adjusting your search or filter criteria.
+          {t("ui.empty.noRecordsHint")}
         </p>
         <Button variant="outline" onClick={onClearFilters}>
-          Clear Filters
+          {t("ui.empty.clearFilters")}
         </Button>
       </div>
     );
@@ -41,19 +43,19 @@ export function SalaryEmptyState({
         <Wallet className="h-12 w-12 text-muted-foreground" />
       </div>
       <h3 className="text-lg font-semibold text-foreground mb-2">
-        No salary records yet
+        {t("ui.empty.noRecordsYet")}
       </h3>
       <p className="text-sm text-muted-foreground max-w-md mb-6">
-        Get started by processing payroll for your staff. You can process individual salary records or handle multiple staff at once.
+        {t("ui.empty.getStarted")}
       </p>
       <div className="flex gap-3">
         <Button onClick={onProcessPayroll}>
           <Plus className="mr-2 h-4 w-4" />
-          Process Single Salary
+          {t("ui.empty.processSingle")}
         </Button>
         <Button variant="outline" onClick={onBulkPayroll}>
           <Wallet className="mr-2 h-4 w-4" />
-          Bulk Payroll
+          {t("ui.bulkPayroll")}
         </Button>
       </div>
     </div>

@@ -153,7 +153,7 @@ export const ALL_PERMISSION_MODULES = [
   "health",
 ] as const;
 
-const FULL_ACCESS_PERMISSIONS: UserPermissions = Object.fromEntries(
+export const FULL_ACCESS_PERMISSIONS: UserPermissions = Object.fromEntries(
   ALL_PERMISSION_MODULES.map((module) => [module, { read: true, write: true, manage: true }])
 );
 
@@ -375,4 +375,159 @@ export function getModuleForPath(path: string): string | null {
     default:
       return baseRoute;
   }
+}
+
+// ─── UI Module Category Grouping ───
+export interface ModuleCategory {
+  id: string;
+  label: string;
+  icon: string;
+  modules: Array<{ id: string; label: string }>;
+}
+
+export const MODULE_CATEGORIES: ModuleCategory[] = [
+  {
+    id: "student-academic",
+    label: "Student & Academic",
+    icon: "GraduationCap",
+    modules: [
+      { id: "students", label: "Students Directory" },
+      { id: "academic", label: "Academic Setup" },
+      { id: "academic-years", label: "Academic Years" },
+      { id: "subjects", label: "Subjects" },
+      { id: "admissions", label: "Admissions" },
+      { id: "attendance", label: "Attendance Records" },
+    ],
+  },
+  {
+    id: "exams-results",
+    label: "Exams & Results",
+    icon: "FileCheck",
+    modules: [
+      { id: "exams", label: "Exams Management" },
+      { id: "exam-results", label: "Exam Results & Marks" },
+    ],
+  },
+  {
+    id: "finance",
+    label: "Finance & Fees",
+    icon: "Wallet",
+    modules: [
+      { id: "fees", label: "Fee Vouchers" },
+      { id: "transactions", label: "Transactions" },
+      { id: "salary", label: "Salary & Payroll" },
+      { id: "accounting", label: "Accounting & Ledger" },
+    ],
+  },
+  {
+    id: "academic-ops",
+    label: "Academic Operations",
+    icon: "BookOpen",
+    modules: [
+      { id: "timetable", label: "Timetable" },
+      { id: "homework", label: "Homework" },
+      { id: "notices", label: "Notices & Circulars" },
+      { id: "library", label: "Library" },
+    ],
+  },
+  {
+    id: "campus",
+    label: "Campus & Facilities",
+    icon: "Building2",
+    modules: [
+      { id: "transport", label: "Transport" },
+      { id: "hostel", label: "Hostel" },
+      { id: "inventory", label: "Inventory" },
+      { id: "health", label: "Health Records" },
+      { id: "certificates", label: "Certificates" },
+      { id: "leaves", label: "Leave Management" },
+      { id: "enquiries", label: "Enquiries" },
+    ],
+  },
+  {
+    id: "system",
+    label: "System Administration",
+    icon: "Settings",
+    modules: [
+      { id: "users", label: "System Users" },
+      { id: "settings", label: "System Settings" },
+      { id: "reports", label: "Reports & Analytics" },
+    ],
+  },
+];
+
+export const READ_ONLY_PERMISSIONS: UserPermissions = Object.fromEntries(
+  ALL_PERMISSION_MODULES.map((module) => [module, { read: true, write: false, manage: false }])
+);
+
+export const NO_ACCESS_PERMISSIONS: UserPermissions = Object.fromEntries(
+  ALL_PERMISSION_MODULES.map((module) => [module, { read: false, write: false, manage: false }])
+);
+
+export function getPermissionsDiff(
+  current: UserPermissions,
+  defaults: UserPermissions
+): Set<string> {
+  const changed = new Set<string>();
+  const allKeys = new Set([...Object.keys(current), ...Object.keys(defaults)]);
+  for (const mod of allKeys) {
+    const c = current[mod] ?? {};
+    const d = defaults[mod] ?? {};
+    if (
+      !!c.read !== !!d.read ||
+      !!c.write !== !!d.write ||
+      !!c.manage !== !!d.manage
+    ) {
+      changed.add(mod);
+    }
+  }
+  return changed;
+}
+
+// ─── Privilege-escalation guards ───
+export const PLATFORM_PRIVILEGED_ROLES = new Set<string>([
+  "PLATFORM_OWNER",
+  "SUPER_ADMIN",
+  "SYSTEM_ADMIN",
+]);
+
+export function canAssignRole(
+  requesterRole: string | null | undefined,
+  requesterIsPlatformOwner: boolean,
+  targetRole: string | null | undefined
+): boolean {
+  if (!targetRole) return true;
+  const normTarget = targetRole.toUpperCase();
+  if (PLATFORM_PRIVILEGED_ROLES.has(normTarget)) {
+    const normRequester = (requesterRole || "").toUpperCase();
+    return requesterIsPlatformOwner || PLATFORM_PRIVILEGED_ROLES.has(normRequester);
+  }
+  return true;
+}
+
+export function canAssignAccessLevel(
+  requesterLevel: number | null | undefined,
+  targetLevel: number | null | undefined
+): boolean {
+  if (targetLevel == null) return true;
+  if (requesterLevel == null) return targetLevel >= 3;
+  if (targetLevel < requesterLevel) return false;
+  if (targetLevel <= 2 && requesterLevel > 2) return false;
+  return true;
+}
+
+export function canGrantPermissions(
+  requesterPerms: UserPermissions | null,
+  targetPerms: UserPermissions | null | undefined
+): { allowed: boolean; module?: string; action?: PermissionAction } {
+  if (!targetPerms || Object.keys(targetPerms).length === 0) return { allowed: true };
+  if (!requesterPerms) return { allowed: false, module: Object.keys(targetPerms)[0] };
+  for (const [mod, perms] of Object.entries(targetPerms)) {
+    for (const act of ["read", "write", "manage"] as PermissionAction[]) {
+      if ((perms as any)[act] && !hasPermission(requesterPerms, mod, act)) {
+        return { allowed: false, module: mod, action: act };
+      }
+    }
+  }
+  return { allowed: true };
 }

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { StudentStatus } from "@/types/entities";
 
 interface StudentStatusBadgeProps {
@@ -14,11 +15,12 @@ const statusConfig: Record<StudentStatus, { label: string; variant: string }> = 
 };
 
 export function StudentStatusBadge({ status, className }: StudentStatusBadgeProps) {
+  const t = useTranslations("students");
   const config = statusConfig[status] || statusConfig.ACTIVE;
 
   const variantClasses = {
     success: "bg-green-100 text-green-800 border-green-200",
-    secondary: "bg-gray-100 text-gray-800 border-gray-200",
+    secondary: "bg-muted text-muted-foreground border-border",
     info: "bg-blue-100 text-blue-800 border-blue-200",
     warning: "bg-yellow-100 text-yellow-800 border-yellow-200",
   };
@@ -31,7 +33,7 @@ export function StudentStatusBadge({ status, className }: StudentStatusBadgeProp
         className
       )}
     >
-      {config.label}
+      {t(config.label.toLowerCase())}
     </span>
   );
 }

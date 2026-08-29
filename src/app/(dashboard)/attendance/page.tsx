@@ -35,6 +35,8 @@ import { cn, formatStudentName } from "@/lib/utils";
 import { MarkAttendanceModal } from "@/components/attendance/mark-attendance-modal";
 import { FastAttendanceGrid } from "@/components/attendance/fast-attendance-grid";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function AttendancePage() {
   const t = useTranslations('attendance');
@@ -48,6 +50,11 @@ export default function AttendancePage() {
   const [activeTab, setActiveTab] = useState<"grid" | "records">("grid");
   const [isMarkAttendanceOpen, setIsMarkAttendanceOpen] = useState(false);
   const { formatDate } = useTenantFormatting();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "attendance", "read");
+  const canWrite = hasPermission(perms, "attendance", "write");
+  const canManage = hasPermission(perms, "attendance", "manage");
 
   const { data, isLoading } = useAttendance({
     page,
@@ -154,17 +161,21 @@ export default function AttendancePage() {
       header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          {canWrite && (
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -197,7 +208,7 @@ export default function AttendancePage() {
               onClick={() => setActiveTab("grid")}
               className="h-8 text-xs font-semibold"
             >
-              Daily Fast-Grid Sheet
+              {t("dailyGrid")}
             </Button>
             <Button
               size="sm"
@@ -205,17 +216,27 @@ export default function AttendancePage() {
               onClick={() => setActiveTab("records")}
               className="h-8 text-xs font-semibold"
             >
-              Historical Logs
+              {t("historicalLogs")}
             </Button>
           </div>
-          <Button onClick={() => setIsMarkAttendanceOpen(true)} className="h-9">
-            <Plus className="mr-2 h-4 w-4" />
-            {t('markAttendance')}
-          </Button>
+          {canWrite && (
+            <Button onClick={() => setIsMarkAttendanceOpen(true)} className="h-9">
+              <Plus className="mr-2 h-4 w-4" />
+              {t('markAttendance')}
+            </Button>
+          )}
         </div>
       </PageHeader>
 
-      {/* Stats Cards */}
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view attendance records.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
@@ -404,6 +425,8 @@ export default function AttendancePage() {
             isLoading={isLoading}
             searchPlaceholder={t('searchPlaceholder')}
           />
+        </>
+      )}
         </>
       )}
 

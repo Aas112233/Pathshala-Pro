@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { AppDropdown } from "@/components/ui/app-dropdown";
@@ -41,18 +42,18 @@ interface FormErrors {
 }
 
 const MONTHS = [
-  { value: "1", label: "January" },
-  { value: "2", label: "February" },
-  { value: "3", label: "March" },
-  { value: "4", label: "April" },
-  { value: "5", label: "May" },
-  { value: "6", label: "June" },
-  { value: "7", label: "July" },
-  { value: "8", label: "August" },
-  { value: "9", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
+  { value: "1", key: "january" },
+  { value: "2", key: "february" },
+  { value: "3", key: "march" },
+  { value: "4", key: "april" },
+  { value: "5", key: "may" },
+  { value: "6", key: "june" },
+  { value: "7", key: "july" },
+  { value: "8", key: "august" },
+  { value: "9", key: "september" },
+  { value: "10", key: "october" },
+  { value: "11", key: "november" },
+  { value: "12", key: "december" },
 ];
 
 export function SalaryFormModal({
@@ -64,6 +65,7 @@ export function SalaryFormModal({
   staffList = [],
   academicYears = [],
 }: SalaryFormModalProps) {
+  const t = useTranslations("salary");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -127,31 +129,31 @@ export function SalaryFormModal({
     const newErrors: FormErrors = {};
 
     if (!formData.staffProfileId) {
-      newErrors.staffProfileId = "Staff member is required";
+      newErrors.staffProfileId = t("ui.form.staffRequired");
     }
 
     if (!formData.academicYearId) {
-      newErrors.academicYearId = "Academic year is required";
+      newErrors.academicYearId = t("ui.form.academicYearRequired");
     }
 
     if (!formData.month || formData.month < 1 || formData.month > 12) {
-      newErrors.month = "Valid month is required";
+      newErrors.month = t("ui.form.validMonth");
     }
 
     if (!formData.year || formData.year < 2000 || formData.year > 2100) {
-      newErrors.year = "Valid year is required";
+      newErrors.year = t("ui.form.validYear");
     }
 
     if (formData.baseSalary < 0) {
-      newErrors.baseSalary = "Base salary must be non-negative";
+      newErrors.baseSalary = t("ui.form.baseNonNegative");
     }
 
     if ((formData.deductions || 0) < 0) {
-      newErrors.baseSalary = "Deductions must be non-negative";
+      newErrors.baseSalary = t("ui.form.deductionsNonNegative");
     }
 
     if ((formData.advances || 0) < 0) {
-      newErrors.baseSalary = "Advances must be non-negative";
+      newErrors.baseSalary = t("ui.form.advancesNonNegative");
     }
 
     setErrors(newErrors);
@@ -203,8 +205,8 @@ export function SalaryFormModal({
     <TopSheet
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? "Edit Salary Ledger" : "Process Salary"}
-      description={isEditing ? "Update salary ledger information." : "Create a new salary ledger entry for a staff member."}
+      title={isEditing ? t("ui.form.editTitle") : t("ui.form.createTitle")}
+      description={isEditing ? t("ui.form.editDescription") : t("ui.form.createDescription")}
       maxWidth="3xl"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
@@ -212,16 +214,16 @@ export function SalaryFormModal({
             Cancel
           </Button>
           <Button type="submit" form="salary-form" disabled={isLoading}>
-            {isLoading ? "Saving..." : isEditing ? "Update Salary" : "Create Salary Ledger"}
+            {isLoading ? t("ui.form.saving") : isEditing ? t("ui.form.update") : t("ui.form.create")}
           </Button>
         </div>
       }
     >
       <form id="salary-form" onSubmit={handleSubmit} className="space-y-5">
         {/* Staff Selection */}
-        <ERPFormSection title="Staff & Period">
+        <ERPFormSection title={t("ui.form.staffPeriod")}>
           <ERPFormGrid cols={2}>
-            <ERPFormField label="Staff Member" required htmlFor="staffProfileId">
+            <ERPFormField label={t("ui.form.staffMember")} required htmlFor="staffProfileId">
               <AppDropdown
                 id="staffProfileId"
                 value={formData.staffProfileId}
@@ -234,13 +236,13 @@ export function SalaryFormModal({
                   value: s.id,
                   label: `${s.firstName} ${s.lastName} (${s.staffId})`,
                 }))}
-                placeholder="Select staff member"
+                placeholder={t("ui.form.selectStaff")}
                 searchable
               />
               {errors.staffProfileId && <p id="salary-staffProfileId-error" className="text-xs text-destructive mt-1">{errors.staffProfileId}</p>}
             </ERPFormField>
 
-            <ERPFormField label="Academic Year" required htmlFor="academicYearId">
+            <ERPFormField label={t("ui.form.academicYear")} required htmlFor="academicYearId">
               <AppDropdown
                 id="academicYearId"
                 value={formData.academicYearId}
@@ -253,12 +255,12 @@ export function SalaryFormModal({
                   value: ay.id,
                   label: ay.label,
                 }))}
-                placeholder="Select year"
+                placeholder={t("ui.form.selectYear")}
               />
               {errors.academicYearId && <p id="salary-academicYearId-error" className="text-xs text-destructive mt-1">{errors.academicYearId}</p>}
             </ERPFormField>
 
-            <ERPFormField label="Month" required htmlFor="month">
+            <ERPFormField label={t("ui.form.month")} required htmlFor="month">
               <AppDropdown
                 id="month"
                 value={formData.month.toString()}
@@ -267,13 +269,16 @@ export function SalaryFormModal({
                 invalid={Boolean(errors.month)}
                 aria-describedby={errors.month ? "salary-month-error" : undefined}
                 triggerClassName={errors.month ? "border-destructive ring-1 ring-destructive" : ""}
-                options={MONTHS}
-                placeholder="Select month"
+                options={MONTHS.map((month) => ({
+                  value: month.value,
+                  label: t(`ui.months.${month.key}`),
+                }))}
+                placeholder={t("ui.form.selectMonth")}
               />
               {errors.month && <p id="salary-month-error" className="text-xs text-destructive mt-1">{errors.month}</p>}
             </ERPFormField>
 
-            <ERPFormField label="Year" required htmlFor="year">
+            <ERPFormField label={t("ui.form.year")} required htmlFor="year">
               <Input
                 id="year"
                 type="number"
@@ -291,9 +296,9 @@ export function SalaryFormModal({
         </ERPFormSection>
 
         {/* Salary Breakdown */}
-        <ERPFormSection title="Salary Breakdown">
+        <ERPFormSection title={t("ui.form.salaryBreakdown")}>
           <ERPFormGrid cols={2}>
-            <ERPFormField label="Base Salary" htmlFor="baseSalary">
+            <ERPFormField label={t("ui.form.baseSalary")} htmlFor="baseSalary">
               <Input
                 id="baseSalary"
                 type="number"
@@ -307,11 +312,11 @@ export function SalaryFormModal({
               />
               {errors.baseSalary && <p className="text-xs text-destructive mt-1">{errors.baseSalary}</p>}
               {selectedStaff && !isEditing && (
-                <p className="text-xs text-muted-foreground">From profile: {selectedStaff.baseSalary}</p>
+                <p className="text-xs text-muted-foreground">{t("ui.form.fromProfile", { amount: selectedStaff.baseSalary })}</p>
               )}
             </ERPFormField>
 
-            <ERPFormField label="Deductions" htmlFor="deductions" helperText="e.g., tax, insurance">
+            <ERPFormField label={t("ui.form.deductions")} htmlFor="deductions" helperText={t("ui.form.deductionsHelp")}>
               <Input
                 id="deductions"
                 type="number"
@@ -324,7 +329,7 @@ export function SalaryFormModal({
               />
             </ERPFormField>
 
-            <ERPFormField label="Advances" htmlFor="advances" helperText="Salary advance taken">
+            <ERPFormField label={t("ui.form.advances")} htmlFor="advances" helperText={t("ui.form.advancesHelp")}>
               <Input
                 id="advances"
                 type="number"
@@ -337,7 +342,7 @@ export function SalaryFormModal({
               />
             </ERPFormField>
 
-            <ERPFormField label="Net Payable" helperText="Base - Deductions - Advances">
+            <ERPFormField label={t("ui.form.netPayable")} helperText={t("ui.form.netHelp")}>
               <div className={cn(
                 "px-3 py-2 rounded-md border bg-muted font-semibold",
                 netPayable < 0 ? "border-destructive text-destructive" : "border-input text-foreground"

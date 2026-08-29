@@ -22,18 +22,18 @@ import {
 import { CURRENCY_LIST } from "@/lib/currencies";
 
 const DATE_FORMATS = [
-  { value: "DD/MM/YYYY", label: "DD/MM/YYYY (31/12/2026)" },
-  { value: "MM/DD/YYYY", label: "MM/DD/YYYY (12/31/2026)" },
-  { value: "YYYY-MM-DD", label: "YYYY-MM-DD (2026-12-31)" },
-  { value: "DD-MM-YYYY", label: "DD-MM-YYYY (31-12-2026)" },
-  { value: "DD MMM YYYY", label: "DD MMM YYYY (31 Dec 2026)" },
-  { value: "MMM DD, YYYY", label: "MMM DD, YYYY (Dec 31, 2026)" },
-  { value: "D MMMM YYYY", label: "D MMMM YYYY (31 December 2026)" },
+  { value: "DD/MM/YYYY", key: "DD_MM_YYYY" },
+  { value: "MM/DD/YYYY", key: "MM_DD_YYYY" },
+  { value: "YYYY-MM-DD", key: "YYYY_MM_DD" },
+  { value: "DD-MM-YYYY", key: "DD_MM_YYYY_DASH" },
+  { value: "DD MMM YYYY", key: "DD_MMM_YYYY" },
+  { value: "MMM DD, YYYY", key: "MMM_DD_YYYY" },
+  { value: "D MMMM YYYY", key: "D_MMMM_YYYY" },
 ];
 
 const TIME_FORMATS = [
-  { value: "24h", label: "24 Hour (14:30)" },
-  { value: "12h", label: "12 Hour (2:30 PM)" },
+  { value: "24h", key: "time24" },
+  { value: "12h", key: "time12" },
 ];
 
 const CURRENCIES = CURRENCY_LIST.map((c) => ({
@@ -48,9 +48,9 @@ const MONTHS = [
 ];
 
 const GRADING_SYSTEMS = [
-  { value: "GPA", label: "GPA (Grade Point Average)" },
-  { value: "PERCENTAGE", label: "Percentage (%)" },
-  { value: "LETTER", label: "Letter Grade (A, B, C...)" },
+  { value: "GPA", key: "gpa" },
+  { value: "PERCENTAGE", key: "percentage" },
+  { value: "LETTER", key: "letter" },
 ];
 
 function formatDatePreview(dateFormat: string) {
@@ -84,25 +84,25 @@ export default function SettingsPage() {
   function validateSettings(current: TenantSettings) {
     const nextErrors: Partial<Record<keyof TenantSettings, string>> = {};
 
-    if (!current.name.trim()) nextErrors.name = "School name is required";
-    if (!current.address.trim()) nextErrors.address = "Address is required";
+    if (!current.name.trim()) nextErrors.name = t("ui.validation.schoolNameRequired");
+    if (!current.address.trim()) nextErrors.address = t("ui.validation.addressRequired");
     if (current.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(current.email)) {
-      nextErrors.email = "Enter a valid email address";
+      nextErrors.email = t("ui.validation.validEmail");
     }
     if (current.website && !/^https?:\/\/.+/i.test(current.website)) {
-      nextErrors.website = "Website must start with http:// or https://";
+      nextErrors.website = t("ui.validation.validWebsite");
     }
     if (current.establishedYear) {
       const currentYear = new Date().getFullYear();
       if (current.establishedYear < 1800 || current.establishedYear > currentYear) {
-        nextErrors.establishedYear = `Year must be between 1800 and ${currentYear}`;
+        nextErrors.establishedYear = t("ui.validation.yearRange", { year: currentYear });
       }
     }
     if (current.taxRate < 0 || current.taxRate > 100) {
-      nextErrors.taxRate = "Tax rate must be between 0 and 100";
+      nextErrors.taxRate = t("ui.validation.taxRange");
     }
     if (!current.currencySymbol.trim()) {
-      nextErrors.currencySymbol = "Currency symbol is required";
+      nextErrors.currencySymbol = t("ui.validation.currencyRequired");
     }
 
     return nextErrors;
@@ -125,7 +125,7 @@ export default function SettingsPage() {
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
-      toast.error("Please fix the highlighted settings fields");
+      toast.error(t("ui.fixErrors"));
       return;
     }
 
@@ -141,7 +141,7 @@ export default function SettingsPage() {
       
       const result = await res.json();
       if (result.success) {
-        toast.success("Settings saved successfully");
+        toast.success(t("ui.saved"));
         if (result.data) {
           setSettings(result.data);
           setInitialSettings(result.data);
@@ -151,11 +151,11 @@ export default function SettingsPage() {
         }
         await refreshSettings();
       } else {
-        toast.error(result.message || "Failed to save settings");
+        toast.error(result.message || t("ui.saveFailed"));
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
-      toast.error("Failed to save settings");
+      toast.error(t("ui.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -175,7 +175,7 @@ export default function SettingsPage() {
   function handleReset() {
     setSettings(initialSettings);
     setErrors({});
-    toast.success("Changes discarded");
+    toast.success(t("ui.discarded"));
   }
 
   if (isLoading) {
@@ -186,7 +186,7 @@ export default function SettingsPage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="space-y-3 rounded-xl border border-border/60 bg-card p-5"
+              className="space-y-3 rounded-lg border border-border/60 bg-card p-5"
             >
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-10 w-full" />
@@ -208,18 +208,18 @@ export default function SettingsPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" type="button" onClick={handleReset} disabled={!hasUnsavedChanges || isSaving}>
             <RotateCcw className="mr-2 h-4 w-4" />
-            Reset
+            {t("ui.reset")}
           </Button>
           <Button type="submit" form="settings-form" disabled={isSaving || !hasUnsavedChanges}>
             <Save className="mr-2 h-4 w-4" />
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving ? t("saving") : t("saveChanges")}
           </Button>
         </div>
       </PageHeader>
 
       {hasUnsavedChanges ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          You have unsaved settings changes. Save or reset before leaving this screen.
+          {t("ui.unsaved")}
         </div>
       ) : null}
 
@@ -230,7 +230,7 @@ export default function SettingsPage() {
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Profile Completion</p>
+              <p className="text-sm text-muted-foreground">{t("ui.profileCompletion")}</p>
               <p className="text-xl font-semibold">{settingsCompletion}/6</p>
             </div>
           </CardContent>
@@ -241,7 +241,7 @@ export default function SettingsPage() {
               <DollarSign className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Billing Preview</p>
+              <p className="text-sm text-muted-foreground">{t("ui.billingPreview")}</p>
               <p className="text-xl font-semibold">{settings.currencySymbol}1,000.00</p>
             </div>
           </CardContent>
@@ -252,7 +252,7 @@ export default function SettingsPage() {
               <Clock3 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Local Time Preview</p>
+              <p className="text-sm text-muted-foreground">{t("ui.localTimePreview")}</p>
               <p className="text-xl font-semibold">{previewTime}</p>
             </div>
           </CardContent>
@@ -270,121 +270,121 @@ export default function SettingsPage() {
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
           <TabsTrigger value="school" className="gap-2">
             <School className="h-4 w-4" />
-            <span className="hidden sm:inline">School Profile</span>
-            <span className="sm:hidden">School</span>
+            <span className="hidden sm:inline">{t("ui.schoolTab")}</span>
+            <span className="sm:hidden">{t("ui.schoolTabShort")}</span>
           </TabsTrigger>
           <TabsTrigger value="financial" className="gap-2">
             <DollarSign className="h-4 w-4" />
-            <span className="hidden sm:inline">Financial</span>
-            <span className="sm:hidden">Financial</span>
+            <span className="hidden sm:inline">{t("ui.financialTab")}</span>
+            <span className="sm:hidden">{t("ui.financialTab")}</span>
           </TabsTrigger>
           <TabsTrigger value="datetime" className="gap-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Date & Time</span>
-            <span className="sm:hidden">Date</span>
+            <span className="hidden sm:inline">{t("ui.dateTimeTab")}</span>
+            <span className="sm:hidden">{t("ui.dateTimeShort")}</span>
           </TabsTrigger>
         </TabsList>
 
         {/* School Profile Tab */}
         <TabsContent value="school" className="space-y-4">
           <ERPFormSection
-            title="School Information"
-            description="Basic information about your school"
+            title={t("ui.schoolInfo")}
+            description={t("ui.schoolInfoDesc")}
           >
             <ERPFormGrid cols={2}>
-              <ERPFormField label="School Name" required error={errors.name} htmlFor="name">
+              <ERPFormField label={t("ui.schoolNameLabel")} required error={errors.name} htmlFor="name">
                 <Input
                   id="name"
                   value={settings.name}
                   onChange={(e) => updateSetting("name", e.target.value)}
-                  placeholder="Enter school name"
+                  placeholder={t("ui.enterSchoolName")}
                   aria-invalid={Boolean(errors.name)}
                 />
               </ERPFormField>
 
-              <ERPFormField label="School Code" htmlFor="schoolCode">
+              <ERPFormField label={t("ui.schoolCodeLabel")} htmlFor="schoolCode">
                 <Input
                   id="schoolCode"
                   value={settings.schoolCode || ""}
                   onChange={(e) => updateSetting("schoolCode", e.target.value)}
-                  placeholder="EIIN or school code"
+                  placeholder={t("ui.placeholder.schoolCode")}
                 />
               </ERPFormField>
             </ERPFormGrid>
 
-            <ERPFormField label="Address" required error={errors.address} htmlFor="address">
+            <ERPFormField label={t("ui.addressLabel")} required error={errors.address} htmlFor="address">
               <Input
                 id="address"
                 value={settings.address}
                 onChange={(e) => updateSetting("address", e.target.value)}
-                placeholder="Full address"
+                placeholder={t("ui.placeholder.fullAddress")}
                 aria-invalid={Boolean(errors.address)}
               />
             </ERPFormField>
 
             <ERPFormGrid cols={2}>
-              <ERPFormField label="Phone" htmlFor="phone">
+              <ERPFormField label={t("ui.phoneLabel")} htmlFor="phone">
                 <Input
                   id="phone"
                   value={settings.phone || ""}
                   onChange={(e) => updateSetting("phone", e.target.value)}
-                  placeholder="+880-XXX-XXXXXX"
+                  placeholder={t("ui.placeholder.phone")}
                 />
               </ERPFormField>
 
-              <ERPFormField label="Email" error={errors.email} htmlFor="email">
+              <ERPFormField label={t("ui.emailLabel")} error={errors.email} htmlFor="email">
                 <Input
                   id="email"
                   type="email"
                   value={settings.email || ""}
                   onChange={(e) => updateSetting("email", e.target.value)}
-                  placeholder="info@school.edu"
+                  placeholder={t("ui.placeholder.email")}
                   aria-invalid={Boolean(errors.email)}
                 />
               </ERPFormField>
             </ERPFormGrid>
 
             <ERPFormGrid cols={2}>
-              <ERPFormField label="Logo URL" htmlFor="logoUrl">
+              <ERPFormField label={t("ui.logoUrl")} htmlFor="logoUrl">
                 <Input
                   id="logoUrl"
                   value={settings.logoUrl || ""}
                   onChange={(e) => updateSetting("logoUrl", e.target.value)}
-                  placeholder="https://example.com/logo.png"
+                  placeholder={t("ui.placeholder.logo")}
                 />
               </ERPFormField>
 
-              <ERPFormField label="Website" error={errors.website} htmlFor="website">
+              <ERPFormField label={t("ui.websiteLabel")} error={errors.website} htmlFor="website">
                 <Input
                   id="website"
                   value={settings.website || ""}
                   onChange={(e) => updateSetting("website", e.target.value)}
-                  placeholder="https://www.school.edu"
+                  placeholder={t("ui.placeholder.website")}
                   aria-invalid={Boolean(errors.website)}
                 />
               </ERPFormField>
             </ERPFormGrid>
 
             <ERPFormGrid cols={2}>
-              <ERPFormField label="Established Year" error={errors.establishedYear} htmlFor="establishedYear">
+              <ERPFormField label={t("ui.establishedYearLabel")} error={errors.establishedYear} htmlFor="establishedYear">
                 <Input
                   id="establishedYear"
                   type="number"
                   value={settings.establishedYear || ""}
                   onChange={(e) => updateSetting("establishedYear", parseInt(e.target.value) || undefined)}
-                  placeholder="1990"
+                  placeholder={t("ui.placeholder.year")}
                   min={1800}
                   max={new Date().getFullYear()}
                   aria-invalid={Boolean(errors.establishedYear)}
                 />
               </ERPFormField>
 
-              <ERPFormField label="School Motto" htmlFor="motto">
+              <ERPFormField label={t("ui.mottoLabel")} htmlFor="motto">
                 <Input
                   id="motto"
                   value={settings.motto || ""}
                   onChange={(e) => updateSetting("motto", e.target.value)}
-                  placeholder="Education for all"
+                  placeholder={t("ui.placeholder.motto")}
                 />
               </ERPFormField>
             </ERPFormGrid>
@@ -394,15 +394,15 @@ export default function SettingsPage() {
                 <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border bg-background">
                   {settings.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={settings.logoUrl} alt="School logo preview" className="h-full w-full object-cover" />
+                    <img src={settings.logoUrl} alt={t("ui.schoolLogoPreview")} className="h-full w-full object-cover" />
                   ) : (
                     <School className="h-6 w-6 text-muted-foreground" />
                   )}
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold">{settings.name || "School Name Preview"}</p>
-                  <p className="text-sm text-muted-foreground">{settings.motto || "Your school motto will appear here"}</p>
-                  <p className="text-sm text-muted-foreground">{settings.address || "School address preview"}</p>
+                  <p className="font-semibold">{settings.name || t("ui.schoolNamePreview")}</p>
+                  <p className="text-sm text-muted-foreground">{settings.motto || t("ui.mottoPreview")}</p>
+                  <p className="text-sm text-muted-foreground">{settings.address || t("ui.addressPreview")}</p>
                   <div className="flex flex-wrap gap-3 pt-1 text-xs text-muted-foreground">
                     {settings.email ? <span>{settings.email}</span> : null}
                     {settings.phone ? <span>{settings.phone}</span> : null}
@@ -417,11 +417,11 @@ export default function SettingsPage() {
         {/* Financial Settings Tab */}
         <TabsContent value="financial" className="space-y-4">
           <ERPFormSection
-            title="Currency Settings"
-            description="Configure currency and financial preferences"
+            title={t("ui.currencyInfo")}
+            description={t("ui.currencyInfoDesc")}
           >
             <ERPFormGrid cols={2}>
-              <ERPFormField label="Currency">
+              <ERPFormField label={t("ui.currencyLabel")}>
                 <Select
                   value={settings.currency}
                   onValueChange={(value) => {
@@ -443,19 +443,19 @@ export default function SettingsPage() {
                 </Select>
               </ERPFormField>
 
-              <ERPFormField label="Currency Symbol" error={errors.currencySymbol}>
+              <ERPFormField label={t("ui.currencySymbolLabel")} error={errors.currencySymbol}>
                 <Input
                   value={settings.currencySymbol}
                   onChange={(e) => updateSetting("currencySymbol", e.target.value)}
-                  placeholder="৳"
+                  placeholder={settings.currencySymbol}
                   className="w-32"
                   aria-invalid={Boolean(errors.currencySymbol)}
                 />
               </ERPFormField>
 
               <ERPFormField
-                label="Tax Rate (%)"
-                helperText="Applied to fee vouchers and transactions"
+                label={t("ui.taxRateLabel")}
+                helperText={t("ui.taxHelp")}
                 error={errors.taxRate}
                 htmlFor="taxRate"
               >
@@ -474,17 +474,17 @@ export default function SettingsPage() {
             </ERPFormGrid>
 
             <div className="rounded-lg bg-muted p-4">
-              <h4 className="mb-2 text-sm font-medium">Currency Preview</h4>
+              <h4 className="mb-2 text-sm font-medium">{t("ui.currencyPreview")}</h4>
               <div className="flex flex-wrap items-center gap-4 text-lg">
                 <span className="font-semibold">
                   {settings.currencySymbol}1,000.00
                 </span>
                 <span className="text-muted-foreground">
-                  Fee Amount Example
+                  {t("ui.feeExample")}
                 </span>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                Tax-inclusive amount: {settings.currencySymbol}{(1000 + (1000 * settings.taxRate) / 100).toFixed(2)}
+                {t("ui.taxInclusive")} {settings.currencySymbol}{(1000 + (1000 * settings.taxRate) / 100).toFixed(2)}
               </p>
             </div>
           </ERPFormSection>
@@ -493,13 +493,13 @@ export default function SettingsPage() {
         {/* Date & Time Tab */}
         <TabsContent value="datetime" className="space-y-4">
           <ERPFormSection
-            title="Date & Time Format"
-            description="Configure how dates and times are displayed"
+            title={t("dateTimeFormat")}
+            description={t("configureHowDatesDisplayed")}
           >
             <ERPFormGrid cols={2}>
               <ERPFormField
-                label="Date Format"
-                helperText="Visual format only - database stores ISO format"
+                label={t("ui.dateFormatLabel")}
+                helperText={t("visualFormatOnly")}
               >
                 <Select
                   value={settings.dateFormat}
@@ -511,14 +511,14 @@ export default function SettingsPage() {
                   <SelectContent>
                     {DATE_FORMATS.map((format) => (
                       <SelectItem key={format.value} value={format.value}>
-                        {format.label}
+                        {t(`ui.dateFormats.${format.key}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </ERPFormField>
 
-              <ERPFormField label="Time Format">
+              <ERPFormField label={t("ui.timeFormatLabel")}>
                 <Select
                   value={settings.timeFormat}
                   onValueChange={(value) => updateSetting("timeFormat", value)}
@@ -529,14 +529,14 @@ export default function SettingsPage() {
                   <SelectContent>
                     {TIME_FORMATS.map((format) => (
                       <SelectItem key={format.value} value={format.value}>
-                        {format.label}
+                        {t(`ui.dateFormats.${format.key}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </ERPFormField>
 
-              <ERPFormField label="Timezone">
+              <ERPFormField label={t("ui.timezoneLabel")}>
                 <Select
                   value={settings.timezone}
                   onValueChange={(value) => updateSetting("timezone", value)}
@@ -545,15 +545,15 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Asia/Dhaka">Asia/Dhaka (GMT+6)</SelectItem>
-                    <SelectItem value="Asia/Kolkata">Asia/Kolkata (GMT+5:30)</SelectItem>
-                    <SelectItem value="Asia/Karachi">Asia/Karachi (GMT+5)</SelectItem>
-                    <SelectItem value="UTC">UTC (GMT+0)</SelectItem>
+                    <SelectItem value="Asia/Dhaka">Asia/Dhaka ({t("ui.timezoneDhaka")})</SelectItem>
+                    <SelectItem value="Asia/Kolkata">Asia/Kolkata ({t("ui.timezoneKolkata")})</SelectItem>
+                    <SelectItem value="Asia/Karachi">Asia/Karachi ({t("ui.timezoneKarachi")})</SelectItem>
+                    <SelectItem value="UTC">{t("ui.utc")}</SelectItem>
                   </SelectContent>
                 </Select>
               </ERPFormField>
 
-              <ERPFormField label="First Day of Week">
+              <ERPFormField label={t("ui.firstDayLabel")}>
                 <Select
                   value={settings.firstDayOfWeek}
                   onValueChange={(value) => updateSetting("firstDayOfWeek", value)}
@@ -562,13 +562,13 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sunday">Sunday</SelectItem>
-                    <SelectItem value="monday">Monday</SelectItem>
+                    <SelectItem value="sunday">{t("ui.sunday")}</SelectItem>
+                    <SelectItem value="monday">{t("ui.monday")}</SelectItem>
                   </SelectContent>
                 </Select>
               </ERPFormField>
 
-              <ERPFormField label="Academic Year Start">
+              <ERPFormField label={t("ui.academicYearLabel")}>
                 <Select
                   value={settings.academicYearStart}
                   onValueChange={(value) => updateSetting("academicYearStart", value)}
@@ -579,14 +579,14 @@ export default function SettingsPage() {
                   <SelectContent>
                     {MONTHS.map((month) => (
                       <SelectItem key={month} value={month} className="capitalize">
-                        {month.charAt(0).toUpperCase() + month.slice(1)}
+                        {t(`ui.months.${month}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </ERPFormField>
 
-              <ERPFormField label="Grading System">
+              <ERPFormField label={t("ui.gradingLabel")}>
                 <Select
                   value={settings.gradingSystem}
                   onValueChange={(value) => updateSetting("gradingSystem", value)}
@@ -597,7 +597,7 @@ export default function SettingsPage() {
                   <SelectContent>
                     {GRADING_SYSTEMS.map((system) => (
                       <SelectItem key={system.value} value={system.value}>
-                        {system.label}
+                        {t(`ui.${system.key}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -606,26 +606,26 @@ export default function SettingsPage() {
             </ERPFormGrid>
 
             <div className="rounded-lg bg-muted p-4">
-              <h4 className="mb-2 text-sm font-medium">Date Preview</h4>
+              <h4 className="mb-2 text-sm font-medium">{t("ui.datePreview")}</h4>
               <div className="flex items-center gap-4">
                 <span className="font-semibold">{previewDate}</span>
                 <span className="text-muted-foreground">
-                  Current Date ({settings.dateFormat})
+                  {t("ui.currentDate")} ({settings.dateFormat})
                 </span>
               </div>
               <div className="mt-2 flex items-center gap-4">
                 <span className="font-semibold">{previewTime}</span>
                 <span className="text-muted-foreground">
-                  Current Time ({settings.timeFormat}, {settings.timezone})
+                  {t("ui.currentTime")} ({settings.timeFormat}, {settings.timezone})
                 </span>
               </div>
               <div className="mt-3 rounded-md border border-border bg-background p-3 text-sm">
                 <div className="flex items-center gap-2 font-medium">
                   <Globe className="h-4 w-4" />
-                  Academic Calendar Preferences
+                  {t("ui.calendarPrefs")}
                 </div>
                 <p className="mt-2 text-muted-foreground">
-                  Week starts on {settings.firstDayOfWeek}. Academic year begins in {settings.academicYearStart}. Grading uses {settings.gradingSystem}.
+                  {t("ui.weekStarts")} {settings.firstDayOfWeek}. {t("ui.yearBegins")} {settings.academicYearStart}. {t("ui.gradingUses")} {settings.gradingSystem}.
                 </p>
               </div>
             </div>

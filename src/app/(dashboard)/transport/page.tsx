@@ -19,7 +19,7 @@ import {
   useAllocationsViewModel,
 } from "@/viewmodels/transport/use-transport-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { usePDFExport, type TransportManifestPDFData, type ManifestStudent } from "@/hooks/use-pdf-export";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -41,11 +41,11 @@ import { toast } from "sonner";
 
 export default function TransportPage() {
   const t = useTranslations("transport");
-  const { user } = useAuth();
-  const canManage =
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    (!!user && hasPermission(user.permissions, "transport", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "transport", "read");
+  const canWrite = hasPermission(perms, "transport", "write");
+  const canManage = hasPermission(perms, "transport", "manage");
   const { exportTransportManifestPDF } = usePDFExport();
 
   const [activeTab, setActiveTab] = useState("vehicles");
@@ -308,7 +308,7 @@ export default function TransportPage() {
       header: t("vehicleNo"),
       cell: ({ row }) => (
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Bus className="h-4 w-4" />
           </div>
           <span className="font-mono text-sm font-bold text-foreground">
@@ -356,22 +356,26 @@ export default function TransportPage() {
       header: t("actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => openEditVehicle(row.original)}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            onClick={() => handleDeleteVehicle(row.original.id)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {canWrite && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => openEditVehicle(row.original)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+              onClick={() => handleDeleteVehicle(row.original.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -440,28 +444,32 @@ export default function TransportPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950"
+            className="h-8 w-8 text-primary hover:bg-primary/10"
             onClick={() => handlePrintManifest(row.original)}
             title="Download Driver Passenger Manifest (PDF)"
           >
             <Printer className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => openEditRoute(row.original)}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            onClick={() => handleDeleteRoute(row.original.id)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {canWrite && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => openEditRoute(row.original)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+              onClick={() => handleDeleteRoute(row.original.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -517,25 +525,27 @@ export default function TransportPage() {
       id: "actions",
       header: t("actions"),
       cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-destructive hover:bg-destructive/10"
-          onClick={async () => {
-            if (!confirm(t("confirmDeleteAllocation"))) return;
-            try {
-              const r = await fetch(`/api/transport/allocations/${row.original.id}`, {
-                method: "DELETE",
-                credentials: "include",
-              });
-              const j = await r.json();
-              if (!r.ok) throw new Error(j.message);
-              window.location.reload();
-            } catch {}
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        canManage ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+            onClick={async () => {
+              if (!confirm(t("confirmDeleteAllocation"))) return;
+              try {
+                const r = await fetch(`/api/transport/allocations/${row.original.id}`, {
+                  method: "DELETE",
+                  credentials: "include",
+                });
+                const j = await r.json();
+                if (!r.ok) throw new Error(j.message);
+                window.location.reload();
+              } catch {}
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        ) : null
       ),
     },
   ];
@@ -545,19 +555,19 @@ export default function TransportPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={Bus}>
-        {activeTab === "vehicles" && canManage && (
+        {activeTab === "vehicles" && canWrite && (
           <Button onClick={openAddVehicle} className="gap-2">
             <Plus className="h-4 w-4" />
             {t("addVehicle")}
           </Button>
         )}
-        {activeTab === "routes" && canManage && (
+        {activeTab === "routes" && canWrite && (
           <Button onClick={openAddRoute} className="gap-2">
             <Plus className="h-4 w-4" />
             {t("addRoute")}
           </Button>
         )}
-        {activeTab === "allocations" && canManage && (
+        {activeTab === "allocations" && canWrite && (
           <Button onClick={openAlloc} className="gap-2">
             <UserPlus className="h-4 w-4" />
             {t("allocateStudent")}
@@ -565,11 +575,19 @@ export default function TransportPage() {
         )}
       </PageHeader>
 
-      {/* KPI Cards */}
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view transport records.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="shadow-xs border-border">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-xl">
+            <div className="p-2.5 bg-primary/10 rounded-lg">
               <Bus className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -581,7 +599,7 @@ export default function TransportPage() {
 
         <Card className="shadow-xs border-border">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+            <div className="p-2.5 bg-emerald-500/10 rounded-lg">
               <Route className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
@@ -595,7 +613,7 @@ export default function TransportPage() {
 
         <Card className="shadow-xs border-border">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+            <div className="p-2.5 bg-blue-500/10 rounded-lg">
               <Users className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -763,6 +781,8 @@ export default function TransportPage() {
           />
         </TabsContent>
       </Tabs>
+        </>
+      )}
 
       {/* Vehicle Sheet */}
       <TopSheet

@@ -13,6 +13,7 @@ import {
   expensesApi,
   expenseCategoriesApi,
   bankAccountsApi,
+  feeHeadsApi,
   profitLossApi,
 } from "@/lib/api-client";
 import type { PaginationParams } from "@/types/api";
@@ -524,6 +525,24 @@ export function useCreateBankAccount() {
     mutationFn: (data: any) => bankAccountsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bankAccounts"] });
+    },
+  });
+}
+
+// Fee Head Accounting hooks
+export function useFeeHeadMappings() {
+  return useQuery({
+    queryKey: ["feeHeadMappings"],
+    queryFn: () => feeHeadsApi.list(),
+  });
+}
+
+export function useSaveFeeHeadMappings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { mappings: Array<{ code: string; accountCode: string }> }) => feeHeadsApi.update(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feeHeadMappings"] });
     },
   });
 }

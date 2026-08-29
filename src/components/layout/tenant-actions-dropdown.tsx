@@ -86,7 +86,7 @@ export function TenantActionsDropdown({
           <button
             onClick={handleImpersonate}
             disabled={isImpersonating}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/60 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 transition-colors"
           >
             {isImpersonating ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -66,6 +66,8 @@ model Tenant {
   subjects              Subject[]
   exams                 Exam[]
   examSubjects          ExamSubject[]
+  questions             Question[]
+  questionPapers        QuestionPaper[]
   promotionRules        PromotionRule[]
   classPromotions       ClassPromotion[]
   classSubjects         ClassSubject[]
@@ -235,6 +237,7 @@ model AcademicYear {
   teacherSubstitutions       TeacherSubstitution[]
   academicHolidays           AcademicHoliday[]
   admissionApplications      AdmissionApplication[]
+  questionPapers             QuestionPaper[]
 
   @@unique([tenantId, yearId])
   @@index([tenantId])
@@ -468,9 +471,11 @@ model Subject {
   tenant        Tenant         @relation(fields: [tenantId], references: [tenantId])
   examResults   ExamResult[]
   examSubjects  ExamSubject[]
-  classSubjects ClassSubject[]
-  timetables    Timetable[]
-  homeworks     Homework[]
+  classSubjects  ClassSubject[]
+  timetables     Timetable[]
+  homeworks      Homework[]
+  questions      Question[]
+  questionPapers QuestionPaper[]
 
   @@unique([tenantId, subjectId])
   @@index([tenantId])
@@ -512,8 +517,9 @@ model Exam {
 
   tenant       Tenant        @relation(fields: [tenantId], references: [tenantId])
   academicYear AcademicYear  @relation(fields: [academicYearId], references: [id])
-  subjects     ExamSubject[]
-  results      ExamResult[]
+  subjects       ExamSubject[]
+  results        ExamResult[]
+  questionPapers QuestionPaper[]
 
   @@unique([tenantId, examId])
   @@index([tenantId, academicYearId])
@@ -582,6 +588,66 @@ model ExamResult {
   @@index([tenantId, subjectId])
   @@index([tenantId, createdAt])
   @@index([tenantId, isLocked])
+}
+
+// Question Bank & Question Paper Models
+model Question {
+  id            String   @id @default(cuid())
+  tenantId      String
+  classId       String
+  subjectId     String
+  chapter       String?
+  topic         String?
+  type          String   // "MCQ" | "SHORT" | "DESCRIPTIVE" | "CREATIVE_NCTB" | "TRUE_FALSE" | "FILL_BLANK"
+  difficulty    String   @default("MEDIUM") // "EASY" | "MEDIUM" | "HARD"
+  bloomLevel    String?  // "KNOWLEDGE" | "UNDERSTANDING" | "APPLICATION" | "ANALYSIS"
+  questionText  String   @db.Text
+  stimulus      String?  @db.Text // Passage/Context/উদ্দীপক for Comprehension or Creative Questions
+  options       Json?    // [{ id: "A", text: "...", isCorrect: true }]
+  subQuestions  Json?    // [{ label: "a", text: "...", marks: 1 }, { label: "b", text: "...", marks: 2 }]
+  correctAnswer String?  @db.Text
+  explanation   String?  @db.Text
+  marks         Float    @default(1)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [tenantId])
+  class   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@index([tenantId, classId, subjectId])
+  @@index([tenantId, type])
+  @@index([tenantId, difficulty])
+}
+
+model QuestionPaper {
+  id              String   @id @default(cuid())
+  tenantId        String
+  paperId         String
+  title           String
+  code            String?  // e.g. "QP-MATH-10-01"
+  academicYearId  String
+  classId         String
+  subjectId       String
+  examId          String?
+  totalMarks      Float    @default(100)
+  durationMinutes Int      @default(180)
+  instructions    String?  @db.Text
+  sections        Json     // Array of sections: [{ id: "sec-1", title: "Section A: Multiple Choice", instructions: "...", marks: 20, questionIds: [...] }]
+  status          String   @default("DRAFT") // "DRAFT" | "READY" | "PUBLISHED" | "ARCHIVED"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [tenantId])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  class        Class        @relation(fields: [classId], references: [id])
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+  exam         Exam?        @relation(fields: [examId], references: [id])
+
+  @@unique([tenantId, paperId])
+  @@index([tenantId, classId, subjectId])
+  @@index([tenantId, status])
 }
 
 // Promotion Models
@@ -669,6 +735,8 @@ model Class {
   homeworks           Homework[]
   enquiries           Enquiry[]
   academicSessions    StudentAcademicSession[]
+  questions           Question[]
+  questionPapers      QuestionPaper[]
 
   @@unique([tenantId, classId])
   @@unique([tenantId, classNumber])

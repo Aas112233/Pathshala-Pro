@@ -130,12 +130,12 @@ export function ERPDataTable<T>({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-2xl border border-border/70 bg-card shadow-xs overflow-hidden",
+        "flex flex-col rounded-lg border border-border/80 bg-card shadow-none overflow-hidden",
         className
       )}
     >
       {/* Top Section Toolbar */}
-      <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between border-b border-border/60">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60">
         <div>
           {title && (
             <h3 className="text-base font-semibold tracking-tight text-foreground">
@@ -154,7 +154,7 @@ export function ERPDataTable<T>({
               variant="outline"
               size="sm"
               onClick={onFilterClick}
-              className="relative h-9 gap-1.5 rounded-xl border-border/80 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="relative h-9 gap-1.5 rounded-md border-border/80 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <Filter className="h-3.5 w-3.5" />
               <span>{filterLabel}</span>
@@ -173,7 +173,7 @@ export function ERPDataTable<T>({
               value={currentSearch}
               onChange={handleSearchChange}
               placeholder={searchPlaceholder}
-              className="h-9 w-full rounded-xl pl-9 pr-3 text-xs bg-muted/30 focus:bg-background border-border/70"
+              className="h-9 w-full rounded-md pl-9 pr-3 text-xs bg-muted/30 focus:bg-background border-border/70"
             />
           </div>
 
@@ -183,7 +183,7 @@ export function ERPDataTable<T>({
             <Button
               size="sm"
               onClick={onActionClick}
-              className="h-9 gap-1.5 rounded-xl text-xs font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+              className="h-9 gap-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
             >
               {actionIcon || <Plus className="h-3.5 w-3.5" />}
               <span>{actionLabel}</span>
@@ -210,7 +210,7 @@ export function ERPDataTable<T>({
                 <th
                   key={col.key}
                   className={cn(
-                    "px-4 py-3.5 font-semibold uppercase tracking-wider text-[11px] text-muted-foreground/80",
+                    "px-4 py-3.5 font-medium text-xs text-muted-foreground",
                     col.headerClassName
                   )}
                 >
@@ -393,7 +393,7 @@ export function ERPStatusPill({
   variant?: "dark" | "subtle" | "emerald" | "amber" | "rose" | "indigo";
 }) {
   const styles: Record<string, string> = {
-    dark: "bg-slate-800 text-white font-medium",
+    dark: "bg-foreground text-background font-medium",
     subtle: "border border-border/80 bg-muted/40 text-foreground font-medium",
     emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium",
     amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium",

@@ -34,6 +34,8 @@ import {
   BedDouble,
   Award,
   HeartPulse,
+  FileQuestion,
+  Database,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,12 +57,14 @@ export const APP_DESCRIPTION = "School Management ERP System";
 export const ROLES = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
-  TEACHER: "TEACHER",
-  CLERK: "CLERK",
-  STUDENT: "STUDENT",
   PRINCIPAL: "PRINCIPAL",
   MANAGER: "MANAGER",
+  ACCOUNTANT: "ACCOUNTANT",
+  TEACHER: "TEACHER",
+  CLERK: "CLERK",
   AUDITOR: "AUDITOR",
+  PARENT: "PARENT",
+  STUDENT: "STUDENT",
   SYSTEM_ADMIN: "SYSTEM_ADMIN",
 } as const;
 
@@ -134,23 +138,13 @@ export const SIDEBAR_NAV: NavGroup[] = [
     ],
   },
   {
-    labelKey: "nav.admissions",
+    labelKey: "nav.studentsAndAdmissions",
     items: [
       {
-        titleKey: "nav.createAdmission",
+        titleKey: "nav.admissions",
         href: "/admissions",
-        icon: FilePlus,
+        icon: UserPlus,
       },
-      {
-        titleKey: "nav.enquiries",
-        href: "/enquiries",
-        icon: ClipboardList,
-      },
-    ],
-  },
-  {
-    labelKey: "nav.academic",
-    items: [
       {
         titleKey: "nav.students",
         href: "/students",
@@ -162,19 +156,29 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: CalendarCheck,
       },
       {
+        titleKey: "nav.certificates",
+        href: "/certificates",
+        icon: Award,
+      },
+    ],
+  },
+  {
+    labelKey: "nav.academicTeaching",
+    items: [
+      {
+        titleKey: "nav.classes",
+        href: "/academic/classes",
+        icon: School,
+      },
+      {
+        titleKey: "nav.subjects",
+        href: "/subjects",
+        icon: BookOpen,
+      },
+      {
         titleKey: "nav.timetable",
         href: "/timetable",
         icon: CalendarRange,
-      },
-      {
-        titleKey: "nav.library",
-        href: "/library",
-        icon: Library,
-      },
-      {
-        titleKey: "nav.transport",
-        href: "/transport",
-        icon: Bus,
       },
       {
         titleKey: "nav.homework",
@@ -186,10 +190,25 @@ export const SIDEBAR_NAV: NavGroup[] = [
         href: "/leaves",
         icon: CalendarOff,
       },
+    ],
+  },
+  {
+    labelKey: "nav.examinations",
+    items: [
       {
         titleKey: "nav.exams",
         href: "/exams",
         icon: BookOpen,
+      },
+      {
+        titleKey: "nav.questionPapers",
+        href: "/exams/question-papers",
+        icon: FileQuestion,
+      },
+      {
+        titleKey: "nav.questionBank",
+        href: "/exams/question-bank",
+        icon: Database,
       },
       {
         titleKey: "nav.examResults",
@@ -202,41 +221,6 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: TrendingUp,
       },
       {
-        titleKey: "nav.academicYear",
-        href: "/academic-year",
-        icon: CalendarRange,
-      },
-    ],
-  },
-  {
-    labelKey: "nav.academicSettings",
-    items: [
-      {
-        titleKey: "nav.academicYear",
-        href: "/academic-year",
-        icon: CalendarRange,
-      },
-      {
-        titleKey: "nav.classes",
-        href: "/academic/classes",
-        icon: School,
-      },
-      {
-        titleKey: "nav.subjects",
-        href: "/subjects",
-        icon: BookOpen,
-      },
-      {
-        titleKey: "nav.groups",
-        href: "/academic/groups",
-        icon: Layers,
-      },
-      {
-        titleKey: "nav.sections",
-        href: "/academic/sections",
-        icon: ClipboardList,
-      },
-      {
         titleKey: "nav.promotionRules",
         href: "/promotions/rules",
         icon: Settings,
@@ -247,6 +231,16 @@ export const SIDEBAR_NAV: NavGroup[] = [
     labelKey: "nav.finance",
     items: [
       {
+        titleKey: "nav.feeCollection",
+        href: "/fees/collection",
+        icon: CreditCard,
+      },
+      {
+        titleKey: "nav.bulkFeeCollection",
+        href: "/fees/bulk",
+        icon: Users,
+      },
+      {
         titleKey: "nav.feeVouchers",
         href: "/fees",
         icon: Receipt,
@@ -255,11 +249,6 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.feeStructures",
         href: "/fees/structures",
         icon: Layers,
-      },
-      {
-        titleKey: "nav.feeCollection",
-        href: "/fees/collection",
-        icon: CreditCard,
       },
       {
         titleKey: "nav.transactions",
@@ -286,6 +275,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         href: "/accounting/statements",
         icon: FileSpreadsheet,
       },
+      {
+        titleKey: "nav.feeHeadMappings",
+        href: "/accounting/fee-heads",
+        icon: Landmark,
+      },
     ],
   },
   {
@@ -304,22 +298,17 @@ export const SIDEBAR_NAV: NavGroup[] = [
     ],
   },
   {
-    labelKey: "nav.communication",
+    labelKey: "nav.campusFacilities",
     items: [
       {
-        titleKey: "nav.notices",
-        href: "/notices",
-        icon: Megaphone,
+        titleKey: "nav.transport",
+        href: "/transport",
+        icon: Bus,
       },
-    ],
-  },
-  {
-    labelKey: "nav.store",
-    items: [
       {
-        titleKey: "nav.inventory",
-        href: "/inventory",
-        icon: Package,
+        titleKey: "nav.library",
+        href: "/library",
+        icon: Library,
       },
       {
         titleKey: "nav.hostel",
@@ -327,9 +316,9 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: BedDouble,
       },
       {
-        titleKey: "nav.certificates",
-        href: "/certificates",
-        icon: Award,
+        titleKey: "nav.inventory",
+        href: "/inventory",
+        icon: Package,
       },
       {
         titleKey: "nav.health",
@@ -339,8 +328,28 @@ export const SIDEBAR_NAV: NavGroup[] = [
     ],
   },
   {
-    labelKey: "nav.administration",
+    labelKey: "nav.reportsAndNotices",
     items: [
+      {
+        titleKey: "nav.notices",
+        href: "/notices",
+        icon: Megaphone,
+      },
+      {
+        titleKey: "nav.reports",
+        href: "/reports",
+        icon: BarChart3,
+      },
+    ],
+  },
+  {
+    labelKey: "nav.systemSettings",
+    items: [
+      {
+        titleKey: "nav.academicYear",
+        href: "/academic-year",
+        icon: CalendarRange,
+      },
       {
         titleKey: "nav.users",
         href: "/users",
@@ -350,51 +359,6 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.settings",
         href: "/settings",
         icon: Settings,
-      },
-    ],
-  },
-  {
-    labelKey: "nav.reports",
-    items: [
-      {
-        titleKey: "reports.overview",
-        href: "/reports",
-        icon: BarChart3,
-      },
-      {
-        titleKey: "reports.feeReport.title",
-        href: "/reports/fees",
-        icon: Receipt,
-      },
-      {
-        titleKey: "reports.salaryReport.title",
-        href: "/reports/salary",
-        icon: Wallet,
-      },
-      {
-        titleKey: "reports.financialReport.title",
-        href: "/reports/financial",
-        icon: Landmark,
-      },
-      {
-        titleKey: "reports.admissionsReport.title",
-        href: "/reports/admissions",
-        icon: UserPlus,
-      },
-      {
-        titleKey: "reports.attendanceReport.title",
-        href: "/reports/attendance",
-        icon: CalendarCheck,
-      },
-      {
-        titleKey: "reports.studentReport.title",
-        href: "/reports/students",
-        icon: GraduationCap,
-      },
-      {
-        titleKey: "reports.examReport.title",
-        href: "/reports/exams",
-        icon: BookOpen,
       },
     ],
   },
@@ -427,3 +391,36 @@ export const STUDENT_STATUSES = [
   { value: "GRADUATED", labelKey: "students.graduated" },
   { value: "TRANSFERRED", labelKey: "students.transferred" },
 ] as const;
+
+export const ACADEMIC_MONTHS = [
+  { value: 1, index: 0, key: "january", label: "January", shortLabel: "Jan" },
+  { value: 2, index: 1, key: "february", label: "February", shortLabel: "Feb" },
+  { value: 3, index: 2, key: "march", label: "March", shortLabel: "Mar" },
+  { value: 4, index: 3, key: "april", label: "April", shortLabel: "Apr" },
+  { value: 5, index: 4, key: "may", label: "May", shortLabel: "May" },
+  { value: 6, index: 5, key: "june", label: "June", shortLabel: "Jun" },
+  { value: 7, index: 6, key: "july", label: "July", shortLabel: "Jul" },
+  { value: 8, index: 7, key: "august", label: "August", shortLabel: "Aug" },
+  { value: 9, index: 8, key: "september", label: "September", shortLabel: "Sep" },
+  { value: 10, index: 9, key: "october", label: "October", shortLabel: "Oct" },
+  { value: 11, index: 10, key: "november", label: "November", shortLabel: "Nov" },
+  { value: 12, index: 11, key: "december", label: "December", shortLabel: "Dec" },
+] as const;
+
+export const MONTH_NAMES = ACADEMIC_MONTHS.map((m) => m.label);
+export const SHORT_MONTH_NAMES = ACADEMIC_MONTHS.map((m) => m.shortLabel);
+
+export function getMonthName(month: number | string): string {
+  const num = typeof month === "string" ? parseInt(month, 10) : month;
+  if (num >= 1 && num <= 12) return ACADEMIC_MONTHS[num - 1].label;
+  if (num >= 0 && num <= 11) return ACADEMIC_MONTHS[num].label;
+  return String(month || "");
+}
+
+export function getShortMonthName(month: number | string): string {
+  const num = typeof month === "string" ? parseInt(month, 10) : month;
+  if (num >= 1 && num <= 12) return ACADEMIC_MONTHS[num - 1].shortLabel;
+  if (num >= 0 && num <= 11) return ACADEMIC_MONTHS[num].shortLabel;
+  return String(month || "");
+}
+

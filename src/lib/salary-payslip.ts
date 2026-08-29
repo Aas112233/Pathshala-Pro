@@ -256,7 +256,7 @@ export async function postPayrollAccrual(
     lines.push({ accountCode: salaryAccount, side: 'CREDIT', amount: calc.deductions.lopAmount, narration: `LOP ${calc.deductions.lopDays}d` });
     // Adjust debit to gross already includes LOP; crediting LOP reduces expense to payable+pf+tax+loan = gross - lop
     // But we already debited gross; crediting lop + payable + pf... must balance: gross == payable+pf+tax+loan+lop
-    // Verify: payable = gross - lop - pf - tax - loan → gross == payable+lop+pf+tax+loan ✓
+    // Verify: payable = gross - lop - pf - tax - loan → gross == payable+lop+pf+tax+loan
   }
 
   return postDoubleEntryJournal(tx, {

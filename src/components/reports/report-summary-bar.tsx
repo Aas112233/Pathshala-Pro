@@ -46,7 +46,7 @@ export function ReportSummaryBar({
           />
         </div>
 
-        <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border/80 bg-muted/30 p-3">
+        <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border/80 bg-muted/30 p-3">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Filter className="h-4 w-4 text-primary" />
             Applied filters
@@ -87,7 +87,7 @@ function SummaryChip({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-background px-3 py-3">
+    <div className="rounded-lg border border-border/70 bg-background px-3 py-3">
       <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}

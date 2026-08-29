@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { X } from "lucide-react";
 
@@ -59,15 +60,16 @@ export function SalaryFiltersBar({
   onDepartmentChange,
   onClearFilters,
 }: SalaryFiltersBarProps) {
+  const t = useTranslations("salary");
   const hasActiveFilters = month !== "" || year !== "" || status !== "ALL" || department !== "";
 
   const departmentOptions = [
-    { value: "", label: "All Departments" },
-    { value: "Teaching", label: "Teaching" },
-    { value: "Administration", label: "Administration" },
-    { value: "Support", label: "Support" },
-    { value: "Transport", label: "Transport" },
-    { value: "Maintenance", label: "Maintenance" },
+    { value: "", label: t("ui.filters.allDepartments") },
+    { value: "Teaching", label: t("ui.filters.teaching") },
+    { value: "Administration", label: t("ui.filters.administration") },
+    { value: "Support", label: t("ui.filters.support") },
+    { value: "Transport", label: t("ui.filters.transport") },
+    { value: "Maintenance", label: t("ui.filters.maintenance") },
   ];
 
   return (
@@ -78,8 +80,8 @@ export function SalaryFiltersBar({
           <AppDropdown
             value={month}
             onChange={onMonthChange}
-            options={MONTHS}
-            placeholder="Month"
+            options={MONTHS.map((option) => ({ ...option, label: option.value ? t(`ui.months.${["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"][Number(option.value) - 1]}`) : t("ui.filters.allMonths") }))}
+            placeholder={t("ui.filters.month")}
           />
         </div>
 
@@ -88,8 +90,8 @@ export function SalaryFiltersBar({
           <AppDropdown
             value={year}
             onChange={onYearChange}
-            options={YEARS}
-            placeholder="Year"
+            options={YEARS.map((option) => ({ ...option, label: option.value ? option.label : t("ui.filters.allYears") }))}
+            placeholder={t("ui.filters.year")}
           />
         </div>
 
@@ -98,8 +100,8 @@ export function SalaryFiltersBar({
           <AppDropdown
             value={status}
             onChange={(value) => onStatusChange(value as "ALL" | "PENDING" | "PARTIAL" | "PAID")}
-            options={STATUS_OPTIONS}
-            placeholder="Status"
+            options={STATUS_OPTIONS.map((option) => ({ ...option, label: option.value === "ALL" ? t("ui.filters.allStatus") : t(`ui.filters.${option.value.toLowerCase()}`) }))}
+            placeholder={t("ui.filters.status")}
           />
         </div>
 
@@ -109,7 +111,7 @@ export function SalaryFiltersBar({
             value={department}
             onChange={onDepartmentChange}
             options={departmentOptions}
-            placeholder="Department"
+            placeholder={t("ui.filters.department")}
             searchable
           />
         </div>
@@ -123,7 +125,7 @@ export function SalaryFiltersBar({
             className="shrink-0"
           >
             <X className="h-4 w-4 mr-1" />
-            Clear
+            {t("ui.filters.clear")}
           </Button>
         )}
       </div>

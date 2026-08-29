@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/shared/data-table";
 import { useEnquiriesViewModel } from "@/viewmodels/enquiries/use-enquiries-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   ClipboardList,
@@ -35,7 +35,7 @@ const SOURCES = ["WALK_IN", "PHONE", "WEBSITE", "REFERRAL", "SOCIAL", "OTHER"] a
 
 function statusColor(s: string) {
   switch (s) {
-    case "NEW": return "bg-slate-100 text-slate-700 border-slate-200";
+    case "NEW": return "bg-muted text-muted-foreground border-border";
     case "CONTACTED": return "bg-blue-50 text-blue-700 border-blue-200";
     case "VISITED": return "bg-amber-50 text-amber-700 border-amber-200";
     case "ADMITTED": return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -46,8 +46,11 @@ function statusColor(s: string) {
 
 export default function EnquiriesPage() {
   const t = useTranslations("enquiries");
-  const { user } = useAuth();
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "enquiries", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "enquiries", "read");
+  const canWrite = hasPermission(perms, "enquiries", "write");
+  const canManage = hasPermission(perms, "enquiries", "manage");
 
   const {
     enquiries,
@@ -203,17 +206,21 @@ export default function EnquiriesPage() {
       header: t("actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
+          {canWrite && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {row.original.status !== "ADMITTED" && canManage && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => handleConvert(row.original.id)} title={t("convertToAdmission")}>
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}>
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </Button>
+          {canManage && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}>
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -233,7 +240,7 @@ export default function EnquiriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={ClipboardList}>
-        {canManage && (
+        {canWrite && (
           <Button onClick={openAdd} className="gap-2">
             <Plus className="h-4 w-4" />
             {t("addEnquiry")}
@@ -241,8 +248,16 @@ export default function EnquiriesPage() {
         )}
       </PageHeader>
 
-      {/* Filters */}
-      <Card>
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view enquiries.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Filters */}
+          <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[220px] flex gap-2">
@@ -308,13 +323,13 @@ export default function EnquiriesPage() {
             <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm font-medium">{t("noEnquiries")}</p>
             <p className="text-xs text-muted-foreground mt-1">{t("noEnquiriesHint")}</p>
-            {canManage && <Button onClick={openAdd} className="mt-4 gap-2"><Plus className="h-4 w-4" />{t("addEnquiry")}</Button>}
+            {canWrite && <Button onClick={openAdd} className="mt-4 gap-2"><Plus className="h-4 w-4" />{t("addEnquiry")}</Button>}
           </CardContent>
         </Card>
       ) : viewMode === "kanban" ? (
         <div className="grid gap-4 md:grid-cols-5 items-start">
           {STATUSES.map((status) => (
-            <div key={status} className="rounded-xl border bg-card">
+            <div key={status} className="rounded-lg border bg-card">
               <div className={`px-3 py-2.5 border-b flex items-center justify-between rounded-t-xl ${statusColor(status)} bg-opacity-30`}>
                 <span className="text-xs font-bold uppercase tracking-wider">{status}</span>
                 <Badge variant="secondary" className="h-5 min-w-5 text-xs">{grouped[status]?.length || 0}</Badge>
@@ -332,11 +347,11 @@ export default function EnquiriesPage() {
                         {overdue && <Badge className="bg-amber-500 text-white text-[10px] h-5">{t("followUpOverdue")}</Badge>}
                       </div>
                       <div className="flex items-center gap-1 mt-2">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
+                        {canWrite && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>}
                         {e.status !== "ADMITTED" && canManage && (
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600" onClick={() => handleConvert(e.id)}><ArrowRight className="h-3 w-3" /></Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(e.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                        {canManage && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(e.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>}
                       </div>
                     </div>
                   );
@@ -358,6 +373,8 @@ export default function EnquiriesPage() {
           isLoading={isLoading}
           searchPlaceholder={t("searchPlaceholder")}
         />
+      )}
+        </>
       )}
 
       {/* Form Sheet */}

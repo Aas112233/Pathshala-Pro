@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -37,6 +38,7 @@ export function StudentFormModal({
   initialData,
   isEditing = false,
 }: StudentFormModalProps) {
+  const t = useTranslations("students");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -108,7 +110,7 @@ export function StudentFormModal({
   const classOptions = useMemo(() => {
     const list = ("data" in (classesData || {})) ? (classesData as any).data : [];
     return [
-      { value: "", label: "No Class Assigned" },
+      { value: "", label: t("form.noClass") },,
       ...list.map((c: any) => ({ value: c.id, label: c.name })),
     ];
   }, [classesData]);
@@ -116,7 +118,7 @@ export function StudentFormModal({
   const groupOptions = useMemo(() => {
     const list = ("data" in (groupsData || {})) ? (groupsData as any).data : [];
     return [
-      { value: "", label: "No Group / General" },
+      { value: "", label: t("form.noGroup") },,
       ...list.map((g: any) => ({ value: g.id, label: g.name })),
     ];
   }, [groupsData]);
@@ -124,7 +126,7 @@ export function StudentFormModal({
   const sectionOptions = useMemo(() => {
     const list = ("data" in (sectionsData || {})) ? (sectionsData as any).data : [];
     return [
-      { value: "", label: "No Section Assigned" },
+      { value: "", label: t("form.noSection") },,
       ...list.map((s: any) => ({ value: s.id, label: s.name })),
     ];
   }, [sectionsData]);
@@ -184,29 +186,29 @@ export function StudentFormModal({
     const newErrors: FormErrors = {};
 
     if (!formData.rollNumber.trim()) {
-      newErrors.rollNumber = "Roll number is required";
+      newErrors.rollNumber = t("form.required", { field: t("rollNumber") });
     }
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = t("form.required", { field: t("firstName") });
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = t("form.required", { field: t("lastName") });
     }
 
     if (!formData.guardianName.trim()) {
-      newErrors.guardianName = "Guardian name is required";
+      newErrors.guardianName = t("form.required", { field: t("guardianName") });
     }
 
     if (!formData.guardianContact.trim()) {
-      newErrors.guardianContact = "Guardian contact is required";
+      newErrors.guardianContact = t("form.required", { field: t("guardianContact") });
     } else if (!/^\d{10,}$/.test(formData.guardianContact.replace(/\s/g, ""))) {
-      newErrors.guardianContact = "Please enter a valid phone number";
+      newErrors.guardianContact = t("form.invalidPhone");
     }
 
     if (formData.guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.guardianEmail)) {
-      newErrors.guardianEmail = "Please enter a valid email address";
+      newErrors.guardianEmail = t("form.invalidEmail");
     }
 
     setErrors(newErrors);
@@ -230,7 +232,7 @@ export function StudentFormModal({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File is too large. Max size is 5MB.");
+        toast.error(t("upload.fileTooLarge"));
         e.target.value = "";
         return;
       }
@@ -263,9 +265,9 @@ export function StudentFormModal({
             driveFileId: response.data.fileId
           }));
           setTempFileId(response.data.fileId); // Track for cleanup
-          toast.success("Image uploaded successfully!");
+          toast.success(t("upload.imageUploaded"));
         } else {
-          let errMsg = "Failed to upload image. Please try again.";
+          let errMsg = t("upload.failed");
           try {
             const errRes = JSON.parse(xhr.responseText);
             errMsg = errRes.error || errRes.message || errMsg;
@@ -277,7 +279,7 @@ export function StudentFormModal({
 
       xhr.onerror = () => {
         setIsUploading(false);
-        toast.error("Network error during upload.");
+        toast.error(t("upload.networkError"));
         setSelectedFile(null);
       };
 
@@ -310,7 +312,7 @@ export function StudentFormModal({
     }
 
     if (isUploading) {
-      toast.error("Please wait for the image upload to complete.");
+      toast.error(t("upload.wait"));
       return;
     }
 
@@ -371,16 +373,16 @@ export function StudentFormModal({
     <TopSheet
       isOpen={isOpen}
       onClose={handleModalClose}
-      title={isEditing ? "Edit Student" : "Add New Student"}
-      description={isEditing ? "Update student information." : "Create a new student profile in the system."}
+      title={isEditing ? t("formTitle.edit") : t("formTitle.create")}
+      description={isEditing ? t("formDescription.edit") : t("formDescription.create")}
       maxWidth="4xl"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <Button variant="outline" type="button" onClick={handleModalClose} disabled={isLoading || isUploading}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button type="submit" form="student-form" disabled={isLoading || isUploading}>
-            {isLoading ? "Saving..." : isUploading ? "Uploading file..." : isEditing ? "Update Student" : "Save Student"}
+            {isLoading ? t("saving") : isUploading ? t("form.uploadingFile") : isEditing ? t("form.updateStudent") : t("form.saveStudent")}
           </Button>
         </div>
       }
@@ -391,7 +393,7 @@ export function StudentFormModal({
           {/* Left Column - Photo Upload */}
           <div className="lg:col-span-1">
             <div className="sticky top-0 space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/90">Student Photo</label>
+              <label className="text-xs font-semibold text-foreground/90">{t("upload.studentPhoto")}</label>
               <div className={clsx(
                 "space-y-1.5 flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg transition-colors",
                 isUploading ? "border-primary/50 bg-primary/5" : "border-muted-foreground/25 hover:bg-muted/50"
@@ -410,11 +412,11 @@ export function StudentFormModal({
                           setIsImagePreviewOpen(true);
                         }
                       }}
-                      aria-label="Click to preview image"
+                      aria-label={t("upload.previewImage")}
                     >
                       <img
                         src={formData.profilePictureUrl || (selectedFile ? URL.createObjectURL(selectedFile) : "")}
-                        alt="Student preview"
+                        alt={t("upload.photoAlt")}
                         className="h-full w-full object-cover"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
@@ -428,13 +430,13 @@ export function StudentFormModal({
                   <span className="bg-primary/10 text-primary p-3 rounded-full">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
                   </span>
-                  <span className="font-semibold text-xs text-center">{selectedFile ? selectedFile.name : (formData.profilePictureUrl ? "Change Photo" : "Upload Photo")}</span>
-                  <span className="text-xs text-muted-foreground">PNG, JPG, WEBP up to 5MB</span>
+                  <span className="font-semibold text-xs text-center">{selectedFile ? selectedFile.name : (formData.profilePictureUrl ? t("upload.changePhoto") : t("upload.uploadPhoto"))}</span>
+                  <span className="text-xs text-muted-foreground">{t("upload.constraints")}</span>
 
                   {isUploading && (
                     <div className="w-full mt-2 space-y-1.5">
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Uploading...</span>
+                        <span>{t("upload.uploading")}</span>
                         <span>{uploadProgress}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
@@ -461,82 +463,82 @@ export function StudentFormModal({
           {/* Right Column - Form Fields */}
           <div className="lg:col-span-2 space-y-5">
             {/* Basic Information */}
-            <ERPFormSection title="Basic Information">
+            <ERPFormSection title={t("section.basicInfo")}>
               <ERPFormGrid cols={2}>
-                <ERPFormField label="Roll Number" required error={errors.rollNumber} htmlFor="student-rollNumber">
+                <ERPFormField label={t("rollNumber")} required error={errors.rollNumber} htmlFor="student-rollNumber">
                   <Input
                     id="student-rollNumber"
                     required
                     name="rollNumber"
                     value={formData.rollNumber}
                     onChange={handleChange}
-                    placeholder="e.g. 2026004"
+                    placeholder={t("form.rollPlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.rollNumber)}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Gender" htmlFor="student-gender">
+                <ERPFormField label={t("gender")} htmlFor="student-gender">
                   <AppDropdown
                     value={formData.gender}
                     onChange={(val) => handleDropdownChange("gender", val)}
                     disabled={isLoading || isUploading}
                     options={[
-                      { value: "MALE", label: "Male" },
-                      { value: "FEMALE", label: "Female" },
-                      { value: "OTHER", label: "Other" },
+                      { value: "MALE", label: t("male") },
+                      { value: "FEMALE", label: t("female") },
+                      { value: "OTHER", label: t("other") },
                     ]}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="First Name" required error={errors.firstName} htmlFor="student-firstName">
+                <ERPFormField label={t("firstName")} required error={errors.firstName} htmlFor="student-firstName">
                   <Input
                     id="student-firstName"
                     required
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    placeholder="First name"
+                    placeholder={t("form.firstNamePlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.firstName)}
                   />
                 </ERPFormField>
-                <ERPFormField label="Last Name" required error={errors.lastName} htmlFor="student-lastName">
+                <ERPFormField label={t("lastName")} required error={errors.lastName} htmlFor="student-lastName">
                   <Input
                     id="student-lastName"
                     required
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    placeholder="Last name"
+                    placeholder={t("form.lastNamePlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.lastName)}
                   />
                 </ERPFormField>
 
                 {/* Bengali Name Fields */}
-                <ERPFormField label="First Name (Second Language)" htmlFor="student-firstNameBn">
+                <ERPFormField label={t("firstNameBn")} htmlFor="student-firstNameBn">
                   <Input
                     id="student-firstNameBn"
                     name="firstNameBn"
                     value={formData.firstNameBn}
                     onChange={handleChange}
-                    placeholder="প্রথম নাম"
+                    placeholder={t("form.firstNameBnPlaceholder")}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
-                <ERPFormField label="Last Name (Second Language)" htmlFor="student-lastNameBn">
+                <ERPFormField label={t("lastNameBn")} htmlFor="student-lastNameBn">
                   <Input
                     id="student-lastNameBn"
                     name="lastNameBn"
                     value={formData.lastNameBn}
                     onChange={handleChange}
-                    placeholder="শেষ নাম"
+                    placeholder={t("form.lastNameBnPlaceholder")}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Date of Birth" htmlFor="student-dateOfBirth">
+                <ERPFormField label={t("dateOfBirth")} htmlFor="student-dateOfBirth">
                   <Input
                     id="student-dateOfBirth"
                     type="date"
@@ -546,13 +548,13 @@ export function StudentFormModal({
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
-                <ERPFormField label="Address" htmlFor="student-address">
+                <ERPFormField label={t("address")} htmlFor="student-address">
                   <Input
                     id="student-address"
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    placeholder="Full address"
+                    placeholder={t("form.addressPlaceholder")}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
@@ -560,55 +562,55 @@ export function StudentFormModal({
             </ERPFormSection>
 
             {/* Guardian Information */}
-            <ERPFormSection title="Guardian Information">
+            <ERPFormSection title={t("section.guardianInfo")}>
               <ERPFormGrid cols={2}>
-                <ERPFormField label="Guardian Name" required error={errors.guardianName} htmlFor="student-guardianName">
+                <ERPFormField label={t("guardianName")} required error={errors.guardianName} htmlFor="student-guardianName">
                   <Input
                     id="student-guardianName"
                     required
                     name="guardianName"
                     value={formData.guardianName}
                     onChange={handleChange}
-                    placeholder="Full name"
+                    placeholder={t("form.fullNamePlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.guardianName)}
                   />
                 </ERPFormField>
-                <ERPFormField label="Guardian Contact" required error={errors.guardianContact} htmlFor="student-guardianContact">
+                <ERPFormField label={t("guardianContact")} required error={errors.guardianContact} htmlFor="student-guardianContact">
                   <Input
                     id="student-guardianContact"
                     required
                     name="guardianContact"
                     value={formData.guardianContact}
                     onChange={handleChange}
-                    placeholder="Phone number"
+                    placeholder={t("form.phonePlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.guardianContact)}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Guardian Email" error={errors.guardianEmail} htmlFor="student-guardianEmail">
+                <ERPFormField label={t("guardianEmail")} error={errors.guardianEmail} htmlFor="student-guardianEmail">
                   <Input
                     id="student-guardianEmail"
                     type="email"
                     name="guardianEmail"
                     value={formData.guardianEmail}
                     onChange={handleChange}
-                    placeholder="Email address"
+                    placeholder={t("form.emailPlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.guardianEmail)}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Status" htmlFor="student-status">
+                <ERPFormField label={t("status")} htmlFor="student-status">
                   <AppDropdown
                     value={formData.status}
                     onChange={(val) => handleDropdownChange("status", val)}
                     disabled={isLoading || isUploading}
                     options={[
-                      { value: "ACTIVE", label: "Active" },
-                      { value: "INACTIVE", label: "Inactive" },
-                      { value: "SUSPENDED", label: "Suspended" },
+                      { value: "ACTIVE", label: t("active") },
+                      { value: "INACTIVE", label: t("inactive") },
+                      { value: "SUSPENDED", label: t("filters.status.suspended") },
                     ]}
                   />
                 </ERPFormField>
@@ -616,9 +618,9 @@ export function StudentFormModal({
             </ERPFormSection>
 
             {/* Academic Placement */}
-            <ERPFormSection title="Academic Placement">
+            <ERPFormSection title={t("section.academicPlacement")}>
               <ERPFormGrid cols={3}>
-                <ERPFormField label="Class" htmlFor="student-classId">
+                <ERPFormField label={t("class")} htmlFor="student-classId">
                   <AppDropdown
                     value={formData.classId}
                     onChange={(val) => {
@@ -634,7 +636,7 @@ export function StudentFormModal({
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Group / Stream" htmlFor="student-groupId">
+                <ERPFormField label={t("form.groupStream")} htmlFor="student-groupId">
                   <AppDropdown
                     value={formData.groupId}
                     onChange={(val) => {
@@ -649,7 +651,7 @@ export function StudentFormModal({
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Section" htmlFor="student-sectionId">
+                <ERPFormField label={t("sectionLabel")} htmlFor="student-sectionId">
                   <AppDropdown
                     value={formData.sectionId}
                     onChange={(val) => handleDropdownChange("sectionId", val)}
@@ -667,8 +669,8 @@ export function StudentFormModal({
         isOpen={isImagePreviewOpen}
         onClose={() => setIsImagePreviewOpen(false)}
         src={formData.profilePictureUrl || (selectedFile ? URL.createObjectURL(selectedFile) : "")}
-        alt="Student photo preview"
-        title="Student Photo"
+        alt={t("upload.photoAlt")}
+        title={t("upload.studentPhoto")}
       />
     </TopSheet>
   );

@@ -24,10 +24,17 @@ import { useExpenses, useExpenseCategories, useDeleteExpense } from "@/hooks/use
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { AddExpenseModal } from "@/components/accounting/add-expense-modal";
 import { useTranslations } from "next-intl";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function ExpensesPage() {
   const t = useTranslations();
   const { formatCurrency, formatDate, currencySymbol } = useTenantFormatting();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadAccounting = hasPermission(perms, "accounting", "read");
+  const canWriteAccounting = hasPermission(perms, "accounting", "write");
+  const canManageAccounting = hasPermission(perms, "accounting", "manage");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -68,7 +75,7 @@ export default function ExpensesPage() {
       key: "expenseNumber",
       header: t("accounting.expenses.colVoucher"),
       cell: (row) => (
-        <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
+        <span className="font-mono text-xs font-bold text-primary">
           {row.expenseNumber}
         </span>
       ),
@@ -128,14 +135,16 @@ export default function ExpensesPage() {
       header: "",
       className: "text-right",
       cell: (row) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => handleDelete(row.id, row.expenseNumber)}
-          className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        canManageAccounting ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleDelete(row.id, row.expenseNumber)}
+            className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        ) : null
       ),
     },
   ];
@@ -148,52 +157,56 @@ export default function ExpensesPage() {
         icon={Wallet}
       >
         <div className="flex items-center gap-2.5">
-          <Button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
-          >
-            <Plus className="h-4 w-4" />
-            {t("accounting.expenses.recordExpense")}
-          </Button>
+          {canWriteAccounting && (
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              {t("accounting.expenses.recordExpense")}
+            </Button>
+          )}
         </div>
       </PageHeader>
+
+      {!isAuthLoading && !canReadAccounting ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view accounting.</p>
+        </div>
+      ) : (
+        <>
 
       {/* KPI Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ERPMetricCard
-          subtitle={t("accounting.expenses.metricExpenditure")}
           title={t("accounting.expenses.totalExpenses")}
           value={formatCurrency(totalVolume)}
           unit={t("accounting.expenses.vouchersCount", { count: pagination?.totalCount || 0 })}
-          trend={{ value: "-3.2%", isPositive: true }}
           isLoading={isLoading}
         />
 
         <ERPMetricCard
-          subtitle={t("accounting.expenses.metricStructure")}
           title={t("accounting.expenses.activeCategories")}
           value={categories.length.toString()}
-          unit={t("accounting.expenses.expenseStreams")}
+          unit="Categories"
           isLoading={isLoading}
         />
 
         <ERPMetricCard
-          subtitle={t("accounting.expenses.metricAudit")}
           title={t("accounting.expenses.avgVoucherSize")}
           value={
             expensesData.length > 0
               ? formatCurrency(totalVolume / expensesData.length)
               : `${currencySymbol} 0`
           }
-          unit={t("accounting.expenses.perTransaction")}
+          unit="Avg / Voucher"
           isLoading={isLoading}
         />
 
         <ERPMetricCard
-          subtitle={t("accounting.expenses.metricTreasury")}
           title={t("accounting.expenses.cashVsBank")}
           value={t("accounting.expenses.reconciled")}
-          unit={t("accounting.expenses.multiChannel")}
           isLoading={isLoading}
         />
       </div>
@@ -267,9 +280,11 @@ export default function ExpensesPage() {
         searchPlaceholder={t("accounting.expenses.filterPlaceholder")}
         selectedIds={selectedExpenseIds}
         onSelectionChange={setSelectedExpenseIds}
-        actionLabel={t("accounting.expenses.recordExpense")}
-        onActionClick={() => setIsAddModalOpen(true)}
+        actionLabel={canWriteAccounting ? t("accounting.expenses.recordExpense") : undefined}
+        onActionClick={canWriteAccounting ? () => setIsAddModalOpen(true) : undefined}
       />
+        </>
+      )}
 
       <AddExpenseModal
         isOpen={isAddModalOpen}

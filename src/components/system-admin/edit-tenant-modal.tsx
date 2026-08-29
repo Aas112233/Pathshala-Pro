@@ -258,7 +258,7 @@ export function EditTenantModal({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

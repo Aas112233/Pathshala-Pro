@@ -1,6 +1,7 @@
 "use client";
 
 import { AppModal } from "@/components/ui/app-modal";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,18 +24,23 @@ export function SalaryDetailsModal({
   onEdit,
   onPayment,
 }: SalaryDetailsModalProps) {
+  const t = useTranslations("salary");
   const { formatCurrency, formatDate } = useTenantFormatting();
+  const monthKeys = [
+    "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december",
+  ];
 
   if (!salary) return null;
 
-  const InfoRow = ({ 
-    label, 
-    value, 
-    empty = "-",
-    highlight = false 
-  }: { 
-    label: string; 
-    value: string | number | undefined | null; 
+  const InfoRow = ({
+    label,
+    value,
+    empty = t("ui.notAvailable"),
+    highlight = false
+  }: {
+    label: string;
+    value: string | number | undefined | null;
     empty?: string;
     highlight?: boolean;
   }) => (
@@ -52,7 +58,7 @@ export function SalaryDetailsModal({
     <AppModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Salary Ledger Details"
+      title={t("ui.details.title")}
       description={`${salary.staffProfile?.firstName} ${salary.staffProfile?.lastName} - ${salary.staffProfile?.designation}`}
       maxWidth="3xl"
       className="max-h-[90vh]"
@@ -81,16 +87,14 @@ export function SalaryDetailsModal({
                 <Button variant="outline" size="sm" onClick={() => {
                   onEdit(salary);
                   onClose();
-                }}>
-                  Edit
+                }}>{t("ui.details.edit")}
                 </Button>
               )}
               {onPayment && !isPaid && (
                 <Button size="sm" onClick={() => {
                   onPayment(salary);
                   onClose();
-                }}>
-                  Record Payment
+                }}>{t("ui.details.recordPayment")}
                 </Button>
               )}
             </div>
@@ -104,22 +108,21 @@ export function SalaryDetailsModal({
             <CardHeader className="pb-3">
               <h4 className="text-sm font-semibold flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Period Information
+                {t("ui.details.period")}
               </h4>
             </CardHeader>
             <CardContent className="space-y-1">
-              <InfoRow 
-                label="Month" 
-                value={["January", "February", "March", "April", "May", "June", 
-                       "July", "August", "September", "October", "November", "December"][salary.month - 1]} 
+              <InfoRow
+                label={t("ui.details.month")}
+                value={t(`ui.months.${monthKeys[salary.month - 1]}`)}
               />
-              <InfoRow 
-                label="Year" 
-                value={salary.year} 
+              <InfoRow
+                label={t("ui.details.year")}
+                value={salary.year}
               />
-              <InfoRow 
-                label="Academic Year" 
-                value={salary.academicYear?.label} 
+              <InfoRow
+                label={t("ui.details.academicYear")}
+                value={salary.academicYear?.label}
               />
             </CardContent>
           </Card>
@@ -129,21 +132,21 @@ export function SalaryDetailsModal({
             <CardHeader className="pb-3">
               <h4 className="text-sm font-semibold flex items-center gap-2">
                 <UserCircle className="h-4 w-4" />
-                Staff Information
+                {t("ui.details.staff")}
               </h4>
             </CardHeader>
             <CardContent className="space-y-1">
-              <InfoRow 
-                label="Staff ID" 
-                value={salary.staffProfile?.staffId} 
+              <InfoRow
+                label={t("ui.details.staffId")}
+                value={salary.staffProfile?.staffId}
               />
-              <InfoRow 
-                label="Designation" 
-                value={salary.staffProfile?.designation} 
+              <InfoRow
+                label={t("ui.details.designation")}
+                value={salary.staffProfile?.designation}
               />
-              <InfoRow 
-                label="Department" 
-                value={salary.staffProfile?.department} 
+              <InfoRow
+                label={t("ui.details.department")}
+                value={salary.staffProfile?.department}
               />
             </CardContent>
           </Card>
@@ -154,29 +157,29 @@ export function SalaryDetailsModal({
           <CardHeader className="pb-3">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              Salary Breakdown
+              {t("ui.details.breakdown")}
             </h4>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <InfoRow 
-                label="Base Salary" 
-                value={formatCurrency(salary.baseSalary)} 
+              <InfoRow
+                label={t("ui.details.baseSalary")}
+                value={formatCurrency(salary.baseSalary)}
               />
-              <InfoRow 
-                label="Deductions" 
-                value={salary.deductions > 0 ? `-${formatCurrency(salary.deductions)}` : "-"} 
+              <InfoRow
+                label={t("ui.details.deductions")}
+                value={salary.deductions > 0 ? `-${formatCurrency(salary.deductions)}` : "-"}
                 empty={salary.deductions > 0 ? undefined : "-"}
               />
-              <InfoRow 
-                label="Advances" 
-                value={salary.advances > 0 ? `-${formatCurrency(salary.advances)}` : "-"} 
+              <InfoRow
+                label={t("ui.details.advances")}
+                value={salary.advances > 0 ? `-${formatCurrency(salary.advances)}` : "-"}
                 empty={salary.advances > 0 ? undefined : "-"}
               />
               <div className="pt-3 border-t mt-3">
-                <InfoRow 
-                  label="Net Payable" 
-                  value={formatCurrency(salary.netPayable)} 
+                <InfoRow
+                  label={t("ui.details.netPayable")}
+                  value={formatCurrency(salary.netPayable)}
                   highlight
                 />
               </div>
@@ -189,30 +192,30 @@ export function SalaryDetailsModal({
           <CardHeader className="pb-3">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <Wallet className="h-4 w-4" />
-              Payment Information
+              {t("ui.details.payment")}
             </h4>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <InfoRow 
-                label="Status" 
-                value={salary.status} 
+              <InfoRow
+                label={t("ui.details.status")}
+                value={salary.status}
               />
-              <InfoRow 
-                label="Paid Amount" 
-                value={salary.paidAmount > 0 ? formatCurrency(salary.paidAmount) : "-"} 
+              <InfoRow
+                label={t("ui.details.paidAmount")}
+                value={salary.paidAmount > 0 ? formatCurrency(salary.paidAmount) : t("ui.notAvailable")}
                 empty={salary.paidAmount > 0 ? undefined : "-"}
               />
-              <InfoRow 
-                label="Balance Due" 
-                value={salary.netPayable - salary.paidAmount > 0 ? formatCurrency(salary.netPayable - salary.paidAmount) : "Paid in Full"} 
-                empty="Paid in Full"
+              <InfoRow
+                label={t("ui.details.balanceDue")}
+                value={salary.netPayable - salary.paidAmount > 0 ? formatCurrency(salary.netPayable - salary.paidAmount) : t("ui.details.paidInFull")}
+                empty={t("ui.details.paidInFull")}
                 highlight={salary.netPayable - salary.paidAmount <= 0}
               />
               {salary.paidAt && (
-                <InfoRow 
-                  label="Paid On" 
-                  value={formatDate(salary.paidAt)} 
+                <InfoRow
+                  label={t("ui.details.paidOn")}
+                  value={formatDate(salary.paidAt)}
                 />
               )}
             </div>
@@ -224,18 +227,18 @@ export function SalaryDetailsModal({
           <CardHeader className="pb-3">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Record Information
+              {t("ui.details.record")}
             </h4>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
-              <InfoRow 
-                label="Created" 
-                value={formatDate(salary.createdAt)} 
+              <InfoRow
+                label={t("ui.details.created")}
+                value={formatDate(salary.createdAt)}
               />
-              <InfoRow 
-                label="Last Updated" 
-                value={formatDate(salary.updatedAt)} 
+              <InfoRow
+                label={t("ui.details.updated")}
+                value={formatDate(salary.updatedAt)}
               />
             </div>
           </CardContent>

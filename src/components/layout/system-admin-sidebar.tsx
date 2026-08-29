@@ -29,12 +29,12 @@ export function SystemAdminSidebar({ collapsed, onToggle }: SystemAdminSidebarPr
       {/* Brand */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         <Link href="/system-admin" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-indigo-600 text-white shadow-xs">
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-primary-foreground">
             <Image src="/pathshalapro-app-icon.webp" alt="App Icon" fill className="object-cover scale-125 rounded-lg" />
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
-              {APP_NAME} <span className="text-[10px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded ml-1 border border-indigo-500/20 font-mono">SAAS</span>
+              {APP_NAME} <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-1 border border-primary/20 font-mono">SYSTEM</span>
             </span>
           )}
         </Link>
@@ -74,7 +74,7 @@ export function SystemAdminSidebar({ collapsed, onToggle }: SystemAdminSidebarPr
                     className={cn(
                       "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                        ? "bg-primary/10 text-primary border border-primary/20"
                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     )}
                     title={collapsed ? label : undefined}
@@ -83,7 +83,7 @@ export function SystemAdminSidebar({ collapsed, onToggle }: SystemAdminSidebarPr
                       className={cn(
                         "h-4 w-4 shrink-0 transition-colors",
                         isActive
-                          ? "text-indigo-600 dark:text-indigo-400"
+                          ? "text-primary"
                           : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
                       )}
                     />
@@ -106,7 +106,7 @@ export function SystemAdminSidebar({ collapsed, onToggle }: SystemAdminSidebarPr
           )}
           title={collapsed ? "Switch to School ERP" : undefined}
         >
-          <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+          <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-primary" />
           {!collapsed && <span>Switch to School ERP</span>}
         </Link>
 

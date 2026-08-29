@@ -5,6 +5,7 @@ export interface UserRecord {
   email: string;
   name: string;
   role: string;
+  accessLevel?: number | null;
   permissions?: UserPermissions | string | null;
   isActive: boolean;
   staffProfileId?: string | null;
@@ -19,9 +20,11 @@ export interface CreateUserPayload {
   role: string;
   password: string;
   staffProfileId?: string;
+  accessLevel?: number;
   isActive?: boolean;
 }
 
 export interface UpdateUserPayload extends Partial<CreateUserPayload> {
   permissions?: UserPermissions;
+  accessLevel?: number;
 }

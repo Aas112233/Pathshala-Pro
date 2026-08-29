@@ -249,6 +249,25 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // Check if student is already promoted in this academic year (locks mark creation)
+      const isPromoted = await prisma.classPromotion.findFirst({
+        where: {
+          tenantId,
+          studentProfileId: data.studentProfileId,
+          fromAcademicYearId: data.academicYearId,
+          status: "PROMOTED",
+        },
+      });
+
+      if (isPromoted) {
+        errors.push({
+          field: `results[${index}].studentProfileId`,
+          code: "locked",
+          message: "Cannot enter marks. This student has already been promoted and their academic results are locked.",
+        });
+        continue;
+      }
+
       // Check if result already exists
       const existingResult = await prisma.examResult.findFirst({
         where: {
@@ -377,6 +396,16 @@ export async function PUT(request: NextRequest) {
         data.maxMarks
       );
 
+      // Check if student has already been promoted from this academic year
+      const isPromoted = await prisma.classPromotion.findFirst({
+        where: {
+          tenantId,
+          studentProfileId: data.studentProfileId,
+          fromAcademicYearId: data.academicYearId,
+          status: "PROMOTED",
+        },
+      });
+
       // Check if result already exists
       const existingResult = await prisma.examResult.findFirst({
         where: {
@@ -386,6 +415,23 @@ export async function PUT(request: NextRequest) {
           subjectId: data.subjectId,
         },
       });
+
+      // If the result is locked or the student was promoted, prevent modifications
+      if (existingResult?.isLocked || isPromoted) {
+        // Ensure result in DB has isLocked set to true
+        if (existingResult && !existingResult.isLocked) {
+          await prisma.examResult.update({
+            where: { id: existingResult.id },
+            data: { isLocked: true },
+          });
+        }
+        errors.push({
+          field: `results[${index}].studentProfileId`,
+          code: "locked",
+          message: "Cannot modify marks. Student has been promoted and exam results are locked.",
+        });
+        continue;
+      }
 
       if (existingResult) {
         // Update existing result

@@ -206,10 +206,14 @@ export async function GET(request: NextRequest) {
         }
 
         return {
+          id: student.id,
+          studentProfileId: student.id,
           studentId: student.studentId,
           studentName: `${student.firstName} ${student.lastName}`,
           rollNumber: student.rollNumber,
           currentClass: student.class?.name || "Unknown",
+          currentClassId: student.classId,
+          fromClassId: student.classId,
           eligible,
           action,
           reasons,

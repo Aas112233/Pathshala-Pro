@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-response";
 import { batchFeeInvoicingSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { postLegacyFeeInvoiceAccrual } from "@/lib/fee-service";
 
 /**
  * POST /api/fees/batch
@@ -24,8 +25,9 @@ export async function POST(request: NextRequest) {
     const bodyResult = await safeParseBody(request, batchFeeInvoicingSchema);
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
-
-    // Verify Academic Year exists
+    const normalizedFeeType = (data.feeType || "TUITION").toUpperCase();
+    const feeHeadCode = ["TUITION", "ADMISSION", "EXAM", "TRANSPORT", "HOSTEL", "LAB"]
+      .find((code) => normalizedFeeType.includes(code)) || "TUITION";
     const academicYear = await prisma.academicYear.findUnique({
       where: { id: data.academicYearId, tenantId },
     });
@@ -172,14 +174,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Batch creation in atomic transaction
-    await prisma.$transaction(
-      vouchersToCreate.map((voucherData) =>
-        prisma.feeVoucher.create({
-          data: voucherData,
-        })
-      )
-    );
+    // Batch creation and GL accruals are atomic.
+    await prisma.$transaction(async (tx) => {
+      for (const voucherData of vouchersToCreate) {
+        await tx.feeVoucher.create({ data: voucherData });
+        await postLegacyFeeInvoiceAccrual(tx, {
+          tenantId,
+          studentProfileId: voucherData.studentProfileId,
+          feeHeadCode,
+          amount: voucherData.baseAmount,
+          discountAmount: voucherData.discountAmount,
+          executedById: access.authContext.user.id,
+          reference: voucherData.voucherId,
+          dueDate,
+        });
+      }
+    });
 
     return successResponse(
       {

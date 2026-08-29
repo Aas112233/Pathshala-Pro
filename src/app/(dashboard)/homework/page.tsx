@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/shared/data-table";
 import { useHomeworkViewModel } from "@/viewmodels/homework/use-homework-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -41,11 +41,11 @@ import { toast } from "sonner";
 
 export default function HomeworkPage() {
   const t = useTranslations("homework");
-  const { user } = useAuth();
-  const canManage =
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    (!!user && hasPermission(user.permissions, "homework", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "homework", "read");
+  const canWrite = hasPermission(perms, "homework", "write");
+  const canManage = hasPermission(perms, "homework", "manage");
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -236,7 +236,7 @@ export default function HomeworkPage() {
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
                 body: JSON.stringify({
-                  title: `📝 New Assignment: ${formData.title.trim()}`,
+                  title: `New Assignment: ${formData.title.trim()}`,
                   content: `New homework assigned for ${targetClass?.name || "Class"} ${
                     targetSubject ? `(${targetSubject.name})` : ""
                   }.\n\nInstructions: ${formData.description.trim()}\nDue Date: ${new Date(
@@ -419,27 +419,27 @@ export default function HomeworkPage() {
           >
             <Eye className="h-4 w-4" />
           </Button>
+          {canWrite && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => openEdit(row.original)}
+              title="Edit Homework"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {canManage && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => openEdit(row.original)}
-                title="Edit Homework"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                onClick={() => handleDelete(row.original.id)}
-                title="Delete Homework"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+              onClick={() => handleDelete(row.original.id)}
+              title="Delete Homework"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           )}
         </div>
       ),
@@ -465,7 +465,7 @@ export default function HomeworkPage() {
         description={t("description")}
         icon={ClipboardPen}
       >
-        {canManage && (
+        {canWrite && (
           <Button onClick={openAdd} className="gap-2">
             <Plus className="h-4 w-4" />
             {t("addHomework")}
@@ -473,11 +473,19 @@ export default function HomeworkPage() {
         )}
       </PageHeader>
 
-      {/* KPI Summary Cards */}
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view homework.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="shadow-xs border-border">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-xl">
+            <div className="p-2.5 bg-primary/10 rounded-lg">
               <ClipboardPen className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -491,7 +499,7 @@ export default function HomeworkPage() {
 
         <Card className="shadow-xs border-border">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+            <div className="p-2.5 bg-emerald-500/10 rounded-lg">
               <CheckCircle className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
@@ -509,7 +517,7 @@ export default function HomeworkPage() {
           }`}
         >
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/10 rounded-xl">
+            <div className="p-2.5 bg-amber-500/10 rounded-lg">
               <Clock className="h-5 w-5 text-amber-600" />
             </div>
             <div>
@@ -581,6 +589,8 @@ export default function HomeworkPage() {
         isLoading={isLoading}
         searchPlaceholder={t("searchPlaceholder")}
       />
+        </>
+      )}
 
       {/* Homework Form Sheet */}
       <TopSheet
@@ -658,7 +668,7 @@ export default function HomeworkPage() {
                     }
                     placeholder="Detailed instructions, reading page ranges, or specific assignment criteria..."
                     rows={4}
-                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
                   />
                 </ERPFormField>
               </div>
@@ -678,7 +688,7 @@ export default function HomeworkPage() {
                 </label>
 
                 {formData.attachmentUrl ? (
-                  <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20">
                     <div className="flex items-center gap-2 overflow-hidden">
                       <FileText className="h-5 w-5 text-emerald-600 shrink-0" />
                       <span className="text-xs font-medium text-foreground truncate">
@@ -711,7 +721,7 @@ export default function HomeworkPage() {
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-border/80 hover:border-primary/60 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-muted/20"
+                    className="border-2 border-dashed border-border/80 hover:border-primary/60 rounded-lg p-6 text-center cursor-pointer transition-colors bg-muted/20"
                   >
                     <input
                       ref={fileInputRef}
@@ -786,7 +796,7 @@ export default function HomeworkPage() {
       >
         <div className="space-y-4">
           {/* Header Stats & Filter Tabs */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-muted/40 border border-border">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-muted/40 border border-border">
             <div className="flex items-center gap-4">
               <div>
                 <p className="text-xs text-muted-foreground font-medium">Total Received</p>
@@ -836,7 +846,7 @@ export default function HomeworkPage() {
               <Skeleton className="h-14 w-full rounded-xl" />
             </div>
           ) : filteredSubmissions.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl">
+            <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
               <Calendar className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm font-semibold text-foreground">No submissions found</p>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -905,7 +915,7 @@ export default function HomeworkPage() {
                     )}
 
                     {/* Teacher Quick-Grade Panel */}
-                    {canManage && (
+                    {canWrite && (
                       <div className="pt-2 border-t border-border/60 space-y-2">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-[11px] font-semibold text-muted-foreground mr-1">

@@ -267,13 +267,11 @@ export async function enrollApprovedApplicant(
           feeHeadCode: "ADMISSION",
           title: "Admission & Registration Fee",
           amount: admissionFeeAmount,
-          revenueAccountCode: "4010",
         },
         {
           feeHeadCode: "TUITION",
           title: "Initial Monthly Tuition Fee",
           amount: tuitionFeeAmount,
-          revenueAccountCode: "4010",
         },
       ],
     });

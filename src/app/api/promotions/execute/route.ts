@@ -48,9 +48,15 @@ export async function POST(request: NextRequest) {
 
       const data = validation.data;
 
-      // Verify student exists
-      const student = await prisma.studentProfile.findUnique({
-        where: { id: data.studentProfileId, tenantId },
+      // Verify student exists by ID or studentId
+      const student = await prisma.studentProfile.findFirst({
+        where: {
+          tenantId,
+          OR: [
+            { id: data.studentProfileId },
+            { studentId: data.studentProfileId },
+          ],
+        },
         include: {
           class: true,
         },
@@ -65,8 +71,27 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // Re-assign resolved canonical database studentProfileId
+      const resolvedStudentProfileId = student.id;
+
       // Verify from class matches student's current class
-      if (student.classId !== data.fromClassId) {
+      const fromClass = await prisma.class.findFirst({
+        where: {
+          tenantId,
+          OR: [{ id: data.fromClassId }, { classId: data.fromClassId }],
+        },
+      });
+
+      if (!fromClass) {
+        errors.push({
+          field: `promotions[${index}].fromClassId`,
+          code: "not_found",
+          message: "From class not found",
+        });
+        continue;
+      }
+
+      if (student.classId && student.classId !== fromClass.id) {
         errors.push({
           field: `promotions[${index}].fromClassId`,
           code: "mismatch",
@@ -75,9 +100,14 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      const resolvedFromClassId = fromClass.id;
+
       // Verify from academic year exists
-      const fromAcademicYear = await prisma.academicYear.findUnique({
-        where: { id: data.fromAcademicYearId, tenantId },
+      const fromAcademicYear = await prisma.academicYear.findFirst({
+        where: {
+          tenantId,
+          OR: [{ id: data.fromAcademicYearId }, { yearId: data.fromAcademicYearId }],
+        },
       });
 
       if (!fromAcademicYear) {
@@ -88,10 +118,14 @@ export async function POST(request: NextRequest) {
         });
         continue;
       }
+      const resolvedFromAcademicYearId = fromAcademicYear.id;
 
       // Verify to academic year exists
-      const toAcademicYear = await prisma.academicYear.findUnique({
-        where: { id: data.toAcademicYearId, tenantId },
+      const toAcademicYear = await prisma.academicYear.findFirst({
+        where: {
+          tenantId,
+          OR: [{ id: data.toAcademicYearId }, { yearId: data.toAcademicYearId }],
+        },
       });
 
       if (!toAcademicYear) {
@@ -102,10 +136,14 @@ export async function POST(request: NextRequest) {
         });
         continue;
       }
+      const resolvedToAcademicYearId = toAcademicYear.id;
 
       // Verify to class exists
-      const toClass = await prisma.class.findUnique({
-        where: { id: data.toClassId, tenantId },
+      const toClass = await prisma.class.findFirst({
+        where: {
+          tenantId,
+          OR: [{ id: data.toClassId }, { classId: data.toClassId }],
+        },
       });
 
       if (!toClass) {
@@ -116,13 +154,14 @@ export async function POST(request: NextRequest) {
         });
         continue;
       }
+      const resolvedToClassId = toClass.id;
 
       // Check if promotion already exists
       const existingPromotion = await prisma.classPromotion.findFirst({
         where: {
           tenantId,
-          studentProfileId: data.studentProfileId,
-          fromAcademicYearId: data.fromAcademicYearId,
+          studentProfileId: resolvedStudentProfileId,
+          fromAcademicYearId: resolvedFromAcademicYearId,
         },
       });
 
@@ -139,11 +178,11 @@ export async function POST(request: NextRequest) {
       const promotion = await prisma.classPromotion.create({
         data: {
           tenantId,
-          studentProfileId: data.studentProfileId,
-          fromAcademicYearId: data.fromAcademicYearId,
-          toAcademicYearId: data.toAcademicYearId,
-          fromClassId: data.fromClassId,
-          toClassId: data.toClassId,
+          studentProfileId: resolvedStudentProfileId,
+          fromAcademicYearId: resolvedFromAcademicYearId,
+          toAcademicYearId: resolvedToAcademicYearId,
+          fromClassId: resolvedFromClassId,
+          toClassId: resolvedToClassId,
           status: data.status,
           reason: data.reason,
           reExamRequired: data.reExamRequired,
@@ -174,17 +213,29 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // If promoted, update student's class
-      if (data.status === "PROMOTED" && data.toClassId !== data.fromClassId) {
-        await prisma.studentProfile.update({
-          where: { id: data.studentProfileId },
+      // If promoted, lock all historical subject exam results for this academic year & update student's class
+      if (data.status === "PROMOTED") {
+        // Lock all subject exam marks for this student in the fromAcademicYear
+        await prisma.examResult.updateMany({
+          where: {
+            tenantId,
+            studentProfileId: resolvedStudentProfileId,
+            academicYearId: resolvedFromAcademicYearId,
+          },
           data: {
-            classId: data.toClassId,
-            // Reset section/group if moving to new class (optional)
-            // sectionId: null,
-            // groupId: null,
+            isLocked: true,
           },
         });
+
+        // Update student's active class
+        if (resolvedToClassId !== resolvedFromClassId) {
+          await prisma.studentProfile.update({
+            where: { id: resolvedStudentProfileId },
+            data: {
+              classId: resolvedToClassId,
+            },
+          });
+        }
       }
 
       createdPromotions.push(promotion);

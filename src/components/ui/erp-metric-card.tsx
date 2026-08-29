@@ -1,9 +1,8 @@
 "use client";
 
-import { MoreHorizontal, ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react";
+import { MoreHorizontal, ArrowUpRight, ArrowDownRight, RefreshCw, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "./button";
 import { Skeleton } from "./skeleton";
 
 export interface MetricBreakdown {
@@ -40,9 +39,9 @@ const colorMap = {
   amber: { bg: "bg-amber-500", text: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500" },
   rose: { bg: "bg-rose-500", text: "text-rose-600 dark:text-rose-400", bar: "bg-rose-500" },
   cyan: { bg: "bg-cyan-500", text: "text-cyan-600 dark:text-cyan-400", bar: "bg-cyan-500" },
-  indigo: { bg: "bg-indigo-500", text: "text-indigo-600 dark:text-indigo-400", bar: "bg-indigo-500" },
+  indigo: { bg: "bg-teal-500", text: "text-teal-600 dark:text-teal-400", bar: "bg-teal-500" },
   purple: { bg: "bg-purple-500", text: "text-purple-600 dark:text-purple-400", bar: "bg-purple-500" },
-  slate: { bg: "bg-slate-500", text: "text-slate-600 dark:text-slate-400", bar: "bg-slate-500" },
+  slate: { bg: "bg-muted", text: "text-muted-foreground", bar: "bg-muted" },
 };
 
 export function ERPMetricCard({
@@ -66,7 +65,7 @@ export function ERPMetricCard({
     return (
       <div
         className={cn(
-          "flex flex-col rounded-2xl border border-border/70 bg-card p-5 shadow-xs",
+          "flex flex-col rounded-lg border border-border/80 bg-card p-4 shadow-none",
           className
         )}
         aria-busy="true"
@@ -96,7 +95,7 @@ export function ERPMetricCard({
   return (
     <div
       className={cn(
-        "group relative flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-5 shadow-xs transition-all hover:border-border hover:shadow-md",
+        "group relative flex flex-col justify-between rounded-lg border border-border/80 bg-card p-4 shadow-none transition-colors hover:border-primary/40",
         className
       )}
     >
@@ -105,7 +104,7 @@ export function ERPMetricCard({
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-0.5">
             {subtitle && (
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              <span className="text-[10px] font-medium tracking-wide text-muted-foreground">
                 {subtitle}
               </span>
             )}
@@ -118,7 +117,7 @@ export function ERPMetricCard({
             {detailsLink || onDetailsClick ? (
               <button
                 onClick={onDetailsClick}
-                className="text-[11px] font-semibold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors"
+                className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
               >
                 DETAILS
               </button>
@@ -135,16 +134,14 @@ export function ERPMetricCard({
             )}
 
             {Icon && (
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
-              </div>
+              <Icon className="mt-0.5 h-5 w-5 text-muted-foreground" />
             )}
           </div>
         </div>
 
         {/* Hero Value & Trend */}
         <div className="mt-3 flex items-baseline gap-2.5">
-          <span className="text-3xl font-bold tracking-tight text-foreground">
+          <span className="text-2xl font-semibold tracking-tight text-foreground">
             {value}
           </span>
           {unit && (
@@ -199,17 +196,18 @@ export function ERPMetricCard({
 
       {/* Footer: Action Button or Last Updated Indicator */}
       {(actionLabel || lastUpdated) && (
-        <div className="mt-5 pt-3 border-t border-border/50">
+        <div className="mt-5 pt-3 border-t border-border/50 flex items-center justify-between">
           {actionLabel ? (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
               onClick={onAction}
-              className="w-full rounded-xl text-xs font-medium text-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/40 transition-all"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors group/action cursor-pointer"
             >
-              {actionLabel}
-            </Button>
-          ) : lastUpdated ? (
+              <span>{actionLabel}</span>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-transform group-hover/action:translate-x-0.5 group-hover/action:text-primary" />
+            </button>
+          ) : null}
+          {lastUpdated ? (
             <div className="flex items-center justify-between text-[11px] text-muted-foreground/70">
               <span className="flex items-center gap-1">
                 <RefreshCw className="h-3 w-3 animate-spin-slow" />

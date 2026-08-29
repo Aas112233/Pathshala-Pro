@@ -14,7 +14,7 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTimetableViewModel } from "@/viewmodels/timetable/use-timetable-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { toast } from "sonner";
 import {
   CalendarRange,
@@ -35,12 +35,11 @@ const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 export default function TimetablePage() {
   const t = useTranslations("timetable");
   const tCommon = useTranslations("common");
-  const { user } = useAuth();
-
-  const canManage =
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    (!!user && hasPermission(user.permissions, "timetable", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "timetable", "read");
+  const canWrite = hasPermission(perms, "timetable", "write");
+  const canManage = hasPermission(perms, "timetable", "manage");
 
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
@@ -221,7 +220,7 @@ export default function TimetablePage() {
             <Printer className="h-4 w-4" />
             {t("print")}
           </Button>
-          {canManage && selectedClass && (
+          {canWrite && selectedClass && (
             <Button onClick={() => openAdd("MONDAY", 1)} className="gap-2">
               <Plus className="h-4 w-4" />
               {t("addPeriod")}
@@ -230,7 +229,15 @@ export default function TimetablePage() {
         </div>
       </PageHeader>
 
-      {/* Filters */}
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view timetable.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid gap-4 md:grid-cols-3">
@@ -326,7 +333,7 @@ export default function TimetablePage() {
                       if (!entry) {
                         return (
                           <td key={d} className="px-2 py-2 text-center">
-                            {canManage ? (
+                            {canWrite ? (
                               <button
                                 onClick={() => openAdd(d, p)}
                                 className="w-full rounded-lg border border-dashed border-border py-6 text-xs text-muted-foreground hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-colors"
@@ -351,20 +358,24 @@ export default function TimetablePage() {
                               <p className="text-[11px] text-amber-600 dark:text-amber-400">
                                 {entry.startTime} - {entry.endTime}
                               </p>
-                              {canManage && (
+                              {(canWrite || canManage) && (
                                 <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                                  <button
-                                    onClick={() => openEdit(entry)}
-                                    className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-muted"
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(entry.id)}
-                                    className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-destructive hover:text-white"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
+                                  {canWrite && (
+                                    <button
+                                      onClick={() => openEdit(entry)}
+                                      className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-muted"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                  {canManage && (
+                                    <button
+                                      onClick={() => handleDelete(entry.id)}
+                                      className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-destructive hover:text-white"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -379,20 +390,24 @@ export default function TimetablePage() {
                                 <BookOpen className="h-3 w-3 text-primary shrink-0" />
                                 {entry.subject?.name || "—"}
                               </p>
-                              {canManage && (
+                              {(canWrite || canManage) && (
                                 <div className="hidden group-hover:flex gap-1 shrink-0">
-                                  <button
-                                    onClick={() => openEdit(entry)}
-                                    className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-primary hover:text-white"
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(entry.id)}
-                                    className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-destructive hover:text-white"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
+                                  {canWrite && (
+                                    <button
+                                      onClick={() => openEdit(entry)}
+                                      className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-primary hover:text-white"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                  {canManage && (
+                                    <button
+                                      onClick={() => handleDelete(entry.id)}
+                                      className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-destructive hover:text-white"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -428,6 +443,8 @@ export default function TimetablePage() {
             </table>
           </div>
         </Card>
+      )}
+        </>
       )}
 
       {/* Add/Edit Sheet */}

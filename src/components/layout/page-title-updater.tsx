@@ -15,7 +15,7 @@ export function getPageTitle(pathname: string, t: any): string {
 
   if (pathname === "/login") {
     try {
-      return t("auth.login") || "Login";
+      return t("auth.signInErp") || "Login";
     } catch {
       return "Login";
     }
@@ -87,9 +87,25 @@ export function getPageTitle(pathname: string, t: any): string {
   // Handle specific dashboard sub-routes
   if (pathname === "/fees/collection") {
     try {
-      return t("nav.feeCollection") || "Fee Collection";
+      return t("nav.feeCollection") || "Single POS Counter";
     } catch {
-      return "Fee Collection";
+      return "Single POS Counter";
+    }
+  }
+
+  if (pathname === "/fees/bulk") {
+    try {
+      return t("nav.bulkFeeCollection") || "Bulk Class Fee Entry";
+    } catch {
+      return "Bulk Class Fee Entry";
+    }
+  }
+
+  if (pathname === "/accounting/fee-heads") {
+    try {
+      return t("nav.feeHeadMappings") || "Fee Head Accounting";
+    } catch {
+      return "Fee Head Accounting";
     }
   }
 

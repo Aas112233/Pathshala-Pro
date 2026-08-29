@@ -10,6 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateUser, useUpdateUser } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import { ROLES } from "@/lib/constants";
+import { useAuth } from "@/components/providers/auth-provider";
+import { canAssignRole } from "@/lib/permissions";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 import type { CreateUserPayload, UpdateUserPayload, UserRecord } from "@/types/users";
 
 interface UserFormModalProps {
@@ -22,6 +25,10 @@ export function UserFormModal({ isOpen, onClose, user }: UserFormModalProps) {
   const isEditing = !!user;
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser(user?.id || "");
+  const { user: authUser } = useAuth();
+  const availableRoles = Object.values(ROLES).filter((r) =>
+    canAssignRole((authUser as any)?.role, isPlatformOwnerEmail((authUser as any)?.email), r)
+  );
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -220,7 +227,7 @@ export function UserFormModal({ isOpen, onClose, user }: UserFormModalProps) {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.values(ROLES).map((r) => (
+                  {availableRoles.map((r) => (
                     <SelectItem key={r} value={r}>
                       {r.replace("_", " ")}
                     </SelectItem>

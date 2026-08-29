@@ -36,7 +36,7 @@ export function ActionGrid({
           onClick={item.onClick}
           disabled={item.disabled}
           className={cn(
-            "flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-sm",
+            "flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 text-center transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-sm",
             item.disabled && "cursor-not-allowed opacity-50"
           )}
         >

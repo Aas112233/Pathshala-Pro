@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Save, Upload, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { useExamResults, useCreateExamResults, useExams, useExam, type ExamResult } from "@/hooks/use-exams";
+import { Save, Upload, Download, CheckCircle2, XCircle, AlertCircle, Lock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useCreateExamResults, useExams, useExam, type ExamResult } from "@/hooks/use-exams";
 import { useAcademicYears } from "@/hooks/use-queries";
 import { useStudents } from "@/hooks/use-queries";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn, formatStudentName } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 interface StudentResult {
   studentId: string;
@@ -38,6 +41,7 @@ interface StudentResult {
   marks: number;
   status?: "PASS" | "FAIL" | "ABSENT";
   grade?: string;
+  isLocked?: boolean;
 }
 
 export default function ExamResultsPage() {
@@ -46,6 +50,14 @@ export default function ExamResultsPage() {
   const searchParams = useSearchParams();
   const examId = searchParams.get("examId");
   const subjectId = searchParams.get("subjectId");
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadExams = hasPermission(perms, "exams", "read");
+  const canWriteExams = hasPermission(perms, "exams", "write");
+  const canManageExams = hasPermission(perms, "exams", "manage");
+  const canReadResults = hasPermission(perms, "exam-results", "read");
+  const canWriteResults = hasPermission(perms, "exam-results", "write");
+  void canWriteExams; void canManageExams;
 
   const [selectedExam, setSelectedExam] = useState(examId || "");
   const [selectedSubject, setSelectedSubject] = useState(subjectId || "");
@@ -57,6 +69,24 @@ export default function ExamResultsPage() {
   const { data: studentsData } = useStudents();
   const { data: academicYearsData } = useAcademicYears();
   const createResults = useCreateExamResults();
+
+  // Fetch existing results for exam+subject to rehydrate marks after refresh (fixes empty form)
+  const { data: existingResultsData, isLoading: isExistingLoading } = useQuery({
+    queryKey: ["exam-results", selectedExam, selectedSubject],
+    queryFn: async () => {
+      const params = new URLSearchParams({ examId: selectedExam, subjectId: selectedSubject, limit: "200" });
+      const res = await fetch(`/api/exam-results?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch results");
+      return res.json();
+    },
+    enabled: !!selectedExam && !!selectedSubject,
+  });
+  const existingResults: any[] = useMemo(() => {
+    const d: any = existingResultsData;
+    if (!d) return [];
+    if (Array.isArray(d)) return d;
+    return "data" in d ? d.data : [];
+  }, [existingResultsData]);
 
   // Extract data from API response
   const exams = Array.isArray(examsData) ? examsData : (examsData as any)?.data;
@@ -77,22 +107,39 @@ export default function ExamResultsPage() {
     return { grade: "F", point: 0.0, status: "FAIL" as const };
   }
 
-  function initializeResults() {
-    if (!students || !exam) return;
+  // Auto-initialize results as soon as exam and subject are selected — hydrate with saved marks if present
+  // ponytail: wait for existingResults to load before hydrating, avoids empty form after refresh
+  useEffect(() => {
+    if (selectedExam && selectedSubject && students && students.length > 0 && exam && !isExistingLoading) {
+      const maxMarks = subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks || 100;
 
-    const maxMarks = subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks || 100;
+      const initialResults: StudentResult[] = students.map((student: any) => {
+        const existing = existingResults.find((r: any) => r.studentProfileId === student.id && r.subjectId === selectedSubject);
+        if (existing) {
+          return {
+            studentId: student.id,
+            studentName: formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn),
+            rollNumber: student.rollNumber,
+            marks: existing.obtainedMarks,
+            status: existing.status as StudentResult["status"],
+            grade: existing.grade,
+            isLocked: Boolean(existing.isLocked),
+          };
+        }
+        return {
+          studentId: student.id,
+          studentName: formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn),
+          rollNumber: student.rollNumber,
+          marks: 0,
+          status: "ABSENT",
+          grade: "F",
+          isLocked: false,
+        };
+      });
 
-    const initialResults: StudentResult[] = students.map((student: any) => ({
-      studentId: student.id,
-      studentName: formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn),
-      rollNumber: student.rollNumber,
-      marks: 0,
-      status: "ABSENT",
-      grade: "F",
-    }));
-
-    setResults(initialResults);
-  }
+      setResults(initialResults);
+    }
+  }, [selectedExam, selectedSubject, students, exam, existingResults, isExistingLoading]);
 
   function handleUpdateMarks(studentId: string, marks: number) {
     if (!exam) return;
@@ -106,11 +153,16 @@ export default function ExamResultsPage() {
     const { grade, status } = calculateGrade(marks, maxMarks);
 
     setResults(prev =>
-      prev.map(r =>
-        r.studentId === studentId
-          ? { ...r, marks, status, grade }
-          : r
-      )
+      prev.map(r => {
+        if (r.studentId === studentId) {
+          if (r.isLocked) {
+            toast.error("Marks for this student are locked due to promotion.");
+            return r;
+          }
+          return { ...r, marks, status, grade };
+        }
+        return r;
+      })
     );
   }
 
@@ -119,6 +171,7 @@ export default function ExamResultsPage() {
 
     setResults(prev =>
       prev.map(r => {
+        if (r.isLocked) return r; // Skip locked promoted students
         if (action === "pass") {
           const passMarks = Math.ceil(maxMarks * 0.33);
           const { grade } = calculateGrade(passMarks, maxMarks);
@@ -143,7 +196,7 @@ export default function ExamResultsPage() {
 
     try {
       const resultsToSave = results
-        .filter(r => r.status !== "ABSENT")
+        .filter(r => !r.isLocked && r.status !== "ABSENT")
         .map((r: any) => ({
           studentProfileId: r.studentId,
           academicYearId: exam.academicYearId,
@@ -155,15 +208,19 @@ export default function ExamResultsPage() {
         }));
 
       if (resultsToSave.length === 0) {
-        toast.error(t("noResultsToSave"));
+        if (results.some(r => r.isLocked)) {
+          toast.info("All student marks for this subject are locked due to student promotion.");
+        } else {
+          toast.error(t("noResultsToSave"));
+        }
         setIsSaving(false);
         return;
       }
 
       await createResults.mutateAsync(resultsToSave);
       toast.success(t("savedResults", { count: resultsToSave.length }));
-    } catch (error) {
-      toast.error(t("saveFailed"));
+    } catch (error: any) {
+      toast.error(error.message || t("saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -196,8 +253,10 @@ export default function ExamResultsPage() {
             <CardDescription>{t("chooseExam")}</CardDescription>
           </CardHeader>
           <CardContent>
-            {isExamsLoading ? (
+            {isExamsLoading || isAuthLoading ? (
               <Skeleton className="h-10 w-full" aria-busy="true" />
+            ) : !canReadExams ? (
+              <div className="py-4 text-center text-sm text-muted-foreground">Access restricted — no permission to view exams.</div>
             ) : (
               <Select value={selectedExam} onValueChange={(value) => {
                 setSelectedExam(value);
@@ -269,29 +328,22 @@ export default function ExamResultsPage() {
               <p className="text-red-600">{t("fail")}</p>
             </CardContent>
           </Card>
-          <Card className="border-gray-200 bg-gray-50 dark:bg-gray-950/20">
+          <Card className="border-border bg-muted/30">
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-gray-600">{absentCount}</div>
-              <p className="text-gray-600">{t("absent")}</p>
+              <div className="text-2xl font-bold text-muted-foreground">{absentCount}</div>
+              <p className="text-muted-foreground">{t("absent")}</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Results Entry */}
+      {/* Results Loading */}
       {selectedExam && selectedSubject && results.length === 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>{t("initializeTitle")}</CardTitle>
-            <CardDescription>
-              {t("initializeDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={initializeResults} size="lg">
-              <Upload className="h-4 w-4 mr-2" />
-              {t("loadStudents")}
-            </Button>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <Skeleton className="h-10 w-full mb-3" />
+            <Skeleton className="h-10 w-full mb-3" />
+            <Skeleton className="h-10 w-full" />
           </CardContent>
         </Card>
       )}
@@ -351,40 +403,63 @@ export default function ExamResultsPage() {
                     {t("enterMarks", { max: subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks || 100 })}
                   </CardDescription>
                 </div>
-                <Button type="submit" disabled={isSaving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? t("saving") : t("saveResults")}
-                </Button>
+                {canWriteResults && (
+                  <Button type="submit" disabled={isSaving}>
+                    <Save className="h-4 w-4 mr-2" />
+                    {isSaving ? t("saving") : t("saveResults")}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("rollNo")}</TableHead>
-                    <TableHead>{t("studentName")}</TableHead>
-                    <TableHead>{t("marks")}</TableHead>
-                    <TableHead>{t("grade")}</TableHead>
-                    <TableHead>{t("status")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {results.map((result) => (
-                    <TableRow key={result.studentId}>
+              {!isAuthLoading && !canReadResults ? (
+                <div className="py-8 text-center">
+                  <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view exam results.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("rollNo")}</TableHead>
+                      <TableHead>{t("studentName")}</TableHead>
+                      <TableHead>{t("marks")}</TableHead>
+                      <TableHead>{t("grade")}</TableHead>
+                      <TableHead>{t("status")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result) => (
+                    <TableRow key={result.studentId} className={result.isLocked ? "bg-muted/15" : undefined}>
                       <TableCell className="font-medium">{result.rollNumber}</TableCell>
-                      <TableCell>{result.studentName}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{result.studentName}</span>
+                          {result.isLocked && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-5 px-1.5 text-amber-600 bg-amber-500/10 border-amber-500/30 gap-1 inline-flex items-center"
+                              title="Marks locked because this student has already been promoted"
+                            >
+                              <Lock className="h-2.5 w-2.5" />
+                              Locked
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Input
                           type="number"
                           min={0}
                           max={subjects.find((s: any) => s.subjectId === selectedSubject)?.maxMarks || 100}
                           value={result.marks === 0 && result.status === "ABSENT" ? "" : result.marks}
+                          disabled={result.isLocked}
                           onChange={(e) => {
                             const value = e.target.value === "" ? 0 : Number(e.target.value);
                             handleUpdateMarks(result.studentId, value);
                           }}
                           placeholder={t("absentPlaceholder")}
-                          className="w-24"
+                          className={cn("w-24", result.isLocked && "bg-muted/60 text-muted-foreground opacity-75 cursor-not-allowed")}
                         />
                       </TableCell>
                       <TableCell>
@@ -411,7 +486,8 @@ export default function ExamResultsPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              )}
             </CardContent>
             </form>
           </Card>

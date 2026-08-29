@@ -269,7 +269,7 @@ export function CreateBroadcastModal({
 
         {/* Tenant Picker if SPECIFIC_TENANTS */}
         {formData.audience === "SPECIFIC_TENANTS" && (
-          <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-2">
+          <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">Select Schools to Receive Broadcast ({formData.targetTenants.length} selected)</Label>
               <Button
@@ -298,7 +298,7 @@ export function CreateBroadcastModal({
                     key={t.id}
                     className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
                       isSelected
-                        ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/60 font-semibold text-indigo-700 dark:text-indigo-300"
+                        ? "border-primary bg-primary/10 font-semibold text-primary"
                         : "border-border bg-card text-foreground hover:bg-muted"
                     }`}
                   >
@@ -306,7 +306,7 @@ export function CreateBroadcastModal({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleTenantToggle(t.tenantId)}
-                      className="rounded border-border text-indigo-600"
+                      className="rounded border-border text-primary"
                     />
                     <span className="truncate">{t.name}</span>
                   </label>
@@ -335,16 +335,16 @@ export function CreateBroadcastModal({
         {/* Live Ribbon Preview */}
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-            <Eye className="h-3.5 w-3.5 text-indigo-600" />
+            <Eye className="h-3.5 w-3.5 text-primary" />
             Live School Dashboard Banner Preview
           </Label>
           <div
-            className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+            className={`p-3 rounded-lg border flex items-center justify-between text-xs ${
               formData.priority === "URGENT"
                 ? "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300"
                 : formData.priority === "HIGH"
                 ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300"
-                : "bg-indigo-500/10 border-indigo-500/30 text-indigo-700 dark:text-indigo-300"
+                : "bg-primary/10 border-primary/30 text-primary"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -361,7 +361,7 @@ export function CreateBroadcastModal({
         </div>
 
         {/* Expiry Date */}
-        <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-3.5 rounded-lg border border-border/80 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
             <Label htmlFor="broadcast-expiry" className="text-xs font-semibold">
               Auto-Expire & Remove Banner
@@ -400,7 +400,7 @@ export function CreateBroadcastModal({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm text-xs h-9 cursor-pointer"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 text-xs h-9 cursor-pointer"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

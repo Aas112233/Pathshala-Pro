@@ -67,6 +67,45 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
       expect(debitSum.equals(creditSum)).toBe(true);
       expect(debitSum.toString()).toBe("10000");
     });
+
+    it("uses the configured FeeHead revenue account when the item has no explicit override", async () => {
+      const createdJournals: any[] = [];
+      const mockTx: any = {
+        $queryRaw: async () => [{ id: "seq-mapped", current_number: 1 }],
+        $executeRaw: async () => 1,
+        feeHead: {
+          findMany: async () => [{ code: "TUITION", accountCode: "4090" }],
+        },
+        chartOfAccount: {
+          findMany: async () => [
+            { id: "acc-ar", code: "1030", name: "Student Accounts Receivable", isActive: true },
+            { id: "acc-custom", code: "4090", name: "Configured Tuition Revenue", isActive: true },
+          ],
+        },
+        journalEntry: {
+          create: async (payload: any) => {
+            createdJournals.push(payload.data);
+            return { id: "jv-mapped-1", ...payload.data };
+          },
+        },
+      };
+
+      await generateFeeInvoice(mockTx, {
+        tenantId: "school-lahore-01",
+        studentProfileId: "st-mapped",
+        academicYearId: "ay-2026",
+        classId: "cls-9",
+        billingMonth: 9,
+        billingYear: 2026,
+        dueDate: new Date("2026-09-10"),
+        items: [{ feeHeadCode: "TUITION", title: "Monthly Tuition Fee", amount: 8000 }],
+        executedById: "user-accountant-1",
+      });
+
+      expect(createdJournals[0].lineItems.create).toContainEqual(
+        expect.objectContaining({ accountId: "acc-custom", creditAmount: new Prisma.Decimal(8000) })
+      );
+    });
   });
 
   describe("applyLateFineSurcharge", () => {

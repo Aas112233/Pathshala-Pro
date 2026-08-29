@@ -14,7 +14,7 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { DataTable } from "@/components/shared/data-table";
 import { useCertificatesViewModel } from "@/viewmodels/certificates/use-certificates-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Award, Plus, Pencil, Trash2, Search, Printer, Ban, Eye } from "lucide-react";
 
@@ -22,8 +22,11 @@ const CERT_TYPES = ["TRANSFER", "CHARACTER", "BONAFIDE", "STUDY", "MARKSHEET", "
 
 export default function CertificatesPage() {
   const t = useTranslations("certificates");
-  const { user } = useAuth();
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "certificates", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "certificates", "read");
+  const canWrite = hasPermission(perms, "certificates", "write");
+  const canManage = hasPermission(perms, "certificates", "manage");
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -152,11 +155,11 @@ export default function CertificatesPage() {
           {canManage && row.original.status === "ISSUED" && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600" onClick={() => handleRevoke(row.original.id)} title={t("revoke")}><Ban className="h-3.5 w-3.5" /></Button>
           )}
+          {canWrite && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
+          )}
           {canManage && (
-            <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-            </>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
           )}
         </div>
       ),
@@ -169,10 +172,18 @@ export default function CertificatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={Award}>
-        {canManage && <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("addCertificate")}</Button>}
+        {canWrite && <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("addCertificate")}</Button>}
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view certificates.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
         <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg"><Award className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{(pagination as any)?.totalCount ?? certificates.length}</p><p className="text-xs text-muted-foreground">{t("totalCertificates")}</p></div></CardContent></Card>
         <Card className="border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20"><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-emerald-500/10 rounded-lg"><Award className="h-5 w-5 text-emerald-600" /></div><div><p className="text-2xl font-bold text-emerald-600">{totalIssued}</p><p className="text-xs text-emerald-600">{t("issuedCount")}</p></div></CardContent></Card>
         <Card className={totalRevoked > 0 ? "border-rose-200 bg-rose-50/50" : ""}><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-rose-500/10 rounded-lg"><Ban className="h-5 w-5 text-rose-600" /></div><div><p className="text-2xl font-bold text-rose-600">{totalRevoked}</p><p className="text-xs text-rose-600">{t("revokedCount")}</p></div></CardContent></Card>
@@ -193,6 +204,8 @@ export default function CertificatesPage() {
       </Card>
 
       <DataTable columns={columns as any} data={certificates} pagination={pagination} onPageChange={setPage} onSearch={(v) => { setSearch(v); setPage(1); }} isLoading={isLoading} searchPlaceholder={t("searchPlaceholder")} />
+        </>
+      )}
 
       <TopSheet isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)} title={editing ? t("editCertificate") : t("addCertificate")} description={t("description")} maxWidth="2xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="cert-form" disabled={isMutating}>{t("save")}</Button></div>}>
         <form id="cert-form" onSubmit={handleSubmit} className="space-y-6">

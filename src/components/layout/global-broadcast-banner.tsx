@@ -42,7 +42,7 @@ export function GlobalBroadcastBanner() {
       className={`px-4 py-2 text-xs flex items-center justify-between transition-colors border-b ${
         isUrgent
           ? "bg-rose-600 text-white border-rose-700"
-          : "bg-indigo-600 text-white border-indigo-700"
+          : "bg-primary text-primary-foreground border-primary"
       }`}
     >
       <div className="flex items-center gap-2 overflow-hidden mr-3">
@@ -52,7 +52,7 @@ export function GlobalBroadcastBanner() {
           <Megaphone className="h-4 w-4 shrink-0" />
         )}
         <div className="flex items-center gap-1.5 overflow-hidden">
-          <span className="font-extrabold uppercase tracking-wider text-[10px] bg-black/20 px-1.5 py-0.5 rounded shrink-0">
+          <span className="font-semibold tracking-wide text-[10px] bg-black/20 px-1.5 py-0.5 rounded shrink-0">
             {broadcast.scope === "GLOBAL" ? "Platform Alert" : "Campus Notice"}
           </span>
           <span className="font-bold shrink-0">{broadcast.title}:</span>

@@ -14,14 +14,17 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { DataTable } from "@/components/shared/data-table";
 import { useLeavesViewModel } from "@/viewmodels/leaves/use-leaves-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import { CalendarOff, Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Clock, User, GraduationCap } from "lucide-react";
 
 export default function LeavesPage() {
   const t = useTranslations("leaves");
-  const { user } = useAuth();
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "leaves", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "leaves", "read");
+  const canWrite = hasPermission(perms, "leaves", "write");
+  const canManage = hasPermission(perms, "leaves", "manage");
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -187,8 +190,8 @@ export default function LeavesPage() {
               <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600" onClick={() => rejectLeave(row.original.id)} title={t("reject")}><XCircle className="h-3.5 w-3.5" /></Button>
             </>
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+          {canWrite && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>}
+          {canManage && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
         </div>
       ),
     },
@@ -197,10 +200,18 @@ export default function LeavesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={CalendarOff}>
-        {canManage && <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("applyLeave")}</Button>}
+        {canWrite && <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" />{t("applyLeave")}</Button>}
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view leave records.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
         <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg"><CalendarOff className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{(pagination as any)?.totalCount ?? leaves.length}</p><p className="text-xs text-muted-foreground">{t("totalLeaves")}</p></div></CardContent></Card>
         <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20"><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-amber-500/10 rounded-lg"><Clock className="h-5 w-5 text-amber-600" /></div><div><p className="text-2xl font-bold text-amber-600">{pendingCount}</p><p className="text-xs text-amber-600">{t("pendingLeaves")}</p></div></CardContent></Card>
         <Card className="border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20"><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-emerald-500/10 rounded-lg"><CheckCircle className="h-5 w-5 text-emerald-600" /></div><div><p className="text-2xl font-bold text-emerald-600">{approvedCount}</p><p className="text-xs text-emerald-600">{t("approvedLeaves")}</p></div></CardContent></Card>
@@ -221,6 +232,8 @@ export default function LeavesPage() {
       </Card>
 
       <DataTable columns={columns as any} data={leaves} pagination={pagination} onPageChange={setPage} onSearch={(v) => { setSearch(v); setPage(1); }} isLoading={isLoading} searchPlaceholder={t("searchPlaceholder")} />
+        </>
+      )}
 
       <TopSheet isOpen={isSheetOpen} onClose={() => setIsSheetOpen(false)} title={editing ? t("leaveDetails") : t("applyLeave")} description={t("description")} maxWidth="2xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="leave-form" disabled={isMutating}>{t("save")}</Button></div>}>
         <form id="leave-form" onSubmit={handleSubmit} className="space-y-6">

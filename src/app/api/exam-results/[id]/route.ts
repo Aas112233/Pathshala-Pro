@@ -128,6 +128,30 @@ export async function PUT(
       return notFound("Exam result not found");
     }
 
+    // Verify if result is locked
+    if (existingResult.isLocked) {
+      return badRequest("Cannot modify this exam result. Marks are locked because the student has already been promoted.");
+    }
+
+    // Check if student was promoted for this academic year
+    const isPromoted = await prisma.classPromotion.findFirst({
+      where: {
+        tenantId,
+        studentProfileId: existingResult.studentProfileId,
+        fromAcademicYearId: existingResult.academicYearId,
+        status: "PROMOTED",
+      },
+    });
+
+    if (isPromoted) {
+      // Mark as locked in DB
+      await prisma.examResult.update({
+        where: { id },
+        data: { isLocked: true },
+      });
+      return badRequest("Cannot modify this exam result. Marks are permanently locked because the student has already been promoted.");
+    }
+
     // Validate required fields
     const { obtainedMarks, maxMarks, reExamAllowed } = body;
 
@@ -216,6 +240,23 @@ export async function DELETE(
 
     if (!existingResult) {
       return notFound("Exam result not found");
+    }
+
+    if (existingResult.isLocked) {
+      return badRequest("Cannot delete this exam result. Marks are locked because the student has already been promoted.");
+    }
+
+    const isPromoted = await prisma.classPromotion.findFirst({
+      where: {
+        tenantId,
+        studentProfileId: existingResult.studentProfileId,
+        fromAcademicYearId: existingResult.academicYearId,
+        status: "PROMOTED",
+      },
+    });
+
+    if (isPromoted) {
+      return badRequest("Cannot delete this exam result. Student has already been promoted.");
     }
 
     if (existingResult.exam.isPublished) {

@@ -48,7 +48,7 @@ export function DataTable<TData>({
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-3", className)}>
       {/* Search */}
       {onSearch && (
         <div className="relative max-w-sm">
@@ -66,13 +66,13 @@ export function DataTable<TData>({
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
-          <thead className="border-b border-border bg-muted/50">
+          <thead className="border-b border-border bg-muted/30">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left font-medium text-muted-foreground"
+                    className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"
                   >
                     {header.isPlaceholder
                       ? null
@@ -100,7 +100,7 @@ export function DataTable<TData>({
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="transition-colors hover:bg-muted/50"
+                  className="transition-colors hover:bg-muted/30"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3 text-foreground">

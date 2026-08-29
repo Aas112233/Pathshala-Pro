@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { AppDropdown } from "@/components/ui/app-dropdown";
@@ -42,18 +43,18 @@ interface FormErrors {
 }
 
 const MONTHS = [
-  { value: "1", label: "January" },
-  { value: "2", label: "February" },
-  { value: "3", label: "March" },
-  { value: "4", label: "April" },
-  { value: "5", label: "May" },
-  { value: "6", label: "June" },
-  { value: "7", label: "July" },
-  { value: "8", label: "August" },
-  { value: "9", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
+  { value: "1", key: "january" },
+  { value: "2", key: "february" },
+  { value: "3", key: "march" },
+  { value: "4", key: "april" },
+  { value: "5", key: "may" },
+  { value: "6", key: "june" },
+  { value: "7", key: "july" },
+  { value: "8", key: "august" },
+  { value: "9", key: "september" },
+  { value: "10", key: "october" },
+  { value: "11", key: "november" },
+  { value: "12", key: "december" },
 ];
 
 interface StaffEntry extends BulkPayrollEntry {
@@ -71,6 +72,7 @@ export function BulkPayrollModal({
   staffList = [],
   academicYears = [],
 }: BulkPayrollModalProps) {
+  const t = useTranslations("salary");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [entries, setEntries] = useState<StaffEntry[]>([]);
@@ -138,20 +140,20 @@ export function BulkPayrollModal({
     const newErrors: FormErrors = {};
 
     if (!formData.academicYearId) {
-      newErrors.academicYearId = "Academic year is required";
+      newErrors.academicYearId = t("ui.bulk.academicYearRequired");
     }
 
     if (!formData.month || formData.month < 1 || formData.month > 12) {
-      newErrors.month = "Valid month is required";
+      newErrors.month = t("ui.bulk.validMonth");
     }
 
     if (!formData.year || formData.year < 2000 || formData.year > 2100) {
-      newErrors.year = "Valid year is required";
+      newErrors.year = t("ui.bulk.validYear");
     }
 
     const selectedCount = entries.filter(e => e.selected).length;
     if (selectedCount === 0) {
-      toast.error("Please select at least one staff member");
+      toast.error(t("ui.bulk.selectStaff"));
     }
 
     setErrors(newErrors);
@@ -231,16 +233,16 @@ export function BulkPayrollModal({
     <TopSheet
       isOpen={isOpen}
       onClose={onClose}
-      title="Bulk Payroll Processing"
-      description="Process salary for multiple staff members at once"
+      title={t("ui.bulk.title")}
+      description={t("ui.bulk.description")}
       maxWidth="6xl"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
-            Cancel
+            {t("ui.bulk.cancel")}
           </Button>
           <Button type="submit" form="bulk-payroll-form" disabled={isLoading || totals.totalStaff === 0}>
-            {isLoading ? "Processing..." : `Process Payroll for ${totals.totalStaff} Staff`}
+            {isLoading ? t("ui.bulk.processing") : t("ui.bulk.processFor", { count: totals.totalStaff })}
           </Button>
         </div>
       }
@@ -249,7 +251,7 @@ export function BulkPayrollModal({
         {/* Period Selection */}
         <ERPFormSection>
           <ERPFormGrid cols={3}>
-            <ERPFormField label="Academic Year" required htmlFor="academicYearId">
+            <ERPFormField label={t("ui.bulk.academicYear")} required htmlFor="academicYearId">
               <AppDropdown
                 id="academicYearId"
                 value={formData.academicYearId}
@@ -265,15 +267,15 @@ export function BulkPayrollModal({
                 triggerClassName={errors.academicYearId ? "border-destructive ring-1 ring-destructive" : ""}
                 options={academicYears.map(ay => ({
                   value: ay.id,
-                  label: `${ay.label}${ay.isClosed ? ' (Closed)' : ''}`,
+                  label: `${ay.label}${ay.isClosed ? ` (${t("ui.bulk.closed")})` : ""}`,
                   disabled: ay.isClosed,
                 }))}
-                placeholder="Select year"
+                placeholder={t("ui.bulk.selectYear")}
               />
               {errors.academicYearId && <p id="bulk-payroll-year-error" className="text-xs text-destructive mt-1">{errors.academicYearId}</p>}
             </ERPFormField>
 
-            <ERPFormField label="Month" required htmlFor="month">
+            <ERPFormField label={t("ui.bulk.month")} required htmlFor="month">
               <AppDropdown
                 id="month"
                 value={formData.month.toString()}
@@ -287,13 +289,13 @@ export function BulkPayrollModal({
                 invalid={Boolean(errors.month)}
                 aria-describedby={errors.month ? "bulk-payroll-month-error" : undefined}
                 triggerClassName={errors.month ? "border-destructive ring-1 ring-destructive" : ""}
-                options={MONTHS}
-                placeholder="Select month"
+                options={MONTHS.map((month) => ({ value: month.value, label: t(`ui.months.${month.key}`) }))}
+                placeholder={t("ui.bulk.selectMonth")}
               />
               {errors.month && <p id="bulk-payroll-month-error" className="text-xs text-destructive mt-1">{errors.month}</p>}
             </ERPFormField>
 
-            <ERPFormField label="Year" required htmlFor="year">
+            <ERPFormField label={t("ui.bulk.year")} required htmlFor="year">
               <Input
                 id="year"
                 type="number"
@@ -314,7 +316,7 @@ export function BulkPayrollModal({
         <div className="flex gap-4">
           <div className="flex-1">
             <Input
-              placeholder="Search by name or staff ID..."
+              placeholder={t("ui.bulk.search")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               disabled={isLoading}
@@ -325,10 +327,10 @@ export function BulkPayrollModal({
               value={departmentFilter}
               onChange={setDepartmentFilter}
               options={[
-                { value: "", label: "All Departments" },
+                { value: "", label: t("ui.bulk.allDepartments") },
                 ...departments.map(d => ({ value: d, label: d })),
               ]}
-              placeholder="Filter by department"
+              placeholder={t("ui.bulk.departmentFilter")}
               disabled={isLoading}
             />
           </div>
@@ -341,17 +343,17 @@ export function BulkPayrollModal({
               <Checkbox
                 checked={allSelected}
                 onCheckedChange={handleSelectAll}
-                aria-label="Select all staff"
+                aria-label={t("ui.bulk.selectAll")}
               />
               <span className="text-sm font-medium">
-                {filteredEntries.length} staff members
-                {someSelected && ` (${filteredEntries.filter(e => e.selected).length} selected)`}
+                {filteredEntries.length} {t("ui.bulk.staffMembers")}
+                {someSelected && ` (${filteredEntries.filter(e => e.selected).length} ${t("ui.bulk.selected")})`}
               </span>
             </div>
             <div className="flex items-center gap-4 text-sm">
               <span className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
-                {totals.totalStaff} selected
+                {totals.totalStaff} {t("ui.bulk.selected")}
               </span>
               <span className="flex items-center gap-1 text-primary font-semibold">
                 <DollarSign className="h-4 w-4" />
@@ -364,14 +366,14 @@ export function BulkPayrollModal({
             <table className="w-full">
               <thead className="bg-muted/50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase w-[50px]">Select</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Staff</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Department</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Base Salary</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Deductions</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Advances</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Net</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase w-[50px]">{t("ui.bulk.selectAll")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t("ui.bulk.staff")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t("ui.bulk.id")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{t("ui.bulk.department")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t("ui.bulk.baseSalary")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t("ui.bulk.deductions")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t("ui.bulk.advances")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">{t("ui.bulk.net")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -390,7 +392,7 @@ export function BulkPayrollModal({
                         <span className="font-medium">{entry.staffName}</span>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{entry.staffId}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{entry.department || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{entry.department || t("ui.notAvailable")}</td>
                       <td className="px-4 py-3 text-right">
                         <Input
                           type="number"
@@ -435,15 +437,15 @@ export function BulkPayrollModal({
         <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
           <div className="flex justify-between items-center">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Processing {totals.totalStaff} staff members</p>
+              <p className="text-sm text-muted-foreground">{t("ui.bulk.processingStaff", { count: totals.totalStaff })}</p>
               <p className="text-xs text-muted-foreground">
-                Base: {totals.totalBaseSalary.toFixed(2)} |
-                Deductions: {totals.totalDeductions.toFixed(2)} |
-                Advances: {totals.totalAdvances.toFixed(2)}
+                {t("ui.bulk.base")} {totals.totalBaseSalary.toFixed(2)} |
+                {t("ui.bulk.summaryDeductions")} {totals.totalDeductions.toFixed(2)} |
+                {t("ui.bulk.summaryAdvances")} {totals.totalAdvances.toFixed(2)}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">Total Net Payable</p>
+              <p className="text-sm text-muted-foreground">{t("ui.bulk.totalNetPayable")}</p>
               <p className="text-2xl font-bold text-primary">{totals.totalNetPayable.toFixed(2)}</p>
             </div>
           </div>

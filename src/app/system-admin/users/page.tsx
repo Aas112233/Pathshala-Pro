@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, Users, Search, Filter, ArrowLeftRight, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface GlobalUser {
 }
 
 export default function SystemAdminUsersPage() {
+  const t = useTranslations("systemAdminPages");
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -43,7 +45,7 @@ export default function SystemAdminUsersPage() {
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: "20", search, tenantId: tenantFilter, role: roleFilter });
       const res = await fetch(`/api/system-admin/users?${params}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch global users");
+      if (!res.ok) throw new Error(t("failedFetchUsers"));
       return res.json();
     },
   });
@@ -60,12 +62,12 @@ export default function SystemAdminUsersPage() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Update failed");
+      if (!res.ok) throw new Error(json.message || t("updateFailed"));
       return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["system-admin-users"] });
-      toast.success("User updated");
+      toast.success(t("userUpdated"));
       setIsSheetOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
@@ -81,8 +83,8 @@ export default function SystemAdminUsersPage() {
         body: JSON.stringify({ tenantId: user.tenantId, userId: user.id }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Impersonate failed");
-      toast.success(`Impersonating ${user.email} — reloading`);
+      if (!res.ok) throw new Error(json.message || t("impersonateFailed"));
+      toast.success(t("impersonating", { email: user.email }));
       window.location.href = "/";
     } catch (e: any) {
       toast.error(e.message);
@@ -92,7 +94,7 @@ export default function SystemAdminUsersPage() {
   const columns = [
     {
       key: "user",
-      header: "User",
+      header: t("user"),
       cell: (row: GlobalUser) => (
         <div>
           <p className="font-semibold text-sm">{row.name}</p>
@@ -102,7 +104,7 @@ export default function SystemAdminUsersPage() {
     },
     {
       key: "role",
-      header: "Role / Level",
+      header: t("level"),
       cell: (row: GlobalUser) => (
         <div className="flex flex-col gap-1">
           <Badge variant="outline" className="text-[10px] w-fit">{row.role}</Badge>
@@ -112,7 +114,7 @@ export default function SystemAdminUsersPage() {
     },
     {
       key: "tenant",
-      header: "Tenant",
+      header: t("tenant"),
       cell: (row: GlobalUser) => (
         <div>
           <p className="text-xs font-mono">{row.tenantId}</p>
@@ -122,31 +124,31 @@ export default function SystemAdminUsersPage() {
     },
     {
       key: "active",
-      header: "Status",
+      header: t("status"),
       cell: (row: GlobalUser) => (
         <Badge variant={row.isActive ? "default" : "secondary"} className={row.isActive ? "bg-emerald-500 text-white text-[10px]" : "text-[10px]"}>
-          {row.isActive ? "Active" : "Inactive"}
+          {t(row.isActive ? "active" : "inactive")}
         </Badge>
       ),
     },
     {
       key: "login",
-      header: "Last Login",
+      header: t("lastLogin"),
       cell: (row: GlobalUser) => <span className="text-xs text-muted-foreground">{row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleDateString() : "—"}</span>,
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("userActions"),
       cell: (row: GlobalUser) => (
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => { setEditUser(row); setEditRole(row.role); setEditActive(row.isActive); setIsSheetOpen(true); }}>
-            Edit
+            {t("edit")}
           </Button>
           <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => updateMutation.mutate({ id: row.id, payload: { isActive: !row.isActive } })}>
-            <Power className="h-3 w-3 mr-1" /> {row.isActive ? "Deactivate" : "Activate"}
+            <Power className="h-3 w-3 mr-1" /> {t(row.isActive ? "deactivate" : "activate")}
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-[11px] text-indigo-600" onClick={() => handleImpersonate(row)}>
-            <ArrowLeftRight className="h-3 w-3 mr-1" /> Impersonate
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] text-primary" onClick={() => handleImpersonate(row)}>
+            <ArrowLeftRight className="h-3 w-3 mr-1" /> {t("impersonate")}
           </Button>
         </div>
       ),
@@ -157,22 +159,22 @@ export default function SystemAdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-indigo-600" /> Global User Directory</h1>
-          <p className="text-xs text-muted-foreground">Cross-tenant search, role/level control, impersonate</p>
+          <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> {t("globalUsers")}</h1>
+          <p className="text-xs text-muted-foreground">{t("usersDescription")}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
-            <Input placeholder="Search email/name" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-8 h-8 text-xs w-56" />
+            <Input placeholder={t("searchUser")} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-8 h-8 text-xs w-56" />
           </div>
-          <Input placeholder="TenantId filter" value={tenantFilter} onChange={(e) => { setTenantFilter(e.target.value); setPage(1); }} className="h-8 text-xs w-32" />
-          <Input placeholder="Role filter" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }} className="h-8 text-xs w-28" />
+          <Input placeholder={t("tenantFilter")} value={tenantFilter} onChange={(e) => { setTenantFilter(e.target.value); setPage(1); }} className="h-8 text-xs w-32" />
+          <Input placeholder={t("roleFilter")} value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }} className="h-8 text-xs w-28" />
         </div>
       </div>
 
       <ERPDataTable
-        title="Platform Users"
-        subtitle={`Total ${pagination?.totalCount ?? users.length} users`}
+        title={t("platformUsers")}
+        subtitle={t("totalUsers", { count: pagination?.totalCount ?? users.length })}
         data={users}
         columns={columns}
         keyExtractor={(r) => r.id}
@@ -181,18 +183,18 @@ export default function SystemAdminUsersPage() {
         totalCount={pagination?.totalCount ?? users.length}
         onPageChange={setPage}
         isLoading={isLoading}
-        emptyState={<div className="py-12 text-center text-xs text-muted-foreground">No users found</div>}
+        emptyState={<div className="py-12 text-center text-xs text-muted-foreground">{t("noUsers")}</div>}
       />
 
       <TopSheet
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         title={`Edit ${editUser?.email ?? ""}`}
-        description="Update role / access level / active status"
+        description={t("editUserDescription")}
         maxWidth="lg"
         footer={
           <div className="flex justify-end gap-2 w-full">
-            <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsSheetOpen(false)}>{t("cancel")}</Button>
             <Button
               onClick={() => {
                 if (!editUser) return;
@@ -200,14 +202,14 @@ export default function SystemAdminUsersPage() {
               }}
               disabled={updateMutation.isPending}
             >
-              {updateMutation.isPending ? "Saving..." : "Save"}
+              {updateMutation.isPending ? t("savingUser") : t("saveUser")}
             </Button>
           </div>
         }
       >
-        <ERPFormSection title="User Controls">
+        <ERPFormSection title={t("userControls")}>
           <ERPFormGrid cols={2}>
-            <ERPFormField label="Role">
+            <ERPFormField label={t("role")}>
               <AppDropdown
                 value={editRole}
                 onChange={setEditRole}
@@ -223,8 +225,8 @@ export default function SystemAdminUsersPage() {
                 ]}
               />
             </ERPFormField>
-            <ERPFormField label="Active">
-              <AppDropdown value={editActive ? "true" : "false"} onChange={(v) => setEditActive(v === "true")} options={[{ value: "true", label: "Active" }, { value: "false", label: "Inactive" }]} />
+            <ERPFormField label={t("active")}>
+              <AppDropdown value={editActive ? "true" : "false"} onChange={(v) => setEditActive(v === "true")} options={[{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} />
             </ERPFormField>
           </ERPFormGrid>
         </ERPFormSection>

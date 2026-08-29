@@ -131,22 +131,44 @@ export default function PromotionsCalculatePage() {
     const confirmMsg = t("confirmExecute", { count: eligibleStudents.length });
     if (!confirm(confirmMsg)) return;
 
-    const promotionsData = eligibleStudents.map((student: any) => ({
-      studentProfileId:
-        students?.find((s: any) => s.studentId === student.studentId)?.id || "",
-      fromAcademicYearId: selectedYear,
-      toAcademicYearId: selectedYear,
-      fromClassId: selectedClass,
-      toClassId: calcData.students[0]?.suggestedNextClassId || "",
-      status: "PROMOTED" as const,
-      reason: t("promotionReason", {
-        percentage: calcData.promotionRule.minimumOverallPercentage,
-      }),
-    }));
+    const promotionsData = eligibleStudents
+      .map((student: any) => {
+        const studentProfileId =
+          student.studentProfileId ||
+          student.id ||
+          students?.find((s: any) => s.studentId === student.studentId || s.id === student.id)?.id ||
+          student.studentId ||
+          "";
+
+        const fromClassId = student.fromClassId || student.currentClassId || selectedClass;
+        const toClassId =
+          student.suggestedNextClassId ||
+          calcData.nextClass?.id ||
+          calcData.promotionRule?.nextClassId ||
+          "";
+
+        return {
+          studentProfileId,
+          fromAcademicYearId: selectedYear,
+          toAcademicYearId: selectedYear,
+          fromClassId,
+          toClassId,
+          status: "PROMOTED" as const,
+          reason: t("promotionReason", {
+            percentage: calcData.promotionRule?.minimumOverallPercentage || 0,
+          }),
+        };
+      })
+      .filter((p: any) => p.studentProfileId && p.fromClassId && p.toClassId);
+
+    if (promotionsData.length === 0) {
+      toast.error("Unable to prepare promotions data. Missing student IDs or next class configuration.");
+      return;
+    }
 
     try {
       await executePromotions.mutateAsync(promotionsData);
-      toast.success(t("successPromoted", { count: eligibleStudents.length }));
+      toast.success(t("successPromoted", { count: promotionsData.length }));
       refetch();
     } catch (error) {
       // Error toast already handled by hook onError
@@ -199,7 +221,7 @@ export default function PromotionsCalculatePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-5">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20">
               <GraduationCap className="h-6 w-6" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -297,7 +319,7 @@ export default function PromotionsCalculatePage() {
       {calcData && (
         <div className="space-y-6">
           {/* Executive Action Banner */}
-          <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent p-6 shadow-sm">
+          <div className="relative overflow-hidden rounded-lg border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent p-6 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-1.5 max-w-2xl">
                 <div className="flex items-center gap-2">
@@ -328,7 +350,7 @@ export default function PromotionsCalculatePage() {
                   size="lg"
                   onClick={handleExecutePromotions}
                   disabled={calcData.eligibleCount === 0 || executePromotions.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 gap-2.5 px-6 h-12 text-base rounded-xl"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 gap-2.5 px-6 h-12 text-base rounded-lg"
                 >
                   {executePromotions.isPending ? (
                     <>
@@ -361,7 +383,7 @@ export default function PromotionsCalculatePage() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{t("studentsEnrolled")}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-muted text-muted-foreground">
+                <div className="p-3 rounded-lg bg-muted text-muted-foreground">
                   <Users className="h-5 w-5" />
                 </div>
               </CardContent>
@@ -383,7 +405,7 @@ export default function PromotionsCalculatePage() {
                       : t("passingRate", { rate: 0 })}
                   </p>
                 </div>
-                <div className="p-3 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <div className="p-3 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
               </CardContent>
@@ -401,7 +423,7 @@ export default function PromotionsCalculatePage() {
                   </div>
                   <p className="text-xs text-rose-700/70 dark:text-rose-400/70 mt-1">{t("requiresRepetition")}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                <div className="p-3 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                   <XCircle className="h-5 w-5" />
                 </div>
               </CardContent>
@@ -419,7 +441,7 @@ export default function PromotionsCalculatePage() {
                   </div>
                   <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-1">{t("reExamRequiredLabel")}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <div className="p-3 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
               </CardContent>
@@ -436,25 +458,25 @@ export default function PromotionsCalculatePage() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
+                <div className="p-3 rounded-lg bg-muted/40 border border-border/40">
                   <p className="text-xs font-medium text-muted-foreground">{t("minAttendance")}</p>
                   <p className="text-lg font-bold text-foreground mt-0.5">
                     {calcData.promotionRule.minimumAttendance}%
                   </p>
                 </div>
-                <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
+                <div className="p-3 rounded-lg bg-muted/40 border border-border/40">
                   <p className="text-xs font-medium text-muted-foreground">{t("minOverallAverage")}</p>
                   <p className="text-lg font-bold text-foreground mt-0.5">
                     {calcData.promotionRule.minimumOverallPercentage}%
                   </p>
                 </div>
-                <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
+                <div className="p-3 rounded-lg bg-muted/40 border border-border/40">
                   <p className="text-xs font-medium text-muted-foreground">{t("minPerSubject")}</p>
                   <p className="text-lg font-bold text-foreground mt-0.5">
                     {calcData.promotionRule.minimumPerSubject}%
                   </p>
                 </div>
-                <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
+                <div className="p-3 rounded-lg bg-muted/40 border border-border/40">
                   <p className="text-xs font-medium text-muted-foreground">{t("maxFailedSubjects")}</p>
                   <p className="text-lg font-bold text-foreground mt-0.5">
                     {calcData.promotionRule.maxFailedSubjects}
@@ -599,7 +621,7 @@ export default function PromotionsCalculatePage() {
       {(!selectedClass || !selectedYear) && (
         <Card className="border-dashed border-2 border-border/80 shadow-none">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="p-4 rounded-2xl bg-muted/60 text-muted-foreground mb-4">
+            <div className="p-4 rounded-lg bg-muted/60 text-muted-foreground mb-4">
               <GraduationCap className="h-10 w-10 text-primary/70" />
             </div>
             <h3 className="text-lg font-bold text-foreground mb-1.5">{t("selectClassAndYear")}</h3>

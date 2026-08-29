@@ -19,18 +19,14 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-4 border-b border-border/70 pb-4 sm:flex-row sm:items-end sm:justify-between",
         className
       )}
     >
-      <div className="flex items-center gap-3">
-        {Icon && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Icon className="h-5 w-5 text-primary" />
-          </div>
-        )}
+      <div className="flex items-start gap-2.5">
+        {Icon && <Icon className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />}
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
             {title}
           </h2>
           {description && (

@@ -29,15 +29,22 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 const CATEGORIES = [
-  { value: "COMPULSORY", label: "Compulsory", color: "default" },
-  { value: "ELECTIVE", label: "Elective", color: "secondary" },
-  { value: "OPTIONAL", label: "Optional", color: "outline" },
+  { value: "COMPULSORY", label: "compulsory", color: "default" },
+  { value: "ELECTIVE", label: "elective", color: "secondary" },
+  { value: "OPTIONAL", label: "optional", color: "outline" },
 ];
 
 export default function SubjectsPage() {
   const t = useTranslations('subjects');
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "subjects", "read");
+  const canWrite = hasPermission(perms, "subjects", "write");
+  const canManage = hasPermission(perms, "subjects", "manage");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -100,9 +107,9 @@ export default function SubjectsPage() {
     e.preventDefault();
 
     const nextErrors: typeof formErrors = {};
-    if (!formData.subjectId.trim()) nextErrors.subjectId = "Subject ID is required";
-    if (!formData.name.trim()) nextErrors.name = "Subject name is required";
-    if (!formData.code.trim()) nextErrors.code = "Subject code is required";
+    if (!formData.subjectId.trim()) nextErrors.subjectId = t("requiredField", { field: t("subjectId") });
+    if (!formData.name.trim()) nextErrors.name = t("requiredField", { field: t("subjectName") });
+    if (!formData.code.trim()) nextErrors.code = t("requiredField", { field: t("subjectCode") });
 
     setFormErrors(nextErrors);
 
@@ -154,13 +161,22 @@ export default function SubjectsPage() {
             {t('description')}
           </p>
         </div>
-        <Button onClick={handleCreateOpen}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t('addSubject')}
-        </Button>
+        {canWrite && (
+          <Button onClick={handleCreateOpen}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t('addSubject')}
+          </Button>
+        )}
       </div>
 
-      {/* Filters */}
+      {!isAuthLoading && !canRead ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2>Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+        </div>
+      ) : (
+        <>
+          {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-4">
@@ -181,7 +197,7 @@ export default function SubjectsPage() {
                 <SelectItem value="all">{t('allCategories')}</SelectItem>
                 {CATEGORIES.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
+                    {t(cat.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -252,9 +268,11 @@ export default function SubjectsPage() {
                   <TableCell colSpan={8} className="text-center py-8">
                     <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                     <p className="text-muted-foreground">{t('noSubjectsFound')}</p>
-                    <Button variant="link" onClick={handleCreateOpen} className="mt-2">
-                      {t('addYourFirstSubject')}
-                    </Button>
+                    {canWrite && (
+                      <Button variant="link" onClick={handleCreateOpen} className="mt-2">
+                        {t('addYourFirstSubject')}
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -282,21 +300,25 @@ export default function SubjectsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(subject)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(subject.id)}
-                          disabled={deleteSubject.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {canWrite && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(subject)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canManage && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(subject.id)}
+                            disabled={deleteSubject.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -306,6 +328,8 @@ export default function SubjectsPage() {
           </Table>
         </CardContent>
       </Card>
+        </>
+      )}
 
       {/* Create/Edit Sheet */}
       <TopSheet
@@ -338,7 +362,7 @@ export default function SubjectsPage() {
                       setFormErrors((prev) => ({ ...prev, subjectId: undefined }));
                     }
                   }}
-                  placeholder="SUB-MAT"
+                  placeholder={t("subjectIdPlaceholder")}
                   disabled={!!editingSubject}
                   aria-invalid={Boolean(formErrors.subjectId)}
                 />
@@ -353,7 +377,7 @@ export default function SubjectsPage() {
                       setFormErrors((prev) => ({ ...prev, code: undefined }));
                     }
                   }}
-                  placeholder="MAT"
+                  placeholder={t("subjectCodePlaceholder")}
                   maxLength={10}
                   aria-invalid={Boolean(formErrors.code)}
                 />
@@ -369,7 +393,7 @@ export default function SubjectsPage() {
                   <SelectContent>
                     {CATEGORIES.map((cat) => (
                       <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
+                        {t(cat.label)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -387,7 +411,7 @@ export default function SubjectsPage() {
                     setFormErrors((prev) => ({ ...prev, name: undefined }));
                   }
                 }}
-                placeholder="Mathematics"
+                placeholder={t("subjectNamePlaceholder")}
                 aria-invalid={Boolean(formErrors.name)}
               />
             </ERPFormField>

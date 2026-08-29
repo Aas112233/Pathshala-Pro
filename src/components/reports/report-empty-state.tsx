@@ -23,7 +23,7 @@ export function ReportEmptyState({
   return (
     <Card className={cn("border-dashed border-border/80 bg-muted/20", className)}>
       <CardContent className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <FileSearch className="h-7 w-7" />
         </div>
         <div className="space-y-1">

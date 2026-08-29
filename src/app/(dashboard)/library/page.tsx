@@ -18,7 +18,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantSettings, useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { usePDFExport, type LibraryIssueSlipData } from "@/hooks/use-pdf-export";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -43,11 +43,14 @@ const CATEGORIES = ["GENERAL", "TEXTBOOK", "REFERENCE", "STORY", "SCIENCE", "HIS
 
 export default function LibraryPage() {
   const t = useTranslations("library");
-  const { user } = useAuth();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "library", "read");
+  const canWrite = hasPermission(perms, "library", "write");
+  const canManage = hasPermission(perms, "library", "manage");
   const { settings } = useTenantSettings();
   const { exportLibrarySlipPDF } = usePDFExport();
   const { run: runLibrarySubmit, isPending: isGuardedLibrary } = useSubmitGuard();
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "library", "write"));
 
   const [activeTab, setActiveTab] = useState("books");
   const [search, setSearch] = useState("");
@@ -171,7 +174,7 @@ export default function LibraryPage() {
       header: t("titleLabel"),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <BookOpen className="h-4 w-4" />
           </div>
           <div>
@@ -200,8 +203,8 @@ export default function LibraryPage() {
       header: t("actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditBook(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteBook(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+          {canWrite && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditBook(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>}
+          {canManage && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteBook(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
         </div>
       ),
     },
@@ -258,7 +261,7 @@ export default function LibraryPage() {
       header: t("actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
-          {row.original.status === "ISSUED" && (
+          {row.original.status === "ISSUED" && canManage && (
             <Button
               variant="outline"
               size="sm"
@@ -288,20 +291,28 @@ export default function LibraryPage() {
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={Library}>
         <div className="flex items-center gap-2">
-          {activeTab === "books" && canManage && (
+          {activeTab === "books" && canWrite && (
             <Button onClick={openAddBook} className="gap-2"><Plus className="h-4 w-4" />{t("addBook")}</Button>
           )}
-          {activeTab === "issues" && canManage && (
+          {activeTab === "issues" && canWrite && (
             <Button onClick={openIssue} className="gap-2"><Plus className="h-4 w-4" />{t("issueBook")}</Button>
           )}
         </div>
       </PageHeader>
 
-      {/* Stats */}
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view library records.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-xs border-border/80">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-xl">
+            <div className="p-2.5 bg-primary/10 rounded-lg">
               <BookOpen className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -313,7 +324,7 @@ export default function LibraryPage() {
 
         <Card className="shadow-xs border-border/80">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+            <div className="p-2.5 bg-emerald-500/10 rounded-lg">
               <CheckCircle className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
@@ -325,7 +336,7 @@ export default function LibraryPage() {
 
         <Card className="shadow-xs border-border/80">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+            <div className="p-2.5 bg-blue-500/10 rounded-lg">
               <Clock className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -337,7 +348,7 @@ export default function LibraryPage() {
 
         <Card className={`shadow-xs border-border/80 ${overdueCount > 0 ? "border-rose-300 bg-rose-50/40 dark:bg-rose-950/20" : ""}`}>
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-rose-500/10 rounded-xl">
+            <div className="p-2.5 bg-rose-500/10 rounded-lg">
               <AlertTriangle className="h-5 w-5 text-rose-600" />
             </div>
             <div>
@@ -386,6 +397,8 @@ export default function LibraryPage() {
           <DataTable columns={issueColumns as any} data={issues} pagination={issuePagination} onPageChange={setIssuePage} onSearch={(v) => { setIssueSearch(v); setIssuePage(1); }} isLoading={isIssueLoading} searchPlaceholder={t("searchIssues")} />
         </TabsContent>
       </Tabs>
+        </>
+      )}
 
       {/* Add/Edit Book Sheet */}
       <TopSheet

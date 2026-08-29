@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "";
     const gender = searchParams.get("gender") || "";
     const classId = searchParams.get("classId") || "";
+    const sectionId = searchParams.get("sectionId") || "";
+    const groupId = searchParams.get("groupId") || "";
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
@@ -59,6 +61,14 @@ export async function GET(request: NextRequest) {
 
     if (classId) {
       where.classId = classId;
+    }
+
+    if (sectionId) {
+      where.sectionId = sectionId;
+    }
+
+    if (groupId) {
+      where.groupId = groupId;
     }
 
     // Get total count and students

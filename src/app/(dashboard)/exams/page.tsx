@@ -44,13 +44,15 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 const EXAM_TYPES = [
-  { value: "MID_TERM", label: "Mid-Term" },
-  { value: "FINAL", label: "Final" },
-  { value: "UNIT_TEST", label: "Unit Test" },
-  { value: "ANNUAL", label: "Annual" },
-];
+  { value: "MID_TERM", labelKey: "examTypes.midTerm" },
+  { value: "FINAL", labelKey: "examTypes.final" },
+  { value: "UNIT_TEST", labelKey: "examTypes.unitTest" },
+  { value: "ANNUAL", labelKey: "examTypes.annual" },
+] as const;
 
 interface ClassOption {
   id: string;
@@ -80,6 +82,15 @@ interface AcademicYearOption {
 export default function ExamsPage() {
   const t = useTranslations('exams');
   const router = useRouter();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadExams = hasPermission(perms, "exams", "read");
+  const canWriteExams = hasPermission(perms, "exams", "write");
+  const canManageExams = hasPermission(perms, "exams", "manage");
+  const getExamTypeLabel = (type: Exam["type"]) => {
+    const examType = EXAM_TYPES.find((item) => item.value === type);
+    return examType ? t(examType.labelKey) : type;
+  };
   const [createOpen, setCreateOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
@@ -247,14 +258,23 @@ export default function ExamsPage() {
             {t('description')}
           </p>
         </div>
-        <Button onClick={handleCreateOpen}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t('createExam')}
-        </Button>
+        {canWriteExams && (
+          <Button onClick={handleCreateOpen}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t('createExam')}
+          </Button>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-4">
+      {!isAuthLoading && !canReadExams ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view exams.</p>
+        </div>
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="flex items-center gap-4">
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder={t('filterByType')} />
@@ -263,7 +283,7 @@ export default function ExamsPage() {
             <SelectItem value="all">{t('filters.type.all')}</SelectItem>
             {EXAM_TYPES.map((type) => (
               <SelectItem key={type.value} value={type.value}>
-                {type.label}
+                {t(type.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -296,9 +316,11 @@ export default function ExamsPage() {
                 <TableCell colSpan={7} className="text-center py-8">
                   <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">{t('noExamsFound')}</p>
-                  <Button variant="link" onClick={handleCreateOpen} className="mt-2">
-                    {t('createYourFirstExam')}
-                  </Button>
+                  {canWriteExams && (
+                    <Button variant="link" onClick={handleCreateOpen} className="mt-2">
+                      {t('createYourFirstExam')}
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -311,15 +333,15 @@ export default function ExamsPage() {
                       exam.type === "FINAL" ? "default" :
                       exam.type === "MID_TERM" ? "secondary" : "outline"
                     }>
-                      {EXAM_TYPES.find(t => t.value === exam.type)?.label || exam.type}
+                      {getExamTypeLabel(exam.type)}
                     </Badge>
                   </TableCell>
-                  <TableCell>{exam.academicYear?.label || "N/A"}</TableCell>
+                  <TableCell>{exam.academicYear?.label || t("notAvailable")}</TableCell>
                   <TableCell>
                     <div className="text-sm">
                       <div>{formatDate(exam.startDate)}</div>
                       <div className="text-muted-foreground">
-                        to {formatDate(exam.endDate)}
+                        {t("to")} {formatDate(exam.endDate)}
                       </div>
                     </div>
                   </TableCell>
@@ -337,21 +359,25 @@ export default function ExamsPage() {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push(`/exams/${exam.id}`)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(exam.id)}
-                        disabled={deleteExam.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {canWriteExams && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/exams/${exam.id}`)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canManageExams && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(exam.id)}
+                          disabled={deleteExam.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -360,6 +386,8 @@ export default function ExamsPage() {
           </TableBody>
         </Table>
       </div>
+        </>
+      )}
 
       <Dialog
         open={detailsOpen}
@@ -388,12 +416,12 @@ export default function ExamsPage() {
                 <div className="rounded-lg border border-border p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('examType')}</p>
                   <p className="mt-1 font-semibold">
-                    {EXAM_TYPES.find((type) => type.value === selectedExam.type)?.label || selectedExam.type}
+                    {getExamTypeLabel(selectedExam.type)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('academicYear')}</p>
-                  <p className="mt-1 font-semibold">{selectedExam.academicYear?.label || "N/A"}</p>
+                  <p className="mt-1 font-semibold">{selectedExam.academicYear?.label || t("notAvailable")}</p>
                 </div>
                 <div className="rounded-lg border border-border p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('status')}</p>
@@ -513,7 +541,7 @@ export default function ExamsPage() {
                   setFormData({ ...formData, name: e.target.value });
                   if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
                 }}
-                placeholder="Mid-Term Examination 2025"
+                placeholder={t("examNamePlaceholder")}
                 aria-invalid={Boolean(formErrors.name)}
               />
             </ERPFormField>
@@ -603,7 +631,7 @@ export default function ExamsPage() {
                   <SelectContent>
                     {EXAM_TYPES.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
-                        {type.label}
+                        {t(type.labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>

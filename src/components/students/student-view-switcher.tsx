@@ -1,6 +1,7 @@
 "use client";
 
 import { LayoutGrid, List } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { StudentViewMode } from "@/viewmodels/students/use-student-view-model";
 
@@ -15,6 +16,7 @@ export function StudentViewSwitcher({
   onViewModeChange,
   className,
 }: StudentViewSwitcherProps) {
+  const t = useTranslations("students");
   return (
     <div
       className={cn(
@@ -30,10 +32,10 @@ export function StudentViewSwitcher({
             ? "bg-primary text-primary-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
-        aria-label="Table view"
+        aria-label={t("viewSwitcher.tableAria")}
       >
         <List className="h-4 w-4" />
-        <span className="hidden sm:inline">Table</span>
+        <span className="hidden sm:inline">{t("viewSwitcher.table")}</span>
       </button>
       <button
         onClick={() => onViewModeChange("grid")}
@@ -43,10 +45,10 @@ export function StudentViewSwitcher({
             ? "bg-primary text-primary-foreground"
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
-        aria-label="Grid view"
+        aria-label={t("viewSwitcher.gridAria")}
       >
         <LayoutGrid className="h-4 w-4" />
-        <span className="hidden sm:inline">Grid</span>
+        <span className="hidden sm:inline">{t("viewSwitcher.grid")}</span>
       </button>
     </div>
   );

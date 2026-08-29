@@ -10,11 +10,18 @@ import { useBankAccounts } from "@/hooks/use-queries";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { AddAccountModal } from "@/components/accounting/add-account-modal";
 import { useTranslations } from "next-intl";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function AccountsPage() {
   const t = useTranslations();
   const { formatCurrency } = useTenantFormatting();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadAccounting = hasPermission(perms, "accounting", "read");
+  const canWriteAccounting = hasPermission(perms, "accounting", "write");
+  const canManageAccounting = hasPermission(perms, "accounting", "manage");
 
   const { data: accountsResponse, isLoading } = useBankAccounts();
   const accounts = (accountsResponse as any)?.data || [];
@@ -41,39 +48,51 @@ export default function AccountsPage() {
         description={t("accounting.accounts.description")}
         icon={Landmark}
       >
-        <Button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          {t("accounting.accounts.addAccount")}
-        </Button>
+        {canWriteAccounting && (
+          <Button
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            {t("accounting.accounts.addAccount")}
+          </Button>
+        )}
       </PageHeader>
 
+      {!isAuthLoading && !canReadAccounting ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view accounting.</p>
+        </div>
+      ) : (
+        <>
+
       {/* Summary Card */}
-      <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-6 text-white shadow-md">
+      <div className="rounded-lg border border-border/80 bg-card p-5 text-foreground">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wider text-indigo-300 font-semibold">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground">
               {t("accounting.accounts.totalLiquidBalance")}
             </p>
             <h2 className="text-3xl font-extrabold tracking-tight">
               {formatCurrency(totalLiquidity)}
             </h2>
-            <p className="text-xs text-indigo-200/80">
+            <p className="text-xs text-muted-foreground">
               {t("accounting.accounts.acrossAccounts", { count: accounts.length })}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddModalOpen(true)}
-              className="border-indigo-400/30 text-white hover:bg-white/10 text-xs gap-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" /> {t("accounting.accounts.linkNewAccount")}
-            </Button>
+            {canWriteAccounting && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddModalOpen(true)}
+                className="border-border text-foreground hover:bg-muted text-xs gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" /> {t("accounting.accounts.linkNewAccount")}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -95,12 +114,14 @@ export default function AccountsPage() {
                 {t("accounting.accounts.noAccountsDescription")}
               </p>
             </div>
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" /> {t("accounting.accounts.addFirstAccount")}
-            </Button>
+            {canWriteAccounting && (
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" /> {t("accounting.accounts.addFirstAccount")}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -110,7 +131,7 @@ export default function AccountsPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       {acc.accountType === "PETTY_CASH" ? (
                         <Wallet className="h-4 w-4" />
                       ) : (
@@ -132,7 +153,7 @@ export default function AccountsPage() {
               </CardHeader>
 
               <CardContent className="space-y-3 pt-0">
-                <div className="p-3 bg-muted/30 rounded-xl border border-border/40 space-y-1">
+                <div className="p-3 bg-muted/30 rounded-lg border border-border/40 space-y-1">
                   <span className="text-[10px] uppercase font-semibold text-muted-foreground">
                     {t("accounting.accounts.accountIban")}
                   </span>
@@ -154,6 +175,8 @@ export default function AccountsPage() {
             </Card>
           ))}
         </div>
+      )}
+        </>
       )}
 
       <AddAccountModal

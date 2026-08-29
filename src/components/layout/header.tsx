@@ -9,8 +9,6 @@ import {
   Globe,
   LogOut,
   ChevronDown,
-  HelpCircle,
-  MessageSquare,
   Building2,
   Shield,
   ShieldAlert,
@@ -123,23 +121,6 @@ export function Header() {
 
       {/* Right - Global Actions */}
       <div className="flex items-center gap-2.5 shrink-0">
-        {/* Help / Docs */}
-        <button
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          title="Help & Documentation"
-        >
-          <HelpCircle className="h-4 w-4" />
-        </button>
-
-        {/* Messages with Badge */}
-        <button
-          className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          title="Messages"
-        >
-          <MessageSquare className="h-4 w-4" />
-          <span className="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-primary" />
-        </button>
-
         {/* Categorized Notifications Center */}
         <HeaderNotificationCenter />
 
@@ -183,7 +164,7 @@ export function Header() {
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          title="Toggle Theme"
+          title={t("header.theme.toggle")}
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -212,10 +193,10 @@ export function Header() {
             </div>
             <div className="hidden lg:flex flex-col">
               <span suppressHydrationWarning className="text-xs font-semibold text-foreground leading-tight">
-                {mounted && user?.name ? user.name : "Administrator"}
+                {mounted && user?.name ? user.name : t("header.user.fallbackName")}
               </span>
               <span suppressHydrationWarning className="text-[10px] font-medium text-muted-foreground capitalize">
-                {mounted && userRole ? userRole.toLowerCase() : "administrator"}
+                {mounted && userRole ? userRole.toLowerCase() : t("header.user.fallbackRole").toLowerCase()}
               </span>
             </div>
             <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", userMenuOpen && "rotate-180")} />
@@ -226,7 +207,7 @@ export function Header() {
               <div className="border-b border-border/60 px-3 py-2">
                 <div className="flex items-center gap-1.5">
                   <Shield className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <span className="text-xs font-semibold tracking-wide text-foreground">
                     {userRole}
                   </span>
                 </div>
@@ -240,10 +221,10 @@ export function Header() {
                   <Link
                     href="/system-admin"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-950/60"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
                   >
                     <ShieldAlert className="h-3.5 w-3.5" />
-                    <span>SuperAdmin Portal</span>
+                    <span>{t("header.systemAdmin.label")}</span>
                   </Link>
                 )}
 

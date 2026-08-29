@@ -119,7 +119,7 @@ export function HeaderNotificationCenter() {
       return <AlertTriangle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />;
     }
     if (cat === "ACADEMIC" || cat === "EXAMINATION" || cat === "EXAM") {
-      return <GraduationCap className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />;
+      return <GraduationCap className="h-3.5 w-3.5 text-primary" />;
     }
     if (cat === "FEE_REMINDER" || cat === "FEE" || cat === "BILLING_ALERT") {
       return <CreditCard className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
@@ -136,7 +136,7 @@ export function HeaderNotificationCenter() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer",
+          "relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer",
           isOpen && "bg-muted text-foreground"
         )}
         title={t("notifications.title")}
@@ -157,7 +157,7 @@ export function HeaderNotificationCenter() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-border/80 bg-popover text-popover-foreground shadow-2xl z-50 animate-in fade-in-50 zoom-in-95 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-lg border border-border/80 bg-popover text-popover-foreground shadow-xl z-50 animate-in fade-in-50 zoom-in-95 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-muted/20">
             <div className="flex items-center gap-2">
@@ -261,7 +261,7 @@ export function HeaderNotificationCenter() {
                     {/* Category Icon Badge */}
                     <div
                       className={cn(
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border",
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
                         isUrgent
                           ? "border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/60"
                           : "border-border/60 bg-muted/40"
@@ -274,7 +274,7 @@ export function HeaderNotificationCenter() {
                     <div className="flex-1 min-w-0 pr-1">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         {notice.isPinned && (
-                          <span className="flex items-center gap-0.5 text-[9px] font-bold uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1 rounded">
+                          <span className="flex items-center gap-0.5 text-[9px] font-medium text-primary bg-primary/10 px-1 rounded">
                             <Pin className="h-2.5 w-2.5 fill-indigo-600" /> Pinned
                           </span>
                         )}

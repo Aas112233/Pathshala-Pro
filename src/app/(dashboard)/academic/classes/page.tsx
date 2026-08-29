@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 // ──────────── Types ────────────
 interface ClassData {
@@ -50,6 +52,11 @@ function getAuthHeaders() {
 // ──────────── Main Page ────────────
 export default function ClassesPage() {
   const t = useTranslations("classes");
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "academic", "read");
+  const canWrite = hasPermission(perms, "academic", "write");
+  const canManage = hasPermission(perms, "academic", "manage");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
 
@@ -78,7 +85,7 @@ export default function ClassesPage() {
     queryFn: async () => {
       const params = new URLSearchParams({ page: page.toString(), limit: "20", ...(search && { search }) });
       const res = await fetch(`/api/classes?${params}`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("Failed to fetch classes");
+      if (!res.ok) throw new Error(t("fetchClassesError"));
       return res.json();
     },
   });
@@ -87,7 +94,7 @@ export default function ClassesPage() {
     queryKey: ["subjects-all"],
     queryFn: async () => {
       const res = await fetch("/api/subjects", { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("Failed to fetch subjects");
+      if (!res.ok) throw new Error(t("fetchSubjectsError"));
       return res.json();
     },
   });
@@ -99,7 +106,7 @@ export default function ClassesPage() {
     queryKey: ["class-subjects", editingClass?.id],
     queryFn: async () => {
       const res = await fetch(`/api/class-subjects?classId=${editingClass!.id}`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("Failed to fetch class subjects");
+      if (!res.ok) throw new Error(t("fetchClassSubjectsError"));
       const result = await res.json();
       return result.data || [];
     },
@@ -126,12 +133,12 @@ export default function ClassesPage() {
       const json = await res.clone().json();
       if (!res.ok) {
         if (json.details?.[0]?.field === "classNumber") setClassNumberError(json.details[0].message);
-        throw new Error(json.details?.[0]?.message || json.message || "Failed to create class");
+        throw new Error(json.details?.[0]?.message || json.message || t("createClassError"));
       }
       return json;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["classes"] }),
-    onError: (err: any) => { if (!classNumberError) toast.error(err.message); },
+    onError: (err: any) => { if (!classNumberError) toast.error(err.message || t("updateClassError")); },
   });
 
   const updateMutation = useMutation({
@@ -140,22 +147,22 @@ export default function ClassesPage() {
       const json = await res.clone().json();
       if (!res.ok) {
         if (json.details?.[0]?.field === "classNumber") setClassNumberError(json.details[0].message);
-        throw new Error(json.details?.[0]?.message || json.message || "Failed to update class");
+        throw new Error(json.details?.[0]?.message || json.message || t("updateClassError"));
       }
       return json;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["classes"] }),
-    onError: (err: any) => { if (!classNumberError) toast.error(err.message); },
+    onError: (err: any) => { if (!classNumberError) toast.error(err.message || t("updateClassError")); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/classes/${id}`, { method: "DELETE", headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("Failed to delete class");
+      if (!res.ok) throw new Error(t("deleteClassError"));
       return res.json();
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["classes"] }); toast.success("Class deleted!"); },
-    onError: (err: any) => toast.error(err.message),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["classes"] }); toast.success(t("deleteSuccess")); },
+    onError: (err: any) => toast.error(err.message || t("deleteClassError")),
   });
 
   // ──── Handlers ────
@@ -232,11 +239,11 @@ export default function ClassesPage() {
     e.preventDefault();
     setClassNumberError("");
     const nextErrors: { name?: string; classNumber?: string } = {};
-    if (!formData.name.trim()) nextErrors.name = t("className") + " is required";
-    if (!String(formData.classNumber).trim()) nextErrors.classNumber = t("classNumber") + " is required";
+    if (!formData.name.trim()) nextErrors.name = t("requiredField", { field: t("className") });
+    if (!String(formData.classNumber).trim()) nextErrors.classNumber = t("requiredField", { field: t("classNumber") });
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t("fillRequired"));
       return;
     }
 
@@ -267,7 +274,7 @@ export default function ClassesPage() {
         });
       }
 
-      toast.success(editingClass ? "Class updated!" : "Class created!");
+      toast.success(editingClass ? t("classUpdated") : t("classCreated"));
       queryClient.invalidateQueries({ queryKey: ["class-subjects"] });
       closeModal();
     } catch { /* handled by mutation */ }
@@ -297,7 +304,7 @@ export default function ClassesPage() {
       header: t("tableColumns.classNumber"),
       cell: ({ getValue }) => (
         <Badge variant="outline" className="font-semibold text-xs">
-          Class {getValue<number>()}
+          {t("classWithNumber", { number: getValue<number>() })}
         </Badge>
       ),
     },
@@ -318,14 +325,14 @@ export default function ClassesPage() {
     },
     {
       accessorKey: "appAccessEnabled",
-      header: "App Access",
+      header: t("appAccess"),
       cell: ({ row }) => {
         const c = row.original as any;
-        if (!c.appAccessEnabled) return <Badge variant="outline" className="text-[10px]">Disabled</Badge>;
+        if (!c.appAccessEnabled) return <Badge variant="outline" className="text-[10px]">{t("disabled")}</Badge>;
         const parts = [];
         if (c.studentAppEnabled) parts.push("S");
         if (c.parentAppEnabled) parts.push("P");
-        return <Badge variant="default" className="text-[10px]">App: {parts.join("+") || "On"}</Badge>;
+        return <Badge variant="default" className="text-[10px]">{t("appStatus", { value: parts.join("+") || t("on") })}</Badge>;
       },
     },
     {
@@ -335,11 +342,11 @@ export default function ClassesPage() {
         const c = row.original._count;
         return (
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1" title="Students">
+            <span className="flex items-center gap-1" title={t("studentsTitle")}>
               <span className="font-semibold text-foreground">{c?.studentProfiles || 0}</span> {t("students")}
             </span>
             <span className="text-border">·</span>
-            <span className="flex items-center gap-1" title="Subjects">
+            <span className="flex items-center gap-1" title={t("subjectsTitle")}>
               <span className="font-semibold text-foreground">{c?.classSubjects || 0}</span> {t("subjects")}
             </span>
           </div>
@@ -362,12 +369,16 @@ export default function ClassesPage() {
                 </Badge>
               )}
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(row.original)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
-            </Button>
+            {canWrite && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(row.original)}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canManage && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
+              </Button>
+            )}
           </div>
         );
       },
@@ -381,21 +392,32 @@ export default function ClassesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={School}>
-        <Button onClick={handleOpenNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("addClass")}
-        </Button>
+        {canWrite && (
+          <Button onClick={handleOpenNew}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("addClass")}
+          </Button>
+        )}
       </PageHeader>
 
-      <DataTable
-        columns={columns}
-        data={classes}
-        pagination={pagination}
-        onPageChange={setPage}
-        onSearch={setSearch}
-        isLoading={isLoading}
-        searchPlaceholder={t("searchPlaceholder")}
-      />
+      {!isAuthLoading && !canRead ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2>Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+        </div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={classes}
+            pagination={pagination}
+            onPageChange={setPage}
+            onSearch={setSearch}
+            isLoading={isLoading}
+            searchPlaceholder={t("searchPlaceholder")}
+          />
+        </>
+      )}
 
       {/* ═══════════ Add/Edit Form with Tabs ═══════════ */}
       <TopSheet
@@ -471,7 +493,7 @@ export default function ClassesPage() {
                       setFormData({ ...formData, name: e.target.value });
                       if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
                     }}
-                    placeholder="e.g., Class 10"
+                    placeholder={t("classNamePlaceholder")}
                   />
                 </ERPFormField>
 
@@ -485,7 +507,7 @@ export default function ClassesPage() {
                       setClassNumberError("");
                       if (formErrors.classNumber) setFormErrors((prev) => ({ ...prev, classNumber: undefined }));
                     }}
-                    placeholder="e.g., 10"
+                    placeholder={t("classNumberPlaceholder")}
                   />
                   {formErrors.classNumber && !classNumberError && (
                     <p className="text-xs text-destructive flex items-center gap-1">
@@ -515,21 +537,21 @@ export default function ClassesPage() {
                   />
                 </ERPFormField>
 
-                <ERPFormField label="App Access (Principal Gate)">
+                <ERPFormField label={t("principalGate")}>
                   <div className="space-y-3 rounded-lg border border-border p-3">
                     <label className="flex items-center justify-between gap-3 cursor-pointer">
-                      <span className="text-sm font-medium">Enable App Access for this Class</span>
+                      <span className="text-sm font-medium">{t("enableAppAccess")}</span>
                       <Checkbox checked={formData.appAccessEnabled} onCheckedChange={(v) => setFormData({ ...formData, appAccessEnabled: !!v })} />
                     </label>
                     <label className="flex items-center justify-between gap-3 cursor-pointer opacity-90">
-                      <span className="text-xs text-muted-foreground">Student Login</span>
+                      <span className="text-xs text-muted-foreground">{t("studentLogin")}</span>
                       <Checkbox checked={formData.studentAppEnabled} onCheckedChange={(v) => setFormData({ ...formData, studentAppEnabled: !!v })} disabled={!formData.appAccessEnabled} />
                     </label>
                     <label className="flex items-center justify-between gap-3 cursor-pointer opacity-90">
-                      <span className="text-xs text-muted-foreground">Parent Login</span>
+                      <span className="text-xs text-muted-foreground">{t("parentLogin")}</span>
                       <Checkbox checked={formData.parentAppEnabled} onCheckedChange={(v) => setFormData({ ...formData, parentAppEnabled: !!v })} disabled={!formData.appAccessEnabled} />
                     </label>
-                    <p className="text-[11px] text-muted-foreground">Principal controls whether students/parents of this class can log in.</p>
+                    <p className="text-[11px] text-muted-foreground">{t("accessDescription")}</p>
                   </div>
                 </ERPFormField>
               </ERPFormGrid>
@@ -542,7 +564,7 @@ export default function ClassesPage() {
               title={t("selectSubjects")}
               headerAction={
                 <span className="text-xs font-medium text-muted-foreground">
-                  ({pendingSubjects.length} selected)
+                  ({t("selectedCount", { count: pendingSubjects.length })})
                 </span>
               }
               className="mt-6"
@@ -605,7 +627,7 @@ export default function ClassesPage() {
 
                 {allSubjects.length === 0 && (
                   <div className="col-span-2 text-center py-8 text-sm text-muted-foreground">
-                    No subjects available. Create subjects first.
+                    {t("noSubjectsAvailable")}
                   </div>
                 )}
               </div>
@@ -624,12 +646,12 @@ export default function ClassesPage() {
         <div className="pt-2">
           {viewOnlySubjects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="h-12 w-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+              <div className="h-12 w-12 rounded-lg bg-muted/50 flex items-center justify-center mb-3">
                 <BookOpen className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="text-sm font-medium text-muted-foreground">{t("noSubjectsAssigned")}</p>
               <p className="text-xs text-muted-foreground/60 mt-1">
-                Edit this class to assign subjects.
+                {t("editToAssignSubjects")}
               </p>
             </div>
           ) : (
@@ -650,7 +672,7 @@ export default function ClassesPage() {
                             <BookOpen className="h-3.5 w-3.5 text-primary" />
                           </div>
                           <div>
-                            <p className="font-medium">{cs.subject?.name || "Unknown"}</p>
+                            <p className="font-medium">{cs.subject?.name || t("unknownSubject")}</p>
                             <p className="text-xs text-muted-foreground">{cs.subject?.code || ""}</p>
                           </div>
                         </div>

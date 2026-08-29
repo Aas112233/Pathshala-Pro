@@ -15,6 +15,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 interface GroupData {
   id: string;
@@ -43,6 +45,11 @@ interface SubjectData {
 
 export default function GroupsPage() {
   const t = useTranslations('groups');
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "academic", "read");
+  const canWrite = hasPermission(perms, "academic", "write");
+  const canManage = hasPermission(perms, "academic", "manage");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,7 +62,7 @@ export default function GroupsPage() {
     queryKey: ["classes-all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100");
-      if (!res.ok) throw new Error("Failed to fetch classes");
+      if (!res.ok) throw new Error(t("fetchClassesFailed"));
       return res.json();
     },
   });
@@ -65,7 +72,7 @@ export default function GroupsPage() {
     queryKey: ["subjects-all"],
     queryFn: async () => {
       const res = await fetch("/api/subjects?isActive=true");
-      if (!res.ok) throw new Error("Failed to fetch subjects");
+      if (!res.ok) throw new Error(t("fetchSubjectsFailed"));
       return res.json();
     },
   });
@@ -84,7 +91,7 @@ export default function GroupsPage() {
         ...(search && { search }),
       });
       const res = await fetch(`/api/groups?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch groups");
+      if (!res.ok) throw new Error(t("fetchGroupsFailed"));
       return res.json();
     },
   });
@@ -98,17 +105,17 @@ export default function GroupsPage() {
         },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create group");
+      if (!res.ok) throw new Error(t("createFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
-      toast.success("Group created successfully!");
+      toast.success(t("createSuccess"));
       setIsModalOpen(false);
       resetForm();
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to create group");
+      toast.error(err.message || t("createFailed"));
     },
   });
 
@@ -121,33 +128,33 @@ export default function GroupsPage() {
         },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to update group");
+      if (!res.ok) throw new Error(t("updateFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
-      toast.success("Group updated successfully!");
+      toast.success(t("updateSuccess"));
       setIsModalOpen(false);
       setEditingGroup(null);
       resetForm();
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to update group");
+      toast.error(err.message || t("updateFailed"));
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/groups/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete group");
+      if (!res.ok) throw new Error(t("deleteFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
-      toast.success("Group deleted successfully!");
+      toast.success(t("deleteSuccess"));
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to delete group");
+      toast.error(err.message || t("deleteFailed"));
     },
   });
 
@@ -185,12 +192,12 @@ export default function GroupsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors: typeof formErrors = {};
-    if (!formData.classId) nextErrors.classId = `${t('class')} is required`;
-    if (!formData.name.trim()) nextErrors.name = `${t('groupName')} is required`;
-    if (!formData.shortName.trim()) nextErrors.shortName = `${t('shortName')} is required`;
+    if (!formData.classId) nextErrors.classId = t("requiredField", { field: t("class") });
+    if (!formData.name.trim()) nextErrors.name = t("requiredField", { field: t("groupName") });
+    if (!formData.shortName.trim()) nextErrors.shortName = t("requiredField", { field: t("shortName") });
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t("requiredFields"));
       return;
     }
     const data = {
@@ -254,7 +261,7 @@ export default function GroupsPage() {
   const classes = ("data" in (classesData || {})) ? (classesData as any).data : [];
   const classOptions = classes.map((c: any) => ({
     value: c.id,
-    label: `${c.name} (Class ${c.classNumber})`,
+    label: `${c.name} (${t("classOption", { number: c.classNumber })})`,
   }));
 
   const columns: ColumnDef<GroupData>[] = [
@@ -272,7 +279,7 @@ export default function GroupsPage() {
       accessorKey: "class",
       header: t('tableColumns.class'),
       cell: ({ row }) => (
-        <span>{row.original.class?.name || "N/A"}</span>
+        <span>{row.original.class?.name || t("classUnavailable")}</span>
       ),
     },
     {
@@ -292,7 +299,7 @@ export default function GroupsPage() {
               </span>
             ))}
             {subjects.length > 3 && (
-              <span className="text-xs text-muted-foreground">+{subjects.length - 3} more</span>
+              <span className="text-xs text-muted-foreground">+{subjects.length - 3} {t("more")}</span>
             )}
           </div>
         );
@@ -324,20 +331,24 @@ export default function GroupsPage() {
       header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          {canWrite && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(row.original)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -353,21 +364,32 @@ export default function GroupsPage() {
         description={t('description')}
         icon={Layers}
       >
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addGroup')}
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('addGroup')}
+          </Button>
+        )}
       </PageHeader>
 
-      <DataTable
-        columns={columns}
-        data={groups}
-        pagination={pagination}
-        onPageChange={setPage}
-        onSearch={setSearch}
-        isLoading={isLoading}
-        searchPlaceholder={t('searchPlaceholder')}
-      />
+      {!isAuthLoading && !canRead ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2>Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+        </div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={groups}
+            pagination={pagination}
+            onPageChange={setPage}
+            onSearch={setSearch}
+            isLoading={isLoading}
+            searchPlaceholder={t('searchPlaceholder')}
+          />
+        </>
+      )}
 
       {/* Add/Edit Form */}
       <TopSheet
@@ -416,7 +438,7 @@ export default function GroupsPage() {
                     setFormData({ ...formData, name: e.target.value });
                     if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
                   }}
-                  placeholder="e.g., Science"
+                  placeholder={t("groupNamePlaceholder")}
                 />
               </ERPFormField>
 
@@ -428,7 +450,7 @@ export default function GroupsPage() {
                     setFormData({ ...formData, shortName: e.target.value });
                     if (formErrors.shortName) setFormErrors((prev) => ({ ...prev, shortName: undefined }));
                   }}
-                  placeholder="e.g., SCI"
+                  placeholder={t("shortNamePlaceholder")}
                 />
               </ERPFormField>
 
@@ -450,7 +472,7 @@ export default function GroupsPage() {
               action={
                 formData.selectedSubjects.length > 0 && (
                   <span className="text-xs font-normal text-muted-foreground">
-                    ({formData.selectedSubjects.length} selected)
+                    ({t("selectedCount", { count: formData.selectedSubjects.length })})
                   </span>
                 )
               }
@@ -490,9 +512,9 @@ export default function GroupsPage() {
                 </div>
                 <div className="max-h-40 overflow-y-auto">
                   {subjectsLoading ? (
-                    <p className="p-3 text-xs text-muted-foreground text-center">Loading subjects...</p>
+                    <p className="p-3 text-xs text-muted-foreground text-center">{t("loadingSubjects")}</p>
                   ) : filteredSubjects.length === 0 ? (
-                    <p className="p-3 text-xs text-muted-foreground text-center">No subjects found</p>
+                    <p className="p-3 text-xs text-muted-foreground text-center">{t("noSubjectsFound")}</p>
                   ) : (
                     filteredSubjects.map((subject) => {
                       const isSelected = formData.selectedSubjects.includes(subject.name);

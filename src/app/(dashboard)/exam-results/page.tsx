@@ -22,11 +22,14 @@ import {
   FilterX,
   Pencil,
   Trophy,
+  Lock,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ClassGradebookMatrix } from "@/components/exams/class-gradebook-matrix";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 interface StudentMark {
   studentProfileId: string;
@@ -37,11 +40,21 @@ interface StudentMark {
   obtainedMarks: string;
   existingGrade?: string;
   existingStatus?: string;
+  isLocked?: boolean;
 }
 
 export default function ExamResultsPage() {
   const t = useTranslations("results");
   const queryClient = useQueryClient();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadExams = hasPermission(perms, "exams", "read");
+  const canWriteExams = hasPermission(perms, "exams", "write");
+  const canManageExams = hasPermission(perms, "exams", "manage");
+  const canReadResults = hasPermission(perms, "exam-results", "read");
+  const canWriteResults = hasPermission(perms, "exam-results", "write");
+  // keep exams write/manage in scope for lint (exam selector uses read; write/manage reserved for exam edits)
+  void canWriteExams; void canManageExams;
 
   // View state: list (default) or form
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -231,11 +244,13 @@ export default function ExamResultsPage() {
     enabled: !!selectedClass,
   });
 
-  // Fetch existing results for the selected exam + subject combo
-  const { data: existingResultsData } = useQuery({
-    queryKey: ["exam-results", selectedExam, selectedSubject],
+  // Fetch existing results for the selected exam + subject + class combo (avoid pagination truncation)
+  const { data: existingResultsData, isLoading: existingResultsLoading } = useQuery({
+    queryKey: ["exam-results", selectedExam, selectedSubject, selectedClass],
     queryFn: async () => {
-      const res = await fetch(`/api/exam-results?examId=${selectedExam}`);
+      const params = new URLSearchParams({ examId: selectedExam, subjectId: selectedSubject, limit: "200" });
+      if (selectedClass) params.set("classId", selectedClass);
+      const res = await fetch(`/api/exam-results?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch results");
       return res.json();
     },
@@ -261,10 +276,66 @@ export default function ExamResultsPage() {
     [examSubjects, selectedSubject]
   );
 
+  // Auto-transition to marks entry table as soon as Exam, Class, and Subject are chosen
+  // ponytail: wait for both students and existingResults to load before hydrating marks — avoids empty form after refresh
+  useEffect(() => {
+    if (
+      isFormOpen &&
+      selectedExam &&
+      selectedClass &&
+      selectedSubject &&
+      !studentsLoading &&
+      !existingResultsLoading &&
+      students.length > 0 &&
+      !isFormReady &&
+      !editingResult
+    ) {
+      const marks: StudentMark[] = students.map((s: any) => {
+        const existing = existingResults.find(
+          (r: any) =>
+            r.studentProfileId === s.id && r.subjectId === selectedSubject
+        );
+
+        return {
+          studentProfileId: s.id,
+          studentId: s.studentId,
+          rollNumber: s.rollNumber,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          obtainedMarks: existing ? String(existing.obtainedMarks) : "",
+          existingGrade: existing?.grade,
+          existingStatus: existing?.status,
+        };
+      });
+
+      setStudentMarks(marks);
+      setIsFormReady(true);
+    }
+  }, [
+    isFormOpen,
+    selectedExam,
+    selectedClass,
+    selectedSubject,
+    studentsLoading,
+    existingResultsLoading,
+    students,
+    existingResults,
+    isFormReady,
+    editingResult,
+  ]);
+
   // Build student marks list when all selections are made
   const loadStudentMarks = () => {
     if (!selectedExam || !selectedClass || !selectedSubject) {
       toast.error(t("pleaseSelectAll"));
+      return;
+    }
+    if (studentsLoading || existingResultsLoading) {
+      toast.error(t("loadingStudents"));
+      return;
+    }
+    if (students.length === 0) {
+      toast.error(t("noStudentsInClass"));
       return;
     }
 
@@ -284,6 +355,7 @@ export default function ExamResultsPage() {
         obtainedMarks: existing ? String(existing.obtainedMarks) : "",
         existingGrade: existing?.grade,
         existingStatus: existing?.status,
+        isLocked: Boolean(existing?.isLocked),
       };
     });
 
@@ -293,6 +365,11 @@ export default function ExamResultsPage() {
 
   // Update individual student marks
   const handleMarksChange = (index: number, value: string) => {
+    const student = studentMarks[index];
+    if (student?.isLocked) {
+      toast.error("Marks for this student are locked due to promotion.");
+      return;
+    }
     const maxMarks = selectedSubjectInfo?.maxMarks || 100;
     // Allow empty string for clearing
     if (value === "") {
@@ -345,6 +422,7 @@ export default function ExamResultsPage() {
     onSuccess: () => {
       toast.success(t(editingResult ? "updateSuccess" : "saveSuccess"));
       queryClient.invalidateQueries({ queryKey: ["all-exam-results"] });
+      queryClient.invalidateQueries({ queryKey: ["exam-results"] });
       handleBack();
     },
     onError: (err: any) => {
@@ -378,13 +456,12 @@ export default function ExamResultsPage() {
     saveMutation.mutate(results);
   };
 
+  // Handle back to list
   const handleBack = () => {
-    if (isFormReady) {
-      setIsFormReady(false);
-      setStudentMarks([]);
-      setEditingResult(null);
-    } else {
-      setIsFormOpen(false);
+    setIsFormOpen(false);
+    setIsFormReady(false);
+    setStudentMarks([]);
+    if (editingResult) {
       setSelectedExam("");
       setSelectedClass("");
       setSelectedSubject("");
@@ -394,6 +471,10 @@ export default function ExamResultsPage() {
 
   // Handle edit result
   const handleEditResult = (result: any) => {
+    if (result.isLocked) {
+      toast.error("This exam result is locked because the student has already been promoted.");
+      return;
+    }
     setEditingResult(result);
     setSelectedExam(result.examId);
     setSelectedSubject(result.subjectId);
@@ -412,6 +493,7 @@ export default function ExamResultsPage() {
       obtainedMarks: String(result.obtainedMarks),
       existingGrade: result.grade,
       existingStatus: result.status,
+      isLocked: Boolean(result.isLocked),
     }];
 
     setStudentMarks(marks);
@@ -582,14 +664,23 @@ export default function ExamResultsPage() {
       accessorKey: "actions",
       header: t("actions"),
       cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleEditResult(row.original)}
-          className="h-8 w-8 p-0"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        row.original.isLocked ? (
+          <div className="flex items-center justify-center h-8 w-8 text-amber-600 dark:text-amber-400" title="Marks permanently locked due to student promotion">
+            <Lock className="h-4 w-4" />
+          </div>
+        ) : !canWriteResults ? (
+          <span className="text-xs text-muted-foreground">—</span>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEditResult(row.original)}
+            className="h-8 w-8 p-0"
+            title="Edit Marks"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )
       ),
     },
   ];
@@ -603,10 +694,12 @@ export default function ExamResultsPage() {
           description={t("description")}
           icon={ClipboardCheck}
         >
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("enterResults")}
-          </Button>
+          {canWriteResults && (
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("enterResults")}
+            </Button>
+          )}
         </PageHeader>
 
         <Tabs value={activeViewTab} onValueChange={setActiveViewTab}>
@@ -622,8 +715,15 @@ export default function ExamResultsPage() {
           </TabsList>
 
           <TabsContent value="ledger" className="space-y-6 mt-4">
-            {/* Search & Filter Bar */}
-            <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-4">
+            {!isAuthLoading && !canReadResults ? (
+              <div className="rounded-lg border border-border bg-card p-6">
+                <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+                <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view exam results.</p>
+              </div>
+            ) : (
+              <>
+                {/* Search & Filter Bar */}
+                <div className="bg-card rounded-lg border border-border p-4 shadow-sm space-y-4">
               {/* Search Input */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -700,6 +800,8 @@ export default function ExamResultsPage() {
               pagination={listPagination || undefined}
               onPageChange={setListPage}
             />
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="gradebook" className="space-y-6 mt-4">
@@ -725,17 +827,23 @@ export default function ExamResultsPage() {
           </Button>
         </PageHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Main Marks Entry */}
-          <div className="lg:col-span-4 space-y-6">
-            <form
-              id="exam-results-marks-form"
+        {!isAuthLoading && !canReadResults ? (
+          <div className="rounded-lg border border-border bg-card p-6">
+            <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+            <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view exam results.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Main Marks Entry */}
+            <div className="lg:col-span-4 space-y-6">
+              <form
+                id="exam-results-marks-form"
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSave();
               }}
             >
-            <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
               {/* Table Header */}
               <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-muted/50 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 <div className="col-span-1">#</div>
@@ -786,9 +894,16 @@ export default function ExamResultsPage() {
                           </span>
                         </div>
                         <div className="col-span-3">
-                          <p className="text-sm font-medium">
-                            {formatStudentName(student.firstName, student.lastName)}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium">
+                              {formatStudentName(student.firstName, student.lastName)}
+                            </p>
+                            {student.isLocked && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20" title="Marks locked due to promotion">
+                                <Lock className="h-2.5 w-2.5" /> Locked
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {student.studentId}
                           </p>
@@ -797,6 +912,7 @@ export default function ExamResultsPage() {
                           <Input
                             type="number"
                             value={student.obtainedMarks}
+                            disabled={student.isLocked || !canWriteResults}
                             onChange={(e) =>
                               handleMarksChange(index, e.target.value)
                             }
@@ -805,7 +921,7 @@ export default function ExamResultsPage() {
                             max={maxMarks}
                             step="0.5"
                             placeholder="0"
-                            className={`w-20 text-center font-semibold ${gradeColor}`}
+                            className={`w-20 text-center font-semibold ${gradeColor} ${student.isLocked || !canWriteResults ? "bg-muted/60 text-muted-foreground opacity-75 cursor-not-allowed" : ""}`}
                           />
                         </div>
                         <div className="col-span-1 text-center text-sm text-muted-foreground">
@@ -852,7 +968,7 @@ export default function ExamResultsPage() {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-card rounded-xl border border-border p-6 shadow-sm sticky top-6">
+            <div className="bg-card rounded-lg border border-border p-6 shadow-sm sticky top-6">
               <h2 className="text-lg font-bold text-foreground mb-6 font-mono uppercase tracking-tighter text-center">
                 {t("summary")}
               </h2>
@@ -940,22 +1056,25 @@ export default function ExamResultsPage() {
                 )}
               </div>
 
-              <Button
-                type="submit"
-                form="exam-results-marks-form"
-                disabled={
-                  saveMutation.isPending || filledCount === 0
-                }
-                className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shadow-lg"
-              >
-                <Save className="h-4 w-4" />
-                {saveMutation.isPending
-                  ? t("saving")
-                  : t("saveResults")}
-              </Button>
+              {canWriteResults && (
+                <Button
+                  type="submit"
+                  form="exam-results-marks-form"
+                  disabled={
+                    saveMutation.isPending || filledCount === 0
+                  }
+                  className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shadow-lg"
+                >
+                  <Save className="h-4 w-4" />
+                  {saveMutation.isPending
+                    ? t("saving")
+                    : t("saveResults")}
+                </Button>
+              )}
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -978,7 +1097,7 @@ export default function ExamResultsPage() {
         {/* Main Content */}
         <div className="lg:col-span-4 space-y-6">
           {/* Exam & Class Details Card */}
-          <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+          <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">
               {t("examDetails")}
             </h3>
@@ -987,16 +1106,20 @@ export default function ExamResultsPage() {
                 <label className="block text-sm font-medium text-foreground mb-1">
                   {t("examName")}
                 </label>
-                <AppDropdown
-                  value={selectedExam}
-                  onChange={(val) => {
-                    setSelectedExam(val);
-                    setSelectedSubject("");
-                  }}
-                  options={examOptions}
-                  placeholder={t("selectExam")}
-                  searchable
-                />
+                {!canReadExams && !isAuthLoading ? (
+                  <div className="py-2 text-sm text-muted-foreground">Access restricted — no permission to view exams.</div>
+                ) : (
+                  <AppDropdown
+                    value={selectedExam}
+                    onChange={(val) => {
+                      setSelectedExam(val);
+                      setSelectedSubject("");
+                    }}
+                    options={examOptions}
+                    placeholder={t("selectExam")}
+                    searchable
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
@@ -1027,7 +1150,7 @@ export default function ExamResultsPage() {
           </div>
 
           {/* Guidance Card */}
-          <div className="bg-card rounded-xl border border-border p-8 shadow-sm">
+          <div className="bg-card rounded-lg border border-border p-8 shadow-sm">
             <div className="flex flex-col items-center justify-center text-center py-6">
               <ClipboardCheck className="h-12 w-12 text-muted-foreground/50 mb-3" />
               <p className="text-sm text-muted-foreground">
@@ -1045,7 +1168,7 @@ export default function ExamResultsPage() {
 
         {/* Summary Sidebar */}
         <div className="space-y-6">
-          <div className="bg-card rounded-xl border border-border p-6 shadow-sm sticky top-6">
+          <div className="bg-card rounded-lg border border-border p-6 shadow-sm sticky top-6">
             <h2 className="text-lg font-bold text-foreground mb-6 font-mono uppercase tracking-tighter text-center">
               {t("summary")}
             </h2>
@@ -1085,28 +1208,30 @@ export default function ExamResultsPage() {
               </div>
             </div>
 
-            <Button
-              onClick={loadStudentMarks}
-              disabled={
-                !selectedExam ||
-                !selectedClass ||
-                !selectedSubject ||
-                studentsLoading
-              }
-              className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shadow-lg"
-            >
-              {studentsLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t("loadingStudents")}
-                </>
-              ) : (
-                <>
-                  <ClipboardCheck className="h-4 w-4" />
-                  {t("enterResults")}
-                </>
-              )}
-            </Button>
+            {canWriteResults && (
+              <Button
+                onClick={loadStudentMarks}
+                disabled={
+                  !selectedExam ||
+                  !selectedClass ||
+                  !selectedSubject ||
+                  studentsLoading
+                }
+                className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shadow-lg"
+              >
+                {studentsLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("loadingStudents")}
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCheck className="h-4 w-4" />
+                    {t("enterResults")}
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>

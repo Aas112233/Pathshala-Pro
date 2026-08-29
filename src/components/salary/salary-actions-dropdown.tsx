@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { MoreVertical, Pencil, Trash2, Eye, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SalaryLedger } from "@/types/entities";
@@ -22,6 +23,7 @@ export function SalaryActionsDropdown({
   onPayment,
   onGenerateSlip,
 }: SalaryActionsDropdownProps) {
+  const t = useTranslations("salary");
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +50,7 @@ export function SalaryActionsDropdown({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        aria-label="Salary actions"
+        aria-label={t("ui.actions.aria")}
       >
         <MoreVertical className="h-4 w-4" />
       </button>
@@ -69,7 +71,7 @@ export function SalaryActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <Eye className="h-4 w-4" />
-                <span>View Details</span>
+                <span>{t("ui.actions.viewDetails")}</span>
               </button>
             )}
             {onEdit && !isPaid && (
@@ -78,7 +80,7 @@ export function SalaryActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <Pencil className="h-4 w-4" />
-                <span>Edit</span>
+                <span>{t("ui.actions.edit")}</span>
               </button>
             )}
             {onPayment && !isPaid && (
@@ -87,7 +89,7 @@ export function SalaryActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
               >
                 <FileText className="h-4 w-4" />
-                <span>Record Payment</span>
+                <span>{t("ui.actions.recordPayment")}</span>
               </button>
             )}
             {onGenerateSlip && (
@@ -96,7 +98,7 @@ export function SalaryActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <FileText className="h-4 w-4" />
-                <span>Download Slip</span>
+                <span>{t("ui.actions.downloadSlip")}</span>
               </button>
             )}
             {onDelete && !isPaid && (
@@ -105,12 +107,12 @@ export function SalaryActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
-                <span>Delete</span>
+                <span>{t("ui.actions.delete")}</span>
               </button>
             )}
             {isPaid && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                <span className="text-amber-600 font-medium">Locked</span> - Paid records cannot be modified
+                <span className="text-amber-600 font-medium">{t("ui.actions.locked")}</span> - {t("ui.actions.paidLocked")}
               </div>
             )}
           </div>

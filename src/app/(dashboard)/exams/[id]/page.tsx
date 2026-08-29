@@ -29,11 +29,11 @@ import { useTenantFormatting } from "@/components/providers/tenant-settings-prov
 import { cn } from "@/lib/utils";
 
 const EXAM_TYPES = [
-  { value: "MID_TERM", label: "Mid-Term" },
-  { value: "FINAL", label: "Final" },
-  { value: "UNIT_TEST", label: "Unit Test" },
-  { value: "ANNUAL", label: "Annual" },
-];
+  { value: "MID_TERM", labelKey: "examTypes.midTerm" },
+  { value: "FINAL", labelKey: "examTypes.final" },
+  { value: "UNIT_TEST", labelKey: "examTypes.unitTest" },
+  { value: "ANNUAL", labelKey: "examTypes.annual" },
+] as const;
 
 interface ClassOption {
   id: string;
@@ -477,7 +477,7 @@ export default function EditExamPage() {
                   setFormData({ ...formData, name: e.target.value });
                   if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
                 }}
-                placeholder="Mid-Term Examination 2025"
+                placeholder={t("examNamePlaceholder")}
                 aria-invalid={Boolean(formErrors.name)}
               />
             </ERPFormField>
@@ -562,7 +562,7 @@ export default function EditExamPage() {
                   <SelectContent>
                     {EXAM_TYPES.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
-                        {type.label}
+                        {t(type.labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>

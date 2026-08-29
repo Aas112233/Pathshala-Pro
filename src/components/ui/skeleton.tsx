@@ -38,7 +38,7 @@ export function MetricCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/60 bg-card p-5 shadow-xs",
+        "rounded-lg border border-border/80 bg-card p-4 shadow-none",
         className
       )}
       aria-busy="true"
@@ -85,7 +85,7 @@ export function CardGridSkeleton({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-border/60 bg-card p-4 shadow-xs"
+          className="rounded-lg border border-border/80 bg-card p-4 shadow-none"
         >
           <div className="flex items-center gap-3">
             <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
@@ -113,7 +113,7 @@ export function ChartWidgetSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/60 bg-card p-5 shadow-xs",
+        "rounded-lg border border-border/80 bg-card p-4 shadow-none",
         className
       )}
       aria-busy="true"

@@ -480,6 +480,16 @@ export const createBankAccountSchema = z.object({
 
 export const updateBankAccountSchema = createBankAccountSchema.partial();
 
+// Fee head accounting mappings
+export const updateFeeHeadMappingsSchema = z.object({
+  mappings: z.array(
+    z.object({
+      code: z.string().min(1).max(50),
+      accountCode: z.string().regex(/^[0-9]{3,10}$/, "A valid account code is required"),
+    })
+  ).min(1),
+});
+
 // Timetable schemas
 export const DAYS_OF_WEEK = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
 
@@ -774,3 +784,96 @@ export const createNoticeSchema = z.object({
 });
 
 export const updateNoticeSchema = createNoticeSchema.partial();
+
+// Question Bank & Question Paper Schemas
+export const QUESTION_TYPES = [
+  "MCQ",
+  "SHORT",
+  "DESCRIPTIVE",
+  "CREATIVE_NCTB",
+  "TRUE_FALSE",
+  "FILL_BLANK",
+] as const;
+
+export const QUESTION_DIFFICULTIES = ["EASY", "MEDIUM", "HARD"] as const;
+export const BLOOM_LEVELS = ["KNOWLEDGE", "UNDERSTANDING", "APPLICATION", "ANALYSIS"] as const;
+
+export const createQuestionSchema = z.object({
+  classId: z.string().min(1, "Class is required"),
+  subjectId: z.string().min(1, "Subject is required"),
+  chapter: z.string().optional().nullable(),
+  topic: z.string().optional().nullable(),
+  type: z.enum(QUESTION_TYPES).default("MCQ"),
+  difficulty: z.enum(QUESTION_DIFFICULTIES).default("MEDIUM"),
+  bloomLevel: z.enum(BLOOM_LEVELS).optional().nullable(),
+  questionText: z.string().min(1, "Question text is required"),
+  stimulus: z.string().optional().nullable(),
+  options: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    isCorrect: z.boolean(),
+  })).optional().nullable(),
+  subQuestions: z.array(z.object({
+    label: z.string(),
+    text: z.string(),
+    marks: z.number().min(0),
+  })).optional().nullable(),
+  correctAnswer: z.string().optional().nullable(),
+  explanation: z.string().optional().nullable(),
+  marks: z.number().min(0.5).default(1),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const updateQuestionSchema = createQuestionSchema.partial();
+
+export const QUESTION_PAPER_STATUSES = ["DRAFT", "READY", "PUBLISHED", "ARCHIVED"] as const;
+
+export const questionPaperSectionSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, "Section title is required"),
+  instructions: z.string().optional().nullable(),
+  totalMarks: z.number().min(0),
+  questionIds: z.array(z.string()).default([]),
+});
+
+export const createQuestionPaperSchema = z.object({
+  title: z.string().min(2, "Paper title is required"),
+  code: z.string().optional().nullable(),
+  academicYearId: z.string().min(1, "Academic year is required"),
+  classId: z.string().min(1, "Class is required"),
+  subjectId: z.string().min(1, "Subject is required"),
+  examId: z.string().optional().nullable(),
+  totalMarks: z.number().min(1).default(100),
+  durationMinutes: z.number().int().min(10).default(180),
+  instructions: z.string().optional().nullable(),
+  sections: z.array(questionPaperSectionSchema).min(1, "At least one section is required"),
+  status: z.enum(QUESTION_PAPER_STATUSES).default("DRAFT"),
+});
+
+export const updateQuestionPaperSchema = createQuestionPaperSchema.partial();
+
+export const generateBlueprintSchema = z.object({
+  title: z.string().min(2, "Paper title is required"),
+  academicYearId: z.string().min(1, "Academic year is required"),
+  classId: z.string().min(1, "Class is required"),
+  subjectId: z.string().min(1, "Subject is required"),
+  examId: z.string().optional().nullable(),
+  totalMarks: z.number().min(1).default(100),
+  durationMinutes: z.number().int().min(10).default(180),
+  instructions: z.string().optional().nullable(),
+  blueprint: z.object({
+    mcqCount: z.number().int().min(0).default(20),
+    mcqMarksEach: z.number().min(0.5).default(1),
+    shortCount: z.number().int().min(0).default(5),
+    shortMarksEach: z.number().min(1).default(4),
+    descriptiveCount: z.number().int().min(0).default(5),
+    descriptiveMarksEach: z.number().min(1).default(10),
+    creativeCount: z.number().int().min(0).default(0),
+    creativeMarksEach: z.number().min(1).default(10),
+    difficultyRatio: z.object({
+      easy: z.number().min(0).max(100).default(30),
+      medium: z.number().min(0).max(100).default(50),
+      hard: z.number().min(0).max(100).default(20),
+    }).optional(),
+  }),
+});

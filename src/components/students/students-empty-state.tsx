@@ -1,6 +1,7 @@
 "use client";
 
 import { GraduationCap, Plus, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,18 +16,20 @@ interface StudentsEmptyStateProps {
 }
 
 export function StudentsEmptyState({
-  title = "No students found",
-  description = "Get started by adding your first student or adjust your filters.",
+  title,
+  description,
+
   showIllustration = true,
   onAddNew,
   onClearFilters,
   hasActiveFilters = false,
   className,
 }: StudentsEmptyStateProps) {
+  const t = useTranslations("students");
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-12 text-center",
+        "flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 p-12 text-center",
         className
       )}
     >
@@ -46,13 +49,13 @@ export function StudentsEmptyState({
       <div className="flex items-center gap-3">
         {hasActiveFilters && onClearFilters && (
           <Button variant="outline" onClick={onClearFilters}>
-            Clear Filters
+            {t("filters.clear")}
           </Button>
         )}
         {onAddNew && (
           <Button onClick={onAddNew}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Student
+            {t("addStudent")}
           </Button>
         )}
       </div>

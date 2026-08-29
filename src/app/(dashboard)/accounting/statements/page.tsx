@@ -30,11 +30,18 @@ import {
   Filter,
 } from "lucide-react";
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 type StatementType = "STUDENT" | "STAFF" | "ACCOUNT";
 
 export default function AccountingStatementsPage() {
   const t = useTranslations("accounting.statements");
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadAccounting = hasPermission(perms, "accounting", "read");
+  const canWriteAccounting = hasPermission(perms, "accounting", "write");
+  const canManageAccounting = hasPermission(perms, "accounting", "manage");
   const [statementType, setStatementType] = useState<StatementType>("STUDENT");
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
@@ -257,7 +264,7 @@ export default function AccountingStatementsPage() {
           </Button>
           <Button
             onClick={handlePrint}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm text-xs h-9 cursor-pointer"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs h-9 cursor-pointer"
           >
             <Printer className="h-3.5 w-3.5" />
             {t("printStatement")}
@@ -265,38 +272,46 @@ export default function AccountingStatementsPage() {
         </div>
       </div>
 
+      {!isAuthLoading && !canReadAccounting ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view accounting.</p>
+        </div>
+      ) : (
+        <>
+
       {/* Statement Category Tabs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-1.5 bg-muted/40 rounded-2xl border border-border">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-1 bg-muted/40 rounded-lg border border-border">
         <button
           type="button"
           onClick={() => handleTypeChange("STUDENT")}
-          className={`flex items-center justify-center gap-2.5 p-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             statementType === "STUDENT"
               ? "bg-card text-foreground shadow-xs ring-1 ring-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <GraduationCap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          <GraduationCap className="h-4 w-4 text-primary" />
           <span>{t("studentStatement")}</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleTypeChange("STAFF")}
-          className={`flex items-center justify-center gap-2.5 p-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             statementType === "STAFF"
               ? "bg-card text-foreground shadow-xs ring-1 ring-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          <Users className="h-4 w-4 text-primary" />
           <span>{t("staffLedger")}</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleTypeChange("ACCOUNT")}
-          className={`flex items-center justify-center gap-2.5 p-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             statementType === "ACCOUNT"
               ? "bg-card text-foreground shadow-xs ring-1 ring-border"
               : "text-muted-foreground hover:text-foreground"
@@ -396,7 +411,7 @@ export default function AccountingStatementsPage() {
               </div>
 
               <div className="md:col-span-1">
-                <Button type="submit" className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
+                <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground text-xs">
                   <Filter className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -429,9 +444,9 @@ export default function AccountingStatementsPage() {
 
       {/* Entity Profile Ribbon */}
       {entity && (
-        <div className="p-4 rounded-2xl border border-border/80 bg-card flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+        <div className="p-4 rounded-lg border border-border/80 bg-card flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="h-12 w-12 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-extrabold text-lg">
+            <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-semibold text-lg">
               {statementType === "STUDENT" && <GraduationCap className="h-6 w-6" />}
               {statementType === "STAFF" && <Users className="h-6 w-6" />}
               {statementType === "ACCOUNT" && <Landmark className="h-6 w-6" />}
@@ -568,6 +583,8 @@ export default function AccountingStatementsPage() {
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />
+        </>
+      )}
     </div>
   );
 }

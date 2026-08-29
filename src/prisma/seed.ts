@@ -26,7 +26,7 @@ function calculateGrade(marks: number, maxMarks: number) {
 }
 
 async function main() {
-  console.log("🌱 Seeding database with Exam & Promotion System...\n");
+  console.log("Seeding database with Exam & Promotion System...\n");
 
   // ==================== TENANT ====================
   const tenant = await prisma.tenant.create({
@@ -61,7 +61,7 @@ async function main() {
       gradingSystem: "GPA",
     },
   });
-  console.log(`✅ Created tenant: ${tenant.name}`);
+  console.log(`Created tenant: ${tenant.name}`);
 
   // ==================== USERS ====================
   const adminUser = await prisma.user.create({
@@ -74,7 +74,7 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✅ Created admin: ${adminUser.email}`);
+  console.log(`Created admin: ${adminUser.email}`);
 
   const teacherUser = await prisma.user.create({
     data: {
@@ -86,7 +86,7 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✅ Created teacher: ${teacherUser.email}`);
+  console.log(`Created teacher: ${teacherUser.email}`);
 
   const clerkUser = await prisma.user.create({
     data: {
@@ -98,7 +98,7 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✅ Created clerk: ${clerkUser.email}`);
+  console.log(`Created clerk: ${clerkUser.email}`);
 
   // ==================== ACADEMIC YEARS ====================
   const currentYear = new Date().getFullYear();
@@ -112,7 +112,7 @@ async function main() {
       isClosed: false,
     },
   });
-  console.log(`✅ Created academic year: ${academicYear2025.label}`);
+  console.log(`Created academic year: ${academicYear2025.label}`);
 
   // ==================== CLASSES ====================
   const classes = await Promise.all([
@@ -132,7 +132,7 @@ async function main() {
       data: { tenantId: tenant.tenantId, classId: "CLS-10", name: "Class 10", classNumber: 10 },
     }),
   ]);
-  console.log(`✅ Created ${classes.length} classes`);
+  console.log(`Created ${classes.length} classes`);
 
   // ==================== SECTIONS ====================
   const sections = await Promise.all([
@@ -146,7 +146,7 @@ async function main() {
       data: { tenantId: tenant.tenantId, sectionId: "SEC-A-7", classId: classes[1].id, name: "Section A", shortName: "A" },
     }),
   ]);
-  console.log(`✅ Created ${sections.length} sections`);
+  console.log(`Created ${sections.length} sections`);
 
   // ==================== SUBJECTS ====================
   const subjects = await Promise.all([
@@ -261,7 +261,7 @@ async function main() {
       },
     }),
   ]);
-  console.log(`✅ Created ${subjects.length} subjects`);
+  console.log(`Created ${subjects.length} subjects`);
 
   // ==================== EXAMS ====================
   const midTermExam = await prisma.exam.create({
@@ -278,7 +278,7 @@ async function main() {
       passPercentage: 33,
     },
   });
-  console.log(`✅ Created exam: ${midTermExam.name}`);
+  console.log(`Created exam: ${midTermExam.name}`);
 
   const finalExam = await prisma.exam.create({
     data: {
@@ -294,7 +294,7 @@ async function main() {
       passPercentage: 33,
     },
   });
-  console.log(`✅ Created exam: ${finalExam.name}`);
+  console.log(`Created exam: ${finalExam.name}`);
 
   // ==================== EXAM SUBJECTS (for Mid-Term) ====================
   const examSubjects = await Promise.all([
@@ -317,7 +317,7 @@ async function main() {
       data: { tenantId: tenant.tenantId, examId: midTermExam.id, subjectId: subjects[5].id, maxMarks: 50, passMarks: 20 },
     }),
   ]);
-  console.log(`✅ Created ${examSubjects.length} exam-subject mappings`);
+  console.log(`Created ${examSubjects.length} exam-subject mappings`);
 
   // ==================== STUDENTS ====================
   const student1 = await prisma.studentProfile.create({
@@ -338,7 +338,7 @@ async function main() {
       admissionDate: new Date(),
     },
   });
-  console.log(`✅ Created student: ${student1.firstName} ${student1.lastName} (Class 6)`);
+  console.log(`Created student: ${student1.firstName} ${student1.lastName} (Class 6)`);
 
   const student2 = await prisma.studentProfile.create({
     data: {
@@ -358,7 +358,7 @@ async function main() {
       admissionDate: new Date(),
     },
   });
-  console.log(`✅ Created student: ${student2.firstName} ${student2.lastName} (Class 6)`);
+  console.log(`Created student: ${student2.firstName} ${student2.lastName} (Class 6)`);
 
   const student3 = await prisma.studentProfile.create({
     data: {
@@ -377,7 +377,7 @@ async function main() {
       admissionDate: new Date(),
     },
   });
-  console.log(`✅ Created student: ${student3.firstName} ${student3.lastName} (Class 6)`);
+  console.log(`Created student: ${student3.firstName} ${student3.lastName} (Class 6)`);
 
   const student4 = await prisma.studentProfile.create({
     data: {
@@ -396,10 +396,10 @@ async function main() {
       admissionDate: new Date(),
     },
   });
-  console.log(`✅ Created student: ${student4.firstName} ${student4.lastName} (Class 7)`);
+  console.log(`Created student: ${student4.firstName} ${student4.lastName} (Class 7)`);
 
   // ==================== EXAM RESULTS ====================
-  console.log("\n📝 Creating exam results...\n");
+  console.log("\nCreating exam results...\n");
 
   // Student 1 - Rahim Ahmed - EXCELLENT STUDENT (All Pass)
   const rahimResults = await Promise.all([
@@ -482,7 +482,7 @@ async function main() {
       },
     }),
   ]);
-  console.log(`✅ Created ${rahimResults.length} results for Rahim Ahmed (ALL PASS - Average: ${(85+78+92+88+82+90)/6}% - PROMOTED)`);
+  console.log(`Created ${rahimResults.length} results for Rahim Ahmed (ALL PASS - Average: ${(85+78+92+88+82+90)/6}% - PROMOTED)`);
 
   // Student 2 - Fatima Begum - AVERAGE STUDENT (All Pass)
   const fatimaResults = await Promise.all([
@@ -559,7 +559,7 @@ async function main() {
       },
     }),
   ]);
-  console.log(`✅ Created ${fatimaResults.length} results for Fatima Begum (ALL PASS - Average: ~64% - PROMOTED)`);
+  console.log(`Created ${fatimaResults.length} results for Fatima Begum (ALL PASS - Average: ~64% - PROMOTED)`);
 
   // Student 3 - Arjun Das - FAILING STUDENT (Multiple Fails)
   const arjunResults = await Promise.all([
@@ -638,7 +638,7 @@ async function main() {
       },
     }),
   ]);
-  console.log(`✅ Created ${arjunResults.length} results for Arjun Das (FAILED in 2 subjects - English, Math - NEEDS RE-EXAM)`);
+  console.log(`Created ${arjunResults.length} results for Arjun Das (FAILED in 2 subjects - English, Math - NEEDS RE-EXAM)`);
 
   // Student 4 - Amina Khatun (Class 7) - Good Student
   const aminaResults = await Promise.all([
@@ -715,10 +715,10 @@ async function main() {
       },
     }),
   ]);
-  console.log(`✅ Created ${aminaResults.length} results for Amina Khatun (ALL PASS - Average: ~77% - PROMOTED)`);
+  console.log(`Created ${aminaResults.length} results for Amina Khatun (ALL PASS - Average: ~77% - PROMOTED)`);
 
   // ==================== PROMOTION RULES ====================
-  console.log("\n📋 Creating promotion rules...\n");
+  console.log("\n Creating promotion rules...\n");
 
   const promotionRules = await Promise.all([
     prisma.promotionRule.create({
@@ -792,10 +792,10 @@ async function main() {
       },
     }),
   ]);
-  console.log(`✅ Created ${promotionRules.length} promotion rules`);
+  console.log(`Created ${promotionRules.length} promotion rules`);
 
   // ==================== CLASS PROMOTIONS ====================
-  console.log("\n🎓 Creating class promotions...\n");
+  console.log("\n Creating class promotions...\n");
 
   // Promote Rahim Ahmed (Excellent student)
   const rahimPromotion = await prisma.classPromotion.create({
@@ -812,7 +812,7 @@ async function main() {
       decidedAt: new Date(),
     },
   });
-  console.log(`✅ Promoted: Rahim Ahmed (Class 6 → Class 7)`);
+  console.log(`Promoted: Rahim Ahmed (Class 6 → Class 7)`);
 
   // Promote Fatima Begum (Average student)
   const fatimaPromotion = await prisma.classPromotion.create({
@@ -829,7 +829,7 @@ async function main() {
       decidedAt: new Date(),
     },
   });
-  console.log(`✅ Promoted: Fatima Begum (Class 6 → Class 7)`);
+  console.log(`Promoted: Fatima Begum (Class 6 → Class 7)`);
 
   // Arjun Das - RETAINED (Failed in 2 subjects)
   const arjunPromotion = await prisma.classPromotion.create({
@@ -847,7 +847,7 @@ async function main() {
       decidedAt: new Date(),
     },
   });
-  console.log(`⚠️  RETAINED: Arjun Das (Class 6 → Class 6) - Failed in 2 subjects`);
+  console.log(`  RETAINED: Arjun Das (Class 6 → Class 6) - Failed in 2 subjects`);
 
   // Promote Amina Khatun (Good student from Class 7)
   const aminaPromotion = await prisma.classPromotion.create({
@@ -864,7 +864,7 @@ async function main() {
       decidedAt: new Date(),
     },
   });
-  console.log(`✅ Promoted: Amina Khatun (Class 7 → Class 8)`);
+  console.log(`Promoted: Amina Khatun (Class 7 → Class 8)`);
 
   // ==================== STAFF ====================
   const staff = await prisma.staffProfile.create({
@@ -882,7 +882,7 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✅ Created staff: ${staff.firstName} ${staff.lastName}`);
+  console.log(`Created staff: ${staff.firstName} ${staff.lastName}`);
 
   // Create teacher staff
   const teacherStaff = await prisma.staffProfile.create({
@@ -900,63 +900,63 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✅ Created teacher staff: ${teacherStaff.firstName} ${teacherStaff.lastName}`);
+  console.log(`Created teacher staff: ${teacherStaff.firstName} ${teacherStaff.lastName}`);
 
   // ==================== SUMMARY ====================
-  console.log("\n✨═══════════════════════════════════════════════════════════✨");
-  console.log("✨          DATABASE SEEDING COMPLETED SUCCESSFULLY!          ✨");
-  console.log("✨═══════════════════════════════════════════════════════════✨\n");
+  console.log("\n═══════════════════════════════════════════════════════════");
+  console.log("          DATABASE SEEDING COMPLETED SUCCESSFULLY!          ");
+  console.log("═══════════════════════════════════════════════════════════\n");
 
-  console.log("📊 SEEDING SUMMARY:");
+  console.log(" SEEDING SUMMARY:");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log(`   🏫  Tenants:        1 (Demo High School)`);
-  console.log(`   👤  Users:          3 (Admin, Teacher, Clerk)`);
-  console.log(`   📅  Academic Year:  1 (${academicYear2025.label})`);
-  console.log(`   🏛️  Classes:        5 (Class 6-10)`);
-  console.log(`   📚  Sections:       3`);
-  console.log(`   📖  Subjects:       10`);
-  console.log(`   📝  Exams:          2 (Mid-Term, Final)`);
-  console.log(`   🎓  Students:       4`);
-  console.log(`   📊  Exam Results:   24 (6 per student)`);
-  console.log(`   📋  Promotion Rules: 5`);
-  console.log(`   🎓  Promotions:     4 (3 Promoted, 1 Retained)`);
-  console.log(`   👨‍🏫  Staff:           2`);
+  console.log(`     Tenants:        1 (Demo High School)`);
+  console.log(`     Users:          3 (Admin, Teacher, Clerk)`);
+  console.log(`     Academic Year:  1 (${academicYear2025.label})`);
+  console.log(`     Classes:        5 (Class 6-10)`);
+  console.log(`     Sections:       3`);
+  console.log(`     Subjects:       10`);
+  console.log(`    Exams:          2 (Mid-Term, Final)`);
+  console.log(`     Students:       4`);
+  console.log(`     Exam Results:   24 (6 per student)`);
+  console.log(`     Promotion Rules: 5`);
+  console.log(`     Promotions:     4 (3 Promoted, 1 Retained)`);
+  console.log(`     Staff:           2`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  console.log("📈 EXAM RESULTS SUMMARY:");
+  console.log(" EXAM RESULTS SUMMARY:");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("   ✅ Rahim Ahmed:   ALL PASS  → PROMOTED to Class 7");
-  console.log("   ✅ Fatima Begum:  ALL PASS  → PROMOTED to Class 7");
-  console.log("   ⚠️  Arjun Das:     FAILED    → RETAINED in Class 6");
+  console.log("   Rahim Ahmed:   ALL PASS  → PROMOTED to Class 7");
+  console.log("   Fatima Begum:  ALL PASS  → PROMOTED to Class 7");
+  console.log("     Arjun Das:     FAILED    → RETAINED in Class 6");
   console.log("      └─ Failed: English (28%), Mathematics (25%)");
   console.log("      └─ Re-exam allowed for both subjects");
-  console.log("   ✅ Amina Khatun:  ALL PASS  → PROMOTED to Class 8");
+  console.log("   Amina Khatun:  ALL PASS  → PROMOTED to Class 8");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  console.log("🔐 LOGIN CREDENTIALS:");
+  console.log(" LOGIN CREDENTIALS:");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("   Admin:   admin@demohighschool.edu  /  password123");
   console.log("   Teacher: teacher@demohighschool.edu /  password123");
   console.log("   Clerk:   clerk@demohighschool.edu  /  password123");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  console.log("🎯 FEATURES READY TO USE:");
+  console.log(" FEATURES READY TO USE:");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("   ✓ Create and manage subjects");
-  console.log("   ✓ Create and manage exams (Mid-Term, Final, etc.)");
-  console.log("   ✓ Enter exam results for students");
-  console.log("   ✓ Auto-calculate grades and percentages");
-  console.log("   ✓ Configure promotion rules per class");
-  console.log("   ✓ Calculate promotion eligibility");
-  console.log("   ✓ Process student promotions/retentions");
-  console.log("   ✓ Track promotion history");
-  console.log("   ✓ Handle re-exam cases");
+  console.log("    Create and manage subjects");
+  console.log("    Create and manage exams (Mid-Term, Final, etc.)");
+  console.log("    Enter exam results for students");
+  console.log("    Auto-calculate grades and percentages");
+  console.log("    Configure promotion rules per class");
+  console.log("    Calculate promotion eligibility");
+  console.log("    Process student promotions/retentions");
+  console.log("    Track promotion history");
+  console.log("    Handle re-exam cases");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seeding failed:", e);
+    console.error(" Seeding failed:", e);
     process.exit(1);
   })
   .finally(async () => {

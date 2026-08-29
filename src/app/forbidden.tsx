@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from 'next-intl';
 
 export default function Forbidden() {
+  const t = useTranslations('ForbiddenPage');
+
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center p-4 text-center">
       <div className="relative mb-6">
@@ -15,21 +18,21 @@ export default function Forbidden() {
       </div>
       
       <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-orange-600">
-        403 Forbidden
+        {t("title")}
       </h1>
       
       <h2 className="mb-4 text-lg font-medium text-foreground">
-        Access Denied
+        {t("subtitle")}
       </h2>
       
       <p className="mx-auto mb-8 max-w-sm text-sm text-muted-foreground leading-relaxed">
-        You do not have the required permissions or role to view this page. If you believe this is an error, please contact your Super Admin to upgrade your role.
+        {t("message")}
       </p>
       
       <div className="flex w-full max-w-sm gap-3 sm:flex-row flex-col justify-center">
         <Link href="/">
           <Button size="lg" className="w-full sm:w-auto">
-             Dashboard
+            {t("dashboard")}
           </Button>
         </Link>
         <Button 
@@ -38,7 +41,7 @@ export default function Forbidden() {
           className="w-full sm:w-auto"
           onClick={() => window.history.back()}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t("goBack")}
         </Button>
       </div>
     </div>

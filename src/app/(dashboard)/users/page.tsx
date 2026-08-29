@@ -14,7 +14,7 @@ import { UserFormModal } from "@/components/users/user-form-modal";
 import { PermissionModal } from "@/components/users/permission-modal";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, ACCESS_LEVEL_LABELS } from "@/lib/permissions";
 import type { UserRecord } from "@/types/users";
 
 export default function UsersPage() {
@@ -74,8 +74,22 @@ export default function UsersPage() {
       accessorKey: "role",
       header: t('tableColumns.role'),
       cell: ({ getValue }) => (
-        <span className="capitalize">{getValue<string>().toLowerCase()}</span>
+        <span className="capitalize font-medium">{getValue<string>().replace(/_/g, " ").toLowerCase()}</span>
       ),
+    },
+    {
+      accessorKey: "accessLevel",
+      header: "Access Level",
+      cell: ({ getValue }) => {
+        const level = getValue<number | null>();
+        if (!level) return <span className="text-xs text-muted-foreground">—</span>;
+        const label = ACCESS_LEVEL_LABELS[level];
+        return (
+          <span className="text-xs text-muted-foreground">
+            L{level}{label ? ` — ${label}` : ""}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "isActive",
@@ -176,7 +190,7 @@ export default function UsersPage() {
       </PageHeader>
 
       {!isAuthLoading && !canReadUsers ? (
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="rounded-lg border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             You do not have permission to view user accounts.

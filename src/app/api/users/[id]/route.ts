@@ -12,6 +12,13 @@ import {
 import { updateUserSchema } from "@/lib/schemas";
 import { hashPassword } from "@/lib/auth";
 import { requireApiAccess } from "@/lib/api-auth";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+import {
+  canAssignRole,
+  canAssignAccessLevel,
+  canGrantPermissions,
+  getEffectivePermissions,
+} from "@/lib/permissions";
 import {
   getUserUsageCounts,
   integrityViolation,
@@ -40,6 +47,7 @@ export async function GET(
         email: true,
         name: true,
         role: true,
+        accessLevel: true,
         permissions: true,
         isActive: true,
         staffProfileId: true,
@@ -96,6 +104,26 @@ export async function PUT(
       return notFound("User not found");
     }
 
+    // ── Privilege-escalation guards ──
+    const requester: any = (access as any).authContext.user;
+    const isRequesterPlatformOwner = isPlatformOwnerEmail(requester.email);
+    const requesterEffectivePerms = getEffectivePermissions(requester.role, requester.permissions, requester.accessLevel);
+    if ((data as any).role && !canAssignRole(requester.role, isRequesterPlatformOwner, (data as any).role)) {
+      return forbidden("You are not allowed to assign this role");
+    }
+    if ((data as any).accessLevel !== undefined && !canAssignAccessLevel(requester.accessLevel, (data as any).accessLevel as number)) {
+      return forbidden("You cannot assign a more privileged access level than your own");
+    }
+    if ((data as any).permissions) {
+      const grant = canGrantPermissions(requesterEffectivePerms, (data as any).permissions);
+      if (!grant.allowed) {
+        return forbidden(`You cannot grant ${grant.action} permission for ${grant.module} module`);
+      }
+    }
+    if ((data as any).email && isPlatformOwnerEmail((data as any).email) && !isRequesterPlatformOwner) {
+      return forbidden("Cannot assign a platform owner email from tenant context");
+    }
+
     // Check email uniqueness if changing email
     if (data.email && data.email !== existingUser.email) {
       const emailExists = await prisma.user.findFirst({
@@ -124,6 +152,7 @@ export async function PUT(
         email: true,
         name: true,
         role: true,
+        accessLevel: true,
         permissions: true,
         isActive: true,
         updatedAt: true,

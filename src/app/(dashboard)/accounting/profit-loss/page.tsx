@@ -22,10 +22,17 @@ import {
 } from "lucide-react";
 import { useProfitLoss } from "@/hooks/use-queries";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function ProfitLossPage() {
   const t = useTranslations("accounting.profitLoss");
   const { formatCurrency, currencySymbol } = useTenantFormatting();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadAccounting = hasPermission(perms, "accounting", "read");
+  const canWriteAccounting = hasPermission(perms, "accounting", "write");
+  const canManageAccounting = hasPermission(perms, "accounting", "manage");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const { data: profitLossResponse, isLoading } = useProfitLoss(selectedYear);
@@ -76,6 +83,14 @@ export default function ProfitLossPage() {
         </div>
       </PageHeader>
 
+      {!isAuthLoading && !canReadAccounting ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view accounting.</p>
+        </div>
+      ) : (
+        <>
+
       {/* Executive Financial Overview Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Gross Revenue */}
@@ -107,7 +122,7 @@ export default function ProfitLossPage() {
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {t("salaries")}
               </span>
-              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <Users className="h-4 w-4" />
               </div>
             </div>
@@ -318,6 +333,8 @@ export default function ProfitLossPage() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

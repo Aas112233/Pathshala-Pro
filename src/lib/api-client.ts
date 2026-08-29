@@ -330,6 +330,14 @@ export const bankAccountsApi = {
     api.post<any>("/api/accounting/accounts", data),
 };
 
+// Fee Head Accounting API
+export const feeHeadsApi = {
+  list: () =>
+    api.get<{ feeHeads: any[]; revenueAccounts: any[] }>("/api/accounting/fee-heads"),
+  update: (data: { mappings: Array<{ code: string; accountCode: string }> }) =>
+    api.put<any>("/api/accounting/fee-heads", data),
+};
+
 // Profit & Loss API
 export const profitLossApi = {
   get: (year?: number) =>

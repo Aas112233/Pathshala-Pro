@@ -23,6 +23,8 @@ import type { CreateStudentDTO } from "@/viewmodels/students/use-student-view-mo
 import { useStudentViewModel } from "@/viewmodels/students/use-student-view-model";
 import { StudentStatusBadge } from "@/components/students/student-status-badge";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 interface Student {
   id: string;
@@ -65,6 +67,11 @@ export default function AdmissionsPage() {
   const [editSectionId, setEditSectionId] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { formatDate } = useTenantFormatting();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "admissions", "read");
+  const canWrite = hasPermission(perms, "admissions", "write");
+  const canManage = hasPermission(perms, "admissions", "manage");
 
   const {
     students,
@@ -88,7 +95,7 @@ export default function AdmissionsPage() {
     queryKey: ["classes-all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
-      if (!res.ok) throw new Error("Failed to fetch classes");
+      if (!res.ok) throw new Error(t('admissions.fetchClassesError'));
       return res.json();
     },
   });
@@ -99,7 +106,7 @@ export default function AdmissionsPage() {
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
       const res = await fetch(`/api/groups?limit=100&classId=${selectedClass}`);
-      if (!res.ok) throw new Error("Failed to fetch groups");
+      if (!res.ok) throw new Error(t('admissions.fetchGroupsError'));
       return res.json();
     },
     enabled: !!selectedClass,
@@ -116,7 +123,7 @@ export default function AdmissionsPage() {
         ...(selectedGroup && { groupId: selectedGroup }),
       });
       const res = await fetch(`/api/sections?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch sections");
+      if (!res.ok) throw new Error(t('admissions.fetchSectionsError'));
       return res.json();
     },
     enabled: !!selectedClass,
@@ -127,7 +134,7 @@ export default function AdmissionsPage() {
     queryKey: ["academic-years-all"],
     queryFn: async () => {
       const res = await fetch("/api/academic-years?limit=100");
-      if (!res.ok) throw new Error("Failed to fetch academic years");
+      if (!res.ok) throw new Error(t('admissions.fetchAcademicYearsError'));
       return res.json();
     },
   });
@@ -177,8 +184,8 @@ export default function AdmissionsPage() {
   const handleOpenStudentSelector = () => {
     if (!canAddStudents) {
       setFormErrors({
-        selectedAcademicYear: !selectedAcademicYear ? `${t('admissions.academicYear')} is required` : undefined,
-        selectedClass: !selectedClass ? `${t('admissions.class')} is required` : undefined,
+        selectedAcademicYear: !selectedAcademicYear ? t('admissions.requiredField', { field: t('admissions.academicYear') }) : undefined,
+        selectedClass: !selectedClass ? t('admissions.requiredField', { field: t('admissions.class') }) : undefined,
       });
       toast.error(t('admissions.pleaseSelectClassAndYear'));
       return;
@@ -216,7 +223,7 @@ export default function AdmissionsPage() {
 
     if (!res.ok) {
       const error = await res.json();
-      throw new Error(error.message || "Failed to create student");
+      throw new Error(error.message || t('admissions.createStudentError'));
     }
 
     const createdStudent = await res.json();
@@ -257,7 +264,7 @@ export default function AdmissionsPage() {
       const results = await Promise.all(updates);
       const errors = results.filter((r) => !r.ok);
       if (errors.length > 0) {
-        throw new Error(`Failed to update ${errors.length} student(s)`);
+        throw new Error(t('admissions.updateStudentsError', { count: errors.length }));
       }
     },
     onSuccess: () => {
@@ -273,8 +280,8 @@ export default function AdmissionsPage() {
 
   const handleSubmit = () => {
     const nextErrors = {
-      selectedAcademicYear: !selectedAcademicYear ? `${t('admissions.academicYear')} is required` : undefined,
-      selectedClass: !selectedClass ? `${t('admissions.class')} is required` : undefined,
+      selectedAcademicYear: !selectedAcademicYear ? t('admissions.requiredField', { field: t('admissions.academicYear') }) : undefined,
+      selectedClass: !selectedClass ? t('admissions.requiredField', { field: t('admissions.class') }) : undefined,
     };
     setFormErrors(nextErrors);
     if (admissionItems.length === 0) {
@@ -313,7 +320,7 @@ export default function AdmissionsPage() {
     queryFn: async () => {
       if (!editClassId) return { data: [] };
       const res = await fetch(`/api/groups?limit=100&classId=${editClassId}`);
-      if (!res.ok) throw new Error("Failed to fetch groups");
+      if (!res.ok) throw new Error(t('admissions.fetchGroupsError'));
       return res.json();
     },
     enabled: !!editClassId && isEditModalOpen,
@@ -329,7 +336,7 @@ export default function AdmissionsPage() {
         ...(editGroupId && { groupId: editGroupId }),
       });
       const res = await fetch(`/api/sections?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch sections");
+      if (!res.ok) throw new Error(t('admissions.fetchSectionsError'));
       return res.json();
     },
     enabled: !!editClassId && isEditModalOpen,
@@ -363,8 +370,8 @@ export default function AdmissionsPage() {
   const updateAdmissionMutation = useMutation({
     mutationFn: async () => {
       if (!editingStudent || !editClassId) {
-        setEditFormErrors({ editClassId: `${t('admissions.class')} is required` });
-        throw new Error("Please select a class");
+        setEditFormErrors({ editClassId: t('admissions.requiredField', { field: t('admissions.class') }) });
+        throw new Error(t('admissions.selectClassRequired'));
       }
       const res = await fetch(`/api/students/${editingStudent.id}`, {
         method: "PUT",
@@ -379,7 +386,7 @@ export default function AdmissionsPage() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Failed to update admission");
+        throw new Error(err.message || t('admissions.updateAdmissionError'));
       }
       return res.json();
     },
@@ -448,14 +455,16 @@ export default function AdmissionsPage() {
       id: "actions",
       header: t('admissions.actions'),
       cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => handleOpenEditModal(row.original)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        canWrite ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => handleOpenEditModal(row.original)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : null
       ),
     },
   ];
@@ -470,10 +479,12 @@ export default function AdmissionsPage() {
           description={t('admissions.description')}
           icon={FilePlus}
         >
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('admissions.addAdmission')}
-          </Button>
+          {canWrite && (
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('admissions.addAdmission')}
+            </Button>
+          )}
         </PageHeader>
 
         <DataTable
@@ -505,7 +516,7 @@ export default function AdmissionsPage() {
           {/* Main Content */}
           <div className="lg:col-span-4 space-y-6">
             {/* Academic Details Card */}
-            <div className="bg-card rounded-xl border border-border p-6">
+            <div className="bg-card rounded-lg border border-border p-6">
               <h3 className="text-sm font-semibold text-foreground mb-4">
                 {t('admissions.academicDetails')}
               </h3>
@@ -596,7 +607,7 @@ export default function AdmissionsPage() {
             </div>
 
             {/* Students Section */}
-            <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">
@@ -607,21 +618,25 @@ export default function AdmissionsPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCreateStudent(true)}
-                    disabled={!canAddStudents}
-                    className="flex items-center gap-2"
-                  >
-                    <UserPlus className="h-4 w-4" /> {t('admissions.createNewStudent')}
-                  </Button>
-                  <Button
-                    onClick={handleOpenStudentSelector}
-                    disabled={!canAddStudents}
-                    className="flex items-center gap-2"
-                  >
-                    <UserCheck className="h-4 w-4" /> {t('admissions.addOldStudent')}
-                  </Button>
+                  {canWrite && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCreateStudent(true)}
+                      disabled={!canAddStudents}
+                      className="flex items-center gap-2"
+                    >
+                      <UserPlus className="h-4 w-4" /> {t('admissions.createNewStudent')}
+                    </Button>
+                  )}
+                  {canWrite && (
+                    <Button
+                      onClick={handleOpenStudentSelector}
+                      disabled={!canAddStudents}
+                      className="flex items-center gap-2"
+                    >
+                      <UserCheck className="h-4 w-4" /> {t('admissions.addOldStudent')}
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -658,14 +673,16 @@ export default function AdmissionsPage() {
                           </p>
                         </div>
                       </div>
-                        <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveStudent(index)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        {canManage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveStudent(index)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                     </div>
                   ))}
                 </div>
@@ -673,7 +690,7 @@ export default function AdmissionsPage() {
             </div>
 
             {/* Notes */}
-            <div className="bg-card rounded-xl border border-border p-6">
+            <div className="bg-card rounded-lg border border-border p-6">
               <label className="block text-sm font-medium text-foreground mb-2">
                 {t('admissions.additionalNotes')}
               </label>
@@ -688,7 +705,7 @@ export default function AdmissionsPage() {
 
           {/* Summary Sidebar */}
           <div className="space-y-6">
-            <div className="bg-card rounded-xl border border-border p-6 shadow-sm sticky top-6">
+            <div className="bg-card rounded-lg border border-border p-6 shadow-sm sticky top-6">
               <h2 className="text-base font-semibold text-foreground mb-6">
                 {t('admissions.summary')}
               </h2>
@@ -706,14 +723,16 @@ export default function AdmissionsPage() {
                   </div>
                 </div>
               </div>
-              <Button
-                onClick={handleSubmit}
-                disabled={createAdmissionMutation.isPending || admissionItems.length === 0 || !canAddStudents}
-                className="w-full mt-8 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-medium"
-              >
-                <Save className="h-4 w-4" />{" "}
-                {createAdmissionMutation.isPending ? t('admissions.processing') : t('admissions.completeAdmission')}
-              </Button>
+              {canWrite && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={createAdmissionMutation.isPending || admissionItems.length === 0 || !canAddStudents}
+                  className="w-full mt-8 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-medium"
+                >
+                  <Save className="h-4 w-4" />{" "}
+                  {createAdmissionMutation.isPending ? t('admissions.processing') : t('admissions.completeAdmission')}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -723,7 +742,16 @@ export default function AdmissionsPage() {
 
   return (
     <>
-      {content}
+      {!canRead && !isAuthLoading ? (
+        <div className="space-y-6">
+          <PageHeader title={t('admissions.title')} description={t('admissions.description')} icon={FilePlus} />
+          <div className="rounded-lg border border-border p-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view admissions.</p>
+          </div>
+        </div>
+      ) : (
+        content
+      )}
 
       {/* Student Selector Modal */}
       <StudentSelectorModal

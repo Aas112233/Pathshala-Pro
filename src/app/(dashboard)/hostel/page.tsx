@@ -21,7 +21,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { usePDFExport, type HostelManifestPDFData, type HostelResident } from "@/hooks/use-pdf-export";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { BedDouble, Plus, Pencil, Trash2, Search, Building2, Users, DoorOpen, Printer, Download, ShieldCheck } from "lucide-react";
@@ -29,11 +29,14 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function HostelPage() {
   const t = useTranslations("hostel");
-  const { user } = useAuth();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "hostel", "read");
+  const canWrite = hasPermission(perms, "hostel", "write");
+  const canManage = hasPermission(perms, "hostel", "manage");
   const { settings } = useTenantSettings();
   const { exportHostelManifestPDF } = usePDFExport();
   const { run: runHostelSubmit, isPending: isGuardedHostel } = useSubmitGuard();
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "hostel", "write"));
 
   const [activeTab, setActiveTab] = useState("hostels");
   const [search, setSearch] = useState("");
@@ -213,7 +216,7 @@ export default function HostelPage() {
       header: t("hostelName"),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Building2 className="h-4 w-4" />
           </div>
           <div>
@@ -248,8 +251,8 @@ export default function HostelPage() {
             <Printer className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Manifest</span>
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditHostel(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteHostel(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+          {canWrite && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditHostel(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>}
+          {canManage && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteHostel(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
         </div>
       ),
     },
@@ -286,8 +289,8 @@ export default function HostelPage() {
       header: t("actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditRoom(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteRoom(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+          {canWrite && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditRoom(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>}
+          {canManage && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteRoom(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
         </div>
       ),
     },
@@ -314,22 +317,24 @@ export default function HostelPage() {
       id: "actions",
       header: t("actions"),
       cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={async () => {
-            if (!confirm(t("confirmDeleteAllocation"))) return;
-            try {
-              const r = await fetch(`/api/hostel-allocations/${row.original.id}`, { method: "DELETE", credentials: "include" });
-              const j = await r.json();
-              if (!r.ok) throw new Error(j.message);
-              window.location.reload();
-            } catch {}
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-        </Button>
+        canManage ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={async () => {
+              if (!confirm(t("confirmDeleteAllocation"))) return;
+              try {
+                const r = await fetch(`/api/hostel-allocations/${row.original.id}`, { method: "DELETE", credentials: "include" });
+                const j = await r.json();
+                if (!r.ok) throw new Error(j.message);
+                window.location.reload();
+              } catch {}
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        ) : null
       ),
     },
   ];
@@ -337,16 +342,24 @@ export default function HostelPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={BedDouble}>
-        {activeTab === "hostels" && canManage && <Button onClick={openAddHostel} className="gap-2"><Plus className="h-4 w-4" />{t("addHostel")}</Button>}
-        {activeTab === "rooms" && canManage && <Button onClick={openAddRoom} className="gap-2"><Plus className="h-4 w-4" />{t("addRoom")}</Button>}
-        {activeTab === "allocations" && canManage && <Button onClick={openAlloc} className="gap-2"><Plus className="h-4 w-4" />{t("allocateStudent")}</Button>}
+        {activeTab === "hostels" && canWrite && <Button onClick={openAddHostel} className="gap-2"><Plus className="h-4 w-4" />{t("addHostel")}</Button>}
+        {activeTab === "rooms" && canWrite && <Button onClick={openAddRoom} className="gap-2"><Plus className="h-4 w-4" />{t("addRoom")}</Button>}
+        {activeTab === "allocations" && canWrite && <Button onClick={openAlloc} className="gap-2"><Plus className="h-4 w-4" />{t("allocateStudent")}</Button>}
       </PageHeader>
 
-      {/* Financial & Operational KPI Cards */}
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view hostel records.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Financial & Operational KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-xs border-border/80">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-xl">
+            <div className="p-2.5 bg-primary/10 rounded-lg">
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -358,7 +371,7 @@ export default function HostelPage() {
 
         <Card className="shadow-xs border-border/80">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+            <div className="p-2.5 bg-emerald-500/10 rounded-lg">
               <DoorOpen className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
@@ -370,11 +383,11 @@ export default function HostelPage() {
 
         <Card className="shadow-xs border-border/80">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-500/10 rounded-xl">
-              <BedDouble className="h-5 w-5 text-indigo-600" />
+            <div className="p-2.5 bg-primary/10 rounded-lg">
+              <BedDouble className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-indigo-600">{totalCapacitySum}</p>
+              <p className="text-2xl font-bold text-primary">{totalCapacitySum}</p>
               <p className="text-xs text-muted-foreground font-medium">Total Beds Available</p>
             </div>
           </CardContent>
@@ -382,7 +395,7 @@ export default function HostelPage() {
 
         <Card className="shadow-xs border-border/80">
           <CardContent className="pt-5 pb-5 flex items-center gap-3">
-            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+            <div className="p-2.5 bg-blue-500/10 rounded-lg">
               <Users className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -445,6 +458,8 @@ export default function HostelPage() {
           <DataTable columns={allocColumns as any} data={allocations} pagination={allocPagination} onPageChange={setAllocPage} onSearch={(v) => { setAllocSearch(v); setAllocPage(1); }} isLoading={isAllocLoading} searchPlaceholder={t("searchAllocations")} />
         </TabsContent>
       </Tabs>
+        </>
+      )}
 
       {/* Hostel Sheet */}
       <TopSheet

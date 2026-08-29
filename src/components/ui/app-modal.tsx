@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
+import { useTranslations } from "next-intl";
 
 interface AppModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function AppModal({
   className,
   maxWidth = 'md'
 }: AppModalProps) {
+  const t = useTranslations("common");
   // Controls whether the modal is mounted in the DOM at all
   const [isMounted, setIsMounted] = useState(false);
   // Controls the CSS animation state (open vs closing)
@@ -114,7 +116,7 @@ export function AppModal({
         aria-labelledby="app-modal-title"
         aria-describedby={description ? "app-modal-description" : undefined}
         className={cn(
-          "relative z-50 w-full my-auto sm:my-4 rounded-2xl border border-border/80 bg-background p-6 shadow-2xl shadow-black/15 overflow-hidden",
+          "relative z-50 w-full my-auto sm:my-4 rounded-lg border border-border/80 bg-background p-6 shadow-xl shadow-black/10 overflow-hidden",
           // Top slide-down transition
           "transition-all",
           isVisible
@@ -134,7 +136,7 @@ export function AppModal({
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t("modal.close")}</span>
           </Button>
         </div>
 

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AlertTriangle, RotateCcw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -11,6 +12,8 @@ interface ErrorProps {
 }
 
 export default function GlobalError({ error, reset }: ErrorProps) {
+  const t = useTranslations("error");
+
   useEffect(() => {
     // Optionally log this error to an error reporting service
     console.error("Global boundary caught an error: ", error);
@@ -18,7 +21,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-6 text-center">
-      <div className="mx-auto w-full max-w-lg rounded-2xl border border-destructive/20 bg-card p-10 shadow-xl relative overflow-hidden">
+      <div className="mx-auto w-full max-w-lg rounded-lg border border-destructive/20 bg-card p-10 shadow-xl relative overflow-hidden">
         {/* Decorative background */}
         <div className="absolute top-0 right-0 -m-8 h-32 w-32 rounded-full bg-destructive/5 blur-2xl" />
         <div className="absolute bottom-0 left-0 -m-8 h-32 w-32 rounded-full bg-destructive/5 blur-2xl" />
@@ -30,11 +33,11 @@ export default function GlobalError({ error, reset }: ErrorProps) {
         </div>
 
         <h1 className="mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Something went wrong
+          {t("error.title")}
         </h1>
         
         <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
-          Pathshala Pro encountered an unexpected issue trying to render this section. Our technical team has been notified.
+          {t("error.message")}
         </p>
 
         {/* Small error block snippet to aid debugging */}
@@ -52,7 +55,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
             size="lg"
             className="w-full sm:w-auto flex-1 font-semibold"
           >
-            <RotateCcw className="mr-2 h-4 w-4" /> Try Again
+            <RotateCcw className="mr-2 h-4 w-4" /> {t("error.tryAgain")}
           </Button>
 
           <Link href="/" className="w-full sm:w-auto flex-1">
@@ -61,7 +64,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
               size="lg" 
               className="w-full font-semibold border-border bg-transparent text-foreground hover:bg-muted"
             >
-              <Home className="mr-2 h-4 w-4" /> Return Home
+              <Home className="mr-2 h-4 w-4" /> {t("error.returnHome")}
             </Button>
           </Link>
         </div>

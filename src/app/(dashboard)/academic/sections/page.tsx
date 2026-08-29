@@ -14,6 +14,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 interface SectionData {
   id: string;
@@ -36,6 +38,11 @@ interface SectionData {
 
 export default function SectionsPage() {
   const t = useTranslations('sections');
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "academic", "read");
+  const canWrite = hasPermission(perms, "academic", "write");
+  const canManage = hasPermission(perms, "academic", "manage");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,7 +54,7 @@ export default function SectionsPage() {
     queryKey: ["classes-all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100");
-      if (!res.ok) throw new Error("Failed to fetch classes");
+      if (!res.ok) throw new Error(t("fetchClassesFailed"));
       return res.json();
     },
   });
@@ -56,7 +63,7 @@ export default function SectionsPage() {
     queryKey: ["groups-all"],
     queryFn: async () => {
       const res = await fetch("/api/groups?limit=100");
-      if (!res.ok) throw new Error("Failed to fetch groups");
+      if (!res.ok) throw new Error(t("fetchGroupsFailed"));
       return res.json();
     },
   });
@@ -70,7 +77,7 @@ export default function SectionsPage() {
         ...(search && { search }),
       });
       const res = await fetch(`/api/sections?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch sections");
+      if (!res.ok) throw new Error(t("fetchSectionsFailed"));
       return res.json();
     },
   });
@@ -84,17 +91,17 @@ export default function SectionsPage() {
         },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create section");
+      if (!res.ok) throw new Error(t("createFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sections"] });
-      toast.success("Section created successfully!");
+      toast.success(t("createSuccess"));
       setIsModalOpen(false);
       resetForm();
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to create section");
+      toast.error(err.message || t("createFailed"));
     },
   });
 
@@ -107,33 +114,33 @@ export default function SectionsPage() {
         },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to update section");
+      if (!res.ok) throw new Error(t("updateFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sections"] });
-      toast.success("Section updated successfully!");
+      toast.success(t("updateSuccess"));
       setIsModalOpen(false);
       setEditingSection(null);
       resetForm();
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to update section");
+      toast.error(err.message || t("updateFailed"));
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/sections/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete section");
+      if (!res.ok) throw new Error(t("deleteFailed"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sections"] });
-      toast.success("Section deleted successfully!");
+      toast.success(t("deleteSuccess"));
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to delete section");
+      toast.error(err.message || t("deleteFailed"));
     },
   });
 
@@ -180,7 +187,7 @@ export default function SectionsPage() {
     if (!formData.shortName.trim()) nextErrors.shortName = `${t('shortName')} is required`;
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t("requiredFields"));
       return;
     }
     const data: any = {
@@ -217,7 +224,7 @@ export default function SectionsPage() {
   const classes = ("data" in (classesData || {})) ? (classesData as any).data : [];
   const classOptions = classes.map((c: any) => ({
     value: c.id,
-    label: `${c.name} (Class ${c.classNumber})`,
+    label: `${c.name} (${t("classOption", { number: c.classNumber })})`,
   }));
 
   const groups = ("data" in (groupsData || {})) ? (groupsData as any).data : [];
@@ -241,7 +248,7 @@ export default function SectionsPage() {
       accessorKey: "class",
       header: t('tableColumns.class'),
       cell: ({ row }) => (
-        <span>{row.original.class?.name || "N/A"}</span>
+        <span>{row.original.class?.name || t("classUnavailable")}</span>
       ),
     },
     {
@@ -286,20 +293,24 @@ export default function SectionsPage() {
       header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          {canWrite && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(row.original)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -315,21 +326,32 @@ export default function SectionsPage() {
         description={t('description')}
         icon={ClipboardList}
       >
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addSection')}
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('addSection')}
+          </Button>
+        )}
       </PageHeader>
 
-      <DataTable
-        columns={columns}
-        data={sections}
-        pagination={pagination}
-        onPageChange={setPage}
-        onSearch={setSearch}
-        isLoading={isLoading}
-        searchPlaceholder={t('searchPlaceholder')}
-      />
+      {!isAuthLoading && !canRead ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2>Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+        </div>
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={sections}
+            pagination={pagination}
+            onPageChange={setPage}
+            onSearch={setSearch}
+            isLoading={isLoading}
+            searchPlaceholder={t('searchPlaceholder')}
+          />
+        </>
+      )}
 
       {/* Add/Edit Form */}
       <TopSheet

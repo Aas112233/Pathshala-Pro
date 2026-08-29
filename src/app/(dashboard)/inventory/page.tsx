@@ -17,7 +17,7 @@ import {
   useInventoryTransactionsViewModel,
 } from "@/viewmodels/inventory/use-inventory-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Package, Plus, Pencil, Trash2, Search, AlertTriangle, Boxes, TrendingUp, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 
@@ -26,8 +26,11 @@ const UNITS = ["PCS", "BOX", "KG", "LTR", "SET", "DOZEN"];
 
 export default function InventoryPage() {
   const t = useTranslations("inventory");
-  const { user } = useAuth();
-  const canManage = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || (!!user && hasPermission(user.permissions, "inventory", "write"));
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "inventory", "read");
+  const canWrite = hasPermission(perms, "inventory", "write");
+  const canManage = hasPermission(perms, "inventory", "manage");
 
   const [activeTab, setActiveTab] = useState("items");
   const [search, setSearch] = useState("");
@@ -141,8 +144,8 @@ export default function InventoryPage() {
       header: t("actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditItem(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+          {canWrite && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditItem(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>}
+          {canManage && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>}
         </div>
       ),
     },
@@ -165,9 +168,11 @@ export default function InventoryPage() {
       id: "actions",
       header: t("actions"),
       cell: ({ row }) => (
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={async () => { if (!confirm(t("confirmDeleteTransaction"))) return; try { await deleteTransaction(row.original.id); } catch {} }}>
-          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-        </Button>
+        canManage ? (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={async () => { if (!confirm(t("confirmDeleteTransaction"))) return; try { await deleteTransaction(row.original.id); } catch {} }}>
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        ) : null
       ),
     },
   ];
@@ -175,11 +180,19 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={Package}>
-        {activeTab === "items" && canManage && <Button onClick={openAddItem} className="gap-2"><Plus className="h-4 w-4" />{t("addItem")}</Button>}
-        {activeTab === "transactions" && canManage && <Button onClick={() => openTx("PURCHASE")} className="gap-2"><Plus className="h-4 w-4" />{t("stockIn")}</Button>}
+        {activeTab === "items" && canWrite && <Button onClick={openAddItem} className="gap-2"><Plus className="h-4 w-4" />{t("addItem")}</Button>}
+        {activeTab === "transactions" && canWrite && <Button onClick={() => openTx("PURCHASE")} className="gap-2"><Plus className="h-4 w-4" />{t("stockIn")}</Button>}
       </PageHeader>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      {!canRead && !isAuthLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view inventory.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-4">
         <Card><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-lg"><Boxes className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{(pagination as any)?.totalCount ?? items.length}</p><p className="text-xs text-muted-foreground">{t("totalItems")}</p></div></CardContent></Card>
         <Card className={lowStockCount > 0 ? "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20" : ""}><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-amber-500/10 rounded-lg"><AlertTriangle className="h-5 w-5 text-amber-600" /></div><div><p className="text-2xl font-bold text-amber-600">{lowStockCount}</p><p className="text-xs text-amber-600">{t("lowStockItems")}</p></div></CardContent></Card>
         <Card className={outOfStockCount > 0 ? "border-rose-200 bg-rose-50/50 dark:bg-rose-950/20" : ""}><CardContent className="pt-6 flex items-center gap-3"><div className="p-2 bg-rose-500/10 rounded-lg"><TrendingUp className="h-5 w-5 text-rose-600" /></div><div><p className="text-2xl font-bold text-rose-600">{outOfStockCount}</p><p className="text-xs text-rose-600">{t("outOfStock")}</p></div></CardContent></Card>
@@ -201,7 +214,7 @@ export default function InventoryPage() {
                   <Input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setSearch(searchInput), setPage(1))} placeholder={t("searchItems")} className="pl-9" />
                 </div>
                 <Button variant="outline" onClick={() => { setSearch(searchInput); setPage(1); }}><Search className="h-4 w-4" /></Button>
-                <Button variant="outline" onClick={() => openTx("ISSUE")} className="gap-2"><ArrowUpFromLine className="h-4 w-4" />{t("stockOut")}</Button>
+                {canWrite && <Button variant="outline" onClick={() => openTx("ISSUE")} className="gap-2"><ArrowUpFromLine className="h-4 w-4" />{t("stockOut")}</Button>}
               </div>
             </CardContent>
           </Card>
@@ -223,6 +236,8 @@ export default function InventoryPage() {
           <DataTable columns={txColumns as any} data={transactions} pagination={txPagination} onPageChange={setTxPage} onSearch={(v) => { setTxSearch(v); setTxPage(1); }} isLoading={isTxLoading} searchPlaceholder={t("searchTransactions")} />
         </TabsContent>
       </Tabs>
+        </>
+      )}
 
       {/* Item Sheet */}
       <TopSheet isOpen={isItemSheetOpen} onClose={() => setIsItemSheetOpen(false)} title={editingItem ? t("editItem") : t("addItem")} description={t("description")} maxWidth="2xl" footer={<div className="flex justify-end gap-3 w-full"><Button variant="outline" type="button" onClick={() => setIsItemSheetOpen(false)}>{t("cancel")}</Button><Button type="submit" form="item-form" disabled={isItemMutating}>{t("save")}</Button></div>}>

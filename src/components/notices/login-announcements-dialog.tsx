@@ -122,7 +122,7 @@ export function LoginAnnouncementsDialog() {
         <div
           role="dialog"
           aria-modal="true"
-          className="relative w-full max-w-lg rounded-2xl border border-border/80 bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200"
+          className="relative w-full max-w-lg rounded-lg border border-border/80 bg-card p-6 shadow-xl animate-in zoom-in-95 duration-200"
         >
           {/* Top Banner Ribbon */}
           <div className="flex items-center justify-between pb-4 border-b border-border/60">
@@ -167,7 +167,7 @@ export function LoginAnnouncementsDialog() {
             {/* Metadata Tags */}
             <div className="flex flex-wrap items-center gap-1.5">
               {activeNotice.isPinned && (
-                <Badge className="bg-indigo-600 text-white gap-1 text-[10px] px-2 py-0.5">
+                <Badge className="bg-primary text-primary-foreground gap-1 text-[10px] px-2 py-0.5">
                   <Pin className="h-2.5 w-2.5 fill-white" /> {t("announcements.pinnedBadge")}
                 </Badge>
               )}
@@ -195,7 +195,7 @@ export function LoginAnnouncementsDialog() {
             </h4>
 
             {/* Excerpt Body */}
-            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 text-xs text-foreground leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap">
+            <div className="p-3.5 rounded-lg border border-border/70 bg-muted/20 text-xs text-foreground leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap">
               {activeNotice.content}
             </div>
 

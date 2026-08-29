@@ -39,7 +39,6 @@ import {
   type ColumnDef,
 } from "@/components/ui/erp-data-table";
 import { TopSheet } from "@/components/ui/top-sheet";
-import { BatchInvoiceModal } from "@/components/fees/batch-invoice-modal";
 import { NoticeDetailModal } from "@/components/notices/notice-detail-modal";
 
 export default function DashboardPage() {
@@ -54,7 +53,6 @@ export default function DashboardPage() {
     currencySymbol,
   } = useTenantFormatting();
 
-  const [isBatchInvoiceOpen, setIsBatchInvoiceOpen] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<(string | number)[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
   const [isNoticesLoading, setIsNoticesLoading] = useState(true);
@@ -164,7 +162,7 @@ export default function DashboardPage() {
   const presentCount = attendanceList.filter((a: any) => a.status === "PRESENT").length;
   const absentCount = attendanceList.filter((a: any) => a.status === "ABSENT").length;
   const attendanceTotal = attendanceList.length;
-  const attendanceRate = attendanceTotal > 0 ? ((presentCount / attendanceTotal) * 100).toFixed(1) : "98.0";
+  const attendanceRate = attendanceTotal > 0 ? ((presentCount / attendanceTotal) * 100).toFixed(1) : null;
 
   // Derive current academic session
   const activeYear = (academicYearsData as any)?.data?.find((y: any) => !y.isClosed) || (academicYearsData as any)?.data?.[0];
@@ -265,16 +263,6 @@ export default function DashboardPage() {
           </Button>
 
           <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg text-xs font-medium"
-            onClick={() => setIsBatchInvoiceOpen(true)}
-          >
-            <Receipt className="h-3.5 w-3.5" />
-            <span>{t("dashboard.batchInvoicing")}</span>
-          </Button>
-
-          <Button
             size="sm"
             className="h-9 gap-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium"
             onClick={() => router.push("/students")}
@@ -288,24 +276,22 @@ export default function DashboardPage() {
       {/* ─────────────────── Live Relational KPI Metrics ─────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ERPMetricCard
-          subtitle={t("nav.students")}
           title={t("dashboard.totalStudents")}
           value={totalStudents.toLocaleString()}
-          unit={t("dashboard.activeEnrollments")}
+          unit="Students"
           isLoading={isKpiLoading}
           breakdowns={[
             { label: t("dashboard.activeEnrolled"), count: totalStudents, percentage: 100, color: "emerald" },
-            { label: t("dashboard.attendanceToday"), count: `${attendanceRate}%`, percentage: Number(attendanceRate) || 95, color: "indigo" },
+            { label: t("dashboard.attendanceToday"), count: attendanceRate ? `${attendanceRate}%` : "—", percentage: Number(attendanceRate) || 0, color: "indigo" },
           ]}
           actionLabel={t("students.title")}
           onAction={() => router.push("/students")}
         />
 
         <ERPMetricCard
-          subtitle={t("nav.hr")}
           title={t("dashboard.staffMembers")}
           value={totalStaff.toLocaleString()}
-          unit={t("dashboard.activeStaff")}
+          unit="Staff"
           isLoading={isKpiLoading}
           breakdowns={[
             { label: t("dashboard.teachingFaculty"), count: totalStaff, percentage: 100, color: "indigo" },
@@ -315,7 +301,6 @@ export default function DashboardPage() {
         />
 
         <ERPMetricCard
-          subtitle={t("nav.finance")}
           title={t("dashboard.feeCollection")}
           value={totalCollectedSum > 0 ? formatCompactCurrency(totalCollectedSum) : `${currencySymbol} 0`}
           unit={`${totalFeesCount} Vouchers`}
@@ -339,13 +324,12 @@ export default function DashboardPage() {
         />
 
         <ERPMetricCard
-          subtitle={t("nav.attendance")}
           title={t("attendance.stats.attendanceRate")}
-          value={`${attendanceRate}%`}
+          value={attendanceRate ? `${attendanceRate}%` : "—"}
           unit={t("dateTime.relative.today")}
           isLoading={isKpiLoading}
           breakdowns={[
-            { label: t("dashboard.markedPresent"), count: presentCount || "—", percentage: Number(attendanceRate) || 95, color: "emerald" },
+            { label: t("dashboard.markedPresent"), count: presentCount || "—", percentage: Number(attendanceRate) || 0, color: "emerald" },
             { label: t("dashboard.markedAbsent"), count: absentCount || 0, percentage: 5, color: "rose" },
           ]}
           actionLabel={t("dashboard.markAttendance")}
@@ -356,7 +340,7 @@ export default function DashboardPage() {
       {/* Fees + quick links */}
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Recent collections */}
-        <div className="lg:col-span-7 flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-5">
+        <div className="lg:col-span-7 flex flex-col justify-between rounded-lg border border-border/80 bg-card p-4">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/50">
               <div className="flex items-center gap-2">
@@ -389,10 +373,10 @@ export default function DashboardPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsBatchInvoiceOpen(true)}
+                  onClick={() => router.push("/fees")}
                   className="mt-3 text-xs"
                 >
-                  {t("dashboard.generateFirstInvoices")}
+                  {t("nav.feeVouchers")}
                 </Button>
               </div>
             ) : (
@@ -438,7 +422,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick links */}
-        <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-5">
+        <div className="lg:col-span-5 flex flex-col justify-between rounded-lg border border-border/80 bg-card p-4">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/50">
               <div className="flex items-center gap-2">
@@ -461,7 +445,7 @@ export default function DashboardPage() {
                   title: t("dashboard.invoicing"),
                   desc: t("dashboard.invoicingDesc"),
                   icon: Receipt,
-                  action: () => setIsBatchInvoiceOpen(true),
+                  path: "/fees",
                 },
                 {
                   title: t("dashboard.gradeCards"),
@@ -478,7 +462,7 @@ export default function DashboardPage() {
               ].map((item, idx) => (
                 <button
                   key={idx}
-                  onClick={item.action || (() => item.path && router.push(item.path))}
+                  onClick={() => router.push(item.path)}
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors text-left group"
                 >
                   <div className="flex items-center gap-3">
@@ -511,7 +495,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Notices */}
-      <div className="rounded-2xl border border-border/70 bg-card p-5">
+      <div className="rounded-lg border border-border/80 bg-card p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/50">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -623,12 +607,6 @@ export default function DashboardPage() {
           onActionClick={() => router.push("/students")}
         />
       </div>
-
-      {/* Batch invoice */}
-      <BatchInvoiceModal
-        isOpen={isBatchInvoiceOpen}
-        onClose={() => setIsBatchInvoiceOpen(false)}
-      />
 
       {/* Notice detail */}
       <NoticeDetailModal

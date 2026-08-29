@@ -122,7 +122,7 @@ export default function TenantsPage() {
         </div>
         <Button
           onClick={() => setIsOnboardModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm cursor-pointer text-xs h-9"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 cursor-pointer text-xs h-9"
         >
           <Plus className="h-4 w-4" />
           Onboard New School
@@ -177,13 +177,13 @@ export default function TenantsPage() {
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg flex items-center justify-center">
+                          <div className="h-9 w-9 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
                             <Building2 className="h-4 w-4" />
                           </div>
                           <div>
                             <button
                               onClick={() => router.push(`/system-admin/tenants/${tenant.id || tenant.tenantId}`)}
-                              className="font-bold text-xs text-foreground hover:text-indigo-600 text-left flex items-center gap-1 transition-colors group cursor-pointer"
+                              className="font-bold text-xs text-foreground hover:text-primary text-left flex items-center gap-1 transition-colors group cursor-pointer"
                             >
                               <span>{tenant.name}</span>
                               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />

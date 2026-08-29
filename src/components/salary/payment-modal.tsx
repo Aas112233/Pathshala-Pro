@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import type { PaymentDTO, SalaryLedgerWithDetails } from "@/types/entities";
 
 interface PaymentModalProps {
@@ -23,9 +23,9 @@ interface FormErrors {
 }
 
 const PAYMENT_METHODS = [
-  { value: "CASH", label: "Cash" },
-  { value: "DIGITAL", label: "Digital Payment" },
-  { value: "BANK_TRANSFER", label: "Bank Transfer" },
+  { value: "CASH", key: "cash" },
+  { value: "DIGITAL", key: "digital" },
+  { value: "BANK_TRANSFER", key: "bankTransfer" },
 ];
 
 export function PaymentModal({
@@ -34,6 +34,7 @@ export function PaymentModal({
   onSubmit,
   salary,
 }: PaymentModalProps) {
+  const t = useTranslations("salary");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -58,20 +59,20 @@ export function PaymentModal({
     const newErrors: FormErrors = {};
 
     if (!formData.paidAmount || formData.paidAmount <= 0) {
-      newErrors.paidAmount = "Payment amount must be greater than zero";
+      newErrors.paidAmount = t("ui.payment.amountPositive");
     }
 
     const remainingBalance = (salary?.netPayable || 0) - (salary?.paidAmount || 0);
     if (formData.paidAmount > remainingBalance) {
-      newErrors.paidAmount = `Payment amount cannot exceed remaining balance (${remainingBalance})`;
+      newErrors.paidAmount = t("ui.payment.amountExceeds", { amount: remainingBalance });
     }
 
     if (!formData.paymentMethod) {
-      newErrors.paymentMethod = "Payment method is required";
+      newErrors.paymentMethod = t("ui.payment.methodRequired");
     }
 
     if (!formData.paymentDate) {
-      newErrors.paymentDate = "Payment date is required";
+      newErrors.paymentDate = t("ui.payment.dateRequired");
     }
 
     setErrors(newErrors);
@@ -127,16 +128,16 @@ export function PaymentModal({
     <TopSheet
       isOpen={isOpen}
       onClose={onClose}
-      title="Record Salary Payment"
-      description={`Recording payment for ${salary.staffProfile?.firstName} ${salary.staffProfile?.lastName}`}
+      title={t("ui.payment.title")}
+      description={t("ui.payment.description", { name: `${salary.staffProfile?.firstName} ${salary.staffProfile?.lastName}` })}
       maxWidth="2xl"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
-            Cancel
+            {t("ui.payment.cancel")}
           </Button>
           <Button type="submit" form="payment-form" disabled={isLoading}>
-            {isLoading ? "Processing..." : isPartialPayment ? "Record Partial Payment" : "Mark as Paid"}
+            {isLoading ? t("ui.payment.processing") : isPartialPayment ? t("ui.payment.partial") : t("ui.payment.paid")}
           </Button>
         </div>
       }
@@ -145,17 +146,17 @@ export function PaymentModal({
         {/* Summary Card */}
         <div className="p-4 rounded-lg bg-muted/50 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Net Payable:</span>
+            <span className="text-muted-foreground">{t("ui.payment.netPayable")}</span>
             <span className="font-medium">{salary.netPayable.toFixed(2)}</span>
           </div>
           {salary.paidAmount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Previously Paid:</span>
+              <span className="text-muted-foreground">{t("ui.payment.previouslyPaid")}</span>
               <span className="font-medium">{salary.paidAmount.toFixed(2)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm font-semibold border-t pt-2">
-            <span className="text-foreground">Remaining Balance:</span>
+            <span className="text-foreground">{t("ui.payment.remainingBalance")}</span>
             <span className="text-primary">{remainingBalance.toFixed(2)}</span>
           </div>
         </div>
@@ -163,7 +164,7 @@ export function PaymentModal({
         <ERPFormSection>
           <ERPFormGrid cols={2}>
             {/* Payment Amount */}
-            <ERPFormField label="Payment Amount" required htmlFor="paidAmount">
+            <ERPFormField label={t("ui.payment.paymentAmount")} required htmlFor="paidAmount">
               <Input
                 id="paidAmount"
                 type="number"
@@ -179,13 +180,13 @@ export function PaymentModal({
               {errors.paidAmount && <p className="text-xs text-destructive mt-1">{errors.paidAmount}</p>}
               {isPartialPayment && (
                 <p className="text-xs text-amber-600">
-                  This will be a partial payment. Remaining: {(remainingBalance - formData.paidAmount).toFixed(2)}
+                  {t("ui.payment.partialNotice", { amount: (remainingBalance - formData.paidAmount).toFixed(2) })}
                 </p>
               )}
             </ERPFormField>
 
             {/* Payment Method */}
-            <ERPFormField label="Payment Method" required htmlFor="paymentMethod">
+            <ERPFormField label={t("ui.payment.paymentMethod")} required htmlFor="paymentMethod">
               <AppDropdown
                 id="paymentMethod"
                 value={formData.paymentMethod}
@@ -194,14 +195,14 @@ export function PaymentModal({
                 invalid={Boolean(errors.paymentMethod)}
                 aria-describedby={errors.paymentMethod ? "payment-method-error" : undefined}
                 triggerClassName={errors.paymentMethod ? "border-destructive ring-1 ring-destructive" : ""}
-                options={PAYMENT_METHODS}
-                placeholder="Select payment method"
+                options={PAYMENT_METHODS.map((method) => ({ ...method, label: t(`ui.payment.${method.key}`) }))}
+                placeholder={t("ui.payment.selectMethod")}
               />
               {errors.paymentMethod && <p id="payment-method-error" className="text-xs text-destructive mt-1">{errors.paymentMethod}</p>}
             </ERPFormField>
 
             {/* Payment Date */}
-            <ERPFormField label="Payment Date" required htmlFor="paymentDate">
+            <ERPFormField label={t("ui.payment.paymentDate")} required htmlFor="paymentDate">
               <Input
                 id="paymentDate"
                 type="date"
@@ -215,13 +216,13 @@ export function PaymentModal({
             </ERPFormField>
 
             {/* Note */}
-            <ERPFormField label="Note (Optional)" htmlFor="note">
+            <ERPFormField label={t("ui.payment.noteOptional")} htmlFor="note">
               <Input
                 id="note"
                 name="note"
                 value={formData.note}
                 onChange={handleChange}
-                placeholder="e.g., Cash paid in hand, Bank ref #..."
+                placeholder={t("ui.payment.notePlaceholder")}
                 disabled={isLoading}
               />
             </ERPFormField>

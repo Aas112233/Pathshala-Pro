@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLogin } from "@/hooks/use-queries";
@@ -73,6 +74,7 @@ function getBengaliDate(date: Date) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
   const loginMutation = useLogin();
   const { login } = useAuth();
   // Duplicate-press guard: blocks re-entry even before React re-renders.
@@ -110,7 +112,7 @@ export default function LoginPage() {
         }).format(today),
       });
     } catch {
-      setDates({ english: "Current Date", bengali: "Current Date", arabic: "Current Date" });
+      setDates({ english: t("currentDate"), bengali: t("currentDate"), arabic: t("currentDate") });
     }
   }, []);
 
@@ -127,14 +129,14 @@ export default function LoginPage() {
 
         if (!result.error) {
           login(result.data.user);
-          toast.success("Welcome back!");
+          toast.success(t("welcomeToast"));
           router.push("/");
         }
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
-            : "Invalid credentials. Please try again.";
+            : t("invalidCredentials");
         toast.error(message);
       }
     });
@@ -200,7 +202,7 @@ export default function LoginPage() {
           <div className="relative h-full w-full overflow-hidden rounded-[2rem]">
             <Image
               src="/login-bg.png"
-              alt="Students in a modern academic environment"
+              alt={t("login.alt.studentsImage")}
               fill
               className="object-cover transition-transform duration-[10s] hover:scale-110"
               priority
@@ -240,9 +242,9 @@ export default function LoginPage() {
                   <GraduationCap className="h-4 w-4" />
                 </div>
                 <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">12,000+</p>
+                  <p className="text-sm font-bold text-white">{t("dashboard.stats.studentsCount")}</p>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    Students
+                    {t("dashboard.stats.studentsLabel")}
                   </p>
                 </div>
               </div>
@@ -254,9 +256,9 @@ export default function LoginPage() {
                   <Building2 className="h-4 w-4" />
                 </div>
                 <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">500+</p>
+                  <p className="text-sm font-bold text-white">{t("dashboard.stats.institutesCount")}</p>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    Institutes
+                    {t("dashboard.stats.institutesLabel")}
                   </p>
                 </div>
               </div>
@@ -268,9 +270,9 @@ export default function LoginPage() {
                   <Zap className="h-4 w-4" />
                 </div>
                 <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">99.9%</p>
+                  <p className="text-sm font-bold text-white">{t("dashboard.stats.uptimeValue")}</p>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    Uptime
+                    {t("dashboard.stats.uptimeLabel")}
                   </p>
                 </div>
               </div>
@@ -314,7 +316,7 @@ export default function LoginPage() {
                 {dates.english ? (
                   <div className="space-y-1.5">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Today across calendars
+                      {t("todayCalendars")}
                     </h3>
                     <div className="grid grid-cols-3 gap-2 pt-1">
                       <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 p-1.5">
@@ -375,13 +377,13 @@ export default function LoginPage() {
             <div className="space-y-2 pb-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Institutional Security Portal
+                {t("securityPortal")}
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Welcome back
+                {t("welcome")}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Sign in to your school management cloud portal
+                {t("login.description")}
               </p>
             </div>
 
@@ -392,7 +394,7 @@ export default function LoginPage() {
                   htmlFor="email"
                   className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300"
                 >
-                  Email Address
+                  {t("emailAddress")}
                 </label>
                 <div className="group relative">
                   <div className="pointer-events-none absolute left-0 top-0 flex h-full w-12 items-center justify-center text-slate-400 transition-colors group-focus-within:text-primary">
@@ -406,7 +408,7 @@ export default function LoginPage() {
                     onChange={(e) => setEmailInput(e.target.value)}
                     required
                     autoComplete="email"
-                    placeholder="admin@school.com"
+                    placeholder={t("emailPlaceholder")}
                     disabled={isPending}
                     className="h-12 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 pl-12 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all hover:bg-slate-100/60 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:hover:bg-slate-800 dark:focus:bg-slate-900"
                   />
@@ -420,17 +422,17 @@ export default function LoginPage() {
                     htmlFor="password"
                     className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300"
                   >
-                    Password
+                    {t("password")}
                   </label>
                   <a
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      toast.info("Please contact your School Super Administrator to reset your password.");
+                      toast.info(t("resetPasswordHelp"));
                     }}
                     className="text-xs font-medium text-primary hover:underline"
                   >
-                    Forgot password?
+                    {t("forgotPassword")}
                   </a>
                 </div>
                 <div className="group relative">
@@ -471,19 +473,19 @@ export default function LoginPage() {
                   {isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Authenticating...</span>
+                      <span>{t("authenticating")}</span>
                     </>
                   ) : (
-                    "Sign In to ERP"
+                    t("signInErp")
                   )}
                 </span>
               </button>
 
               <div className="text-center pt-4">
                 <p className="text-xs text-slate-500">
-                  New school?{" "}
+                  {t("login.newSchool")}{" "}
                   <Link href="/onboarding" className="font-semibold text-primary hover:underline">
-                    Onboard your institute (30-day free trial)
+                    {t("login.onboardTrial")}
                   </Link>
                 </p>
               </div>

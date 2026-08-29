@@ -115,7 +115,7 @@ export function TopSheet({
         aria-labelledby="top-sheet-title"
         aria-describedby={description ? "top-sheet-desc" : undefined}
         className={cn(
-          "relative z-50 w-full flex flex-col max-h-[92vh] bg-background border-x border-b border-border shadow-2xl rounded-b-2xl overflow-hidden transition-all",
+          "relative z-50 w-full flex flex-col max-h-[92vh] bg-background border-x border-b border-border shadow-xl rounded-b-lg overflow-hidden transition-all",
           isVisible
             ? "duration-300 ease-out translate-y-0 opacity-100"
             : "duration-200 ease-in -translate-y-full opacity-0",
@@ -127,12 +127,12 @@ export function TopSheet({
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/80 bg-background/95 backdrop-blur-md px-6 py-4">
           <div className="flex flex-col gap-0.5">
             {subtitle && (
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+              <span className="text-xs font-medium tracking-wide text-primary">
                 {subtitle}
               </span>
             )}
             <div className="flex items-center gap-3">
-              <h2 id="top-sheet-title" className="text-lg font-bold tracking-tight text-foreground">
+              <h2 id="top-sheet-title" className="text-lg font-semibold tracking-tight text-foreground">
                 {title}
               </h2>
               {badge}

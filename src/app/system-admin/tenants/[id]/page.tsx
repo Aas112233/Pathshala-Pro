@@ -176,7 +176,7 @@ export default function TenantDetailPage() {
           <Button
             onClick={handleImpersonate}
             disabled={isImpersonating}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 h-9 shadow-sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs gap-1.5 h-9"
           >
             {isImpersonating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -213,7 +213,7 @@ export default function TenantDetailPage() {
               <span className="text-xs font-semibold text-muted-foreground uppercase">
                 Faculty & Staff
               </span>
-              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <Users className="h-4 w-4" />
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function TenantDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/60">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/60">
                 <div>
                   <p className="text-xs font-semibold text-foreground">Current Status</p>
                   <p className="text-[11px] text-muted-foreground">
@@ -299,7 +299,7 @@ export default function TenantDetailPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl border border-border/50 bg-background space-y-1">
+                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="text-muted-foreground text-[10px] uppercase font-semibold">
                     Operating Currency
                   </span>
@@ -307,19 +307,19 @@ export default function TenantDetailPage() {
                     {tenant.currency} ({tenant.currencySymbol})
                   </p>
                 </div>
-                <div className="p-3 rounded-xl border border-border/50 bg-background space-y-1">
+                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="text-muted-foreground text-[10px] uppercase font-semibold">
                     Timezone & Region
                   </span>
                   <p className="font-bold text-foreground">{tenant.timezone || "Asia/Karachi"}</p>
                 </div>
-                <div className="p-3 rounded-xl border border-border/50 bg-background space-y-1">
+                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="text-muted-foreground text-[10px] uppercase font-semibold">
                     Grading Scale
                   </span>
                   <p className="font-bold text-foreground">{tenant.gradingSystem || "GPA"}</p>
                 </div>
-                <div className="p-3 rounded-xl border border-border/50 bg-background space-y-1">
+                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="text-muted-foreground text-[10px] uppercase font-semibold">
                     Standard Date Format
                   </span>
@@ -336,7 +336,7 @@ export default function TenantDetailPage() {
             <CardHeader className="pb-3 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Users className="h-4 w-4 text-indigo-600" />
+                  <Users className="h-4 w-4 text-primary" />
                   School Administrators & Staff Accounts
                 </CardTitle>
                 <Badge variant="outline" className="text-xs font-mono">

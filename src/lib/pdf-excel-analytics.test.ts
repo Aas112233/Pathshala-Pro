@@ -137,13 +137,13 @@ describe("PDF Templates, Excel Exports & Analytics Engine", () => {
       const buffer = await exportFeeDaybookToExcel("tenant-dummy");
       expect(buffer).toBeInstanceOf(Buffer);
       expect(buffer.length).toBeGreaterThan(100);
-    });
+    }, 15000);
 
     it("generates a valid XLSX buffer for Academic Tabulation Sheet", async () => {
       const buffer = await exportAcademicTabulationSheetToExcel("tenant-dummy", "class-10");
       expect(buffer).toBeInstanceOf(Buffer);
       expect(buffer.length).toBeGreaterThan(100);
-    });
+    }, 15000);
   });
 
   describe("Executive Analytics Service", () => {

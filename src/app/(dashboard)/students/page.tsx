@@ -8,8 +8,10 @@ import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { ERPDataTable, ERPUserCell, ERPStatusPill } from "@/components/ui/erp-data-table";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
-import { GraduationCap, Plus, Users, UserCheck, UserX } from "lucide-react";
+import { GraduationCap, Plus, Users, UserCheck } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 // View Model
 import { useStudentViewModel, type CreateStudentDTO } from "@/viewmodels/students/use-student-view-model";
@@ -54,6 +56,11 @@ export default function StudentsPage() {
     updateStudent,
     deleteStudent,
   } = useStudentViewModel();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadStudents = hasPermission(perms, "students", "read");
+  const canWriteStudents = hasPermission(perms, "students", "write");
+  const canManageStudents = hasPermission(perms, "students", "manage");
 
   const handleEdit = useCallback((student: StudentRow) => {
     setEditingStudent({
@@ -113,10 +120,13 @@ export default function StudentsPage() {
       search: "",
       status: "ALL",
       gender: "ALL",
+      classId: "",
+      sectionId: "",
+      groupId: "",
     });
   }, [setFilters]);
 
-  const hasActiveFilters = !!filters.search || filters.status !== "ALL" || filters.gender !== "ALL";
+  const hasActiveFilters = !!filters.search || filters.status !== "ALL" || filters.gender !== "ALL" || !!filters.classId || !!filters.sectionId || !!filters.groupId;
 
   const columns: ColumnDef<StudentRow>[] = [
     {
@@ -150,7 +160,7 @@ export default function StudentsPage() {
     {
       id: "currentClass",
       header: t('tableColumns.class'),
-      cell: ({ row }) => row.original.class?.name || "N/A",
+      cell: ({ row }) => row.original.class?.name || t("classUnavailable"),
     },
     {
       accessorKey: "status",
@@ -166,8 +176,8 @@ export default function StudentsPage() {
         <StudentActionsDropdown
           student={row.original}
           onView={() => handleView(row.original)}
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original)}
+          onEdit={canWriteStudents ? () => handleEdit(row.original) : undefined}
+          onDelete={canManageStudents ? () => handleDelete(row.original) : undefined}
         />
       ),
     },
@@ -183,49 +193,47 @@ export default function StudentsPage() {
       >
         <div className="flex items-center gap-2">
           <StudentViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('addStudent')}
-          </Button>
+          {canWriteStudents && (
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('addStudent')}
+            </Button>
+          )}
         </div>
       </PageHeader>
 
+      {!isAuthLoading && !canReadStudents ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view students.</p>
+        </div>
+      ) : (
+        <>
       {/* ERP Metric Cards — per design system */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <ERPMetricCard
-          subtitle="STUDENTS"
-          title="Total Enrolled"
+          subtitle={t("metrics.students")}
+          title={t("metrics.totalEnrolled")}
           value={pagination?.totalCount ?? students.length}
           isLoading={isLoading}
           icon={Users}
           breakdowns={[
-            { label: "Active", count: students.filter((s) => s.status === "ACTIVE").length, color: "emerald", percentage: students.length ? (students.filter((s) => s.status === "ACTIVE").length / students.length) * 100 : 0 },
-            { label: "Inactive", count: students.filter((s) => s.status !== "ACTIVE").length, color: "amber", percentage: students.length ? (students.filter((s) => s.status !== "ACTIVE").length / students.length) * 100 : 0 },
+            { label: t("metrics.active"), count: students.filter((s) => s.status === "ACTIVE").length, color: "emerald", percentage: students.length ? (students.filter((s) => s.status === "ACTIVE").length / students.length) * 100 : 0 },
+            { label: t("metrics.inactive"), count: students.filter((s) => s.status !== "ACTIVE").length, color: "amber", percentage: students.length ? (students.filter((s) => s.status !== "ACTIVE").length / students.length) * 100 : 0 },
           ]}
-          actionLabel="View All"
-          onAction={() => setFilters({ search: "", status: "ALL", gender: "ALL" } as any)}
+          actionLabel={t("metrics.viewAll")}
+          onAction={() => setFilters({ search: "", status: "ALL", gender: "ALL", classId: "", sectionId: "", groupId: "" } as any)}
         />
         <ERPMetricCard
-          subtitle="GENDER"
-          title="Distribution"
+          subtitle={t("metrics.gender")}
+          title={t("metrics.distribution")}
           value={students.length}
-          unit="on this page"
           isLoading={isLoading}
           icon={UserCheck}
           breakdowns={[
-            { label: "Male", count: students.filter((s: any) => s.gender === "MALE").length, color: "indigo", percentage: students.length ? (students.filter((s: any) => s.gender === "MALE").length / students.length) * 100 : 0 },
-            { label: "Female", count: students.filter((s: any) => s.gender === "FEMALE").length, color: "rose", percentage: students.length ? (students.filter((s: any) => s.gender === "FEMALE").length / students.length) * 100 : 0 },
+            { label: t("metrics.male"), count: students.filter((s: any) => s.gender === "MALE").length, color: "indigo", percentage: students.length ? (students.filter((s: any) => s.gender === "MALE").length / students.length) * 100 : 0 },
+            { label: t("metrics.female"), count: students.filter((s: any) => s.gender === "FEMALE").length, color: "rose", percentage: students.length ? (students.filter((s: any) => s.gender === "FEMALE").length / students.length) * 100 : 0 },
           ]}
-        />
-        <ERPMetricCard
-          subtitle="CLASS"
-          title="Avg per Class"
-          value={pagination?.totalCount ? Math.round((pagination.totalCount as number) / 12) : "-"}
-          unit="est."
-          isLoading={isLoading}
-          icon={UserX}
-          trend={{ value: "+3.2%", isPositive: true }}
-          lastUpdated="Last synced just now"
         />
       </div>
 
@@ -233,8 +241,14 @@ export default function StudentsPage() {
       <StudentFiltersBar
         status={filters.status}
         gender={filters.gender}
+        classId={filters.classId}
+        sectionId={filters.sectionId}
+        groupId={filters.groupId}
         onStatusChange={(status) => setFilters({ status })}
         onGenderChange={(gender) => setFilters({ gender })}
+        onClassChange={(classId) => setFilters({ classId, groupId: "", sectionId: "" })}
+        onGroupChange={(groupId) => setFilters({ groupId, sectionId: "" })}
+        onSectionChange={(sectionId) => setFilters({ sectionId })}
         onClearFilters={handleClearFilters}
       />
 
@@ -264,11 +278,13 @@ export default function StudentsPage() {
               key={student.id}
               student={student}
               onView={() => handleView(student)}
-              onEdit={() => handleEdit(student)}
-              onDelete={() => handleDelete(student)}
+              onEdit={canWriteStudents ? () => handleEdit(student) : undefined}
+              onDelete={canManageStudents ? () => handleDelete(student) : undefined}
             />
           ))}
         </div>
+      )}
+        </>
       )}
 
       {/* Modals */}

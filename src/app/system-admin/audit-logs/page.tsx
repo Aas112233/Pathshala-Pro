@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ import {
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
 
 export default function SystemAdminAuditLogsPage() {
+  const t = useTranslations("systemAdminPages");
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -37,10 +39,10 @@ export default function SystemAdminAuditLogsPage() {
       if (json.success) {
         setLogs(json.data || []);
       } else {
-        toast.error("Failed to load audit logs");
+        toast.error(t("loadAuditFailed"));
       }
     } catch {
-      toast.error("Network error");
+      toast.error(t("networkError"));
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +65,7 @@ export default function SystemAdminAuditLogsPage() {
   const columns: ColumnDef<any>[] = [
     {
       key: "createdAt",
-      header: "TIMESTAMP",
+      header: t("timestamp"),
       cell: (row) => (
         <span className="text-xs text-muted-foreground font-mono">
           {new Date(row.createdAt).toLocaleString()}
@@ -72,7 +74,7 @@ export default function SystemAdminAuditLogsPage() {
     },
     {
       key: "action",
-      header: "ACTION",
+      header: t("action"),
       cell: (row) => {
         const variant =
           row.action === "DELETE"
@@ -85,7 +87,7 @@ export default function SystemAdminAuditLogsPage() {
     },
     {
       key: "entity",
-      header: "ENTITY & ID",
+      header: t("entityId"),
       cell: (row) => (
         <div>
           <span className="text-xs font-bold text-foreground">{row.entity}</span>
@@ -99,14 +101,14 @@ export default function SystemAdminAuditLogsPage() {
     },
     {
       key: "userEmail",
-      header: "EXECUTED BY",
+      header: t("executedBy"),
       cell: (row) => (
         <span className="text-xs font-medium text-foreground">{row.userEmail || "System"}</span>
       ),
     },
     {
       key: "tenantId",
-      header: "TENANT",
+      header: t("tenant"),
       cell: (row) => (
         <Badge variant="outline" className="text-[10px] font-mono">
           {row.tenantId}
@@ -115,7 +117,7 @@ export default function SystemAdminAuditLogsPage() {
     },
     {
       key: "details",
-      header: "PAYLOAD DETAILS",
+      header: t("payloadDetails"),
       cell: (row) => (
         <code className="text-[11px] font-mono text-muted-foreground truncate max-w-[280px] block">
           {row.details ? JSON.stringify(row.details) : "—"}
@@ -127,8 +129,8 @@ export default function SystemAdminAuditLogsPage() {
   return (
     <div className="space-y-6 pb-12">
       <PageHeader
-        title="Global Security & Audit Stream"
-        description="Real-Time Enterprise Mutation Stream Across All 1,000+ Multi-Tenant Schools"
+        title={t("auditTitle")}
+        description={t("auditDescription")}
         icon={ShieldAlert}
       >
         <Button
@@ -156,7 +158,7 @@ export default function SystemAdminAuditLogsPage() {
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <h3 className="text-2xl font-extrabold text-foreground">{logs.length}</h3>
-            <p className="text-[11px] text-muted-foreground">Stored immutable records</p>
+            <p className="text-[11px] text-muted-foreground">{t("storedRecords")}</p>
           </CardContent>
         </Card>
 
@@ -175,7 +177,7 @@ export default function SystemAdminAuditLogsPage() {
             <h3 className="text-2xl font-extrabold text-foreground">
               {logs.filter((l) => l.action === "DELETE").length}
             </h3>
-            <p className="text-[11px] text-muted-foreground">High-risk administrative actions</p>
+            <p className="text-[11px] text-muted-foreground">{t("highRiskActions")}</p>
           </CardContent>
         </Card>
 
@@ -194,7 +196,7 @@ export default function SystemAdminAuditLogsPage() {
             <h3 className="text-2xl font-extrabold text-foreground">
               {logs.filter((l) => l.action === "CREATE").length}
             </h3>
-            <p className="text-[11px] text-muted-foreground">New records provisioned</p>
+            <p className="text-[11px] text-muted-foreground">{t("newRecords")}</p>
           </CardContent>
         </Card>
 
@@ -204,14 +206,14 @@ export default function SystemAdminAuditLogsPage() {
               <span className="text-xs font-semibold text-muted-foreground uppercase">
                 Audit Integrity
               </span>
-              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <ShieldCheck className="h-4 w-4" />
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <h3 className="text-2xl font-extrabold text-foreground">100% Enforced</h3>
-            <p className="text-[11px] text-muted-foreground">Tenant-isolated logging</p>
+            <h3 className="text-2xl font-extrabold text-foreground">{t("enforced")}</h3>
+            <p className="text-[11px] text-muted-foreground">{t("tenantLogging")}</p>
           </CardContent>
         </Card>
       </div>
@@ -222,7 +224,7 @@ export default function SystemAdminAuditLogsPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex-1 min-w-[240px]">
               <Input
-                placeholder="Search by operator email, entity, or school tenant ID..."
+                placeholder={t("auditSearch")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-9 text-xs"
@@ -236,7 +238,7 @@ export default function SystemAdminAuditLogsPage() {
                 onChange={(e) => setActionFilter(e.target.value)}
                 className="h-9 px-3 rounded-md border border-input bg-background text-xs"
               >
-                <option value="">All Actions</option>
+                <option value="">{t("allActions")}</option>
                 <option value="CREATE">CREATE</option>
                 <option value="UPDATE">UPDATE</option>
                 <option value="DELETE">DELETE</option>
@@ -263,12 +265,12 @@ export default function SystemAdminAuditLogsPage() {
 
       {/* Audit Log DataTable */}
       <ERPDataTable<any>
-        title="Enterprise System Audit Trail"
-        subtitle={`Showing ${filteredLogs.length} recent security events`}
+        title={t("auditTrail")}
+        subtitle={t("showingEvents", { count: filteredLogs.length })}
         data={filteredLogs}
         columns={columns}
         keyExtractor={(row) => row.id}
-        searchPlaceholder="Filter audit records..."
+        searchPlaceholder={t("filterAudit")}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />

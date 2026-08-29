@@ -14,6 +14,9 @@ export interface StudentFilters {
   search: string;
   status: StudentStatusFilter;
   gender: "ALL" | "MALE" | "FEMALE" | "OTHER";
+  classId: string;
+  sectionId: string;
+  groupId: string;
 }
 
 export interface StudentViewModel {
@@ -86,6 +89,9 @@ export function useStudentViewModel(): StudentViewModel {
     search: "",
     status: "ALL",
     gender: "ALL",
+    classId: "",
+    sectionId: "",
+    groupId: "",
   });
 
   const setFilters = useCallback((newFilters: Partial<StudentFilters>) => {
@@ -93,19 +99,23 @@ export function useStudentViewModel(): StudentViewModel {
     setPage(1); // Reset to first page when filters change
   }, []);
 
-  const queryKey = useMemo(
-    () => [
+  const queryKey = useMemo(() => {
+    const filterParams: Record<string, string> = {};
+    if (filters.status !== "ALL") filterParams.status = filters.status;
+    if (filters.gender !== "ALL") filterParams.gender = filters.gender;
+    if (filters.classId) filterParams.classId = filters.classId;
+    if (filters.sectionId) filterParams.sectionId = filters.sectionId;
+    if (filters.groupId) filterParams.groupId = filters.groupId;
+    return [
       "students",
       {
         page,
         limit: 20,
         search: filters.search || undefined,
-        ...(filters.status !== "ALL" && { filters: { status: filters.status } }),
-        ...(filters.gender !== "ALL" && { filters: { gender: filters.gender } }),
+        ...(Object.keys(filterParams).length && { filters: filterParams }),
       },
-    ],
-    [page, filters.search, filters.status, filters.gender]
-  );
+    ];
+  }, [page, filters.search, filters.status, filters.gender, filters.classId, filters.sectionId, filters.groupId]);
 
   const {
     data,
@@ -114,14 +124,20 @@ export function useStudentViewModel(): StudentViewModel {
     refetch,
   } = useQuery({
     queryKey,
-    queryFn: () =>
-      studentsApi.list({
+    queryFn: () => {
+      const filterParams: Record<string, string> = {};
+      if (filters.status !== "ALL") filterParams.status = filters.status;
+      if (filters.gender !== "ALL") filterParams.gender = filters.gender;
+      if (filters.classId) filterParams.classId = filters.classId;
+      if (filters.sectionId) filterParams.sectionId = filters.sectionId;
+      if (filters.groupId) filterParams.groupId = filters.groupId;
+      return studentsApi.list({
         page,
         limit: 20,
         search: filters.search || undefined,
-        ...(filters.status !== "ALL" && { filters: { status: filters.status } }),
-        ...(filters.gender !== "ALL" && { filters: { gender: filters.gender } }),
-      } as PaginationParams),
+        ...(Object.keys(filterParams).length && { filters: filterParams }),
+      } as PaginationParams);
+    },
   });
 
   const students = useMemo(

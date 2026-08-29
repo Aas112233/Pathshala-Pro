@@ -120,7 +120,7 @@ export default function SystemAdminDashboard() {
         <div className="flex items-center gap-2.5">
           <Button
             onClick={() => setIsOnboardModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 h-9 shadow-sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs gap-1.5 h-9"
           >
             <Plus className="h-4 w-4" />
             Onboard New School
@@ -155,14 +155,14 @@ export default function SystemAdminDashboard() {
           <Card className="border border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <School className="h-4 w-4 text-indigo-600" />
+                <School className="h-4 w-4 text-primary" />
                 Recently Provisioned Schools
               </CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => router.push("/system-admin/tenants")}
-                className="text-xs text-indigo-600 gap-1 h-7"
+                className="text-xs text-primary gap-1 h-7"
               >
                 View All Directory <ArrowUpRight className="h-3 w-3" />
               </Button>
@@ -180,13 +180,13 @@ export default function SystemAdminDashboard() {
                       className="flex items-center justify-between p-3.5 hover:bg-muted/20 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg flex items-center justify-center font-bold text-xs">
+                        <div className="h-8 w-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center font-semibold text-xs">
                           <Building2 className="h-4 w-4" />
                         </div>
                         <div>
                           <button
                             onClick={() => router.push(`/system-admin/tenants/${tenant.id || tenant.tenantId}`)}
-                            className="font-bold text-xs text-foreground hover:text-indigo-600 text-left flex items-center gap-1 cursor-pointer"
+                            className="font-bold text-xs text-foreground hover:text-primary text-left flex items-center gap-1 cursor-pointer"
                           >
                             <span>{tenant.name}</span>
                             <ExternalLink className="h-3 w-3 opacity-60" />
@@ -230,14 +230,14 @@ export default function SystemAdminDashboard() {
           <Card className="border border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                <ShieldCheck className="h-4 w-4 text-primary" />
                 SuperAdmin Modules
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3 space-y-2">
               <button
                 onClick={() => router.push("/system-admin/billing")}
-                className="w-full text-left p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all flex items-center justify-between group cursor-pointer"
+                className="w-full text-left p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
@@ -253,7 +253,7 @@ export default function SystemAdminDashboard() {
 
               <button
                 onClick={() => router.push("/system-admin/audit-logs")}
-                className="w-full text-left p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all flex items-center justify-between group cursor-pointer"
+                className="w-full text-left p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
@@ -269,10 +269,10 @@ export default function SystemAdminDashboard() {
 
               <button
                 onClick={() => router.push("/system-admin/tenants")}
-                className="w-full text-left p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all flex items-center justify-between group cursor-pointer"
+                className="w-full text-left p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
                     <Building2 className="h-4 w-4" />
                   </div>
                   <div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { User, Phone, Mail } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { StudentStatusBadge } from "./student-status-badge";
 import { StudentActionsDropdown } from "./student-actions-dropdown";
@@ -24,6 +25,7 @@ export function StudentCard({
   onDelete,
   className,
 }: StudentCardProps) {
+  const t = useTranslations("students");
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const fullName = formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn);
   const initials = `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`;
@@ -33,7 +35,7 @@ export function StudentCard({
     <>
       <div
         className={cn(
-          "group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all hover:shadow-lg hover:border-primary/20",
+          "group relative overflow-hidden rounded-lg border border-border bg-card p-5 transition-all hover:shadow-lg hover:border-primary/20",
           className
         )}
       >
@@ -64,7 +66,7 @@ export function StudentCard({
                 setIsImagePreviewOpen(true);
               }
             }}
-            aria-label={hasImage ? `Click to preview ${fullName}'s photo` : undefined}
+            aria-label={hasImage ? t("card.previewPhoto", { name: fullName }) : undefined}
           >
             {student.profilePictureUrl ? (
               <img
@@ -83,8 +85,8 @@ export function StudentCard({
               <h3 className="font-semibold text-foreground">{fullName}</h3>
               <StudentStatusBadge status={student.status} />
             </div>
-            <p className="text-sm text-muted-foreground">Roll: {student.rollNumber}</p>
-            <p className="text-xs text-muted-foreground">ID: {student.studentId}</p>
+            <p className="text-sm text-muted-foreground">{t("card.roll")} {student.rollNumber}</p>
+            <p className="text-xs text-muted-foreground">{t("card.id")} {student.studentId}</p>
           </div>
         </div>
 
@@ -92,7 +94,7 @@ export function StudentCard({
         <div className="mt-4 space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <User className="h-4 w-4" />
-            <span>Guardian: {student.guardianName}</span>
+            <span>{t("card.guardian")} {student.guardianName}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Phone className="h-4 w-4" />
@@ -107,7 +109,7 @@ export function StudentCard({
           {student.gender && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
-              <span>Gender: {student.gender}</span>
+              <span>{t("card.gender")} {student.gender}</span>
             </div>
           )}
         </div>
@@ -117,7 +119,7 @@ export function StudentCard({
         isOpen={isImagePreviewOpen}
         onClose={() => setIsImagePreviewOpen(false)}
         src={student.profilePictureUrl || ""}
-        alt={`${fullName}'s profile photo`}
+        alt={t("card.profilePhotoAlt", { name: fullName })}
         title={fullName}
       />
     </>

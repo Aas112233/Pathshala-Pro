@@ -150,7 +150,7 @@ export default function SystemAdminBillingPage() {
       cell: (row) => (
         <Badge
           variant="outline"
-          className="text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+          className="text-[10px] font-bold bg-primary/10 text-primary"
         >
           {row.plan}
         </Badge>
@@ -257,7 +257,7 @@ export default function SystemAdminBillingPage() {
               <span className="text-xs font-semibold text-muted-foreground uppercase">
                 {t("saasAdmin.billing.estimatedArr")}
               </span>
-              <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <TrendingUp className="h-4 w-4" />
               </div>
             </div>

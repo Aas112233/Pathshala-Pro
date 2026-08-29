@@ -21,7 +21,7 @@ export function ERPFormSection({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/70 bg-card p-5 shadow-xs space-y-4",
+        "rounded-lg border border-border/80 bg-card p-5 shadow-none space-y-4",
         className
       )}
     >

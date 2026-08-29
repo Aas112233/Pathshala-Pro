@@ -35,6 +35,8 @@ import { useTenantFormatting } from "@/components/providers/tenant-settings-prov
 import { usePDFExport, type SalaryPayslipPDFData } from "@/hooks/use-pdf-export";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import type { SalaryLedger, SalaryLedgerWithDetails, CreateSalaryLedgerDTO, PaymentDTO } from "@/types/entities";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 // Data fetching for dropdowns
 import { useQuery } from "@tanstack/react-query";
@@ -44,6 +46,11 @@ export default function SalaryPage() {
   const t = useTranslations("salary");
   const { formatCurrency, formatDate } = useTenantFormatting();
   const { exportSalaryPayslipPDF, exportBatchPayslipsPDF } = usePDFExport();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadSalary = hasPermission(perms, "salary", "read");
+  const canWriteSalary = hasPermission(perms, "salary", "write");
+  const canManageSalary = hasPermission(perms, "salary", "manage");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -125,7 +132,7 @@ export default function SalaryPage() {
       if (!confirm(t("confirmDelete"))) return;
       try {
         await deleteSalary(salaryItem.id);
-        toast.success("Salary record deleted successfully");
+        toast.success(t("ui.deleteRecordSuccess"));
       } catch {}
     },
     [deleteSalary, t]
@@ -142,26 +149,26 @@ export default function SalaryPage() {
   const handleDownloadPayslip = useCallback(
     (item: SalaryLedger) => {
       const monthNames = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december",
       ];
-      const monthStr = monthNames[(item.month || 1) - 1] || "Month";
+      const monthStr = t(`ui.months.${monthNames[(item.month || 1) - 1] || "january"}`);
 
       const staff = item.staffProfile;
       const pdfData: SalaryPayslipPDFData = {
         schoolName: "Pathshala Pro Academy",
         currencySymbol: "$",
         payslipId: `PS-${item.year}-${String(item.month).padStart(2, "0")}-${item.id.slice(0, 6)}`,
-        staffId: staff?.staffId || "STAFF-01",
-        staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || "Staff Member",
-        designation: staff?.designation || "Faculty Member",
-        department: staff?.department || "Academic",
+        staffId: staff?.staffId || t("ui.notAvailable"),
+        staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || t("tableColumns.staffMember"),
+        designation: staff?.designation || t("tableColumns.designation"),
+        department: staff?.department || t("tableColumns.department"),
         bankName: "National Commercial Bank",
         bankAccountNo: "XXXX-XXXX-XXXX",
         month: monthStr,
         year: item.year,
-        paymentDate: item.paidAt ? formatDate(item.paidAt) : "Pending",
-        paymentMethod: "Bank Transfer",
+        paymentDate: item.paidAt ? formatDate(item.paidAt) : t("pendingPayroll"),
+        paymentMethod: t("ui.paymentMethodBankTransfer"),
         status: item.status,
         baseSalary: item.baseSalary || 0,
         allowances: [],
@@ -176,14 +183,14 @@ export default function SalaryPage() {
       };
 
       exportSalaryPayslipPDF(pdfData);
-      toast.success(`Downloaded Payslip for ${pdfData.staffName}`);
+      toast.success(t("ui.downloadedPayslip", { name: pdfData.staffName }));
     },
     [exportSalaryPayslipPDF, formatDate]
   );
 
   const handleDownloadBatchPayslips = useCallback(() => {
     if (!salary.length) {
-      toast.error("No salary records available for export");
+      toast.error(t("ui.noRecordsExport"));
       return;
     }
 
@@ -193,22 +200,22 @@ export default function SalaryPage() {
     ];
 
     const payslips: SalaryPayslipPDFData[] = salary.map((item: any) => {
-      const monthStr = monthNames[(item.month || 1) - 1] || "Month";
+      const monthStr = t(`ui.months.${monthNames[(item.month || 1) - 1] || "january"}`);
       const staff = item.staffProfile;
       return {
         schoolName: "Pathshala Pro Academy",
         currencySymbol: "$",
         payslipId: `PS-${item.year}-${String(item.month).padStart(2, "0")}-${item.id.slice(0, 6)}`,
-        staffId: staff?.staffId || "STAFF-01",
-        staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || "Staff Member",
-        designation: staff?.designation || "Faculty Member",
-        department: staff?.department || "Academic",
+        staffId: staff?.staffId || t("ui.notAvailable"),
+        staffName: `${staff?.firstName || ""} ${staff?.lastName || ""}`.trim() || t("tableColumns.staffMember"),
+        designation: staff?.designation || t("tableColumns.designation"),
+        department: staff?.department || t("tableColumns.department"),
         bankName: "National Commercial Bank",
         bankAccountNo: "XXXX-XXXX-XXXX",
         month: monthStr,
         year: item.year,
-        paymentDate: item.paidAt ? formatDate(item.paidAt) : "Pending",
-        paymentMethod: "Bank Transfer",
+        paymentDate: item.paidAt ? formatDate(item.paidAt) : t("pendingPayroll"),
+        paymentMethod: t("ui.paymentMethodBankTransfer"),
         status: item.status,
         baseSalary: item.baseSalary || 0,
         allowances: [],
@@ -224,7 +231,7 @@ export default function SalaryPage() {
     });
 
     exportBatchPayslipsPDF(payslips, `Monthly_Payslips_Batch_${Date.now()}.pdf`);
-    toast.success(`Exporting ${payslips.length} Staff Payslips (PDF)...`);
+    toast.success(t("ui.exportingPayslips", { count: payslips.length }));
   }, [salary, exportBatchPayslipsPDF, formatDate]);
 
   const { run: runSalarySubmit } = useSubmitGuard();
@@ -234,10 +241,10 @@ export default function SalaryPage() {
       await runSalarySubmit(async () => {
         if (editingSalary?.id) {
           await updateSalary(editingSalary.id, data);
-          toast.success("Salary updated successfully");
+          toast.success(t("ui.salaryUpdated"));
         } else {
           await createSalary(data);
-          toast.success("Payroll record created");
+          toast.success(t("ui.payrollCreated"));
         }
         setEditingSalary(null);
       });
@@ -249,7 +256,7 @@ export default function SalaryPage() {
     async (salaryId: string, data: PaymentDTO) => {
       await runSalarySubmit(async () => {
         await recordPayment(salaryId, data);
-        toast.success("Payment recorded successfully");
+        toast.success(t("ui.paymentRecorded"));
       });
     },
     [recordPayment, runSalarySubmit]
@@ -259,7 +266,7 @@ export default function SalaryPage() {
     async (data: any) => {
       await runSalarySubmit(async () => {
         await processBulkPayroll(data);
-        toast.success("Bulk payroll processed");
+        toast.success(t("ui.bulkProcessed"));
       });
     },
     [processBulkPayroll, runSalarySubmit]
@@ -304,7 +311,7 @@ export default function SalaryPage() {
             <div className="text-[11px] font-mono text-muted-foreground">{staff.staffId}</div>
           </div>
         ) : (
-          <span className="text-xs text-muted-foreground">-</span>
+          <span className="text-xs text-muted-foreground">{t("ui.notAvailable")}</span>
         );
       },
     },
@@ -312,7 +319,7 @@ export default function SalaryPage() {
       accessorKey: "designation",
       header: t("tableColumns.designation"),
       cell: ({ row }) => (
-        <span className="text-xs">{row.original.staffProfile?.designation || "-"}</span>
+        <span className="text-xs">{row.original.staffProfile?.designation || t("ui.notAvailable")}</span>
       ),
     },
     {
@@ -320,7 +327,7 @@ export default function SalaryPage() {
       header: t("tableColumns.department"),
       cell: ({ row }) => (
         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-muted text-foreground">
-          {row.original.staffProfile?.department || "-"}
+          {row.original.staffProfile?.department || t("ui.notAvailable")}
         </span>
       ),
     },
@@ -355,7 +362,7 @@ export default function SalaryPage() {
         return value > 0 ? (
           <span className="font-mono text-xs text-amber-600">-{formatCurrency(value)}</span>
         ) : (
-          <span className="text-xs text-muted-foreground">-</span>
+          <span className="text-xs text-muted-foreground">{t("ui.notAvailable")}</span>
         );
       },
     },
@@ -367,7 +374,7 @@ export default function SalaryPage() {
         return value > 0 ? (
           <span className="font-mono text-xs text-amber-600">-{formatCurrency(value)}</span>
         ) : (
-          <span className="text-xs text-muted-foreground">-</span>
+          <span className="text-xs text-muted-foreground">{t("ui.notAvailable")}</span>
         );
       },
     },
@@ -390,7 +397,7 @@ export default function SalaryPage() {
             {formatCurrency(paid)}
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">-</span>
+          <span className="text-xs text-muted-foreground">{t("ui.notAvailable")}</span>
         );
       },
     },
@@ -406,9 +413,9 @@ export default function SalaryPage() {
         <SalaryActionsDropdown
           salary={row.original}
           onView={() => handleView(row.original)}
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original)}
-          onPayment={() => handlePayment(row.original)}
+          onEdit={canWriteSalary ? () => handleEdit(row.original) : undefined}
+          onDelete={canManageSalary ? () => handleDelete(row.original) : undefined}
+          onPayment={canWriteSalary ? () => handlePayment(row.original) : undefined}
           onGenerateSlip={() => handleDownloadPayslip(row.original)}
         />
       ),
@@ -431,23 +438,35 @@ export default function SalaryPage() {
             className="gap-2"
           >
             <Printer className="h-4 w-4" />
-            Batch Payslips (PDF)
+            {t("ui.batchPayslips")}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsBulkPayrollOpen(true)}
-            size="sm"
-            className="gap-2"
-          >
-            <Users className="h-4 w-4" />
-            Bulk Payroll
-          </Button>
-          <Button onClick={() => setIsFormOpen(true)} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("processPayroll")}
-          </Button>
+          {canWriteSalary && (
+            <Button
+              variant="outline"
+              onClick={() => setIsBulkPayrollOpen(true)}
+              size="sm"
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
+              {t("ui.bulkPayroll")}
+            </Button>
+          )}
+          {canWriteSalary && (
+            <Button onClick={() => setIsFormOpen(true)} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              {t("processPayroll")}
+            </Button>
+          )}
         </div>
       </PageHeader>
+
+      {!isAuthLoading && !canReadSalary ? (
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view salary.</p>
+        </div>
+      ) : (
+        <>
 
       {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -525,6 +544,8 @@ export default function SalaryPage() {
           isLoading={isLoading}
           searchPlaceholder={t("searchPlaceholder")}
         />
+      )}
+        </>
       )}
 
       {/* Modals */}

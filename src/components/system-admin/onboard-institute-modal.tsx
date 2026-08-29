@@ -47,19 +47,19 @@ const TEMPLATE_DESCRIPTIONS: Record<
   { label: string; description: string; count: string; icon: LucideIcon }
 > = {
   PK_FBISE_MATRIC_INTER: {
-    label: "🇵🇰 Pakistan (FBISE Federal Board)",
+    label: "Pakistan (FBISE Federal Board)",
     description: "SSC 9-10 (Science/Computer) & HSSC 11-12 (Pre-Med, Pre-Eng, ICS, I.Com)",
     count: "4 Classes + Streams",
     icon: Microscope,
   },
   IN_CBSE_SECONDARY_SR_SEC: {
-    label: "🇮🇳 India (CBSE Board)",
+    label: "India (CBSE Board)",
     description: "Class 9-10 (Std/Basic Math, Science, Social) & Class 11-12 (Science, Commerce, Arts)",
     count: "4 Classes + Streams",
     icon: Landmark,
   },
   BD_NCTB_PRIMARY_SSC_HSC: {
-    label: "🇧🇩 Bangladesh (NCTB Curriculum)",
+    label: "Bangladesh (NCTB Curriculum)",
     description: "Primary (1-5), Junior Secondary (6-8), SSC (9-10) & HSC (11-12) with GPA 5.0 scale",
     count: "12 Classes + Streams",
     icon: School,
@@ -626,14 +626,14 @@ export function OnboardInstituteModal({
                     key={preset}
                     type="button"
                     onClick={() => updateField("classTemplate", preset)}
-                    className={`flex flex-col text-left p-3.5 rounded-xl border transition-all text-xs ${
+                    className={`flex flex-col text-left p-3.5 rounded-lg border transition-all text-xs ${
                       isSelected
                         ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary"
                         : "border-border hover:border-muted-foreground/30 bg-card hover:bg-muted/30"
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-2">
-                      <div className="h-7 w-7 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                      <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                         <IconComp className="h-4 w-4" />
                       </div>
                       <Badge variant={isSelected ? "default" : "outline"} className="text-[10px] py-0">
@@ -655,7 +655,7 @@ export function OnboardInstituteModal({
       {/* Step 4: Administrator Credentials */}
       {step === 4 && (
         <div className="space-y-4">
-          <div className="p-3.5 bg-primary/5 rounded-xl border border-primary/15 flex items-start gap-3">
+          <div className="p-3.5 bg-primary/5 rounded-lg border border-primary/15 flex items-start gap-3">
             <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div className="text-xs">
               <p className="font-semibold text-foreground">Institute Super Admin Account</p>
@@ -854,7 +854,7 @@ export function OnboardInstituteModal({
             </Button>
             <Button
               onClick={resetAndClose}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
             >
               Finish & Return
             </Button>
@@ -876,7 +876,7 @@ export function OnboardInstituteModal({
           )}
 
           {step < 5 ? (
-            <Button onClick={handleNext} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2">
+            <Button onClick={handleNext} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
               Next <ArrowRight className="h-4 w-4" />
             </Button>
           ) : (

@@ -80,12 +80,12 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
 
   const handleDownloadBatchPDF = async () => {
     if (!students || students.length === 0) {
-      toast.error("No student results available to generate PDF");
+      toast.error(t("noStudentResultsPdf"));
       return;
     }
 
     setIsGeneratingPDF(true);
-    const toastId = toast.loading("Generating class report cards PDF booklet...");
+    const toastId = toast.loading(t("generatingPdf"));
 
     try {
       const fileName = `${(classInfo?.name || "Class").replace(/\s+/g, "_")}_${(
@@ -104,13 +104,13 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
       });
 
       if (result.success) {
-        toast.success("Batch report cards downloaded successfully!", { id: toastId });
+        toast.success(t("batchPdfDownloaded"), { id: toastId });
       } else {
-        toast.error("Failed to generate PDF document", { id: toastId });
+        toast.error(t("pdfFailed"), { id: toastId });
       }
     } catch (err) {
       console.error("Batch PDF generation error:", err);
-      toast.error("An error occurred during PDF generation", { id: toastId });
+      toast.error(t("pdfError"), { id: toastId });
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -118,22 +118,22 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
 
   const handleExportCSV = () => {
     if (!students || students.length === 0) {
-      toast.error("No data to export");
+      toast.error(t("noDataExport"));
       return;
     }
 
     const headers = [
-      "Rank",
-      "Roll No",
-      "Student Name",
-      "Admission No",
+      t("rank"),
+      t("rollNo"),
+      t("studentName"),
+      t("admissionNo"),
       ...subjectHeaders.map((s) => `${s.name} (${s.maxMarks})`),
-      "Total Obtained",
-      "Total Max",
-      "Percentage (%)",
-      "GPA",
-      "Grade",
-      "Status",
+      t("totalObtained"),
+      t("totalMax"),
+      t("percentage"),
+      t("gpa"),
+      t("grade"),
+      t("status"),
     ];
 
     const rows = students.map((st) => [
@@ -147,7 +147,7 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
       st.percentage,
       st.gpa.toFixed(2),
       st.letterGrade,
-      st.passed ? "PASSED" : "FAILED",
+      st.passed ? t("passedStatus") : t("failedStatus"),
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -161,7 +161,7 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Gradebook matrix exported as CSV");
+    toast.success(t("csvExported"));
   };
 
   return (
@@ -172,7 +172,7 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">
-                Select Exam
+                {t("selectExamLabel")}
               </label>
               <div className="mt-1">
                 <AppDropdown
@@ -182,14 +182,14 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
                     value: e.id,
                     label: `${e.name} ${e.academicYear ? `(${e.academicYear.name})` : ""}`,
                   }))}
-                  placeholder="Choose Exam..."
+                  placeholder={t("chooseExam")}
                 />
               </div>
             </div>
 
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">
-                Select Class / Grade
+                {t("selectClassGrade")}
               </label>
               <div className="mt-1">
                 <AppDropdown
@@ -199,7 +199,7 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
                     value: c.id,
                     label: c.name,
                   }))}
-                  placeholder="Choose Class..."
+                  placeholder={t("chooseClass")}
                 />
               </div>
             </div>
@@ -213,12 +213,12 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
                 {isLoading || isFetching ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading Matrix...
+                    {t("loadingMatrix")}
                   </>
                 ) : (
                   <>
                     <Trophy className="h-4 w-4" />
-                    Load Class Gradebook
+                    {t("loadGradebook")}
                   </>
                 )}
               </Button>
@@ -231,15 +231,15 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
       {students.length > 0 && statistics && (
         <div className="space-y-6">
           {/* Action Header & KPIs */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/40 p-4 rounded-2xl border border-border">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/40 p-4 rounded-lg border border-border">
             <div>
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <span>{classInfo?.name}</span>
                 <span className="text-muted-foreground font-normal">•</span>
-                <span className="text-primary">{examInfo?.name} Gradebook</span>
+                <span className="text-primary">{examInfo?.name} {t("gradebook")}</span>
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Cohort results, automatic merit rankings, and 1-click batch PDF export
+                {t("gradebookSummary")}
               </p>
             </div>
 
@@ -251,7 +251,7 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
                 className="h-9 gap-1.5 text-xs font-semibold"
               >
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                Export CSV
+                {t("exportCsv")}
               </Button>
               <Button
                 size="sm"
@@ -262,12 +262,12 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
                 {isGeneratingPDF ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating PDF...
+                    {t("generatingPdf")}
                   </>
                 ) : (
                   <>
                     <Download className="h-4 w-4" />
-                    Download All Report Cards (PDF)
+                    {t("downloadReportCards")}
                   </>
                 )}
               </Button>
@@ -278,31 +278,31 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-border shadow-xs">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600">
+                <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600">
                   <Users className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{statistics.totalStudents}</p>
-                  <p className="text-xs text-muted-foreground font-medium">Students in Class</p>
+                  <p className="text-xs text-muted-foreground font-medium">{t("studentsInClass")}</p>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-border shadow-xs">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600">
+                <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-600">
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{statistics.classAverage}%</p>
-                  <p className="text-xs text-muted-foreground font-medium">Class Average Score</p>
+                  <p className="text-xs text-muted-foreground font-medium">{t("classAverageScore")}</p>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-border shadow-xs">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600">
+                <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-600">
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <div>
@@ -310,7 +310,7 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
                     {statistics.passRate}%
                   </p>
                   <p className="text-xs text-muted-foreground font-medium">
-                    Pass Rate ({statistics.passCount}/{statistics.totalStudents})
+                    {t("passRate")} ({statistics.passCount}/{statistics.totalStudents})
                   </p>
                 </div>
               </CardContent>
@@ -318,15 +318,15 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
 
             <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 shadow-xs">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-600">
+                <div className="p-2.5 rounded-lg bg-amber-500/20 text-amber-600">
                   <Award className="h-5 w-5" />
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-sm font-bold text-amber-900 dark:text-amber-300 truncate">
-                    {classTopper ? classTopper.student.name : "N/A"}
+                    {classTopper ? classTopper.student.name : t("notAvailable")}
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                    1st Position ({classTopper?.percentage}%)
+                    {t("firstPosition")} ({classTopper?.percentage}%)
                   </p>
                 </div>
               </CardContent>
@@ -339,21 +339,21 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-muted/80 border-b border-border text-muted-foreground font-bold uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center w-16">Rank</th>
-                    <th className="py-3 px-3 w-20">Roll #</th>
-                    <th className="py-3 px-4 min-w-[180px]">Student Name</th>
+                    <th className="py-3 px-3 text-center w-16">{t("rank")}</th>
+                    <th className="py-3 px-3 w-20">{t("rollNo")}</th>
+                    <th className="py-3 px-4 min-w-[180px]">{t("studentName")}</th>
                     {subjectHeaders.map((sub, sIdx) => (
                       <th key={sIdx} className="py-3 px-3 text-center min-w-[110px]">
                         <div>{sub.name}</div>
                         <div className="text-[10px] text-muted-foreground font-normal">
-                          Max: {sub.maxMarks}
+                          {t("max")}: {sub.maxMarks}
                         </div>
                       </th>
                     ))}
-                    <th className="py-3 px-3 text-right min-w-[100px]">Total Score</th>
-                    <th className="py-3 px-3 text-right w-20">Percentage</th>
-                    <th className="py-3 px-3 text-right w-16">GPA</th>
-                    <th className="py-3 px-3 text-center w-24">Status</th>
+                    <th className="py-3 px-3 text-right min-w-[100px]">{t("totalScore")}</th>
+                    <th className="py-3 px-3 text-right w-20">{t("percentage")}</th>
+                    <th className="py-3 px-3 text-right w-16">{t("gpa")}</th>
+                    <th className="py-3 px-3 text-center w-24">{t("status")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60 bg-card">
@@ -363,7 +363,7 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
                       st.rank === 1
                         ? "bg-amber-500 text-white font-bold"
                         : st.rank === 2
-                        ? "bg-slate-400 text-white font-bold"
+                        ? "bg-muted text-muted-foreground font-bold"
                         : st.rank === 3
                         ? "bg-amber-700 text-white font-bold"
                         : "bg-muted text-muted-foreground";
@@ -471,14 +471,13 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
 
       {/* Empty State */}
       {(!selectedExam || !selectedClass || (students.length === 0 && !isLoading)) && (
-        <div className="text-center py-16 px-4 rounded-2xl border-2 border-dashed border-border/80 bg-card">
+        <div className="text-center py-16 px-4 rounded-lg border-2 border-dashed border-border/80 bg-card">
           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3 text-primary">
             <Trophy className="h-6 w-6" />
           </div>
-          <h3 className="text-base font-bold text-foreground">Class Gradebook & Batch Report Cards</h3>
+          <h3 className="text-base font-bold text-foreground">{t("gradebookBatchTitle")}</h3>
           <p className="text-xs text-muted-foreground max-w-md mx-auto mt-1">
-            Select an exam and class above to calculate merit positions, view the multi-subject
-            spreadsheet matrix, and download unified batch report card PDF booklets.
+            {t("gradebookBatchDescription")}
           </p>
         </div>
       )}

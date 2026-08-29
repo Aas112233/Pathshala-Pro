@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { MoreVertical, Pencil, Trash2, Eye, User, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StudentProfile } from "@/types/entities";
@@ -18,6 +19,7 @@ export function StudentActionsDropdown({
   onView,
   onDelete,
 }: StudentActionsDropdownProps) {
+  const t = useTranslations("students");
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -43,7 +45,7 @@ export function StudentActionsDropdown({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        aria-label="Student actions"
+        aria-label={t("actions.studentActions")}
       >
         <MoreVertical className="h-4 w-4" />
       </button>
@@ -64,7 +66,7 @@ export function StudentActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <Eye className="h-4 w-4" />
-                <span>View Details</span>
+                <span>{t("actions.viewDetails")}</span>
               </button>
             )}
             {onEdit && (
@@ -73,7 +75,7 @@ export function StudentActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <Pencil className="h-4 w-4" />
-                <span>Edit</span>
+                <span>{t("actions.edit")}</span>
               </button>
             )}
             {onDelete && (
@@ -91,7 +93,7 @@ export function StudentActionsDropdown({
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               >
                 {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                <span>{isDeleting ? "Deleting..." : "Delete"}</span>
+                <span>{isDeleting ? t("actions.deleting") : t("actions.delete")}</span>
               </button>
             )}
           </div>
