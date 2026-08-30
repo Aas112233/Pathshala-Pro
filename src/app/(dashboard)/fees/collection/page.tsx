@@ -9,11 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { usePDFExport, type FeeVoucherPDFData } from "@/hooks/use-pdf-export";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { toast } from "sonner";
 import { ACADEMIC_MONTHS } from "@/lib/constants";
+import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import {
@@ -37,6 +38,7 @@ import {
 
 export default function FeeCollectionPage() {
   const t = useTranslations("collection");
+  const tCommon = useTranslations("common");
   const tMonths = useTranslations("months");
   const qc = useQueryClient();
   const { formatCurrency, formatDate, currencySymbol } = useTenantFormatting();
@@ -289,14 +291,45 @@ export default function FeeCollectionPage() {
   const cashNum = parseFloat(cashTendered) || 0;
   const changeDue = Math.max(0, cashNum - payNum);
 
-  const paymentModes = [
-    { id: "CASH", label: t("cash"), icon: Wallet, color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
-    { id: "BANK_TRANSFER", label: t("bankTransfer"), icon: Building2, color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800" },
-    { id: "POS_CARD", label: t("cardPos"), icon: CreditCard, color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800" },
-    { id: "EASYPAISA", label: t("easypaisa"), icon: Smartphone, color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
-    { id: "JAZZCASH", label: t("jazzcash"), icon: Smartphone, color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
-    { id: "CHEQUE", label: t("chequeMode"), icon: Receipt, color: "bg-muted text-muted-foreground border-border" },
-  ];
+  const { settings } = useTenantSettings();
+  const configuredMethods = useMemo(() => {
+    const list = settings.paymentMethods && settings.paymentMethods.length > 0
+      ? settings.paymentMethods
+      : DEFAULT_PAYMENT_METHODS;
+    return list.filter((m) => m.isActive);
+  }, [settings.paymentMethods]);
+
+  const paymentModes = useMemo(() => {
+    return configuredMethods.map((m) => {
+      let icon = Smartphone;
+      let color = "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800";
+
+      if (m.type === "CASH" || m.code === "CASH") {
+        icon = Wallet;
+        color = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800";
+      } else if (m.type === "BANK" || m.code === "BANK_TRANSFER") {
+        icon = Building2;
+        color = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800";
+      } else if (m.type === "CHEQUE" || m.code === "CHEQUE") {
+        icon = Receipt;
+        color = "bg-muted text-muted-foreground border-border";
+      } else if (m.code === "POS_CARD") {
+        icon = CreditCard;
+      }
+
+      return {
+        id: m.code,
+        label: m.name,
+        icon,
+        color,
+        isCash: m.type === "CASH" || m.code === "CASH",
+        instructions: m.instructions,
+      };
+    });
+  }, [configuredMethods]);
+
+  const currentMode = paymentModes.find((m) => m.id === paymentMethod);
+  const isCashMode = currentMode?.isCash ?? (paymentMethod === "CASH");
 
   return (
     <div className="space-y-6">
@@ -320,8 +353,8 @@ export default function FeeCollectionPage() {
 
       {!isAuthLoading && !canReadFees ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view fees.</p>
+          <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
         </div>
       ) : (
         <>
@@ -826,7 +859,7 @@ export default function FeeCollectionPage() {
               </div>
 
               {/* 3. Cash Tender & Change Calculator (if Cash) */}
-              {paymentMethod === "CASH" && (
+              {isCashMode && (
                 <div className="p-3 bg-muted/30 rounded-lg border border-border space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <label className="font-semibold text-foreground">{t("cashHanded")}</label>

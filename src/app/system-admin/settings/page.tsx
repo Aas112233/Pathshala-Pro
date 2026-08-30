@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -164,18 +165,26 @@ export default function SystemAdminSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">{t("boardCurriculum")}</Label>
-                <select value={platformConfig.defaultCurriculum} onChange={(e) => setPlatformConfig({ ...platformConfig, defaultCurriculum: e.target.value })} className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring">
-                  <option value="NCTB">Bangladesh NCTB</option>
-                  <option value="CBSE">India CBSE</option>
-                  <option value="FBISE">Pakistan FBISE</option>
-                </select>
+                <AppDropdown
+                  value={platformConfig.defaultCurriculum}
+                  onChange={(v) => setPlatformConfig({ ...platformConfig, defaultCurriculum: v })}
+                  options={[
+                    { value: "NCTB", label: "Bangladesh NCTB" },
+                    { value: "CBSE", label: "India CBSE" },
+                    { value: "FBISE", label: "Pakistan FBISE" }
+                  ]}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">{t("gradingSystem")}</Label>
-                <select value={platformConfig.defaultGradingSystem} onChange={(e) => setPlatformConfig({ ...platformConfig, defaultGradingSystem: e.target.value })} className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring">
-                  <option value="GPA">GPA 5.0</option>
-                  <option value="PERCENTAGE">Percentage</option>
-                </select>
+                <AppDropdown
+                  value={platformConfig.defaultGradingSystem}
+                  onChange={(v) => setPlatformConfig({ ...platformConfig, defaultGradingSystem: v })}
+                  options={[
+                    { value: "GPA", label: "GPA 5.0" },
+                    { value: "PERCENTAGE", label: "Percentage" }
+                  ]}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">{t("graceSubject")}</Label>

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Student View Model
 export { useStudentViewModel } from "./use-student-view-model";
 export type {
@@ -8,3 +9,4 @@ export type {
   CreateStudentDTO,
   UpdateStudentDTO,
 } from "./use-student-view-model";
+

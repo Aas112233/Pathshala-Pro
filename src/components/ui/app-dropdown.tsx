@@ -17,6 +17,7 @@ interface AppDropdownProps {
     placeholder?: string;
     disabled?: boolean;
     searchable?: boolean;
+    searchPlaceholder?: string;
     noOptionsText?: string;
     className?: string;
     triggerClassName?: string;
@@ -31,7 +32,8 @@ export function AppDropdown({
     options,
     placeholder = 'Select',
     disabled = false,
-    searchable = false,
+    searchable,
+    searchPlaceholder = 'Search...',
     noOptionsText = 'No options found',
     className = '',
     triggerClassName = '',
@@ -40,16 +42,20 @@ export function AppDropdown({
 }: AppDropdownProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const dropdownRef = useRef<HTMLDivElement | null>(null);
+    const searchInputRef = useRef<HTMLInputElement | null>(null);
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
+    // Auto-enable search if searchable is true OR if options.length > 5 (unless explicitly set to false)
+    const isSearchable = searchable === true || (searchable !== false && options.length > 5);
+
     const selected = options.find((option) => option.value === value);
     const filtered = useMemo(() => {
-        if (!searchable || !search.trim()) return options;
+        if (!isSearchable || !search.trim()) return options;
         const key = search.trim().toLowerCase();
         return options.filter((option) => option.label.toLowerCase().includes(key));
-    }, [options, search, searchable]);
+    }, [options, search, isSearchable]);
 
     useEffect(() => {
         const handleClick = (event: MouseEvent) => {
@@ -60,6 +66,7 @@ export function AppDropdown({
                 return;
             }
             setOpen(false);
+            setSearch('');
         };
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
@@ -89,12 +96,18 @@ export function AppDropdown({
             updatePosition();
             window.addEventListener('scroll', updatePosition, true);
             window.addEventListener('resize', updatePosition);
+            // Auto focus search input
+            if (isSearchable) {
+                setTimeout(() => searchInputRef.current?.focus(), 50);
+            }
+        } else {
+            setSearch('');
         }
         return () => {
             window.removeEventListener('scroll', updatePosition, true);
             window.removeEventListener('resize', updatePosition);
         };
-    }, [open]);
+    }, [open, isSearchable]);
 
     // Handle closing when disabled
     useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
@@ -120,23 +133,24 @@ export function AppDropdown({
                     triggerClassName
                 )}
             >
-                <span className={selected ? 'text-foreground' : 'text-muted-foreground'}>
+                <span className={selected ? 'text-foreground truncate' : 'text-muted-foreground truncate'}>
                     {selected?.label || placeholder}
                 </span>
-                <ChevronDown size={16} className={clsx('text-muted-foreground transition-transform', open ? 'rotate-180' : '')} />
+                <ChevronDown size={16} className={clsx('text-muted-foreground transition-transform shrink-0 ml-2', open ? 'rotate-180' : '')} />
             </button>
 
             {open && typeof document !== 'undefined' && createPortal(
-                <div ref={dropdownRef} className="rounded-md border border-border bg-popover text-popover-foreground shadow-lg" style={dropdownStyle}>
-                    {searchable && (
-                        <div className="p-2 border-b border-border">
+                <div ref={dropdownRef} className="rounded-md border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100" style={dropdownStyle}>
+                    {isSearchable && (
+                        <div className="p-2 border-b border-border bg-muted/20">
                             <div className="relative">
                                 <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
                                 <input
+                                    ref={searchInputRef}
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full rounded-md border border-input bg-transparent py-1.5 pl-8 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+                                    placeholder={searchPlaceholder}
+                                    className="w-full rounded-md border border-input bg-background py-1.5 pl-8 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                                 />
                             </div>
                         </div>
@@ -144,7 +158,7 @@ export function AppDropdown({
 
                     <div className="max-h-56 overflow-auto py-1">
                         {filtered.length === 0 && (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">{noOptionsText}</div>
+                            <div className="px-3 py-3 text-xs text-center text-muted-foreground">{noOptionsText}</div>
                         )}
                         {filtered.map((option) => {
                             const isSelected = option.value === value;
@@ -160,16 +174,16 @@ export function AppDropdown({
                                         setSearch('');
                                     }}
                                     className={clsx(
-                                        'w-full flex items-center justify-between px-3 py-2 text-sm text-left',
+                                        'w-full flex items-center justify-between px-3 py-2 text-xs text-left',
                                         option.disabled
-                                            ? 'text-muted-foreground cursor-not-allowed'
+                                            ? 'text-muted-foreground cursor-not-allowed opacity-50'
                                             : isSelected
-                                                ? 'bg-primary/10 text-primary'
+                                                ? 'bg-primary/10 text-primary font-semibold'
                                                 : 'text-foreground hover:bg-muted hover:text-accent-foreground'
                                     )}
                                 >
-                                    <span>{option.label}</span>
-                                    {isSelected && <Check size={14} className="text-primary" />}
+                                    <span className="truncate mr-2">{option.label}</span>
+                                    {isSelected && <Check size={14} className="text-primary shrink-0" />}
                                 </button>
                             );
                         })}

@@ -8,6 +8,7 @@ import {
   safeParseBody,
 } from "@/lib/api-response";
 import { createStudentSchema } from "@/lib/schemas";
+import { verifyInternalFileUrl } from "@/lib/upload-security";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
@@ -149,6 +150,9 @@ export async function POST(request: NextRequest) {
     const bodyResult = await safeParseBody(request, createStudentSchema);
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
+    if (data.profilePictureUrl && !(await verifyInternalFileUrl(data.profilePictureUrl, tenantId))) {
+      return badRequest("Invalid profile picture file");
+    }
 
     let studentId = data.studentId;
 
@@ -191,14 +195,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if roll number already exists
+    // Check if roll number already exists in the same class/section
     const existingRoll = await prisma.studentProfile.findFirst({
-      where: { tenantId, rollNumber: data.rollNumber },
+      where: {
+        tenantId,
+        rollNumber: data.rollNumber,
+        ...(data.classId ? { classId: data.classId } : {}),
+        ...(data.sectionId ? { sectionId: data.sectionId } : {}),
+        status: "ACTIVE",
+      },
     });
 
     if (existingRoll) {
       return badRequest("Student already exists", [
-        { field: "rollNumber", code: "duplicate", message: "Roll number already exists" },
+        { field: "rollNumber", code: "duplicate", message: `Roll number ${data.rollNumber} already assigned in this class/section` },
       ]);
     }
 
@@ -207,23 +217,23 @@ export async function POST(request: NextRequest) {
 
     if (data.driveFileId) {
       try {
-        const { renameR2Object } = await import("@/lib/r2-storage");
+        const { createR2FileUrl, renameR2Object } = await import("@/lib/r2-storage");
 
         const oldKey = data.driveFileId;
+        const tenantPrefix = `Tenant_${tenantId.replace(/[^a-zA-Z0-9_-]/g, "_")}/`;
+        const relativeKey = oldKey.startsWith(tenantPrefix) ? oldKey.slice(tenantPrefix.length) : "";
+        if (!relativeKey || !relativeKey.includes("/temp_") || !/^temp_[a-zA-Z0-9-]+\.(jpg|png|webp|pdf)$/.test(relativeKey.split("/").pop() || "")) {
+          throw new Error("Invalid temporary upload key");
+        }
         const extension = oldKey.split(".").pop();
         const parts = oldKey.split("/");
         parts.pop();
-        const newKey = `${parts.join("/")}/${studentId}.${extension}`;
+        const safeStudentId = String(studentId).replace(/[^a-zA-Z0-9_-]/g, "_");
+        const newKey = `${parts.join("/")}/${safeStudentId}.${extension}`;
 
         await renameR2Object(oldKey, newKey);
 
-        const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-        if (publicDomain) {
-          const cleanDomain = publicDomain.endsWith("/") ? publicDomain.slice(0, -1) : publicDomain;
-          profilePictureUrl = `${cleanDomain}/${newKey}`;
-        } else {
-          profilePictureUrl = `https://pub-${process.env.R2_ACCOUNT_ID}.r2.dev/${newKey}`;
-        }
+        profilePictureUrl = await createR2FileUrl(newKey, tenantId);
       } catch (renameErr) {
         console.error("Failed to rename object on Cloudflare R2:", renameErr);
       }

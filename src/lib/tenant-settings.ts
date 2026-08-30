@@ -8,6 +8,27 @@ import {
   type AcademicYearData,
 } from "./academic-periods";
 
+export interface CustomPaymentMethod {
+  id: string;
+  name: string;
+  code: string; // e.g. CASH, BANK_TRANSFER, POS_CARD, EASYPAISA, JAZZCASH, BKASH, NAGAD, CHEQUE, STRIPE
+  type: "CASH" | "BANK" | "DIGITAL" | "CHEQUE" | "OTHER";
+  accountCode?: string; // 1020 for cash, 1010 for bank/digital
+  isActive: boolean;
+  isDefault?: boolean;
+  instructions?: string;
+}
+
+export const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
+  { id: "cash", name: "Cash", code: "CASH", type: "CASH", accountCode: "1020", isActive: true, isDefault: true },
+  { id: "bank_transfer", name: "Bank Transfer", code: "BANK_TRANSFER", type: "BANK", accountCode: "1010", isActive: true },
+  { id: "pos_card", name: "Card / POS", code: "POS_CARD", type: "DIGITAL", accountCode: "1010", isActive: true },
+  { id: "easypaisa", name: "EasyPaisa", code: "EASYPAISA", type: "DIGITAL", accountCode: "1010", isActive: true },
+  { id: "jazzcash", name: "JazzCash", code: "JAZZCASH", type: "DIGITAL", accountCode: "1010", isActive: true },
+  { id: "bkash", name: "bKash", code: "BKASH", type: "DIGITAL", accountCode: "1010", isActive: true },
+  { id: "cheque", name: "Cheque / Draft", code: "CHEQUE", type: "CHEQUE", accountCode: "1010", isActive: true },
+];
+
 export interface TenantSettings {
   id: string;
   tenantId: string;
@@ -31,6 +52,7 @@ export interface TenantSettings {
   gradingSystem: string;
   activeAcademicYearId?: string;
   activeSessionName?: string;
+  paymentMethods?: CustomPaymentMethod[];
 }
 
 export const DEFAULT_TENANT_SETTINGS: TenantSettings = {
@@ -49,6 +71,7 @@ export const DEFAULT_TENANT_SETTINGS: TenantSettings = {
   firstDayOfWeek: "sunday",
   academicYearStart: "january",
   gradingSystem: "GPA",
+  paymentMethods: DEFAULT_PAYMENT_METHODS,
 };
 
 const MONTH_NAMES = [

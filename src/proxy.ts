@@ -5,7 +5,7 @@ import { getJwtSecretKey } from "@/lib/jwt";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 
 // Paths that do not require authentication
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/verify"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

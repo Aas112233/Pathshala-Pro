@@ -12,6 +12,8 @@ import {
 import { createFeeVoucherSchema, updateFeeVoucherSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { roundCurrency } from "@/lib/math-utils";
 
 /**
  * GET /api/fees
@@ -30,6 +32,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
     const studentId = searchParams.get("studentId") || "";
+    const academicYearId = searchParams.get("academicYearId") || "";
 
     const skip = (page - 1) * limit;
 
@@ -51,6 +54,10 @@ export async function GET(request: NextRequest) {
 
     if (studentId) {
       where.studentProfileId = studentId;
+    }
+
+    if (academicYearId) {
+      where.academicYearId = academicYearId;
     }
 
     // Get total count
@@ -153,8 +160,14 @@ export async function POST(request: NextRequest) {
       return badRequest("Academic year not found");
     }
 
-    // Calculate total due
-    const totalDue = data.baseAmount - data.discountAmount + data.arrears;
+    await assertAcademicYearOpen(tenantId, academicYear.id);
+
+    if (data.discountAmount > data.baseAmount) {
+      return badRequest("Discount cannot exceed base amount");
+    }
+
+    // Calculate total due — concession cannot make totalDue negative
+    const totalDue = roundCurrency(Math.max(0, data.baseAmount - data.discountAmount + data.arrears));
 
     // Create fee voucher
     const feeVoucher = await prisma.feeVoucher.create({

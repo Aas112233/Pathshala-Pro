@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-response";
 import { createClassPromotionSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearsOpen } from "@/lib/academic-year-guards";
 
 /**
  * POST /api/promotions/execute
@@ -138,6 +139,13 @@ export async function POST(request: NextRequest) {
       }
       const resolvedToAcademicYearId = toAcademicYear.id;
 
+      try {
+        await assertAcademicYearsOpen(tenantId, [resolvedFromAcademicYearId, resolvedToAcademicYearId]);
+      } catch (error) {
+        errors.push({ field: `promotions[${index}].academicYearId`, code: "ACADEMIC_YEAR_CLOSED", message: error instanceof Error ? error.message : "Academic year is closed" });
+        continue;
+      }
+
       // Verify to class exists
       const toClass = await prisma.class.findFirst({
         where: {
@@ -210,6 +218,41 @@ export async function POST(request: NextRequest) {
               name: true,
             },
           },
+        },
+      });
+
+      // Preserve the source-year enrollment snapshot. Admission may already
+      // have created it, so this is deliberately idempotent.
+      await prisma.studentAcademicSession.upsert({
+        where: {
+          tenantId_studentProfileId_academicYearId: {
+            tenantId,
+            studentProfileId: resolvedStudentProfileId,
+            academicYearId: resolvedFromAcademicYearId,
+          },
+        },
+        update: {
+          classId: resolvedFromClassId,
+          sectionId: student.sectionId,
+          groupId: student.groupId,
+          rollNumber: student.rollNumber,
+          classNumber: fromClass.classNumber,
+          promotionStatus: data.status,
+          snapshot: { source: "promotion-execute", decidedAt: new Date().toISOString() },
+        },
+        create: {
+          tenantId,
+          studentProfileId: resolvedStudentProfileId,
+          academicYearId: resolvedFromAcademicYearId,
+          classId: resolvedFromClassId,
+          sectionId: student.sectionId,
+          groupId: student.groupId,
+          rollNumber: student.rollNumber,
+          classNumber: fromClass.classNumber,
+          totalMarks: 0,
+          obtainedMarks: 0,
+          promotionStatus: data.status,
+          snapshot: { source: "promotion-execute", decidedAt: new Date().toISOString() },
         },
       });
 

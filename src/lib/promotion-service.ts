@@ -9,6 +9,8 @@ import { Board, SubjectMark } from '@/lib/board-engines/types';
 import { calculateNCTB } from '@/lib/board-engines/nctb-engine';
 import { calculateCBSE } from '@/lib/board-engines/cbse-engine';
 import { calculateFBISE } from '@/lib/board-engines/fbise-engine';
+import { toGrade } from '@/lib/board-engines/grading';
+import { computePercentage } from '@/lib/domain-math';
 import { logAuditEvent } from '@/lib/audit-logger';
 
 export interface ExecutePromotionBatchParams {
@@ -73,6 +75,19 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
   };
   const gradingScale = tenant.gradingSystem === 'GPA' ? ('GPA' as const) : ('PERCENTAGE' as const);
 
+  // Recompute the denormalized ExamResult grade fields after grace marks
+  // change obtainedMarks, so percentage/grade/gradePoint/status are never
+  // left stale (see executePromotionBatch step 3 below).
+  const resolveGradeAndStatus = (obtained: number, max: number, passMarks: number) => {
+    const percentage = computePercentage(obtained, max);
+    const { grade, point } =
+      gradingScale === 'GPA'
+        ? toGrade(percentage)
+        : { grade: percentage >= 33 ? 'P' : 'F', point: percentage / 20 };
+    const status: 'PASS' | 'FAIL' = obtained >= passMarks && percentage >= 33 ? 'PASS' : 'FAIL';
+    return { percentage, grade, gradePoint: point, status };
+  };
+
   // Pre-checks outside transaction (fast fail)
   const [fromYear, toYear, fromClass, toClass, rule] = await Promise.all([
     prisma.academicYear.findFirst({ where: { id: fromAcademicYearId, tenantId } }),
@@ -97,7 +112,12 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
   return prisma.$transaction(
     async (tx) => {
       const students = await tx.studentProfile.findMany({
-        where: { tenantId, classId: fromClassId },
+        where: {
+          tenantId,
+          academicSessions: {
+            some: { academicYearId: fromAcademicYearId, classId: fromClassId },
+          },
+        },
         include: { class: true, section: true },
       });
       if (!students.length) return [];
@@ -108,9 +128,12 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
 
       for (const student of students) {
         // 1. Attendance
-        const totalDays = await tx.attendance.count({ where: { tenantId, studentProfileId: student.id } });
-        const presentDays = await tx.attendance.count({ where: { tenantId, studentProfileId: student.id, status: 'PRESENT' } });
-        const attendancePct = totalDays ? Math.round((presentDays / totalDays) * 10000) / 100 : 100;
+        const totalDays = await tx.attendance.count({ where: { tenantId, studentProfileId: student.id, academicYearId: fromAcademicYearId } });
+        const presentDays = await tx.attendance.count({ where: { tenantId, studentProfileId: student.id, academicYearId: fromAcademicYearId, status: { in: ['PRESENT', 'LATE'] } } });
+        const halfDays = await tx.attendance.count({ where: { tenantId, studentProfileId: student.id, academicYearId: fromAcademicYearId, status: 'HALF_DAY' } });
+        const attendancePct = totalDays
+          ? Math.min(100, Math.round(((presentDays + halfDays * 0.5) / totalDays) * 10000) / 100)
+          : 0;
 
         // 2. Load exam results + components + exam lock check
         const examResults = await tx.examResult.findMany({
@@ -187,8 +210,18 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
 
         // 3. Grace apply (auto, capped, audited)
         if (gracePolicy.autoApply) {
-          let totalGraceForStudent = 0;
+          // Seed the per-student cap from grace already recorded on this
+          // student's rows (previous run / partial-transaction retry) instead
+          // of starting at 0, which let the cap be silently exceeded across
+          // invocations. `examResults` above is already scoped to this
+          // student + academicYearId + tenantId within this same transaction.
+          let totalGraceForStudent = examResults.reduce((sum, r) => {
+            const componentGrace = r.componentResults.reduce((s, cr) => s + cr.graceMarksGiven, 0);
+            return sum + r.graceMarksGiven + componentGrace;
+          }, 0);
+
           for (const er of examResults) {
+            let anyComponentGraceApplied = false;
             for (const cr of er.componentResults) {
               const comp = cr.component;
               const need = Math.max(0, comp.passMarks - cr.obtainedMarks);
@@ -216,18 +249,46 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
                 });
                 cr.obtainedMarks = newObtained;
                 totalGraceForStudent += need;
+                anyComponentGraceApplied = true;
               }
+            }
+
+            if (anyComponentGraceApplied) {
+              // The parent ExamResult was never touched by the component-level
+              // path before — recompute its obtainedMarks (sum of components)
+              // and the denormalized grade fields so nothing is left stale.
+              const newSubjectObtained = er.componentResults.reduce((a, c) => a + c.obtainedMarks, 0);
+              const { percentage, grade, gradePoint, status } = resolveGradeAndStatus(
+                newSubjectObtained,
+                er.maxMarks,
+                er.subject.passMarks
+              );
+              await tx.examResult.update({
+                where: { id: er.id },
+                data: { obtainedMarks: newSubjectObtained, percentage, grade, gradePoint, status },
+              });
+              (er as any).obtainedMarks = newSubjectObtained;
             }
 
             if (!er.componentResults.length && er.obtainedMarks < er.subject.passMarks) {
               const need = er.subject.passMarks - er.obtainedMarks;
               if (need > 0 && need <= gracePolicy.maxPerSubject && totalGraceForStudent + need <= gracePolicy.maxPerStudent) {
+                const newObtained = er.obtainedMarks + need;
+                const { percentage, grade, gradePoint, status } = resolveGradeAndStatus(
+                  newObtained,
+                  er.maxMarks,
+                  er.subject.passMarks
+                );
                 await tx.examResult.update({
                   where: { id: er.id },
                   data: {
                     originalObtained: er.obtainedMarks,
                     graceMarksGiven: need,
-                    obtainedMarks: er.obtainedMarks + need,
+                    obtainedMarks: newObtained,
+                    percentage,
+                    grade,
+                    gradePoint,
+                    status,
                     graceReason: 'Auto grace to pass',
                     graceApprovedById: decidedBy,
                   },
@@ -242,7 +303,8 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
                     approvedById: decidedBy,
                   },
                 });
-                (er as any).obtainedMarks += need;
+                (er as any).obtainedMarks = newObtained;
+                totalGraceForStudent += need;
               }
             }
           }

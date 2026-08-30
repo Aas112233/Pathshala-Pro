@@ -9,6 +9,7 @@ import {
 } from "@/lib/api-response";
 import { bulkPayrollSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 
 /**
  * POST /api/salary/bulk
@@ -43,6 +44,8 @@ export async function POST(request: NextRequest) {
     if (!academicYear) {
       return badRequest("Academic year not found");
     }
+
+    await assertAcademicYearOpen(tenantId, academicYear.id);
 
     // Check for duplicates and verify staff
     const existingSalaries = await prisma.salaryLedger.findMany({

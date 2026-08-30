@@ -41,6 +41,8 @@ import { toast } from "sonner";
 
 export default function TransportPage() {
   const t = useTranslations("transport");
+  const tCommon = useTranslations("common");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "transport", "read");
@@ -159,10 +161,10 @@ export default function TransportPage() {
   const handleVehicleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!vehicleForm.vehicleNo.trim()) errs.vehicleNo = "Required";
-    if (!vehicleForm.capacity || vehicleForm.capacity < 1) errs.capacity = "Required";
+    if (!vehicleForm.vehicleNo.trim()) errs.vehicleNo = tCommon("required");
+    if (!vehicleForm.capacity || vehicleForm.capacity < 1) errs.capacity = tCommon("required");
     setVehicleErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runTransportSubmit(async () => {
       try {
         const payload: any = {
@@ -208,14 +210,14 @@ export default function TransportPage() {
   const handleRouteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!routeForm.name.trim()) errs.name = "Required";
+    if (!routeForm.name.trim()) errs.name = tCommon("required");
     const stops = routeForm.stopsText
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    if (stops.length === 0) errs.stopsText = "Required";
+    if (stops.length === 0) errs.stopsText = tCommon("required");
     setRouteErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runTransportSubmit(async () => {
       try {
         const payload: any = {
@@ -285,11 +287,11 @@ export default function TransportPage() {
   const handleAllocSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!allocForm.studentProfileId) errs.studentProfileId = "Required";
-    if (!allocForm.routeId) errs.routeId = "Required";
-    if (!allocForm.stopName) errs.stopName = "Required";
+    if (!allocForm.studentProfileId) errs.studentProfileId = tCommon("required");
+    if (!allocForm.routeId) errs.routeId = tCommon("required");
+    if (!allocForm.stopName) errs.stopName = tCommon("required");
     setAllocErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runTransportSubmit(async () => {
       try {
         await createAllocation({
@@ -578,7 +580,7 @@ export default function TransportPage() {
       {!canRead && !isAuthLoading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view transport records.</p>
+            <p className="text-sm text-muted-foreground">{common("noPermission")}</p>
           </CardContent>
         </Card>
       ) : (

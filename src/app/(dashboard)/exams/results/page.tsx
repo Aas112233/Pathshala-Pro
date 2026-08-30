@@ -46,6 +46,7 @@ interface StudentResult {
 
 export default function ExamResultsPage() {
   const t = useTranslations("exams.resultsEntry");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
   const examId = searchParams.get("examId");
@@ -156,7 +157,7 @@ export default function ExamResultsPage() {
       prev.map(r => {
         if (r.studentId === studentId) {
           if (r.isLocked) {
-            toast.error("Marks for this student are locked due to promotion.");
+            toast.error(t("marksLockedDuePromotion"));
             return r;
           }
           return { ...r, marks, status, grade };
@@ -209,7 +210,7 @@ export default function ExamResultsPage() {
 
       if (resultsToSave.length === 0) {
         if (results.some(r => r.isLocked)) {
-          toast.info("All student marks for this subject are locked due to student promotion.");
+          toast.info(t("allMarksLockedDuePromotion"));
         } else {
           toast.error(t("noResultsToSave"));
         }
@@ -256,7 +257,7 @@ export default function ExamResultsPage() {
             {isExamsLoading || isAuthLoading ? (
               <Skeleton className="h-10 w-full" aria-busy="true" />
             ) : !canReadExams ? (
-              <div className="py-4 text-center text-sm text-muted-foreground">Access restricted — no permission to view exams.</div>
+              <div className="py-4 text-center text-sm text-muted-foreground">{tCommon("noPermission")}</div>
             ) : (
               <Select value={selectedExam} onValueChange={(value) => {
                 setSelectedExam(value);
@@ -414,8 +415,8 @@ export default function ExamResultsPage() {
             <CardContent>
               {!isAuthLoading && !canReadResults ? (
                 <div className="py-8 text-center">
-                  <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view exam results.</p>
+                  <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
                 </div>
               ) : (
                 <Table>
@@ -439,7 +440,7 @@ export default function ExamResultsPage() {
                             <Badge
                               variant="outline"
                               className="text-[10px] h-5 px-1.5 text-amber-600 bg-amber-500/10 border-amber-500/30 gap-1 inline-flex items-center"
-                              title="Marks locked because this student has already been promoted"
+                              title={t("marksLockedDuePromotion")}
                             >
                               <Lock className="h-2.5 w-2.5" />
                               Locked

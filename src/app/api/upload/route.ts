@@ -1,47 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { uploadToR2, deleteFromR2 } from "@/lib/r2-storage";
 import { requireApiAccess } from "@/lib/api-auth";
+import { badRequest, successResponse, handleApiError } from "@/lib/api-response";
 import {
-  badRequest,
-  errorResponse,
-  successResponse,
-  handleApiError,
-} from "@/lib/api-response";
+  MAX_UPLOAD_SIZE,
+  sanitizeUploadType,
+  isTenantTemporaryObject,
+  validateUpload,
+} from "@/lib/upload-security";
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request, { module: null });
+    const access = await requireApiAccess(request, { module: null, allowUnmapped: true });
     if ("response" in access) return access.response;
 
     const formData = await request.formData();
-    const file = formData.get("file") as File;
-    const fileType = formData.get("fileType") as string || "general";
+    const file = formData.get("file");
+    const fileType = sanitizeUploadType(formData.get("fileType") as string | null);
 
-    if (!file) {
-      return badRequest("No file provided");
+    if (!(file instanceof File)) return badRequest("No file provided");
+
+    const extension = validateUpload(file);
+    if (!extension) {
+      return badRequest(`Invalid upload. Files must be non-empty, no larger than ${MAX_UPLOAD_SIZE / 1024 / 1024}MB, and use a matching JPG, PNG, WEBP, or PDF extension.`);
     }
 
-    // Input sanitization: ensure it's a valid image or specific document and not too large
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
-    if (file.size > MAX_FILE_SIZE) {
-      return badRequest("File exceeds the 5MB size limit");
-    }
-
-    const allowedMimeTypes = [
-      "image/jpeg", "image/png", "image/webp", "image/jpg",
-      "application/pdf" // For receipt documents etc.
-    ];
-    if (!allowedMimeTypes.includes(file.type)) {
-      return badRequest("Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed.");
-    }
-
-    // Convert Next.js Web API File to a Node.js Buffer for S3/R2 AWS SDK
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    // Upload it directly to Cloudflare R2
-    // We use Date.now() to ensure the temporary uploaded object has a unique name before renaming it permanently
-    const extension = file.name.split(".").pop();
-    const tempFileName = `temp_${Date.now()}.${extension}`;
+    const tempFileName = `temp_${crypto.randomUUID()}.${extension}`;
 
     const result = await uploadToR2(
       buffer,
@@ -53,8 +38,8 @@ export async function POST(request: NextRequest) {
 
     return successResponse(
       {
-        fileId: result.fileId, // The exact Storage Object Key (used for renaming later)
-        webViewLink: result.webViewLink, // The direct HTTP link to give the browser
+        fileId: result.fileId,
+        webViewLink: result.webViewLink,
       },
       "File uploaded to Cloudflare R2 successfully",
       201
@@ -70,19 +55,13 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request, { module: null });
+    const access = await requireApiAccess(request, { module: null, allowUnmapped: true });
     if ("response" in access) return access.response;
 
     const { searchParams } = new URL(request.url);
     const fileId = searchParams.get("fileId");
-
-    if (!fileId) {
-      return badRequest("File ID required");
-    }
-
-    // Only allow deleting temp files (files starting with "temp_")
-    if (!fileId.includes("temp_")) {
-      return badRequest("Can only delete temporary files");
+    if (!fileId || !isTenantTemporaryObject(fileId, access.authContext.tenantId)) {
+      return badRequest("Only a temporary file belonging to this tenant can be deleted");
     }
 
     await deleteFromR2(fileId);

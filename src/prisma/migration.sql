@@ -163,3 +163,53 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_component_max ON "ExamComponentResult";
 CREATE TRIGGER trg_component_max BEFORE INSERT OR UPDATE ON "ExamComponentResult" FOR EACH ROW EXECUTE FUNCTION check_component_vs_examsubject();
+
+-- 9. Academic-year partitioning and database-level uniqueness.
+-- Attendance is nullable for legacy rows; all new application writes populate it.
+ALTER TABLE "Attendance" ADD COLUMN IF NOT EXISTS "academicYearId" text;
+CREATE INDEX IF NOT EXISTS "Attendance_tenantId_academicYearId_date_idx"
+  ON "Attendance" ("tenantId", "academicYearId", "date");
+CREATE INDEX IF NOT EXISTS "Attendance_tenantId_academicYearId_studentProfileId_date_idx"
+  ON "Attendance" ("tenantId", "academicYearId", "studentProfileId", "date");
+CREATE INDEX IF NOT EXISTS "Attendance_tenantId_academicYearId_staffProfileId_date_idx"
+  ON "Attendance" ("tenantId", "academicYearId", "staffProfileId", "date");
+DO $$ BEGIN
+  ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_academicYearId_fkey"
+    FOREIGN KEY ("academicYearId") REFERENCES "AcademicYear"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "SalaryLedger_tenantId_academicYearId_staffProfileId_month_year_key"
+  ON "SalaryLedger" ("tenantId", "academicYearId", "staffProfileId", "month", "year");
+CREATE UNIQUE INDEX IF NOT EXISTS "ClassPromotion_tenantId_studentProfileId_fromAcademicYearId_key"
+  ON "ClassPromotion" ("tenantId", "studentProfileId", "fromAcademicYearId");
+
+CREATE OR REPLACE FUNCTION block_closed_year_attendance() RETURNS TRIGGER AS $$
+DECLARE closed boolean;
+BEGIN
+  IF COALESCE(NEW."academicYearId", OLD."academicYearId") IS NULL THEN RETURN NEW; END IF;
+  SELECT "isClosed" INTO closed FROM "AcademicYear"
+    WHERE id = COALESCE(NEW."academicYearId", OLD."academicYearId");
+  IF closed THEN RAISE EXCEPTION 'AcademicYear is closed — Attendance is read-only'; END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_lock_attendance ON "Attendance";
+CREATE TRIGGER trg_lock_attendance BEFORE UPDATE OR DELETE ON "Attendance"
+  FOR EACH ROW EXECUTE FUNCTION block_closed_year_attendance();
+
+-- 10. Operational collision, capacity, and stock invariants.
+CREATE INDEX IF NOT EXISTS "Timetable_tenant_year_room_slot_idx"
+  ON "Timetable" ("tenantId", "academicYearId", "roomNumber", "dayOfWeek", "periodNumber")
+  WHERE "isBreak" = false AND "roomNumber" IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS "HostelAllocation_active_student_key"
+  ON "HostelAllocation" ("tenantId", "studentProfileId") WHERE "status" = 'ACTIVE';
+CREATE UNIQUE INDEX IF NOT EXISTS "HostelAllocation_active_bed_key"
+  ON "HostelAllocation" ("tenantId", "roomId", "bedNumber")
+  WHERE "status" = 'ACTIVE' AND "bedNumber" IS NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE "Book" ADD CONSTRAINT "Book_stock_bounds_check"
+    CHECK ("availableCopies" >= 0 AND "availableCopies" <= "copies");
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_quantity_nonnegative_check"
+    CHECK ("quantity" >= 0);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

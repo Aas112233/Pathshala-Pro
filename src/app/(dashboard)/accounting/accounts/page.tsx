@@ -61,8 +61,8 @@ export default function AccountsPage() {
 
       {!isAuthLoading && !canReadAccounting ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view accounting.</p>
+          <h2 className="text-lg font-semibold text-foreground">{t("common.accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{t("common.noPermission")}</p>
         </div>
       ) : (
         <>

@@ -202,7 +202,7 @@ export default function CreateQuestionPaperPage() {
   // Remove Section
   const handleRemoveSection = (secId: string) => {
     if (sections.length <= 1) {
-      toast.error("Paper must have at least one section");
+      toast.error(t("questionPapers.sectionMinimum"));
       return;
     }
     setSections((prev) => prev.filter((s) => s.id !== secId));
@@ -317,7 +317,7 @@ export default function CreateQuestionPaperPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast.success("Question paper saved successfully!");
+      toast.success(t("questionPapers.savedSuccess"));
       queryClient.invalidateQueries({ queryKey: ["question-papers"] });
       router.push(`/exams/question-papers/${data.data.id}/preview`);
     },
@@ -451,7 +451,7 @@ export default function CreateQuestionPaperPage() {
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Annual Examination 2026"
+                placeholder={t("questionPapers.annualExamPlaceholder")}
                 required
               />
             </div>
@@ -462,7 +462,7 @@ export default function CreateQuestionPaperPage() {
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. SET-A / QP-101"
+                placeholder={t("questionPapers.paperCodePlaceholder")}
               />
             </div>
             <div>
@@ -471,7 +471,7 @@ export default function CreateQuestionPaperPage() {
               </label>
               <Select value={academicYearId} onValueChange={setAcademicYearId} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Academic Year" />
+                  <SelectValue placeholder={t("questionPapers.selectAcademicYear")} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.map((y: any) => (
@@ -491,7 +491,7 @@ export default function CreateQuestionPaperPage() {
               </label>
               <Select value={classId} onValueChange={(value) => { setClassId(value); setSubjectId(""); }} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Class" />
+                  <SelectValue placeholder={t("questionPapers.selectClass")} />
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((c: any) => (
@@ -509,7 +509,7 @@ export default function CreateQuestionPaperPage() {
               </label>
               <Select value={subjectId} onValueChange={setSubjectId} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Subject" />
+                  <SelectValue placeholder={t("questionPapers.selectSubject")} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredSubjects.map((s: any) => (
@@ -603,7 +603,7 @@ export default function CreateQuestionPaperPage() {
 
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground font-semibold">Marks:</span>
+                      <span className="text-xs text-muted-foreground font-semibold">{t("questionPapers.print.marks")}:</span>
                       <Input
                         type="number"
                         min="1"
@@ -623,7 +623,7 @@ export default function CreateQuestionPaperPage() {
                       size="sm"
                       onClick={() => {
                         if (!classId || !subjectId) {
-                          toast.error("Please select Target Class and Subject above first.");
+                          toast.error(t("questionPapers.selectClassSubjectAbove"));
                           return;
                         }
                         setActiveSectionId(sec.id);
@@ -631,7 +631,7 @@ export default function CreateQuestionPaperPage() {
                       className="gap-1.5 h-8 text-xs font-semibold text-primary border-primary/30"
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      Pick from Bank ({sec.questionIds.length})
+                      {t("questionPapers.pickFromBank")} ({sec.questionIds.length})
                     </Button>
 
                     <Button
@@ -647,7 +647,7 @@ export default function CreateQuestionPaperPage() {
 
                 <div className="pt-2">
                   <Input
-                    placeholder="Section instructions (e.g. Answer all questions from this section)..."
+                    placeholder={t("questionPapers.sectionInstructionsPlaceholder")}
                     value={sec.instructions}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -663,21 +663,21 @@ export default function CreateQuestionPaperPage() {
               <CardContent className="p-4 space-y-2">
                 {selectedQuestions.length === 0 ? (
                   <div className="py-6 text-center text-xs text-muted-foreground border border-dashed rounded-lg">
-                    No questions added to this section yet. Click{" "}
+                    {t("questionPapers.noQuestionsInSection")}{" "}
                     <button
                       type="button"
                       onClick={() => {
                         if (!classId || !subjectId) {
-                          toast.error("Please select Target Class and Subject first.");
+                          toast.error(t("questionPapers.selectClassSubjectFirst"));
                           return;
                         }
                         setActiveSectionId(sec.id);
                       }}
                       className="text-primary font-bold underline underline-offset-2"
                     >
-                      Pick from Bank
+                      {t("questionPapers.pickFromBank")}
                     </button>{" "}
-                    to choose questions.
+                    {t("questionPapers.toChooseQuestions")}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -703,7 +703,7 @@ export default function CreateQuestionPaperPage() {
                               </span>
                             )}
                             <span className="ml-auto font-mono font-bold text-foreground">
-                              [{q.marks} Marks]
+                              [{q.marks} {t("questionPapers.print.marks")}]
                             </span>
                           </div>
                           <p className="text-foreground font-medium line-clamp-2">
@@ -735,13 +735,13 @@ export default function CreateQuestionPaperPage() {
           <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between text-base">
-                <span>Select Questions for {activeSection.title}</span>
+                <span>{t("questionPapers.pickerTitle", { section: activeSection.title })}</span>
                 <Badge variant="outline" className="font-mono">
-                  {activeSection.questionIds.length} Selected
+                  {t("questionPapers.selectedCount", { count: activeSection.questionIds.length })}
                 </Badge>
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Browse and check questions from the Question Bank to include in this section.
+                {t("questionPapers.pickerDescription")}
               </DialogDescription>
             </DialogHeader>
 
@@ -750,7 +750,7 @@ export default function CreateQuestionPaperPage() {
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search questions..."
+                  placeholder={t("questionPapers.searchQuestions")}
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
                   className="pl-8 h-8 text-xs"
@@ -759,26 +759,26 @@ export default function CreateQuestionPaperPage() {
 
               <Select value={pickerType} onValueChange={setPickerType}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="All Types" />
+                  <SelectValue placeholder={t("questionPapers.allTypes")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Question Types</SelectItem>
-                  <SelectItem value="MCQ">Multiple Choice (MCQ)</SelectItem>
-                  <SelectItem value="SHORT">Short Answer</SelectItem>
-                  <SelectItem value="DESCRIPTIVE">Descriptive / Essay</SelectItem>
-                  <SelectItem value="CREATIVE_NCTB">Creative (CQ)</SelectItem>
+                  <SelectItem value="ALL">{t("questionBank.filterAllTypes")}</SelectItem>
+                  <SelectItem value="MCQ">{t("questionBank.types.MCQ")}</SelectItem>
+                  <SelectItem value="SHORT">{t("questionBank.types.SHORT")}</SelectItem>
+                  <SelectItem value="DESCRIPTIVE">{t("questionBank.types.DESCRIPTIVE")}</SelectItem>
+                  <SelectItem value="CREATIVE_NCTB">{t("questionBank.types.CREATIVE_NCTB")}</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={pickerDifficulty} onValueChange={setPickerDifficulty}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="All Difficulties" />
+                  <SelectValue placeholder={t("questionPapers.allDifficulties")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Difficulties</SelectItem>
-                  <SelectItem value="EASY">Easy</SelectItem>
-                  <SelectItem value="MEDIUM">Medium</SelectItem>
-                  <SelectItem value="HARD">Hard</SelectItem>
+                  <SelectItem value="ALL">{t("questionBank.filterAllDifficulties")}</SelectItem>
+                  <SelectItem value="EASY">{t("questionPapers.easy")}</SelectItem>
+                  <SelectItem value="MEDIUM">{t("questionPapers.medium")}</SelectItem>
+                  <SelectItem value="HARD">{t("questionPapers.hard")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -787,7 +787,7 @@ export default function CreateQuestionPaperPage() {
             <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1">
               {filteredPickerQuestions.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">
-                  No questions match your criteria in this subject's question bank.
+                  {t("questionPapers.noQuestionsMatch")}
                 </div>
               ) : (
                 filteredPickerQuestions.map((q) => {
@@ -825,7 +825,7 @@ export default function CreateQuestionPaperPage() {
                             </span>
                           )}
                           <span className="ml-auto font-mono font-bold">
-                            {q.marks} Marks
+                            {q.marks} {t("questionPapers.print.marks")}
                           </span>
                         </div>
                         <p className="text-foreground font-medium">{q.questionText}</p>
@@ -838,7 +838,7 @@ export default function CreateQuestionPaperPage() {
 
             <div className="flex justify-end gap-2 pt-2 border-t border-border">
               <Button onClick={() => setActiveSectionId(null)} className="font-bold">
-                Done ({activeSection.questionIds.length} Selected)
+                {t("questionPapers.doneSelected", { count: activeSection.questionIds.length })}
               </Button>
             </div>
           </DialogContent>

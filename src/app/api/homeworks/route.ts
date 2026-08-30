@@ -5,6 +5,7 @@ import { createHomeworkSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { verifyInternalFileUrl } from "@/lib/upload-security";
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,6 +57,9 @@ export async function POST(request: NextRequest) {
       return validationError(errors);
     }
     const d = parsed.data;
+    if (d.attachmentUrl && !(await verifyInternalFileUrl(d.attachmentUrl, tenantId))) {
+      return validationError([{ field: "attachmentUrl", code: "invalid_file", message: "Attachment must belong to this tenant" }]);
+    }
 
     // 1. Duplicate prevention (distributed)
     const dedupeKey = `HW_CREATE_${tenantId}_${d.classId}_${d.title}`;

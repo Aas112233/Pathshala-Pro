@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const access = await requireApiAccess(request, { allowSystemAdmin: true });
     if ("response" in access) return access.response;
     const { user } = access.authContext;
-    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !access.authContext.isImpersonated) {
       return unauthorized("Only platform system administrators can access global user directory.");
     }
 
@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest) {
     const access = await requireApiAccess(request, { allowSystemAdmin: true });
     if ("response" in access) return access.response;
     const { user } = access.authContext;
-    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !access.authContext.isImpersonated) {
       return unauthorized("Only platform system administrators can modify global users.");
     }
 

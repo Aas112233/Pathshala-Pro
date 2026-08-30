@@ -162,7 +162,7 @@ export default function PromotionsCalculatePage() {
       .filter((p: any) => p.studentProfileId && p.fromClassId && p.toClassId);
 
     if (promotionsData.length === 0) {
-      toast.error("Unable to prepare promotions data. Missing student IDs or next class configuration.");
+      toast.error(t("prepareFailed"));
       return;
     }
 

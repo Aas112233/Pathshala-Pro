@@ -1,3 +1,5 @@
+import { safePercentage } from "@/lib/math-utils";
+
 /**
  * Deterministic grading — single source for all boards.
  * Default NCTB GPA bands; CBSE/FBISE reuse same bands unless tenant overrides gpaScale JSON.
@@ -16,12 +18,16 @@ export const DEFAULT_GPA_BANDS: GradeBand[] = [
 ];
 
 export const toPercentage = (obtained: number, max: number): number => {
-  if (!max || max <= 0) return 0;
-  return Math.round((obtained / max) * 10000) / 100; // 2dp
+  return safePercentage(obtained, max);
 };
 
 export const toGrade = (percentage: number, bands: GradeBand[] = DEFAULT_GPA_BANDS): { grade: string; point: number } => {
-  const band = bands.find(b => percentage >= b.min) ?? bands[bands.length - 1];
+  // Defensively sort a copy descending by `min` — a tenant-supplied
+  // `gpaScale` table isn't guaranteed to already be in descending order,
+  // and `find(b => percentage >= b.min)` silently picks the wrong band
+  // otherwise.
+  const sorted = [...bands].sort((a, b) => b.min - a.min);
+  const band = sorted.find(b => percentage >= b.min) ?? sorted[sorted.length - 1];
   return { grade: band.grade, point: band.point };
 };
 

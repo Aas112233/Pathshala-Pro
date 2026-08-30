@@ -38,7 +38,15 @@
     "rowsPerPage": "فی صفحہ قطاریں",
     "noData": "کوئی ڈیٹا دستیاب نہیں",
     "connectDb": "لائیو ڈیٹا دیکھنے کے لیے ڈیٹابیس منسلک کریں۔",
-    "students": "طلبہ"
+    "accessRestricted": "رسائی محدود ہے",
+    "noPermission": "آپ کو یہ سیکشن دیکھنے کی اجازت نہیں ہے۔",
+    "students": "طلبہ",
+    "modal": {
+      "close": "ماڈل بند کریں"
+    },
+    "required": "درکار ہے",
+    "pleaseFillRequired": "براہ کرم تمام مطلوبہ خانے پر کریں۔",
+    "validationFailed": "براہ کرم نمایاں کردہ خانے چیک کریں۔"
   },
   "sidebar": {
     "search": {
@@ -293,6 +301,14 @@
     "welcomeToast": "خوش آمدید!",
     "invalidCredentials": "اسناد درست نہیں۔ دوبارہ کوشش کریں۔",
     "currentDate": "موجودہ تاریخ",
+    "login": {
+      "description": "اپنے اسکول مینجمنٹ کلاؤڈ پورٹل میں سائن اِن کریں",
+      "newSchool": "نیا اسکول؟",
+      "onboardTrial": "اپنا ادارہ شامل کریں (30 دن کا مفت ٹرائل)",
+      "alt": {
+        "studentsImage": "کلاس روم میں ساتھ سیکھتے ہوئے طلبہ"
+      }
+    },
     "signOut": "سائن آؤٹ",
     "studentsStat": "12,000+",
     "institutesStat": "500+",
@@ -354,6 +370,10 @@
     "recentAdmissions": "حالیہ داخلے"
   },
   "admissions": {
+    "blankFormDownloaded": "خالی داخلہ فارم PDF ڈاؤن لوڈ ہو گیا",
+    "blankFormDownloadFailed": "خالی داخلہ فارم PDF ڈاؤن لوڈ کرنے میں ناکامی",
+    "blankFormTitle": "قابل پرنٹ خالی داخلہ فارم / درخواست کٹ",
+    "blankForm": "خالی فارم",
     "title": "داخلے",
     "description": "طلباء کے داخلوں اور جماعت کے نامکرن کا نظام",
     "addAdmission": "داخلہ شامل کریں",
@@ -413,6 +433,8 @@
     "requiredField": "{field} ضروری ہے"
   },
   "students": {
+    "admissionFormDownloaded": "داخلہ فارم PDF ڈاؤن لوڈ ہو گیا",
+    "admissionFormFailed": "فارم بنانے میں ناکامی",
     "title": "طلباء",
     "description": "طالب علم پروفائل، داخلے، اور ریکارڈ کا انتظام۔",
     "addStudent": "طالب علم شامل کریں",
@@ -484,6 +506,7 @@
       "description": "اپنا پہلا طالب علم شامل کرکے شروع کریں یا اپنے فلٹرز تبدیل کریں۔"
     },
     "actions": {
+      "export": "برآمد کریں",
       "view": "دیکھیں",
       "edit": "ترمیم",
       "delete": "حذف",
@@ -597,7 +620,9 @@
       "gender": "جنس:",
       "previewPhoto": "{name} کی تصویر کا پیش منظر دیکھنے کے لیے کلک کریں",
       "profilePhotoAlt": "{name} کی پروفائل تصویر"
-    }
+    },
+    "idCards": "ID Cards",
+    "admissionForm": "Admission Form"
   },
   "fees": {
     "title": "فیس مینجمنٹ ہب",
@@ -705,6 +730,9 @@
     }
   },
   "staff": {
+    "noStaffToPrint": "پرنٹ کرنے کے لیے کوئی عملہ نہیں",
+    "staffIdCardsDownloaded": "عملے کے شناختی کارڈز ({count}) کی PDF ڈاؤن لوڈ ہو گئی",
+    "pdfFailed": "PDF بنانے میں ناکامی",
     "title": "عملہ",
     "description": "عملے کے پروفائل اور ملازمت کے ریکارڈ۔",
     "addStaff": "عملہ شامل کریں",
@@ -728,8 +756,8 @@
     },
     "searchPlaceholder": "Search by name, ID, or department...",
     "confirmDelete": "Are you sure you want to delete this staff member?",
-    "deleteSuccess": "Staff member deleted successfully",
-    "deleteError": "Failed to delete staff member",
+    "deleteSuccess": "عملے کا رکن کامیابی سے حذف کر دیا گیا!",
+    "deleteError": "عملے کا رکن حذف کرنے میں ناکامی",
     "status": {
       "active": "Active",
       "inactive": "Inactive"
@@ -738,7 +766,14 @@
       "department": {
         "all": "All Departments"
       }
-    }
+    },
+    "staffIDs": "اسٹاف شناختی کارڈ",
+    "createSuccess": "عملے کا رکن کامیابی سے شامل کر دیا گیا!",
+    "updateSuccess": "عملے کا رکن کامیابی سے اپ ڈیٹ ہو گیا!",
+    "activatedSuccess": "عملے کا رکن فعال ہو گیا!",
+    "deactivatedSuccess": "عملے کا رکن غیر فعال ہو گیا!",
+    "createError": "عملے کا رکن بنانے میں ناکامی",
+    "updateError": "عملے کا رکن اپ ڈیٹ کرنے میں ناکامی"
   },
   "salary": {
     "title": "تنخواہ / پے رول",
@@ -768,7 +803,7 @@
     },
     "searchPlaceholder": "Search by staff name...",
     "confirmDelete": "Are you sure you want to delete this salary ledger?",
-    "deleteSuccess": "Salary ledger deleted successfully",
+    "deleteSuccess": "تنخواہ کا لیجر کامیابی سے حذف ہو گیا!",
     "deleteError": "Failed to delete salary ledger",
     "status": {
       "paid": "Paid",
@@ -971,7 +1006,12 @@
         "processSingle": "ایک تنخواہ پروسیس کریں"
       },
       "paymentMethodBankTransfer": "بینک ٹرانسفر"
-    }
+    },
+    "createSuccess": "تنخواہ کا لیجر کامیابی سے بن گیا!",
+    "updateSuccess": "تنخواہ کا لیجر کامیابی سے اپ ڈیٹ ہو گیا!",
+    "paymentSuccess": "ادائیگی کامیابی سے ریکارڈ ہو گئی!",
+    "bulkPayrollSuccess": "بلک پے رول کامیابی سے پروسیس ہو گیا!",
+    "error": "تنخواہ کی کارروائی میں ناکامی"
   },
   "attendance": {
     "title": "حاضری",
@@ -1048,6 +1088,13 @@
     "historicalLogs": "حاضری کے تاریخی لاگز"
   },
   "exams": {
+    "batchAdmitCardsDownloaded": "بیچ داخلہ کارڈز ({count}) کی PDF ڈاؤن لوڈ ہو گئی",
+    "admitCardDownloaded": "داخلہ کارڈ PDF ڈاؤن لوڈ ہو گیا",
+    "admitCardFailed": "داخلہ کارڈ بنانے میں ناکامی",
+    "transcriptDownloaded": "ٹرانسکریپٹ PDF ڈاؤن لوڈ ہو گئی",
+    "pdfFailed": "PDF بنانے میں ناکامی",
+    "singleAdmitCard": "واحد داخلہ کارڈ",
+    "noExam": "کوئی امتحان نہیں",
     "title": "امتحانات",
     "description": "امتحانات اور طلباء کے نتائج کا انتظام۔",
     "createExam": "امتحان بنائیں",
@@ -1153,6 +1200,8 @@
     "editExamDescription": "امتحان کی معلومات اور مضامین اپ ڈیٹ کریں",
     "examNotFound": "امتحان نہیں ملا",
     "resultsEntry": {
+      "marksLockedDuePromotion": "ترقی کی وجہ سے اس طالب علم کے نمبر لاک ہیں۔",
+      "allMarksLockedDuePromotion": "اس مضمون کے تمام طلبہ کے نمبر ترقی کی وجہ سے لاک ہیں۔",
       "title": "امتحانی نتائج کا اندراج",
       "description": "امتحان کے نتائج درج اور منظم کریں",
       "backToExams": "امتحانات پر واپس جائیں",
@@ -1216,9 +1265,27 @@
     },
     "examNamePlaceholder": "وسط مدتی امتحان 2025",
     "to": "تک",
-    "notAvailable": "غیر دستیاب"
+    "notAvailable": "غیر دستیاب",
+    "admitCard": "داخلہ کارڈ",
+    "downloadAdmitCard": "داخلہ کارڈ PDF ڈاؤن لوڈ کریں",
+    "batchAdmitCards": "بیچ داخلہ کارڈ",
+    "transcriptPDF": "ٹرانسکریپٹ PDF",
+    "subjectCreated": "مضمون کامیابی سے بن گیا!",
+    "subjectUpdated": "مضمون کامیابی سے اپ ڈیٹ ہو گیا!",
+    "subjectDeleted": "مضمون کامیابی سے حذف ہو گیا!",
+    "examCreated": "امتحان کامیابی سے بن گیا!",
+    "examUpdated": "امتحان کامیابی سے اپ ڈیٹ ہو گیا!",
+    "examDeleted": "امتحان کامیابی سے حذف ہو گیا!",
+    "resultsSaved": "امتحان کے نتائج کامیابی سے محفوظ ہو گئے!",
+    "promotionRuleCreated": "ترقی کا قاعدہ کامیابی سے بن گیا!",
+    "promotionsExecuted": "ترقیات کامیابی سے لاگو ہو گئیں!",
+    "error": "امتحان کی کارروائی میں ناکامی"
   },
   "results": {
+    "marksLockedDuePromotion": "ترقی کی وجہ سے اس طالب علم کے نمبر لاک ہیں۔",
+    "editMarks": "نمبروں میں ترمیم کریں",
+    "examResultLockedDuePromotion": "طالب علم کی ترقی ہو چکی ہے، اس لیے امتحانی نتیجہ لاک ہے۔",
+    "transcriptDownloaded": "ٹرانسکریپٹ PDF ڈاؤن لوڈ ہو گئی",
     "title": "امتحان کے نتائج",
     "description": "امتحان کے نتائج درج اور منظم کریں",
     "enterResults": "نتائج درج کریں",
@@ -1304,7 +1371,8 @@
     "passedStatus": "پاس",
     "failedStatus": "فیل",
     "notAvailable": "غیر دستیاب",
-    "gradebookSummary": "جماعت کے نتائج، خودکار میرٹ رینکنگ اور ایک کلک پر اجتماعی پی ڈی ایف برآمد"
+    "gradebookSummary": "جماعت کے نتائج، خودکار میرٹ رینکنگ اور ایک کلک پر اجتماعی پی ڈی ایف برآمد",
+    "transcriptPDF": "Transcript PDF"
   },
   "academicYear": {
     "title": "تعلیمی سال اور سیشنز",
@@ -1349,6 +1417,7 @@
     "createError": "تعلیمی سال بنانے میں ناکامی",
     "deleteSession": "سیشن حذف کریں",
     "sessionsUnit": "سیشنز",
+    "yearBadge": "تعلیمی سال",
     "sessionIdentification": "سیشن کی شناخت",
     "sessionIdentificationDescription": "سیشن کے معیاری شناختی کوڈ اور عنوان درج کریں۔",
     "yearIdHelper": "سسٹم کے لیے منفرد شناختی کوڈ (مثلاً 2026-2027)",
@@ -1394,7 +1463,12 @@
     "status": {
       "active": "Active",
       "inactive": "Inactive"
-    }
+    },
+    "permissionsReset": "اجازتیں کردار کے ڈیفالٹ پر ری سیٹ ہو گئیں",
+    "permissionsUpdated": "اجازتیں کامیابی سے اپ ڈیٹ ہو گئیں",
+    "userCreated": "صارف کامیابی سے بن گیا",
+    "userUpdated": "صارف کامیابی سے اپ ڈیٹ ہو گیا",
+    "fillRequired": "براہ کرم تمام مطلوبہ خانے پر کریں۔"
   },
   "settings": {
     "title": "ترتیبات",
@@ -1530,7 +1604,9 @@
         "DD_MM_YYYY_DASH": "DD-MM-YYYY (31-12-2026)",
         "DD_MMM_YYYY": "DD MMM YYYY (31 دسمبر 2026)",
         "MMM_DD_YYYY": "MMM DD, YYYY (31 دسمبر 2026)",
-        "D_MMMM_YYYY": "D MMMM YYYY (31 دسمبر 2026)"
+        "D_MMMM_YYYY": "D MMMM YYYY (31 دسمبر 2026)",
+        "time24": "24 گھنٹے (14:30)",
+        "time12": "12 گھنٹے (2:30 PM)"
       },
       "timezoneDhaka": "ایشیائی/ڈھاکہ (GMT+6)",
       "timezoneKolkata": "ایشیائی/کولکاتا (GMT+5:30)",
@@ -1552,7 +1628,49 @@
       "timezoneLabel": "ٹائم زون",
       "firstDayLabel": "ہفتے کا پہلا دن",
       "academicYearLabel": "تعلیمی سال کا آغاز",
-      "gradingLabel": "گریڈنگ سسٹم"
+      "gradingLabel": "گریڈنگ سسٹم",
+      "paymentMethodsTab": "ادائیگی کے طریقے",
+      "paymentMethodsTabShort": "ادائیگی"
+    },
+    "paymentMethods": {
+      "title": "کسٹم ادائیگی کے طریقے اور گیٹ ویز",
+      "description": "متحرک ادائیگی کے چینلز، کاؤنٹر کے طریقے ترتیب دیں اور انہیں جنرل لیجر اثاثہ جات کے کھاتوں سے جوڑیں۔",
+      "activeCount": "{total} میں سے {active} فعال طریقے",
+      "resetDefaults": "ڈیفالٹ پر ری سیٹ کریں",
+      "addMethod": "ادائیگی کا طریقہ شامل کریں",
+      "defaultBadge": "ڈیفالٹ",
+      "glPrefix": "جی ایل",
+      "cashInHand": "نقد رقم",
+      "bankDigital": "بینک / ڈیجیٹل",
+      "setAsDefault": "بطور ڈیفالٹ سیٹ کریں",
+      "edit": "ترمیم",
+      "delete": "حذف",
+      "modal": {
+        "titleAdd": "نیا ادائیگی کا طریقہ شامل کریں",
+        "titleEdit": "ادائیگی کے طریقے میں ترمیم کریں",
+        "nameLabel": "طریقہ کار کا نام *",
+        "namePlaceholder": "مثلاً ایزی پیسہ کاؤنٹر، جاز کیش، بینک اکاؤنٹ",
+        "codeLabel": "اندرونی کوڈ *",
+        "codePlaceholder": "مثلاً EASYPAISA_SHOP",
+        "typeLabel": "چینل کی قسم",
+        "typeDigital": "موبائل والٹ / ڈیجیٹل گیٹ وے",
+        "typeBank": "بینک اکاؤنٹ / ٹرانسفر",
+        "typeCash": "نقد رقم",
+        "typeCheque": "چیک / ڈرافٹ",
+        "typePos": "پی او ایس کارڈ مشین",
+        "glAccountLabel": "جنرل لیجر اکاؤنٹ کوڈ",
+        "glAccount1010": "1010 - بینک اکاؤنٹس اور گیٹ ویز (ڈیبٹ اثاثہ)",
+        "glAccount1020": "1020 - نقد کیش ان ہینڈ",
+        "glAccount1030": "1030 - وصولی کے واجبات",
+        "glHint": "وصولی کے وقت ڈبل انٹری ٹرانزیکشن خود بخود اس کھاتے کو ڈیبٹ کر دے گی۔",
+        "instructionsLabel": "ادائیگی کی ہدایات / نوٹس (اختیاری)",
+        "instructionsPlaceholder": "مثلاً کاؤنٹر #2 پر کیو آر اسکین کریں یا اکاؤنٹ میں بھیجیں",
+        "activeInPos": "پی او ایس کاؤنٹر پر فعال",
+        "activeInPosDesc": "کیشیئرز کو یہ طریقہ منتخب کرنے کی اجازت دیں",
+        "cancel": "منسوخ",
+        "saveChanges": "تبدیلیاں محفوظ کریں",
+        "addBtn": "طریقہ شامل کریں"
+      }
     }
   },
   "subjects": {
@@ -1654,6 +1772,7 @@
     "reExamAllowed": "Re-exam Allowed",
     "reExamRequired": "Re-exam Required",
     "calculator": {
+      "prepareFailed": "ترقی کا ڈیٹا تیار نہیں ہو سکا۔ طالب علم کی آئی ڈیز یا اگلی جماعت کی ترتیب موجود نہیں۔",
       "title": "ترقی کیلکولیٹر",
       "description": "تعلیمی کارکردگی اور حاضری کی بنیاد پر طلبہ کی اگلی جماعت میں ترقی کی اہلیت کا حساب لگائیں اور جائزہ لیں",
       "backToRules": "قوانین پر واپس جائیں",
@@ -1826,6 +1945,10 @@
     "noSubjectsAvailable": "کوئی مضمون دستیاب نہیں۔ پہلے مضامین بنائیں۔",
     "editToAssignSubjects": "مضامین مختص کرنے کے لیے اس جماعت میں ترمیم کریں۔",
     "unknownSubject": "نامعلوم",
+    "studentAppShort": "ط",
+    "parentAppShort": "و",
+    "subjectCategoryCompulsory": "لازمی",
+    "subjectCategoryElective": "اختیاری",
     "studentsTitle": "طلبہ",
     "subjectsTitle": "مضامین"
   },
@@ -1895,7 +2018,22 @@
     "system": "سسٹم آپریشنز",
     "featureFlags": "فیچر فلیگز",
     "users": "پلیٹ فارم صارفین",
-    "settings": "پلیٹ فارم ترتیبات"
+    "settings": "پلیٹ فارم ترتیبات",
+    "broadcastRequired": "براہ کرم براڈکاسٹ کا عنوان اور متن فراہم کریں",
+    "selectTenant": "براہ کرم کم از کم ایک اسکول منتخب کریں",
+    "broadcastNetworkError": "براڈکاسٹ بھیجنے میں نیٹ ورک کی خرابی",
+    "tenantNameRequired": "اسکول کا نام درکار ہے",
+    "tenantConfigUpdated": "اسکول کی ترتیبات کامیابی سے اپ ڈیٹ ہو گئیں!",
+    "tenantNetworkError": "اسکول اپ ڈیٹ کرنے میں نیٹ ورک کی خرابی",
+    "passwordGenerated": "محفوظ عارضی پاس ورڈ تیار کیا گیا",
+    "onboardSuccess": "ادارہ کامیابی سے آن بورڈ ہو گیا!",
+    "credentialsCopied": "لاگ ان تفصیلات کلپ بورڈ پر کاپی ہو گئیں",
+    "impersonateSuccess": "{name} کے طور پر لاگ ان ہو گئے",
+    "impersonateError": "اسکول کا روپ دھارنے میں ناکامی",
+    "exitImpersonationSuccess": "سسٹم ایڈمن کنسول پر واپس آ گئے",
+    "exitImpersonationError": "روپ چھوڑنے میں ناکامی",
+    "statusUpdated": "حیثیت کامیابی سے اپ ڈیٹ ہو گئی!",
+    "statusError": "حیثیت اپ ڈیٹ کرنے میں ناکامی"
   },
   "sections": {
     "title": "سیکشنز",
@@ -1946,6 +2084,7 @@
     "deleteFailed": "سیکشن حذف کرنے میں ناکامی",
     "requiredFields": "براہ کرم تمام مطلوبہ خانے پُر کریں۔",
     "classUnavailable": "غیر دستیاب",
+    "requiredField": "{field} ضروری ہے",
     "classOption": "جماعت {number}"
   },
   "reports": {
@@ -1953,6 +2092,34 @@
     "description": "ادارہ جاتی ذہانت، آڈٹ اور برآمد کے قابل لیجرز",
     "overview": "رپورٹس جائزہ",
     "feeReport": {
+      "status": "Status",
+      "method": "Method",
+      "cash": "Cash",
+      "digital": "Digital",
+      "voucherNo": "Voucher No.",
+      "studentName": "Student Name",
+      "class": "Class",
+      "section": "Section",
+      "totalAmount": "Total Amount",
+      "paid": "Paid",
+      "due": "Due",
+      "paymentMethod": "Payment Method",
+      "date": "Date",
+      "voucherStatusDistribution": "Voucher Status Distribution",
+      "pending": "Pending",
+      "partial": "Partial",
+      "overdue": "Overdue",
+      "voucherDetailsDescription": "Voucher-level detail for the selected period.",
+      "noVouchersTitle": "No vouchers found",
+      "noVouchersDescription": "Try another payment status, method, or date range.",
+      "generateTitle": "Generate a fee report",
+      "generateDescription": "Select the reporting period, then generate the report to review collection totals and export the result.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "present": "Present",
+      "generateFailed": "فیس رپورٹ بنانے میں ناکامی",
+      "exported": "فیس رپورٹ برآمد ہو گئی",
+      "exportFailed": "فیس رپورٹ برآمد کرنے میں ناکامی",
       "title": "فیس وصولی اور واجبات رپورٹ",
       "description": "جامع فیس وصولی، بقایا جات اور طریقہ کار کا تجزیہ",
       "totalCollected": "کل وصول شدہ",
@@ -1963,18 +2130,156 @@
       "voucherDetails": "واؤچر کی تفصیلات"
     },
     "salaryReport": {
+      "staffId": "Staff ID",
+      "employeeName": "Employee Name",
+      "department": "Department",
+      "period": "Period",
+      "grossBase": "Gross Base",
+      "deductions": "Deductions",
+      "netPayable": "Net Payable",
+      "paidAmount": "Paid Amount",
+      "status": "Status",
+      "disbursedPaid": "Disbursed / Paid",
+      "pendingPayout": "Pending Payout",
+      "deductionsWithheld": "Deductions/Withheld",
+      "year": "Year",
+      "month": "Month",
+      "allMonths": "All Months",
+      "allDepartments": "All Departments",
+      "academicTeaching": "Academic / Teaching",
+      "administration": "Administration",
+      "accountsFinance": "Accounts & Finance",
+      "supportTransport": "Support & Transport",
+      "payoutStatus": "Payout Status",
+      "allStatuses": "All Statuses",
+      "paidDisbursed": "Paid / Disbursed",
+      "partial": "Partial",
+      "all": "All",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "totalGrossPayroll": "Total Gross Payroll",
+      "netDisbursed": "Net Disbursed",
+      "pendingPayouts": "Pending Payouts",
+      "totalDeductions": "Total Deductions",
+      "payrollByDepartment": "Payroll by Department",
+      "payrollByDepartmentDescription": "Gross salary allocation across departments",
+      "disbursementComposition": "Disbursement Composition",
+      "disbursementCompositionDescription": "Ratio of disbursed vs pending vs deductions",
+      "noReportTitle": "No Payroll Report Generated",
+      "noReportDescription": "Select fiscal year, month, and department filters above then click Generate Report.",
+      "generateFailed": "تنخواہ پے رول رپورٹ بنانے میں ناکامی",
+      "exportedExcel": "پے رول رپورٹ Excel میں برآمد ہو گئی",
+      "exportFailed": "پے رول رپورٹ برآمد کرنے میں ناکامی",
       "title": "عملہ تنخواہ اور پے رول رپورٹ",
       "description": "ماہانہ تنخواہ کی ادائیگی، کٹوتیاں اور زیر التواء ادائیگیاں"
     },
     "financialReport": {
+      "voucherNumber": "Voucher #",
+      "descriptionPurpose": "Description / Purpose",
+      "category": "Category",
+      "amount": "Amount",
+      "method": "Method",
+      "date": "Date",
+      "recordedBy": "Recorded By",
+      "cashExpenses": "Cash Expenses",
+      "bankDigital": "Bank & Digital",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "allCategories": "All Categories",
+      "allPaymentMethods": "All Payment Methods",
+      "cash": "Cash",
+      "bankAccount": "Bank Account",
+      "cheque": "Cheque",
+      "digitalGateway": "Digital Gateway",
+      "range": "Range",
+      "start": "Start",
+      "present": "Present",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "totalFeeCollections": "Total Fee Collections",
+      "totalOperationalExpenses": "Total Operational Expenses",
+      "netCashBalance": "Net Cash Balance",
+      "topExpenseCategory": "Top Expense Category",
+      "expensesByCategory": "Expenses by Category",
+      "expensesByCategoryDescription": "Spending breakdown across operational heads",
+      "paymentMethodsDistribution": "Payment Methods Distribution",
+      "paymentMethodsDistributionDescription": "Cash vs Bank disbursement proportion",
+      "noReportTitle": "No Financial Report Generated",
+      "noReportDescription": "Select date range, expense categories, and payment method filters above then click Generate Report.",
+      "generateFailed": "مالی اخراجات کی رپورٹ بنانے میں ناکامی",
+      "exportedExcel": "مالی اخراجات کی رپورٹ Excel میں برآمد ہو گئی",
+      "exportFailed": "مالی رپورٹ برآمد کرنے میں ناکامی",
       "title": "مالی اخراجات اور کیش فلو رپورٹ",
       "description": "اخراجات کے شعبے، واؤچرز، فیس کی رسیدیں اور خالص کیش بیلنس"
     },
     "admissionsReport": {
+      "applicantStudent": "Applicant / Student",
+      "contactPhone": "Contact Phone",
+      "targetGrade": "Target Grade",
+      "leadSource": "Lead Source",
+      "pipelineStatus": "Pipeline Status",
+      "admissionOfficer": "Admission Officer",
+      "enquiryDate": "Enquiry Date",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "allStatuses": "All Statuses",
+      "newLead": "New Lead",
+      "contacted": "Contacted",
+      "campusVisited": "Campus Visited",
+      "admittedEnrolled": "Admitted / Enrolled",
+      "rejected": "Rejected",
+      "allSources": "All Sources",
+      "walkIn": "Walk In",
+      "phoneInquiry": "Phone Inquiry",
+      "websiteForm": "Website Form",
+      "parentReferral": "Parent Referral",
+      "socialMedia": "Social Media",
+      "targetClass": "Target Class",
+      "allClasses": "All Classes",
+      "reset": "Reset",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "start": "Start",
+      "present": "Present",
+      "range": "Range",
+      "totalEnquiries": "Total Enquiries",
+      "admittedStudents": "Admitted Students",
+      "conversionRate": "Conversion Rate",
+      "pendingFollowups": "Pending Follow-ups",
+      "leadsBySource": "Leads by Source",
+      "leadsBySourceDescription": "Marketing channel distribution for applicant inquiries",
+      "pipelineStatusBreakdown": "Pipeline Status Breakdown",
+      "pipelineStatusBreakdownDescription": "Distribution of applicant statuses across the intake funnel",
+      "noReportTitle": "No Admissions Report Generated",
+      "noReportDescription": "Select date range, pipeline status, lead source, and target class filters above then click Generate Report.",
+      "generateFailed": "داخلہ کنورژن رپورٹ بنانے میں ناکامی",
+      "exportedExcel": "داخلہ کنورژن رپورٹ Excel میں برآمد ہو گئی",
+      "exportFailed": "داخلہ رپورٹ برآمد کرنے میں ناکامی",
       "title": "داخلہ پائپ لائن اور کنورژن رپورٹ",
       "description": "انکوائری ٹریکنگ، لیڈ ذرائع اور داخلے کی شرح کا تجزیہ"
     },
     "attendanceReport": {
+      "class": "Class",
+      "section": "Section",
+      "rollNo": "Roll No.",
+      "studentName": "Student Name",
+      "present": "Present",
+      "absent": "Absent",
+      "totalDays": "Total Days",
+      "attendancePercentage": "Attendance %",
+      "status": "Status",
+      "attendanceTrend": "Attendance Trend",
+      "attendanceDetails": "Attendance Details",
+      "attendanceDetailsDescription": "Attendance status for the generated period.",
+      "noDataTitle": "No attendance data found",
+      "noDataDescription": "Try a different period or broader class filters.",
+      "generateTitle": "Generate an attendance report",
+      "generateDescription": "Select the date range and optional class filters to review attendance trends and export the report.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "generateFailed": "حاضری رپورٹ بنانے میں ناکامی",
+      "exported": "حاضری رپورٹ برآمد ہو گئی",
+      "exportFailed": "حاضری رپورٹ برآمد کرنے میں ناکامی",
       "title": "طلبہ حاضری رپورٹ",
       "description": "روزانہ حاضری، غیر حاضری کے رجحانات اور کلاس کی شرح",
       "averageAttendance": "اوسط حاضری",
@@ -1984,6 +2289,35 @@
       "classWiseAttendance": "جماعت وار حاضری"
     },
     "studentReport": {
+      "admissionNo": "Admission No.",
+      "studentName": "Student Name",
+      "class": "Class",
+      "section": "Section",
+      "rollNo": "Roll No.",
+      "gender": "Gender",
+      "status": "Status",
+      "admissionDate": "Admission Date",
+      "guardianName": "Guardian Name",
+      "contact": "Contact",
+      "active": "Active",
+      "inactive": "Inactive",
+      "graduated": "Graduated",
+      "transferred": "Transferred",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "studentDetails": "Student Details",
+      "studentDetailsDescription": "Generated results based on the selected filters.",
+      "noStudentsTitle": "No students found",
+      "noStudentsDescription": "Try widening the date range or removing one of the filters.",
+      "generateTitle": "Generate a student report",
+      "generateDescription": "Select a period and optional filters, then generate the report to view metrics, charts, and export options.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "present": "Present",
+      "generateFailed": "طلبہ رپورٹ بنانے میں ناکامی",
+      "exported": "طلبہ رپورٹ برآمد ہو گئی",
+      "exportFailed": "طلبہ رپورٹ برآمد کرنے میں ناکامی",
       "title": "طلبہ شماریات اور داخلہ رپورٹ",
       "description": "فعال داخلے، کلاس کے لحاظ سے تقسیم اور طلبہ ریکارڈ",
       "totalStudents": "کل طلبہ",
@@ -2029,6 +2363,30 @@
       "examType": "امتحان کی قسم"
     },
     "filters": {
+      "selectClass": "جماعت منتخب کریں",
+      "allClasses": "تمام جماعتیں",
+      "selectSection": "سیکشن منتخب کریں",
+      "allSections": "تمام سیکشنز",
+      "selectGroup": "گروپ منتخب کریں",
+      "allGroups": "تمام گروپس",
+      "selectStatus": "حالت منتخب کریں",
+      "allStatus": "تمام حالتیں",
+      "pending": "زیر التوا",
+      "paid": "ادا شدہ",
+      "partial": "جزوی",
+      "overdue": "میعاد گزر گئی",
+      "selectPaymentMethod": "ادائیگی کا طریقہ منتخب کریں",
+      "allMethods": "تمام طریقے",
+      "cash": "نقد",
+      "digital": "ڈیجیٹل",
+      "selectExamType": "امتحان کی قسم منتخب کریں",
+      "allExamTypes": "تمام امتحانی اقسام",
+      "midTerm": "وسط مدتی",
+      "final": "حتمی",
+      "unitTest": "یونٹ ٹیسٹ",
+      "quarterly": "سہ ماہی",
+      "halfYearly": "ششماہی",
+      "annual": "سالانہ",
       "fromDate": "سے تاریخ",
       "toDate": "تک تاریخ",
       "class": "جماعت",
@@ -2044,9 +2402,11 @@
       "exportPDF": "PDF برآمد کریں",
       "exportExcel": "Excel برآمد کریں",
       "exportCSV": "CSV برآمد کریں",
-      "print": "پرنٹ کریں"
+      "print": "پرنٹ کریں",
+      "export": "برآمد کریں"
     },
     "common": {
+      "export": "برآمد کریں",
       "generating": "تیار ہو رہا ہے...",
       "noData": "کوئی ڈیٹا دستیاب نہیں"
     }
@@ -2121,9 +2481,11 @@
       "vouchersCount": "{count} واؤچرز",
       "metricStructure": "ڈھانچہ",
       "activeCategories": "فعال اقسام",
+      "categoriesUnit": "اقسام",
       "expenseStreams": "خرچ کے ذرائع",
       "metricAudit": "آڈٹ اسٹیٹس",
       "avgVoucherSize": "اوسط واؤچر سائز",
+      "averageVoucherUnit": "اوسط / واؤچر",
       "perTransaction": "فی لین دین",
       "metricTreasury": "خزانہ",
       "cashVsBank": "نقد بمقابلہ بینک",
@@ -2684,7 +3046,7 @@
     "dayFriday": "جمعہ",
     "daySaturday": "ہفتہ",
     "daySunday": "اتوار",
-    "period": "پیریڈ {number}",
+    "period": "پیریڈ",
     "break": "وقفہ",
     "tiffinBreak": "ٹفن بریک",
     "subject": "مضمون",
@@ -2704,10 +3066,32 @@
     "deleteFailed": "پیریڈ ہٹانے میں ناکامی",
     "confirmDelete": "کیا اس پیریڈ کو ٹائم ٹیبل سے ہٹانا ہے؟",
     "print": "روٹین پرنٹ کریں",
-    "copyToNextYear": "اگلے سال میں کاپی کریں"
+    "copyToNextYear": "اگلے سال میں کاپی کریں",
+    "printPDF": "ٹائم ٹیبل PDF پرنٹ کریں",
+    "periodAdded": "پیریڈ کامیابی سے شامل ہو گیا!",
+    "periodUpdated": "پیریڈ کامیابی سے اپ ڈیٹ ہو گیا!",
+    "periodRemoved": "پیریڈ کامیابی سے ہٹا دیا گیا!",
+    "error": "ٹائم ٹیبل پیریڈ میں ناکامی",
+    "periodWithNumber": "پیریڈ {number}"
   },
   "notifications": {
     "title": "اطلاعات اور نوٹسز",
+    "automationTitle": "خودکار اطلاع رسانی",
+    "automationDescription": "والدین کو اطلاع دینے والے واقعات اور چینلز منتخب کریں۔",
+    "automationEnabled": "خودکار اطلاعات فعال کریں",
+    "channels": "ترسیلی چینلز",
+    "saveSettings": "اطلاعات کی ترتیبات محفوظ کریں",
+    "saving": "محفوظ ہو رہا ہے...",
+    "settingsSaved": "اطلاعات کی ترتیبات محفوظ ہو گئیں",
+    "settingsSaveFailed": "اطلاعات کی ترتیبات محفوظ نہیں ہو سکیں",
+    "settingsTab": "اطلاعات",
+    "settingsShort": "الرٹس",
+    "events": {
+      "ABSENCE_ALERT": "غیر حاضری کی اطلاع",
+      "FEE_REMINDER": "فیس یاد دہانی",
+      "EXAM_RESULT_PUBLISHED": "شائع شدہ نتائج",
+      "EMERGENCY_BROADCAST": "ہنگامی اعلانات"
+    },
     "unreadCount": "{count} نیا",
     "markAllRead": "سب کو پڑھا ہوا نشان زد کریں",
     "markAsRead": "پڑھا ہوا نشان زد کریں",
@@ -2737,6 +3121,9 @@
     "publishNotice": "نوٹس شائع کریں"
   },
   "enquiries": {
+    "search": "تلاش",
+    "phonePlaceholder": "01XXXXXXXXX",
+    "emailPlaceholder": "student@email.com",
     "title": "داخلہ استفسارات",
     "description": "لیڈز، فالو اپ اور داخلے میں تبدیلی",
     "addEnquiry": "استفسار شامل کریں",
@@ -2762,7 +3149,7 @@
     "noEnquiries": "کوئی استفسار نہیں ملا",
     "noEnquiriesHint": "واک ان، کال یا ویب سائٹ لیڈز سے استفسارات شامل کریں",
     "confirmDelete": "کیا اس استفسار کو حذف کرنا ہے؟",
-    "deleteSuccess": "استفسار حذف ہو گیا",
+    "deleteSuccess": "پوچھ گچھ کامیابی سے حذف ہو گئی!",
     "deleteFailed": "استفسار حذف کرنے میں ناکامی",
     "saveSuccess": "استفسار محفوظ ہو گیا",
     "saveFailed": "استفسار محفوظ کرنے میں ناکامی",
@@ -2788,7 +3175,11 @@
     "selectStatus": "اسٹیٹس منتخب کریں",
     "save": "محفوظ کریں",
     "cancel": "منسوخ",
-    "followUpOverdue": "فالو اپ تاخیر کا شکار"
+    "followUpOverdue": "فالو اپ تاخیر کا شکار",
+    "createSuccess": "پوچھ گچھ کامیابی سے شامل ہو گئی!",
+    "updateSuccess": "پوچھ گچھ کامیابی سے اپ ڈیٹ ہو گئی!",
+    "convertedSuccess": "داخلے میں کامیابی سے تبدیل کر دیا گیا!",
+    "error": "پوچھ گچھ پروسیس کرنے میں ناکامی"
   },
   "library": {
     "title": "لائبریری مینجمنٹ",
@@ -2850,7 +3241,15 @@
     "selectBorrower": "مستعار منتخب کریں",
     "save": "محفوظ کریں",
     "cancel": "منسوخ",
-    "actions": "ایکشنز"
+    "actions": "ایکشنز",
+    "clearance": "کلیئرنس",
+    "clearanceSuccess": "کلیئرنس PDF ڈاؤن لوڈ",
+    "bookCreated": "کتاب کامیابی سے شامل ہو گئی!",
+    "bookUpdated": "کتاب کامیابی سے اپ ڈیٹ ہو گئی!",
+    "bookDeleted": "کتاب کامیابی سے حذف ہو گئی!",
+    "bookIssued": "کتاب کامیابی سے جاری کر دی گئی!",
+    "bookReturned": "کتاب کامیابی سے واپس ہو گئی!",
+    "error": "لائبریری آپریشن میں ناکامی"
   },
   "transport": {
     "title": "ٹرانسپورٹ مینجمنٹ",
@@ -2910,7 +3309,16 @@
     "actions": "ایکشنز",
     "totalVehicles": "کل گاڑیاں",
     "totalRoutes": "کل روٹس",
-    "totalAllocations": "کل تقسیمات"
+    "totalAllocations": "کل تقسیمات",
+    "vehicleCreated": "گاڑی کامیابی سے شامل ہو گئی!",
+    "vehicleUpdated": "گاڑی کامیابی سے اپ ڈیٹ ہو گئی!",
+    "vehicleDeleted": "گاڑی کامیابی سے حذف ہو گئی!",
+    "routeCreated": "روٹ کامیابی سے شامل ہو گیا!",
+    "routeUpdated": "روٹ کامیابی سے اپ ڈیٹ ہو گیا!",
+    "routeDeleted": "روٹ کامیابی سے حذف ہو گیا!",
+    "allocatedSuccess": "طالب علم کامیابی سے الاٹ ہو گیا!",
+    "allocationRemoved": "الاٹمنٹ کامیابی سے ہٹا دی گئی!",
+    "error": "ٹرانسپورٹ آپریشن میں ناکامی"
   },
   "homework": {
     "title": "ہوم ورک اور اسائنمنٹس",
@@ -2947,7 +3355,7 @@
     "noSubmissions": "ابھی کوئی جمع نہیں",
     "saveSuccess": "ہوم ورک محفوظ ہو گیا",
     "saveFailed": "ہوم ورک محفوظ کرنے میں ناکامی",
-    "deleteSuccess": "ہوم ورک حذف ہو گیا",
+    "deleteSuccess": "ہوم ورک کامیابی سے حذف ہو گیا!",
     "deleteFailed": "حذف کرنے میں ناکامی",
     "submitSuccess": "ہوم ورک جمع ہو گیا",
     "submitFailed": "جمع کرنے میں ناکامی",
@@ -2960,7 +3368,11 @@
     "actions": "ایکشنز",
     "totalHomework": "کل ہوم ورک",
     "pendingSubmissions": "زیر التواء",
-    "gradedSubmissions": "گریڈ شدہ"
+    "gradedSubmissions": "گریڈ شدہ",
+    "createSuccess": "ہوم ورک کامیابی سے بن گیا!",
+    "updateSuccess": "ہوم ورک کامیابی سے اپ ڈیٹ ہو گیا!",
+    "gradedSuccess": "کامیابی سے نمبر دے دیے گئے!",
+    "error": "ہوم ورک پروسیس کرنے میں ناکامی"
   },
   "leaves": {
     "title": "چھٹی مینجمنٹ",
@@ -2991,7 +3403,7 @@
     "noLeaves": "کوئی چھٹی کی درخواست نہیں",
     "noLeavesHint": "آغاز کے لیے چھٹی کی درخواست دیں",
     "confirmDelete": "کیا اس درخواست کو حذف کرنا ہے؟",
-    "deleteSuccess": "چھٹی حذف ہو گئی",
+    "deleteSuccess": "چھٹی کی درخواست کامیابی سے حذف ہو گئی!",
     "deleteFailed": "حذف کرنے میں ناکامی",
     "saveSuccess": "چھٹی کی درخواست جمع ہو گئی",
     "saveFailed": "درخواست جمع کرنے میں ناکامی",
@@ -3008,7 +3420,10 @@
     "actions": "ایکشنز",
     "totalLeaves": "کل چھٹیاں",
     "pendingLeaves": "زیر التواء",
-    "approvedLeaves": "منظور شدہ"
+    "approvedLeaves": "منظور شدہ",
+    "createSuccess": "چھٹی کی درخواست کامیابی سے جمع ہو گئی!",
+    "updateSuccess": "چھٹی کی درخواست کامیابی سے اپ ڈیٹ ہو گئی!",
+    "error": "چھٹی کی درخواست میں ناکامی"
   },
   "inventory": {
     "title": "انوینٹری اور اسٹور",
@@ -3063,7 +3478,14 @@
     "unitCost": "فی یونٹ قیمت",
     "save": "محفوظ کریں",
     "cancel": "منسوخ",
-    "actions": "ایکشنز"
+    "actions": "ایکشنز",
+    "stockPDF": "اسٹاک PDF",
+    "itemCreated": "انوینٹری آئٹم کامیابی سے شامل ہو گیا!",
+    "itemUpdated": "انوینٹری آئٹم کامیابی سے اپ ڈیٹ ہو گیا!",
+    "itemDeleted": "انوینٹری آئٹم کامیابی سے حذف ہو گیا!",
+    "transactionRecorded": "انوینٹری ٹرانزیکشن کامیابی سے ریکارڈ ہو گئی!",
+    "transactionDeleted": "ٹرانزیکشن کامیابی سے حذف ہو گئی!",
+    "error": "انوینٹری آپریشن میں ناکامی"
   },
   "hostel": {
     "title": "ہاسٹل مینجمنٹ",
@@ -3127,9 +3549,25 @@
     "totalHostels": "کل ہاسٹلز",
     "totalRooms": "کل کمرے",
     "totalAllocations": "کل الاٹمنٹس",
-    "occupancy": "قبضہ"
+    "occupancy": "قبضہ",
+    "hostelCreated": "ہاسٹل کامیابی سے شامل ہو گیا!",
+    "hostelUpdated": "ہاسٹل کامیابی سے اپ ڈیٹ ہو گیا!",
+    "hostelDeleted": "ہاسٹل کامیابی سے حذف ہو گیا!",
+    "roomCreated": "کمرہ کامیابی سے شامل ہو گیا!",
+    "roomUpdated": "کمرہ کامیابی سے اپ ڈیٹ ہو گیا!",
+    "roomDeleted": "کمرہ کامیابی سے حذف ہو گیا!",
+    "allocatedSuccess": "طالب علم کامیابی سے الاٹ ہو گیا!",
+    "vacatedSuccess": "الاٹمنٹ کامیابی سے خالی ہو گئی!",
+    "error": "ہاسٹل آپریشن میں ناکامی"
   },
   "certificates": {
+    "certificateNumberPlaceholder": "خالی چھوڑنے پر خودکار طور پر بن جائے گا",
+    "defaultConduct": "اچھا",
+    "defaultCharacterRating": "بہترین",
+    "defaultPurpose": "بینک / پاسپورٹ / ویزا تصدیق",
+    "defaultStudent": "طالب علم",
+    "generalPurpose": "عمومی تصدیق",
+    "transferReason": "والدین کی درخواست پر",
     "title": "سرٹیفکیٹس",
     "description": "ٹرانسفر، کریکٹر، بونافائیڈ اور دیگر سرٹیفکیٹس",
     "addCertificate": "سرٹیفکیٹ شامل کریں",
@@ -3161,7 +3599,7 @@
     "confirmRevoke": "کیا اس سرٹیفکیٹ کو منسوخ کرنا ہے؟",
     "revoke": "منسوخ کریں",
     "print": "پرنٹ کریں",
-    "deleteSuccess": "سرٹیفکیٹ حذف ہو گیا",
+    "deleteSuccess": "سرٹیفکیٹ کامیابی سے حذف ہو گیا!",
     "deleteFailed": "حذف میں ناکامی",
     "saveSuccess": "سرٹیفکیٹ محفوظ ہو گیا",
     "saveFailed": "محفوظ کرنے میں ناکامی",
@@ -3171,7 +3609,13 @@
     "actions": "ایکشنز",
     "totalCertificates": "کل سرٹیفکیٹس",
     "issuedCount": "جاری شدہ",
-    "revokedCount": "منسوخ شدہ"
+    "revokedCount": "منسوخ شدہ",
+    "printSuccess": "سرٹیفکیٹ PDF ڈاؤن لوڈ ہو گیا",
+    "printFailed": "PDF بنانے میں ناکامی",
+    "admitCardDownloaded": "داخلہ کارڈ PDF ڈاؤن لوڈ ہو گیا",
+    "createSuccess": "سرٹیفکیٹ کامیابی سے جاری کر دیا گیا!",
+    "updateSuccess": "سرٹیفکیٹ کامیابی سے اپ ڈیٹ ہو گیا!",
+    "error": "سرٹیفکیٹ پروسیس کرنے میں ناکامی"
   },
   "health": {
     "title": "صحت ریکارڈز",
@@ -3195,7 +3639,7 @@
     "noRecords": "کوئی صحت ریکارڈ نہیں ملا",
     "noRecordsHint": "طلبہ کے لیے طبی پروفائلز شامل کریں",
     "confirmDelete": "کیا اس ریکارڈ کو حذف کرنا ہے؟",
-    "deleteSuccess": "ریکارڈ حذف ہو گیا",
+    "deleteSuccess": "صحت کا ریکارڈ کامیابی سے حذف ہو گیا!",
     "deleteFailed": "حذف میں ناکامی",
     "saveSuccess": "ریکارڈ محفوظ ہو گیا",
     "saveFailed": "محفوظ کرنے میں ناکامی",
@@ -3206,7 +3650,10 @@
     "actions": "ایکشنز",
     "totalRecords": "کل ریکارڈز",
     "withAllergies": "الرجی کے ساتھ",
-    "lastCheckup": "آخری چیک اپ"
+    "lastCheckup": "آخری چیک اپ",
+    "createSuccess": "صحت کا ریکارڈ کامیابی سے شامل ہو گیا!",
+    "updateSuccess": "صحت کا ریکارڈ کامیابی سے اپ ڈیٹ ہو گیا!",
+    "error": "صحت کا ریکارڈ پروسیس کرنے میں ناکامی"
   },
   "educationSystems": {
     "title": "قومی تعلیمی نظام",
@@ -3239,6 +3686,12 @@
     }
   },
   "feeStructures": {
+    "selectTargetClass": "براہ کرم ہدف جماعت منتخب کریں۔",
+    "selectAcademicYear": "براہ کرم تعلیمی سال منتخب کریں۔",
+    "saveFailed": "فیس سٹرکچر محفوظ کرنے میں ناکامی",
+    "deleteFailed": "فیس سٹرکچر حذف کرنے میں ناکامی",
+    "invalidStudentProfileId": "براہ کرم درست طالب علم پروفائل آئی ڈی درج کریں۔",
+    "concessionSaveFailed": "رعایت محفوظ کرنے میں ناکامی",
     "title": "کلاس وار ٹیوشن فیس کا ڈھانچہ",
     "description": "ہر جماعت کے لیے ماہانہ ٹیوشن فیس، مختلف فیس ہیڈز اور طلباء کی رعایت/اسکالرشپ تشکیل دیں۔",
     "manageConcessions": "رعایت اور اسکالرشپ کا انتظام",
@@ -3371,7 +3824,29 @@
     "saveFailed": "سوال محفوظ کرنے میں ناکامی",
     "deleteConfirm": "کیا آپ واقعی یہ سوال حذف کرنا چاہتے ہیں؟",
     "deleteSuccess": "سوال کامیابی سے حذف ہو گیا",
-    "deleteFailed": "سوال حذف کرنے میں ناکامی"
+    "deleteFailed": "سوال حذف کرنے میں ناکامی",
+    "validationRequired": "براہ کرم کلاس، مضمون اور سوال کا متن درج کریں۔",
+    "repositoryQuestions": "ذخیرے کے تمام سوالات",
+    "multipleChoice": "کثیر الانتخابی",
+    "creativeBroad": "NCTB CQ اور تفصیلی",
+    "shortPrompts": "1-2 نمبر کے سوالات",
+    "viewDetails": "تفصیلات دیکھیں",
+    "deleteQuestion": "سوال حذف کریں",
+    "selectClass": "کلاس منتخب کریں",
+    "selectSubject": "مضمون منتخب کریں",
+    "chapterPlaceholder": "مثال: باب 3: قوت اور حرکت",
+    "topicPlaceholder": "مثال: نیوٹن کا دوسرا قانون",
+    "questionTextPlaceholder": "مکمل سوال یا مسئلہ درج کریں...",
+    "answerPlaceholder": "اہم نکات، فارمولا یا درست جواب کا خلاصہ...",
+    "explanationPlaceholder": "استاد کی جانچ کے رہنما اصول یا نظری وضاحت...",
+    "optionalLabel": "اختیاری",
+    "points": "نمبر",
+    "correctOption": "درست",
+    "stimulusLabel": "عبارت / اقتباس",
+    "solutionKeyLabel": "حل کی کلید:",
+    "promptPartPlaceholder": "حصہ ({label}) کا سوال...",
+    "classFallback": "کلاس",
+    "subjectFallback": "مضمون"
   },
   "questionPapers": {
     "title": "امتحانی پرچہ جات اور لائبریری",
@@ -3451,7 +3926,70 @@
     "deleteSuccess": "پرچہ حذف ہو گیا",
     "deleteFailed": "پرچہ حذف کرنے میں ناکامی",
     "noPapers": "کوئی امتحانی پرچہ نہیں ملا",
-    "noPapersHint": "اپنا پہلا امتحانی پرچہ بنائیں یا سمارٹ جنریٹر استعمال کریں۔"
+    "noPapersHint": "اپنا پہلا امتحانی پرچہ بنائیں یا سمارٹ جنریٹر استعمال کریں۔",
+    "blueprintComposed": "پیپر کا خاکہ کامیابی سے تیار ہو گیا!",
+    "savedReady": "امتحانی پرچہ محفوظ اور تیار ہے!",
+    "requiredDetails": "براہ کرم عنوان، کلاس، مضمون اور تعلیمی سال درج کریں۔",
+    "repositoryPapers": "ذخیرے کے تمام امتحانی پرچے",
+    "readyForExamDay": "امتحان کے لیے تیار",
+    "inProgressCustomSets": "جاری اور حسب ضرورت سیٹس",
+    "searchPlaceholder": "عنوان یا کوڈ سے تلاش کریں...",
+    "allStatuses": "تمام حالتیں",
+    "fullMarks": "کل نمبر",
+    "duration": "دورانیہ",
+    "sectionsCount": "حصے",
+    "deletePaper": "پرچہ حذف کریں",
+    "paperTitlePlaceholder": "مثال: سالانہ امتحان 2026 - ریاضی",
+    "selectAcademicYear": "تعلیمی سال منتخب کریں",
+    "selectClass": "کلاس منتخب کریں",
+    "selectSubject": "مضمون منتخب کریں",
+    "blueprintQuestionDistribution": "سوالات کی خاکہ جاتی تقسیم",
+    "count": "تعداد",
+    "pointsPerQuestion": "فی سوال نمبر",
+    "sectionMinimum": "پرچے میں کم از کم ایک حصہ ہونا چاہیے",
+    "savedSuccess": "امتحانی پرچہ کامیابی سے محفوظ ہو گیا!",
+    "saveDraft": "ڈرافٹ کے طور پر محفوظ کریں",
+    "finalizePaper": "محفوظ کریں اور پرچہ مکمل کریں",
+    "marksBudget": "نمبرات کا بجٹ",
+    "timeAllowed": "مقررہ وقت",
+    "totalQuestions": "کل سوالات",
+    "questionsSelectedLabel": "منتخب سوالات",
+    "difficultyRatio": "مشکل کا تناسب",
+    "easy": "آسان",
+    "medium": "درمیانہ",
+    "hard": "مشکل",
+    "paperDetailsDescription": "امتحانی سرخی کے لیے مطلوبہ کلاس، مضمون اور عمومی ہدایات ترتیب دیں۔",
+    "annualExamPlaceholder": "مثال: سالانہ امتحان 2026",
+    "paperCodePlaceholder": "مثال: SET-A / QP-101",
+    "selectClassSubjectAbove": "براہ کرم اوپر مطلوبہ کلاس اور مضمون منتخب کریں۔",
+    "sectionInstructionsPlaceholder": "حصے کی ہدایات (مثلاً اس حصے کے تمام سوالات حل کریں)...",
+    "selectClassSubjectFirst": "براہ کرم پہلے مطلوبہ کلاس اور مضمون منتخب کریں۔",
+    "searchQuestions": "سوالات تلاش کریں...",
+    "allTypes": "تمام اقسام",
+    "allDifficulties": "تمام مشکل کی سطحیں",
+    "targetMarks": "ہدف",
+    "points": "نمبر",
+    "pickerTitle": "{section} کے لیے سوالات منتخب کریں",
+    "selectedCount": "{count} منتخب",
+    "pickerDescription": "اس حصے میں شامل کرنے کے لیے سوالات کے بینک سے سوالات دیکھیں اور منتخب کریں۔",
+    "noQuestionsInSection": "ابھی اس حصے میں کوئی سوال شامل نہیں کیا گیا۔ کلک کریں",
+    "pickFromBank": "بینک سے منتخب کریں",
+    "toChooseQuestions": "تاکہ سوالات منتخب کر سکیں۔",
+    "noQuestionsMatch": "اس مضمون کے سوالات کے بینک میں آپ کے معیار سے مطابقت رکھنے والا کوئی سوال نہیں۔",
+    "doneSelected": "مکمل ({count} منتخب)",
+    "loadingPreview": "امتحانی پرچہ لوڈ ہو رہا ہے...",
+    "previewNotFound": "امتحانی پرچہ نہیں ملا۔",
+    "hideSolutionKey": "حل کی کلید چھپائیں",
+    "teacherSolutionKey": "استاد کی حل کی کلید",
+    "schoolExamFallback": "اسکول / کالج کا امتحان",
+    "studentNameLine": "طالب علم کا نام: _________________________________________",
+    "rollNoSectionLine": "رول نمبر: _______________ سیکشن: ________",
+    "generalInstructions": "عمومی ہدایات:",
+    "context": "سیاق و سباق:",
+    "solutionKeyAnswer": "حل کی کلید / جواب:",
+    "referTextbook": "معیاری درسی کتاب دیکھیں",
+    "note": "نوٹ:",
+    "endOfQuestionPaper": "*** سوالیہ پرچہ ختم ***"
   },
   "notices": {
     "allNotices": "تمام اعلانات",
@@ -3463,7 +4001,7 @@
     "urgentAlerts": "فوری انتباہات",
     "loadFailed": "اسکول کے اعلانات لوڈ نہیں ہو سکے",
     "networkLoad": "نوٹس بورڈ لوڈ کرنے میں نیٹ ورک خرابی",
-    "deleted": "اعلان حذف کر دیا گیا",
+    "deleted": "نوٹس کامیابی سے حذف ہو گیا!",
     "deleteFailed": "اعلان حذف نہیں ہو سکا",
     "networkDelete": "اعلان حذف کرنے میں نیٹ ورک خرابی",
     "unpinned": "اعلان پن سے ہٹا دیا گیا",
@@ -3506,9 +4044,17 @@
     "delete": "حذف",
     "directory": "اعلانات کی فہرست",
     "showing": "{count} شائع شدہ اعلانات دکھائے جا رہے ہیں",
-    "filterTable": "اعلانات فلٹر کریں..."
+    "filterTable": "اعلانات فلٹر کریں...",
+    "requiredFields": "براہ کرم نوٹس کے لیے عنوان اور مواد دونوں فراہم کریں",
+    "networkError": "نوٹس محفوظ کرنے میں نیٹ ورک کی خرابی",
+    "copied": "نوٹس کلپ بورڈ پر کاپی ہو گیا",
+    "created": "نوٹس کامیابی سے بن گیا!",
+    "updated": "نوٹس کامیابی سے اپ ڈیٹ ہو گیا!"
   },
   "bulkFees": {
+    "challansDownloaded": "چالان PDF ڈاؤن لوڈ ہو گئے (3 نقول)",
+    "pdfFailed": "PDF بنانے میں ناکامی",
+    "challansTitle": "منتخب طلبہ کے لیے 3 حصوں والے بینک چالان",
     "title": "کلاس کی مجموعی فیس وصولی",
     "description": "12 ماہ کے تعلیمی سال کی بنیاد پر پوری کلاس کی فیس اسپریڈشیٹ انداز میں وصول کریں۔",
     "singlePos": "سنگل POS کاؤنٹر",
@@ -3707,5 +4253,169 @@
     "updateFailed": "Update failed",
     "impersonateFailed": "Impersonate failed",
     "status": "حالت"
+  },
+  "verify": {
+    "certificate": {
+      "title": "سرٹیفکیٹ کی تصدیق",
+      "verified": "تصدیق شدہ",
+      "notFound": "سرٹیفکیٹ نہیں ملا",
+      "revoked": "منسوخ",
+      "authentic": "یہ دستاویز مستند ہے",
+      "certificateNo": "سرٹیفکیٹ نمبر",
+      "studentName": "طالب علم کا نام",
+      "status": "حیثیت",
+      "scanToVerify": "تصدیق کے لیے QR اسکین کریں"
+    },
+    "admitCard": {
+      "title": "امتحانی داخلہ کارڈ"
+    }
+  },
+  "portal": {
+    "nav": {
+      "home": "ہوم",
+      "homework": "ہوم ورک",
+      "timetable": "ٹائم ٹیبل",
+      "results": "نتائج",
+      "overview": "جائزہ",
+      "fees": "فیس"
+    },
+    "notifications": "اطلاعات",
+    "theme": {
+      "toggle": "تھیم تبدیل کریں"
+    },
+    "signOut": "سائن آؤٹ",
+    "noData": "پورٹل کا ڈیٹا دستیاب نہیں",
+    "viewAll": "سب دیکھیں",
+    "viewTimetable": "ٹائم ٹیبل دیکھیں",
+    "children": {
+      "switch": "بچے کو تبدیل کریں"
+    },
+    "student": {
+      "greeting": "خوش آمدید"
+    },
+    "parent": {
+      "overview": "والدین کا جائزہ"
+    },
+    "attendance": {
+      "title": "حاضری",
+      "last90": "گزشتہ 90 دن"
+    },
+    "homework": {
+      "pending": "زیر التوا ہوم ورک",
+      "title": "ہوم ورک",
+      "description": "اسائنمنٹس دیکھیں اور اپنا کام جمع کریں۔",
+      "none": "کوئی ہوم ورک نہیں۔",
+      "general": "عمومی",
+      "due": "آخری تاریخ",
+      "pendingStatus": "زیر التوا",
+      "openAttachment": "منسلک فائل کھولیں",
+      "remarksPlaceholder": "استاد کے لیے نوٹ (اختیاری)",
+      "chooseFile": "فائل منتخب کریں",
+      "submit": "ہوم ورک جمع کریں",
+      "submitting": "جمع ہو رہا ہے...",
+      "uploadFailed": "اپ لوڈ ناکام",
+      "submitFailed": "جمع کرانا ناکام"
+    },
+    "exams": {
+      "upcoming": "آنے والے امتحانات",
+      "published": "شائع شدہ امتحانات",
+      "upcomingTitle": "آنے والے امتحانات",
+      "none": "کوئی آنے والا امتحان نہیں۔"
+    },
+    "timetable": {
+      "today": "آج کی کلاسز",
+      "todayTitle": "آج کا ٹائم ٹیبل",
+      "noToday": "آج کوئی کلاس نہیں۔",
+      "noRoom": "کمرہ مقرر نہیں",
+      "break": "وقفہ",
+      "title": "ٹائم ٹیبل",
+      "description": "ہفتہ وار کلاس شیڈول۔",
+      "period": "پیریڈ",
+      "empty": "ٹائم ٹیبل دستیاب نہیں۔",
+      "free": "خالی"
+    },
+    "results": {
+      "latest": "حالیہ نتیجہ",
+      "none": "کوئی شائع شدہ نتیجہ نہیں",
+      "title": "نتائج",
+      "description": "مدت کے لحاظ سے شائع شدہ امتحانی نتائج۔",
+      "gpa": "جی پی اے",
+      "subject": "مضمون",
+      "marks": "نمبر",
+      "grade": "درجہ",
+      "status": "حیثیت"
+    },
+    "fees": {
+      "balance": "بقایا فیس",
+      "viewDetails": "فیس کی تفصیل",
+      "recentPayments": "حالیہ ادائیگیاں",
+      "noPayments": "کوئی ادائیگی درج نہیں۔",
+      "title": "فیس",
+      "description": "فیس واؤچرز، بقایا رقم اور ادائیگیوں کی تاریخ۔",
+      "totalBalance": "کل بقایا",
+      "vouchers": "فیس واؤچرز",
+      "noVouchers": "کوئی فیس واؤچر نہیں ملا۔",
+      "voucher": "واؤچر",
+      "type": "قسم",
+      "dueDate": "آخری تاریخ",
+      "amount": "رقم",
+      "status": "حیثیت",
+      "paymentHistory": "ادائیگیوں کی تاریخ",
+      "downloadReceipt": "رسید ڈاؤن لوڈ کریں"
+    }
+  },
+  "error": {
+    "title": "کچھ غلط ہو گیا!",
+    "message": "ایک غیر متوقع خرابی پیش آئی ہے۔ براہ کرم دوبارہ کوشش کریں یا سپورٹ سے رابطہ کریں۔",
+    "tryAgain": "دوبارہ کوشش کریں",
+    "returnHome": "ہوم پیج پر جائیں",
+    "error": {
+      "title": "کچھ غلط ہو گیا!",
+      "message": "ایک غیر متوقع خرابی پیش آئی ہے۔ براہ کرم دوبارہ کوشش کریں یا سپورٹ سے رابطہ کریں۔",
+      "tryAgain": "دوبارہ کوشش کریں",
+      "returnHome": "ہوم پیج پر جائیں"
+    }
+  },
+  "ForbiddenPage": {
+    "title": "رسائی ممنوع ہے",
+    "subtitle": "آپ کو اس وسائل تک رسائی کی اجازت نہیں ہے",
+    "message": "اگر آپ سمجھتے ہیں کہ یہ غلطی ہے تو براہ کرم اسکول کے منتظم سے رابطہ کریں۔",
+    "dashboard": "ڈیش بورڈ پر واپس جائیں",
+    "goBack": "پیچھے جائیں"
+  },
+  "notFound": {
+    "title": "صفحہ نہیں ملا",
+    "description": "جو صفحہ آپ تلاش کر رہے ہیں وہ ہٹا دیا گیا ہے، اس کا نام بدل دیا گیا ہے، یا عارضی طور پر دستیاب نہیں ہے۔",
+    "goBack": "پیچھے جائیں",
+    "dashboardSetup": "ڈیش بورڈ پر جائیں"
+  },
+  "unauthorized": {
+    "title": "توثیق درکار ہے",
+    "subtitle": "جاری رکھنے کے لیے براہ کرم لاگ ان کریں",
+    "message": "اس صفحے تک رسائی کے لیے آپ کا سائن ان ہونا ضروری ہے۔",
+    "goToLogin": "لاگ ان پر جائیں"
+  },
+  "header": {
+    "theme": {
+      "toggle": "تھیم تبدیل کریں"
+    },
+    "user": {
+      "fallbackName": "صارف",
+      "fallbackRole": "عملہ"
+    },
+    "systemAdmin": {
+      "label": "سسٹم ایڈمن"
+    }
+  },
+  "pdf": {
+    "markSheetSuccess": "مارک شیٹ کامیابی سے بن گئی!",
+    "markSheetError": "مارک شیٹ بنانے میں ناکامی",
+    "reportCardSuccess": "رپورٹ کارڈ کامیابی سے بن گیا!",
+    "reportCardError": "رپورٹ کارڈ بنانے میں ناکامی",
+    "idCardSuccess": "شناختی کارڈ کامیابی سے بن گیا!",
+    "idCardError": "شناختی کارڈ بنانے میں ناکامی",
+    "selectExam": "براہ کرم ایک امتحان منتخب کریں",
+    "noMarksFound": "اس امتحان کے لیے کوئی نمبر نہیں ملے",
+    "selectYear": "براہ کرم تعلیمی سال منتخب کریں"
   }
 }

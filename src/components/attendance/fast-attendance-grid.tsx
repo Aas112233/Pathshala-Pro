@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -210,18 +211,14 @@ export function FastAttendanceGrid({
               className="h-9 w-36 text-xs bg-background"
             />
 
-            <select
+            <AppDropdown
               value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              className="h-9 px-3 rounded-md border border-input bg-background text-xs"
-            >
-              <option value="">{t("attendanceExtras.fastGrid.allClasses")}</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSelectedClassId(v)}
+              options={classes.map((cls: any) => ({ value: cls.id, label: cls.name }))}
+              searchable
+              placeholder="Select Class"
+              className="w-48"
+            />
           </div>
         </div>
 

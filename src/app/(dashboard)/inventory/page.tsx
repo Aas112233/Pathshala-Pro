@@ -19,13 +19,18 @@ import {
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Package, Plus, Pencil, Trash2, Search, AlertTriangle, Boxes, TrendingUp, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Package, Plus, Pencil, Trash2, Search, AlertTriangle, Boxes, TrendingUp, ArrowDownToLine, ArrowUpFromLine, Printer, Download } from "lucide-react";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { usePDFExport } from "@/hooks/use-pdf-export";
+import { toast } from "sonner";
 
 const CATEGORIES = ["GENERAL", "STATIONERY", "LAB", "SPORTS", "UNIFORM", "BOOKS", "FURNITURE", "ELECTRONICS"];
 const UNITS = ["PCS", "BOX", "KG", "LTR", "SET", "DOZEN"];
 
 export default function InventoryPage() {
   const t = useTranslations("inventory");
+  const tCommon = useTranslations("common");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "inventory", "read");
@@ -68,10 +73,10 @@ export default function InventoryPage() {
   const handleItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!itemForm.name.trim()) errs.name = "Required";
-    if (!itemForm.code.trim()) errs.code = "Required";
+    if (!itemForm.name.trim()) errs.name = tCommon("required");
+    if (!itemForm.code.trim()) errs.code = tCommon("required");
     setItemErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     try {
       const payload: any = { ...itemForm, quantity: Number(itemForm.quantity), minStockLevel: Number(itemForm.minStockLevel), costPrice: Number(itemForm.costPrice), location: itemForm.location || null };
       if (editingItem) await updateItem(editingItem.id, payload);
@@ -92,19 +97,28 @@ export default function InventoryPage() {
   const handleTxSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!txForm.itemId) errs.itemId = "Required";
-    if (!txForm.quantity || txForm.quantity < 1) errs.quantity = "Required";
+    if (!txForm.itemId) errs.itemId = tCommon("required");
+    if (!txForm.quantity || txForm.quantity < 1) errs.quantity = tCommon("required");
     setTxErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     try {
       await createTransaction({ itemId: txForm.itemId, transactionType: txForm.transactionType, quantity: Number(txForm.quantity), unitCost: txForm.unitCost ? Number(txForm.unitCost) : null, reference: txForm.reference || null, notes: txForm.notes || null });
       setIsTxSheetOpen(false);
     } catch {}
   };
 
+  const { settings } = useTenantSettings();
+  const { exportInventoryStockPDF } = usePDFExport();
   const lowStockCount = items.filter((it: any) => it.quantity <= it.minStockLevel && it.quantity > 0).length;
   const outOfStockCount = items.filter((it: any) => it.quantity === 0).length;
   const totalValue = items.reduce((s: number, it: any) => s + it.quantity * (it.costPrice || 0), 0);
+
+  const handleStockReport = async () => {
+    const school = { name: settings.name||"Pathshala Pro School", address: settings.address||"", phone: settings.phone||"", email: settings.email||"", logoUrl: settings.logoUrl };
+    const stockItems = items.map((it:any)=>({ code: it.code, name: it.name, category: it.category, unit: it.unit, quantity: it.quantity, minStockLevel: it.minStockLevel, location: it.location, costPrice: it.costPrice||0 }));
+    const res = await exportInventoryStockPDF(school, stockItems, new Date().toLocaleDateString());
+    if(res.success) toast.success("Stock statement PDF downloaded"); else toast.error("Failed");
+  };
 
   const itemColumns: ColumnDef<any>[] = [
     {
@@ -180,14 +194,19 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={Package}>
-        {activeTab === "items" && canWrite && <Button onClick={openAddItem} className="gap-2"><Plus className="h-4 w-4" />{t("addItem")}</Button>}
-        {activeTab === "transactions" && canWrite && <Button onClick={() => openTx("PURCHASE")} className="gap-2"><Plus className="h-4 w-4" />{t("stockIn")}</Button>}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleStockReport} disabled={items.length===0} title="Download Stock Statement (vector A4 landscape)">
+            <Printer className="mr-2 h-4 w-4" />Stock PDF
+          </Button>
+          {activeTab === "items" && canWrite && <Button onClick={openAddItem} className="gap-2"><Plus className="h-4 w-4" />{t("addItem")}</Button>}
+          {activeTab === "transactions" && canWrite && <Button onClick={() => openTx("PURCHASE")} className="gap-2"><Plus className="h-4 w-4" />{t("stockIn")}</Button>}
+        </div>
       </PageHeader>
 
       {!canRead && !isAuthLoading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view inventory.</p>
+            <p className="text-sm text-muted-foreground">{common("noPermission")}</p>
           </CardContent>
         </Card>
       ) : (

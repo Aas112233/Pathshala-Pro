@@ -8,6 +8,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
+import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
 
 /**
  * GET /api/settings
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
         firstDayOfWeek: true,
         academicYearStart: true,
         gradingSystem: true,
+        featureFlags: true,
       },
     });
 
@@ -50,7 +52,20 @@ export async function GET(request: NextRequest) {
       return badRequest("Tenant not found");
     }
 
-    return successResponse(tenant, "Settings retrieved successfully");
+    const flags = (tenant.featureFlags as any) || {};
+    const paymentMethods = Array.isArray(flags.paymentMethods)
+      ? flags.paymentMethods
+      : DEFAULT_PAYMENT_METHODS;
+
+    const { featureFlags, ...tenantWithoutFlags } = tenant;
+
+    return successResponse(
+      {
+        ...tenantWithoutFlags,
+        paymentMethods,
+      },
+      "Settings retrieved successfully"
+    );
   } catch (error) {
     return handleApiError(error);
   }
@@ -96,6 +111,19 @@ export async function PUT(request: NextRequest) {
     if (body.academicYearStart !== undefined) updateData.academicYearStart = body.academicYearStart;
     if (body.gradingSystem !== undefined) updateData.gradingSystem = body.gradingSystem;
 
+    // Payment Methods
+    if (Array.isArray(body.paymentMethods)) {
+      const existingTenant = await prisma.tenant.findUnique({
+        where: { tenantId },
+        select: { featureFlags: true },
+      });
+      const currentFlags = (existingTenant?.featureFlags as any) || {};
+      updateData.featureFlags = {
+        ...currentFlags,
+        paymentMethods: body.paymentMethods,
+      };
+    }
+
     const tenant = await prisma.tenant.update({
       where: { tenantId },
       data: updateData,
@@ -120,10 +148,23 @@ export async function PUT(request: NextRequest) {
         firstDayOfWeek: true,
         academicYearStart: true,
         gradingSystem: true,
+        featureFlags: true,
       },
     });
 
-    return successResponse(tenant, "Settings updated successfully");
+    const flags = (tenant.featureFlags as any) || {};
+    const paymentMethods = Array.isArray(flags.paymentMethods)
+      ? flags.paymentMethods
+      : DEFAULT_PAYMENT_METHODS;
+    const { featureFlags, ...tenantWithoutFlags } = tenant;
+
+    return successResponse(
+      {
+        ...tenantWithoutFlags,
+        paymentMethods,
+      },
+      "Settings updated successfully"
+    );
   } catch (error) {
     return handleApiError(error);
   }

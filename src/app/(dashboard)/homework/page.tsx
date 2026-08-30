@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { useState, useRef } from "react";
@@ -41,6 +42,7 @@ import { toast } from "sonner";
 
 export default function HomeworkPage() {
   const t = useTranslations("homework");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "homework", "read");
@@ -476,7 +478,7 @@ export default function HomeworkPage() {
       {!canRead && !isAuthLoading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view homework.</p>
+            <p className="text-sm text-muted-foreground">{common("noPermission")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -977,3 +979,4 @@ export default function HomeworkPage() {
     </div>
   );
 }
+

@@ -16,6 +16,7 @@ import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function TransactionsPage() {
   const t = useTranslations('transactions');
+  const tCommon = useTranslations("common");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -133,8 +134,8 @@ export default function TransactionsPage() {
 
       {!isAuthLoading && !canReadFees ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view transactions.</p>
+          <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
         </div>
       ) : (
         <DataTable

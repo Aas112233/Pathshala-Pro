@@ -12,6 +12,8 @@ import { createSalaryLedgerSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/salary
@@ -51,6 +53,9 @@ export async function GET(request: NextRequest) {
     if (status) {
       where.status = status;
     }
+
+    const academicYearId = searchParams.get("academicYearId") || "";
+    if (academicYearId) where.academicYearId = academicYearId;
 
     const [totalCount, salaryLedgers] = await Promise.all([
       prisma.salaryLedger.count({ where }),
@@ -149,11 +154,14 @@ export async function POST(request: NextRequest) {
       return badRequest("Academic year not found");
     }
 
+    await assertAcademicYearOpen(tenantId, academicYear.id);
+
     // Check for duplicate entry
     const existing = await prisma.salaryLedger.findFirst({
       where: {
         tenantId,
         staffProfileId: data.staffProfileId,
+        academicYearId: data.academicYearId,
         month: data.month,
         year: data.year,
       },
@@ -169,8 +177,10 @@ export async function POST(request: NextRequest) {
       ]);
     }
 
-    // Calculate net payable
-    const netPayable = data.baseSalary - data.deductions - data.advances;
+// Calculate net payable using Decimal precision to avoid floating-point drift
+    const netPayable = new Prisma.Decimal(data.baseSalary)
+      .sub(new Prisma.Decimal(data.deductions))
+      .sub(new Prisma.Decimal(data.advances));
 
     const salaryLedger = await prisma.salaryLedger.create({
       data: {

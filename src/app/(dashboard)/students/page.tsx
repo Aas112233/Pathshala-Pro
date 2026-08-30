@@ -8,7 +8,10 @@ import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { ERPDataTable, ERPUserCell, ERPStatusPill } from "@/components/ui/erp-data-table";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
-import { GraduationCap, Plus, Users, UserCheck } from "lucide-react";
+import { GraduationCap, Plus, Users, UserCheck, IdCard, FileText } from "lucide-react";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { usePDFExport } from "@/hooks/use-pdf-export";
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -37,6 +40,7 @@ type StudentRow = StudentProfile & {
 
 export default function StudentsPage() {
   const t = useTranslations('students');
+  const tCommon = useTranslations("common");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<CreateStudentDTO & { id?: string } | null>(null);
@@ -61,6 +65,8 @@ export default function StudentsPage() {
   const canReadStudents = hasPermission(perms, "students", "read");
   const canWriteStudents = hasPermission(perms, "students", "write");
   const canManageStudents = hasPermission(perms, "students", "manage");
+  const { settings } = useTenantSettings();
+  const { exportStudentIDCard, exportAdmissionFormPDF } = usePDFExport();
 
   const handleEdit = useCallback((student: StudentRow) => {
     setEditingStudent({
@@ -183,6 +189,37 @@ export default function StudentsPage() {
     },
   ];
 
+  const handleBulkIDCards = useCallback(async () => {
+    if (students.length === 0) { toast.error(t("emptyState.noStudents")); return; }
+    const school = { name: settings.name || "Pathshala Pro School", address: settings.address || "", phone: settings.phone || "", email: settings.email || "", logoUrl: settings.logoUrl };
+    const academicYear = new Date().getFullYear().toString();
+    const slice = students.slice(0, 8);
+    for (const s of slice as any[]) {
+      const info = {
+        name: `${s.firstName || ""} ${s.lastName || ""}`.trim() || "Student",
+        admissionNumber: s.studentId || s.id.slice(0,8),
+        rollNumber: s.rollNumber || "-",
+        className: (s.class as any)?.name || s.classId || "-",
+        section: (s as any).section?.name || "-",
+        dateOfBirth: s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString() : "-",
+        gender: s.gender || "-",
+        bloodGroup: s.bloodGroup,
+        guardianName: s.guardianName || "-",
+        guardianContact: s.guardianContact || "-",
+        photoUrl: s.profilePictureUrl,
+      };
+      await exportStudentIDCard(info as any, school, academicYear);
+    }
+    toast.success(`ID cards queued for ${slice.length} students`);
+  }, [students, settings, exportStudentIDCard, t]);
+
+  const handleAdmissionForm = useCallback(async () => {
+    const school = { name: settings.name || "Pathshala Pro School", address: settings.address || "", phone: settings.phone || "", email: settings.email || "", logoUrl: settings.logoUrl };
+    const res = await exportAdmissionFormPDF(school, new Date().getFullYear().toString(), `ADM-${Date.now().toString().slice(-6)}`);
+    if (res.success) toast.success(t("admissionFormDownloaded"));
+    else toast.error(t("admissionFormFailed"));
+  }, [settings, exportAdmissionFormPDF]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -193,6 +230,14 @@ export default function StudentsPage() {
       >
         <div className="flex items-center gap-2">
           <StudentViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
+          <Button variant="outline" size="sm" onClick={handleAdmissionForm} title="Blank Admission Form PDF">
+            <FileText className="mr-2 h-4 w-4" />
+            Form
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleBulkIDCards} disabled={students.length===0} title="Download ID Cards (4-up per page)">
+            <IdCard className="mr-2 h-4 w-4" />
+            ID Cards
+          </Button>
           {canWriteStudents && (
             <Button onClick={() => setIsFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -204,8 +249,8 @@ export default function StudentsPage() {
 
       {!isAuthLoading && !canReadStudents ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view students.</p>
+          <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
         </div>
       ) : (
         <>

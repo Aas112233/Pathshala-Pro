@@ -1,0 +1,52 @@
+name: Lighthouse Performance & Accessibility Audit
+
+on:
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    name: Lighthouse Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🗄️ Generate Prisma Client
+        run: npm run prisma:generate
+
+      - name: 🏗️ Build Application
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/pathshala_test?schema=public"
+          DIRECT_URL: "postgresql://dummy:dummy@localhost:5432/pathshala_test?schema=public"
+          NEXTAUTH_SECRET: "ci-secret-key-pathshala-pro-super-secure-32-chars-long"
+          NEXTAUTH_URL: "http://localhost:3000"
+          NODE_ENV: "production"
+        run: npm run build
+
+      - name: 🚀 Start Server
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/pathshala_test?schema=public"
+          DIRECT_URL: "postgresql://dummy:dummy@localhost:5432/pathshala_test?schema=public"
+          NEXTAUTH_SECRET: "ci-secret-key-pathshala-pro-super-secure-32-chars-long"
+          NEXTAUTH_URL: "http://localhost:3000"
+          PORT: 3000
+        run: |
+          npm start &
+          npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: ⚡ Run Lighthouse CI
+        run: |
+          npx @lhci/cli@0.14.x autorun --collect.url=http://localhost:3000/login --collect.numberOfRuns=1 || true

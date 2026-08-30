@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateUser, useUpdateUser } from "@/hooks/use-queries";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ROLES } from "@/lib/constants";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -19,10 +20,11 @@ interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   user?: UserRecord | null;
+  isEditing?: boolean;
 }
 
-export function UserFormModal({ isOpen, onClose, user }: UserFormModalProps) {
-  const isEditing = !!user;
+export function UserFormModal({ isOpen, onClose, user, isEditing }: UserFormModalProps) {
+  const t = useTranslations("users");
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser(user?.id || "");
   const { user: authUser } = useAuth();
@@ -84,7 +86,7 @@ export function UserFormModal({ isOpen, onClose, user }: UserFormModalProps) {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t("fillRequired"));
       return;
     }
 
@@ -101,11 +103,11 @@ export function UserFormModal({ isOpen, onClose, user }: UserFormModalProps) {
       
       updateMutation.mutate(updateData, {
         onSuccess: () => {
-          toast.success("User updated successfully");
+          toast.success(t("userUpdated"));
           onClose();
         },
         onError: (error) => {
-          toast.error(error.message || "Failed to update user");
+          toast.error(error.message || t("userUpdated"));
         },
       });
     } else {
@@ -120,11 +122,11 @@ export function UserFormModal({ isOpen, onClose, user }: UserFormModalProps) {
         createData,
         {
           onSuccess: () => {
-            toast.success("User created successfully");
+            toast.success(t("userCreated"));
             onClose();
           },
           onError: (error) => {
-            toast.error(error.message || "Failed to create user");
+            toast.error(error.message || t("userCreated"));
           },
         }
       );

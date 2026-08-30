@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, FileSpreadsheet, FileText, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export interface ExportOption {
   value: "excel" | "pdf";
@@ -15,22 +16,22 @@ interface ExportDropdownProps {
   disabled?: boolean;
 }
 
-const exportOptions: ExportOption[] = [
-  {
-    value: "excel",
-    label: "Export as Excel",
-    icon: <FileSpreadsheet className="h-4 w-4" />,
-  },
-  {
-    value: "pdf",
-    label: "Export as PDF",
-    icon: <FileText className="h-4 w-4" />,
-  },
-];
-
 export function ExportDropdown({ onExport, disabled = false }: ExportDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations("reports");
+  const exportOptions: ExportOption[] = [
+    {
+      value: "excel",
+      label: t("actions.exportExcel"),
+      icon: <FileSpreadsheet className="h-4 w-4" />,
+    },
+    {
+      value: "pdf",
+      label: t("actions.exportPDF"),
+      icon: <FileText className="h-4 w-4" />,
+    },
+  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -61,7 +62,7 @@ export function ExportDropdown({ onExport, disabled = false }: ExportDropdownPro
         )}
       >
         <Download className="h-4 w-4" />
-        Export
+        {t("actions.export")}
         <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
       </button>
 

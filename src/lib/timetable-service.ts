@@ -67,6 +67,16 @@ export async function validateTimetableSlotConflict(
     excludeSlotId,
   } = params;
 
+  const toMinutes = (value: string) => {
+    const match = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value) ? value.split(":").map(Number) : null;
+    return match ? match[0] * 60 + match[1] : null;
+  };
+  const start = toMinutes(params.startTime);
+  const end = toMinutes(params.endTime);
+  if (start === null || end === null || start >= end) {
+    throw new Error("Timetable startTime must be earlier than endTime");
+  }
+
   if (isBreak) {
     return { hasConflict: false };
   }
@@ -99,6 +109,7 @@ export async function validateTimetableSlotConflict(
     const teacherConflict = await tx.timetable.findFirst({
       where: {
         tenantId,
+        ...(academicYearId ? { academicYearId } : {}),
         staffProfileId,
         dayOfWeek,
         periodNumber,
@@ -123,6 +134,7 @@ export async function validateTimetableSlotConflict(
     const roomConflict = await tx.timetable.findFirst({
       where: {
         tenantId,
+        ...(academicYearId ? { academicYearId } : {}),
         roomNumber: roomNumber.trim(),
         dayOfWeek,
         periodNumber,

@@ -7,6 +7,7 @@ import { Landmark, Loader2, Pencil, Save } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useFeeHeadMappings, useSaveFeeHeadMappings } from "@/hooks/use-queries";

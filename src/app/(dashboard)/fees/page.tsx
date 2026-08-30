@@ -317,8 +317,8 @@ export default function FeesPage() {
 
       {!isAuthLoading && !canReadFees ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view fees.</p>
+          <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
         </div>
       ) : (
         <>

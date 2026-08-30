@@ -45,12 +45,14 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
       return "attendance";
     case "fees":
     case "transactions":
-    case "accounting":
       return "fees";
+    case "accounting":
+      return "accounting";
     case "salary":
       return "salary";
     case "notices":
       return "notices";
+    case "timetable":
     case "timetables":
       return "timetable";
     case "enquiries":
@@ -79,7 +81,6 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
       return "health";
     case "settings":
     case "audit-logs":
-    case "users":
       return "settings";
     case "upload":
       return null;
@@ -95,6 +96,8 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
     case "exam-results":
     case "promotion-rules":
     case "promotions":
+    case "question-papers":
+    case "questions":
       return "exams";
     case "reports":
       if (subresource === "students" || subresource === "admissions") return "students";
@@ -118,6 +121,8 @@ export async function requireApiAccess(
     module?: string | null;
     permission?: Permission | Permission[];
     allowSystemAdmin?: boolean;
+    /** Explicit opt-in for intentionally generic authenticated endpoints. */
+    allowUnmapped?: boolean;
   }
 ): Promise<AccessResult> {
   const authContext = await getAuthContext(request);
@@ -128,13 +133,19 @@ export async function requireApiAccess(
 
   const { user } = authContext;
   const isSystemAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email);
-  const isPlatformAdmin = isSystemAdmin;
 
   if (!options?.allowSystemAdmin && isSystemAdmin) {
     return { response: forbidden("System administrators cannot access tenant APIs") };
   }
 
-  if (options?.allowSystemAdmin && isPlatformAdmin) {
+  if (options?.allowSystemAdmin) {
+    const isValidatedImpersonation =
+      authContext.isImpersonated === true &&
+      !!authContext.impersonatedBy &&
+      isPlatformOwnerEmail(authContext.impersonatedBy);
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !isValidatedImpersonation) {
+      return { response: forbidden("Platform system administrator access is required") };
+    }
     return { authContext };
   }
 
@@ -153,7 +164,7 @@ export async function requireApiAccess(
 
   if (!moduleName) {
     // Fail-closed for security: unmapped API routes require explicit permission option
-    if (!options?.permission && user.role !== "SUPER_ADMIN") {
+    if (!options?.permission && !options?.allowUnmapped) {
       return { response: forbidden("Unmapped API endpoint: access restricted.") };
     }
     return { authContext };

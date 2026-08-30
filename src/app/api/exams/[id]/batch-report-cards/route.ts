@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiAccess } from "@/lib/api-auth";
 import { errorResponse, successResponse } from "@/lib/api-response";
 import { calculateClassMeritRankings, calculateGradeFromPercentage } from "@/lib/grading";
+import { calculateAttendancePercentage, safePercentage } from "@/lib/math-utils";
 
 export async function GET(
   request: NextRequest,
@@ -125,17 +126,20 @@ export async function GET(
       where: {
         tenantId,
         studentProfileId: { in: studentIds },
+        academicYearId: exam.academicYearId,
       },
     });
 
     // Group attendance by student
-    const attendanceMap = new Map<string, { present: number; total: number }>();
+    const attendanceMap = new Map<string, { present: number; halfDays: number; total: number }>();
     for (const att of attendanceRecords) {
       if (!att.studentProfileId) continue;
-      const curr = attendanceMap.get(att.studentProfileId) || { present: 0, total: 0 };
+      const curr = attendanceMap.get(att.studentProfileId) || { present: 0, halfDays: 0, total: 0 };
       curr.total += 1;
       if (att.status === "PRESENT" || att.status === "LATE") {
         curr.present += 1;
+      } else if (att.status === "HALF_DAY") {
+        curr.halfDays += 1;
       }
       attendanceMap.set(att.studentProfileId, curr);
     }
@@ -184,15 +188,15 @@ export async function GET(
     const formattedStudents = students.map((st) => {
       const rankInfo = rankMap.get(st.id);
       const stResults = resultsMap.get(st.id) || [];
-      const att = attendanceMap.get(st.id) || { present: 85, total: 90 }; // default 94% if no raw attendance recorded
-      const attPercentage = att.total > 0 ? Math.round((att.present / att.total) * 100) : 100;
+      const att = attendanceMap.get(st.id) || { present: 0, halfDays: 0, total: 0 };
+      const attPercentage = calculateAttendancePercentage({ presentDays: att.present, halfDays: att.halfDays, totalDays: att.total });
 
       const subjects = exam.subjects.map((es) => {
         const found = stResults.find((r) => r.subjectId === es.subjectId);
         const maxMarks = es.maxMarks || 100;
         const passMarks = es.passMarks || 33;
         const obtained = found ? found.obtainedMarks : 0;
-        const subPercentage = maxMarks > 0 ? (obtained / maxMarks) * 100 : 0;
+        const subPercentage = safePercentage(obtained, maxMarks);
         const { letterGrade, gpa } = calculateGradeFromPercentage(subPercentage);
 
         return {

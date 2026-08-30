@@ -29,6 +29,8 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function HostelPage() {
   const t = useTranslations("hostel");
+  const tCommon = useTranslations("common");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "hostel", "read");
@@ -96,9 +98,9 @@ export default function HostelPage() {
   const handleHostelSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!hostelForm.name.trim()) errs.name = "Required";
+    if (!hostelForm.name.trim()) errs.name = tCommon("required");
     setHostelErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runHostelSubmit(async () => {
       try {
         const payload: any = { ...hostelForm, capacity: Number(hostelForm.capacity) || 0, wardenName: hostelForm.wardenName || null, wardenPhone: hostelForm.wardenPhone || null, address: hostelForm.address || null };
@@ -128,10 +130,10 @@ export default function HostelPage() {
   const handleRoomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!roomForm.hostelId) errs.hostelId = "Required";
-    if (!roomForm.roomNumber.trim()) errs.roomNumber = "Required";
+    if (!roomForm.hostelId) errs.hostelId = tCommon("required");
+    if (!roomForm.roomNumber.trim()) errs.roomNumber = tCommon("required");
     setRoomErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runHostelSubmit(async () => {
       try {
         const payload: any = { ...roomForm, floor: Number(roomForm.floor), capacity: Number(roomForm.capacity) };
@@ -154,11 +156,11 @@ export default function HostelPage() {
   const handleAllocSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!allocForm.hostelId) errs.hostelId = "Required";
-    if (!allocForm.roomId) errs.roomId = "Required";
-    if (!allocForm.studentProfileId) errs.studentProfileId = "Required";
+    if (!allocForm.hostelId) errs.hostelId = tCommon("required");
+    if (!allocForm.roomId) errs.roomId = tCommon("required");
+    if (!allocForm.studentProfileId) errs.studentProfileId = tCommon("required");
     setAllocErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runHostelSubmit(async () => {
       try {
         await createAllocation({ hostelId: allocForm.hostelId, roomId: allocForm.roomId, studentProfileId: allocForm.studentProfileId, bedNumber: allocForm.bedNumber || null });
@@ -350,7 +352,7 @@ export default function HostelPage() {
       {!canRead && !isAuthLoading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view hostel records.</p>
+            <p className="text-sm text-muted-foreground">{common("noPermission")}</p>
           </CardContent>
         </Card>
       ) : (

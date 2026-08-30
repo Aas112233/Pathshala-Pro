@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FilePlus, Plus, Save, Trash2, ArrowLeft, UserPlus, UserCheck, Pencil } from "lucide-react";
+import { FilePlus, Plus, Save, Trash2, ArrowLeft, UserPlus, UserCheck, Pencil, Printer } from "lucide-react";
 import { AppModal } from "@/components/ui/app-modal";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -22,7 +22,8 @@ import { formatStudentName } from "@/lib/utils";
 import type { CreateStudentDTO } from "@/viewmodels/students/use-student-view-model";
 import { useStudentViewModel } from "@/viewmodels/students/use-student-view-model";
 import { StudentStatusBadge } from "@/components/students/student-status-badge";
-import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { usePDFExport } from "@/hooks/use-pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
@@ -67,6 +68,8 @@ export default function AdmissionsPage() {
   const [editSectionId, setEditSectionId] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { formatDate } = useTenantFormatting();
+  const { settings } = useTenantSettings();
+  const { exportAdmissionFormPDF } = usePDFExport();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "admissions", "read");
@@ -479,12 +482,22 @@ export default function AdmissionsPage() {
           description={t('admissions.description')}
           icon={FilePlus}
         >
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={async()=>{
+              const school={ name: settings.name||"Pathshala Pro School", address: settings.address||"", phone: settings.phone||"", email: settings.email||"", logoUrl: settings.logoUrl };
+              const academicYear = academicYears?.[0]?.label || new Date().getFullYear().toString();
+              const res = await exportAdmissionFormPDF(school, academicYear, `ADM-${Date.now().toString().slice(-6)}`);
+              if(res.success) toast.success(t('admissions.blankFormDownloaded')); else toast.error(t('admissions.blankFormDownloadFailed'));
+            }} title={t('admissions.blankFormTitle')}>
+              <Printer className="mr-2 h-4 w-4" />{t('admissions.blankForm')}
+            </Button>
           {canWrite && (
             <Button onClick={() => setIsFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t('admissions.addAdmission')}
             </Button>
           )}
+          </div>
         </PageHeader>
 
         <DataTable
@@ -746,7 +759,7 @@ export default function AdmissionsPage() {
         <div className="space-y-6">
           <PageHeader title={t('admissions.title')} description={t('admissions.description')} icon={FilePlus} />
           <div className="rounded-lg border border-border p-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view admissions.</p>
+            <p className="text-sm text-muted-foreground">{t("common.noPermission")}</p>
           </div>
         </div>
       ) : (
@@ -807,6 +820,9 @@ export default function AdmissionsPage() {
         >
           <ERPFormSection>
             <ERPFormGrid cols={1}>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                <span className="font-semibold">Class Assignment Locked:</span> To change or advance a student's class, use the Academic Promotions & Transfers module.
+              </div>
               <ERPFormField label={t('admissions.class')} required error={editFormErrors.editClassId}>
                 <AppDropdown
                   value={editClassId}
@@ -823,6 +839,7 @@ export default function AdmissionsPage() {
                   options={editClassOptions}
                   placeholder={t('admissions.selectClass')}
                   searchable
+                  disabled
                 />
               </ERPFormField>
               <ERPFormField label={t('admissions.group')}>
@@ -835,7 +852,7 @@ export default function AdmissionsPage() {
                   options={editGroupOptions}
                   placeholder={t('admissions.selectGroup')}
                   searchable
-                  disabled={!editClassId}
+                  disabled
                 />
               </ERPFormField>
               <ERPFormField label={t('admissions.section')}>
@@ -845,7 +862,7 @@ export default function AdmissionsPage() {
                   options={editSectionOptions}
                   placeholder={t('admissions.selectSection')}
                   searchable
-                  disabled={!editClassId}
+                  disabled
                 />
               </ERPFormField>
             </ERPFormGrid>

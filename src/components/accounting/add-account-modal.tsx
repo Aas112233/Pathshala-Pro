@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TopSheet } from "@/components/ui/top-sheet";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,15 +123,17 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">{t("accounting.accountsForm.typeLabel")}</Label>
-            <select
+            <AppDropdown
               value={formData.accountType}
-              onChange={(e) => setFormData({ ...formData, accountType: e.target.value as any })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs"
-            >
-              <option value="CHECKING">{t("accounting.accountsForm.typeChecking")}</option>
-              <option value="SAVINGS">{t("accounting.accountsForm.typeSavings")}</option>
-              <option value="PETTY_CASH">{t("accounting.accountsForm.typePettyCash")}</option>
-            </select>
+              onChange={(v) => setFormData({ ...formData, accountType: v as any })}
+              options={[
+                { value: "ASSET", label: "Asset" },
+                { value: "LIABILITY", label: "Liability" },
+                { value: "EQUITY", label: "Equity" },
+                { value: "REVENUE", label: "Revenue" },
+                { value: "EXPENSE", label: "Expense" }
+              ]}
+            />
           </div>
 
           <div className="space-y-1.5">

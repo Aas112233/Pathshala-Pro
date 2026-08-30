@@ -63,7 +63,7 @@ export function NoticeDetailModal({
     navigator.clipboard.writeText(
       `Notice: ${notice.title}\nDate: ${new Date(notice.publishDate).toLocaleDateString()}\n\n${notice.content}`
     );
-    toast.success("Notice copied to clipboard");
+    toast.success("Copied");
   };
 
   return (

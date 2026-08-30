@@ -31,3 +31,54 @@ export {
   type HostelManifestPDFData,
   type HostelResident,
 } from "./hostel-manifest";
+export {
+  TransferCertificateTemplate,
+  type TransferCertificateData,
+  type TransferCertificateProps,
+} from "./transfer-certificate";
+export {
+  CharacterCertificateTemplate,
+  type CharacterCertificateData,
+  type CharacterCertificateProps,
+} from "./character-certificate";
+export {
+  BonafideCertificateTemplate,
+  type BonafideCertificateData,
+  type BonafideCertificateProps,
+} from "./bonafide-certificate";
+export {
+  ExamAdmitCardTemplate,
+  BatchAdmitCardDocument,
+  type ExamAdmitCardData,
+  type AdmitCardExamSchedule,
+  type ExamAdmitCardProps,
+  type BatchAdmitCardProps,
+} from "./exam-admit-card";
+export {
+  TranscriptTemplate,
+  type TranscriptData,
+  type TranscriptYear,
+  type TranscriptProps,
+} from "./transcript";
+export {
+  StaffIDCardTemplate,
+  type StaffIDCardData,
+  type StaffIDCardProps,
+} from "./staff-id-card";
+export {
+  LibraryClearanceTemplate,
+  type LibraryClearanceData,
+  type LibraryClearanceProps,
+} from "./library-clearance";
+export { AdmissionFormTemplate, type AdmissionFormProps } from "./admission-form";
+export {
+  TimetableReportTemplate,
+  type TimetableReportData,
+  type TimetableEntry,
+  type TimetableReportProps,
+} from "./timetable-report";
+export {
+  InventoryStockReportTemplate,
+  type InventoryStockItem,
+  type InventoryStockReportProps,
+} from "./inventory-stock-report";

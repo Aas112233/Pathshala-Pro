@@ -64,18 +64,17 @@ export async function POST(request: NextRequest) {
       return unauthorized(message);
     };
 
-    // Find user by email
-    const user = await prisma.user.findFirst({
+    // Email is only unique within a tenant. Without a tenant selector, reject
+    // ambiguous matches rather than authenticating into an arbitrary school.
+    const matchingUsers = await prisma.user.findMany({
       where: { email },
       include: { tenant: true },
+      take: 2,
     });
+    const user = matchingUsers.length === 1 ? matchingUsers[0] : null;
 
-    if (!user) {
+    if (!user || !user.isActive) {
       return await failAuth("Invalid email or password");
-    }
-
-    if (!user.isActive) {
-      return await failAuth("Account is deactivated");
     }
 
     // Verify password
@@ -88,7 +87,7 @@ export async function POST(request: NextRequest) {
     await recordRateLimitSuccessAsync(limitKey);
 
     // Update last login
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
@@ -118,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate cryptographically signed JWT NextAuth token
-    const token = await generateAuthToken(user.id, user.tenantId, user.role, user.email);
+    const token = await generateAuthToken(user.id, user.tenantId, user.role, user.email, updatedUser.updatedAt.getTime());
 
     const response = successResponse(
       {

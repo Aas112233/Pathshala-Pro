@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ type StatementType = "STUDENT" | "STAFF" | "ACCOUNT";
 
 export default function AccountingStatementsPage() {
   const t = useTranslations("accounting.statements");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadAccounting = hasPermission(perms, "accounting", "read");
@@ -274,8 +276,8 @@ export default function AccountingStatementsPage() {
 
       {!isAuthLoading && !canReadAccounting ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view accounting.</p>
+          <h2 className="text-lg font-semibold text-foreground">{common("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{common("noPermission")}</p>
         </div>
       ) : (
         <>

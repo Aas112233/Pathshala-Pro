@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Tenant {
@@ -91,6 +92,7 @@ model Tenant {
   hostelRooms           HostelRoom[]
   hostelAllocations     HostelAllocation[]
   certificates          Certificate[]
+  walletLedgers         StudentWalletLedger[]
   healthRecords         HealthRecord[]
   parentStudentLinks    ParentStudentLink[]
   academicSessions      StudentAcademicSession[]
@@ -202,6 +204,7 @@ model StudentProfile {
   linkedUser           User?                 @relation("StudentUser")
   academicSessions     StudentAcademicSession[]
   concessions          StudentFeeConcession[]
+  walletLedgers         StudentWalletLedger[]
 
   @@unique([tenantId, studentId])
   @@index([tenantId, rollNumber])
@@ -238,6 +241,7 @@ model AcademicYear {
   academicHolidays           AcademicHoliday[]
   admissionApplications      AdmissionApplication[]
   questionPapers             QuestionPaper[]
+  attendances                Attendance[]
 
   @@unique([tenantId, yearId])
   @@index([tenantId])
@@ -249,15 +253,23 @@ model FeeVoucher {
   voucherId        String
   studentProfileId String
   academicYearId   String
+  fiscalYearId     String?
+  financialPeriodId String?
   feeType          String
+  billingMonth     Int?
+  billingYear      Int?
   baseAmount       Float
   discountAmount   Float    @default(0)
   arrears          Float    @default(0)
+  lateFine         Float    @default(0)
   totalDue         Float
   amountPaid       Float    @default(0)
   balance          Float
   dueDate          DateTime
   status           String   @default("PENDING")
+  journalEntryId   String?
+  voidedAt         DateTime?
+  voidedById       String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -266,32 +278,40 @@ model FeeVoucher {
   academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
   transactions   Transaction[]
 
-  @@unique([tenantId, voucherId])
+@@unique([tenantId, voucherId])
+@@unique([tenantId, studentProfileId, academicYearId, feeType, billingYear, billingMonth])
   @@index([tenantId, studentProfileId])
   @@index([tenantId, status])
   @@index([tenantId, academicYearId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, dueDate]) // Added for fee reminder queries
 }
 
 model Transaction {
-  id            String   @id @default(cuid())
-  tenantId      String
-  transactionId String
-  feeVoucherId  String
-  amountPaid    Float
-  paymentMethod String
-  receiptNumber String
-  collectedById String
-  note          String?
-  timestamp     DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  tenantId         String
+  transactionId    String
+  feeVoucherId     String
+  amountPaid       Float
+  appliedToInvoice Float    @default(0)
+  excessToWallet   Float    @default(0)
+  paymentMethod    String
+  receiptNumber    String
+  journalEntryId   String?
+  collectedById    String
+  note             String?
+  isVoided         Boolean  @default(false)
+  voidedAt         DateTime?
+  timestamp        DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   tenant      Tenant     @relation(fields: [tenantId], references: [tenantId])
   feeVoucher  FeeVoucher @relation(fields: [feeVoucherId], references: [id])
   collectedBy User       @relation(fields: [collectedById], references: [id])
 
   @@unique([tenantId, transactionId])
+  @@unique([tenantId, receiptNumber])
   @@index([tenantId, timestamp])
   @@index([tenantId, feeVoucherId])
   @@index([tenantId, collectedById])
@@ -331,7 +351,11 @@ model StudentFeeConcession {
   studentProfileId String
   concessionType   String         // SIBLING | STAFF_CHILD | MERIT | NEED_BASED | CUSTOM
   discountType     String         // PERCENTAGE | FIXED_AMOUNT
-  discountValue    Float          // e.g. 20 (for 20%) or 500 (for $500 off)
+  discountValue    Float
+  appliesToHead    String         @default("TUITION")
+  priority         Int            @default(10)
+  validFrom        DateTime?
+  validUntil       DateTime?
   reason           String?
   isActive         Boolean        @default(true)
   createdAt        DateTime       @default(now())
@@ -340,7 +364,7 @@ model StudentFeeConcession {
   tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
   studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
 
-  @@unique([tenantId, studentProfileId])
+  @@unique([tenantId, studentProfileId, concessionType])
   @@index([tenantId])
   @@index([tenantId, concessionType])
 }
@@ -390,6 +414,7 @@ model SalaryLedger {
   id             String    @id @default(cuid())
   tenantId       String
   staffProfileId String
+  transactionId  String?   // Link to corresponding payment transaction
   academicYearId String
   month          Int
   year           Int
@@ -397,7 +422,7 @@ model SalaryLedger {
   baseSalary     Float // deprecated: use grossSalary breakdown
   deductions     Float     @default(0)
   advances       Float     @default(0)
-  netPayable     Float
+netPayable Decimal @db.Decimal(15,2)
   paidAmount     Float     @default(0)
   // New Decimal-precise payroll breakdown (15,2)
   grossSalary       Decimal? @db.Decimal(15,2)
@@ -424,7 +449,10 @@ model SalaryLedger {
 
   @@index([tenantId, staffProfileId])
   @@index([tenantId, year, month])
+  @@unique([tenantId, staffProfileId, year, month]) // Prevent duplicate ledgers per staff per month
   @@index([tenantId, academicYearId])
+  @@index([tenantId, transactionId])
+  @@unique([tenantId, academicYearId, staffProfileId, month, year])
 }
 
 model Attendance {
@@ -432,6 +460,7 @@ model Attendance {
   tenantId              String
   studentProfileId      String?
   staffProfileId        String?
+  academicYearId        String?
   date                  DateTime
   status                String    // PRESENT, ABSENT, LATE, HALF_DAY, EXCUSED, HOLIDAY
   checkInTime           DateTime?
@@ -446,12 +475,17 @@ model Attendance {
   tenant         Tenant          @relation(fields: [tenantId], references: [tenantId])
   studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id])
   staffProfile   StaffProfile?   @relation(fields: [staffProfileId], references: [id])
+  academicYear  AcademicYear?   @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
   markedBy       User            @relation("MarkedBy", fields: [markedById], references: [id])
 
   @@index([tenantId, date])
   @@index([tenantId, studentProfileId])
   @@index([tenantId, staffProfileId])
   @@index([tenantId, markedById])
+  @@index([tenantId, studentProfileId, date]) // Added for student-day lookups
+  @@index([tenantId, academicYearId, date])
+  @@index([tenantId, academicYearId, studentProfileId, date])
+  @@index([tenantId, academicYearId, staffProfileId, date])
 }
 
 // Exam & Subject Models
@@ -703,6 +737,8 @@ model ClassPromotion {
   @@index([tenantId, studentProfileId])
   @@index([tenantId, fromAcademicYearId])
   @@index([tenantId, toAcademicYearId])
+  @@index([tenantId, decidedBy]) // Added for audit queries
+  @@unique([tenantId, studentProfileId, fromAcademicYearId])
 }
 
 // Add relations to existing models
@@ -930,6 +966,7 @@ model Timetable {
   @@unique([tenantId, academicYearId, classId, sectionId, dayOfWeek, periodNumber])
   @@index([tenantId, classId, sectionId])
   @@index([tenantId, staffProfileId, dayOfWeek, periodNumber])
+  @@index([tenantId, academicYearId, roomNumber, dayOfWeek, periodNumber])
   @@index([tenantId, dayOfWeek, periodNumber])
 }
 
@@ -1074,7 +1111,6 @@ model TransportAllocation {
   route          TransportRoute    @relation(fields: [routeId], references: [id])
   vehicle        TransportVehicle? @relation(fields: [vehicleId], references: [id])
 
-  @@unique([tenantId, studentProfileId])
   @@index([tenantId, routeId])
   @@index([tenantId, vehicleId])
 }
@@ -1234,7 +1270,7 @@ model HostelRoom {
   updatedAt  DateTime @updatedAt
 
   tenant      Tenant             @relation(fields: [tenantId], references: [tenantId])
-  hostel      Hostel             @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  hostel      Hostel             @relation(fields: [hostelId], references: [id], onDelete: Restrict)
   allocations HostelAllocation[]
 
   @@unique([tenantId, hostelId, roomNumber])
@@ -1259,7 +1295,6 @@ model HostelAllocation {
   room           HostelRoom     @relation(fields: [roomId], references: [id])
   studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
 
-  @@unique([tenantId, studentProfileId])
   @@index([tenantId, hostelId])
   @@index([tenantId, roomId])
 }
@@ -1299,8 +1334,8 @@ model ParentStudentLink {
   updatedAt        DateTime @updatedAt
 
   tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
-  parentUser     User           @relation("ParentUser", fields: [parentUserId], references: [id], onDelete: Cascade)
-  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  parentUser     User           @relation("ParentUser", fields: [parentUserId], references: [id], onDelete: Restrict)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Restrict)
 
   @@unique([tenantId, parentUserId, studentProfileId])
   @@index([tenantId, parentUserId])
@@ -1350,6 +1385,22 @@ model ExamComponentResult {
   @@unique([tenantId, examResultId, componentId])
   @@index([tenantId, examResultId])
   @@index([tenantId, componentId])
+}
+
+
+model StudentWalletLedger {
+  id               String   @id @default(cuid())
+  tenantId         String
+  studentProfileId String
+  journalEntryId   String
+  transactionId    String?
+  amount           Decimal  @db.Decimal(15,2)
+  balanceAfter     Decimal  @db.Decimal(15,2)
+  reason           String
+  createdAt        DateTime @default(now())
+  tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+  @@index([tenantId, studentProfileId, createdAt])
 }
 
 model StudentAcademicSession {
@@ -1954,8 +2005,6 @@ model PlatformSetting {
   lastUpdatedById String
   updatedAt       DateTime @updatedAt
 }
-
-
 
 
 

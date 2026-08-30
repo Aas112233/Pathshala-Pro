@@ -8,12 +8,14 @@ import {
   safeParseBody,
 } from "@/lib/api-response";
 import { updateStudentSchema } from "@/lib/schemas";
+import { verifyInternalFileUrl } from "@/lib/upload-security";
 import { requireApiAccess } from "@/lib/api-auth";
 import {
   buildLockedFieldsDetails,
   getStudentUsageCounts,
   integrityViolation,
   lockedDeleteMessage,
+  getLockedStudentPlacementFields,
 } from "@/lib/data-integrity";
 
 /**
@@ -110,6 +112,9 @@ export async function PUT(
     const bodyResult = await safeParseBody(request, updateDataSchema);
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
+    if (data.profilePictureUrl && !(await verifyInternalFileUrl(data.profilePictureUrl, tenantId))) {
+      return badRequest("Invalid profile picture file");
+    }
 
     // Convert date strings to Date objects if present
     const prismaData: any = { ...data };
@@ -139,54 +144,18 @@ export async function PUT(
     }
 
     const usageCounts = await getStudentUsageCounts(tenantId, id);
-    const hasHistory =
-      usageCounts.feeVouchers > 0 ||
-      usageCounts.attendances > 0 ||
-      usageCounts.examResults > 0 ||
-      usageCounts.promotions > 0;
-
-    const lockedFields: string[] = [];
-
-    if (
-      hasHistory &&
-      Object.prototype.hasOwnProperty.call(data, "rollNumber") &&
-      data.rollNumber !== existingStudent.rollNumber
-    ) {
-      lockedFields.push("rollNumber");
-    }
-
-    const classHistoryExists = usageCounts.examResults > 0 || usageCounts.promotions > 0;
-
-    if (
-      classHistoryExists &&
-      Object.prototype.hasOwnProperty.call(data, "classId") &&
-      (data as any).classId !== (existingStudent as any).classId
-    ) {
-      lockedFields.push("classId");
-    }
-
-    if (
-      classHistoryExists &&
-      Object.prototype.hasOwnProperty.call(data, "groupId") &&
-      (data as any).groupId !== (existingStudent as any).groupId
-    ) {
-      lockedFields.push("groupId");
-    }
-
-    if (
-      classHistoryExists &&
-      Object.prototype.hasOwnProperty.call(data, "sectionId") &&
-      (data as any).sectionId !== (existingStudent as any).sectionId
-    ) {
-      lockedFields.push("sectionId");
-    }
+    const lockedFields = getLockedStudentPlacementFields(
+      usageCounts,
+      data,
+      existingStudent
+    );
 
     if (lockedFields.length > 0) {
       return integrityViolation(
-        "Student record cannot be changed in a way that would rewrite historical academic or financial data.",
+        "Direct class modification is locked for enrolled students with active records",
         buildLockedFieldsDetails(
           lockedFields,
-          "the student already has linked fee, attendance, exam, or promotion history"
+          "the student already has linked historical records; use Academic Promotions & Transfers"
         )
       );
     }
@@ -206,13 +175,22 @@ export async function PUT(
 
     // Check roll number uniqueness if changing
     if (data.rollNumber && data.rollNumber !== existingStudent.rollNumber) {
+      const targetClassId = (data as any).classId || existingStudent.classId;
+      const targetSectionId = (data as any).sectionId || existingStudent.sectionId;
       const rollExists = await prisma.studentProfile.findFirst({
-        where: { tenantId, rollNumber: data.rollNumber, id: { not: id } },
+        where: {
+          tenantId,
+          rollNumber: data.rollNumber,
+          ...(targetClassId ? { classId: targetClassId } : {}),
+          ...(targetSectionId ? { sectionId: targetSectionId } : {}),
+          status: "ACTIVE",
+          id: { not: id },
+        },
       });
 
       if (rollExists) {
         return badRequest("Roll number already in use", [
-          { field: "rollNumber", code: "duplicate", message: "Roll number already exists" },
+          { field: "rollNumber", code: "duplicate", message: `Roll number ${data.rollNumber} already assigned in this class/section` },
         ]);
       }
     }

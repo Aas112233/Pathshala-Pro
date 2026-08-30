@@ -38,7 +38,15 @@
     "rowsPerPage": "প্রতি পৃষ্ঠায় সারি",
     "noData": "কোনো তথ্য নেই",
     "connectDb": "লাইভ ডেটা দেখতে ডেটাবেস সংযুক্ত করুন।",
-    "students": "শিক্ষার্থী"
+    "accessRestricted": "অ্যাক্সেস সীমাবদ্ধ",
+    "noPermission": "এই বিভাগটি দেখার অনুমতি আপনার নেই।",
+    "students": "শিক্ষার্থী",
+    "modal": {
+      "close": "মডাল বন্ধ করুন"
+    },
+    "required": "প্রয়োজনীয়",
+    "pleaseFillRequired": "অনুগ্রহ করে সমস্ত প্রয়োজনীয় ক্ষেত্র পূরণ করুন।",
+    "validationFailed": "হাইলাইট করা ক্ষেত্রগুলি পরীক্ষা করুন।"
   },
   "sidebar": {
     "search": {
@@ -293,6 +301,14 @@
     "welcomeToast": "স্বাগতম!",
     "invalidCredentials": "পরিচয়পত্র সঠিক নয়। আবার চেষ্টা করুন।",
     "currentDate": "বর্তমান তারিখ",
+    "login": {
+      "description": "আপনার স্কুল ম্যানেজমেন্ট ক্লাউড পোর্টালে সাইন ইন করুন",
+      "newSchool": "নতুন স্কুল?",
+      "onboardTrial": "আপনার প্রতিষ্ঠান যুক্ত করুন (৩০ দিনের বিনামূল্যের ট্রায়াল)",
+      "alt": {
+        "studentsImage": "শ্রেণিকক্ষে একসঙ্গে শেখা শিক্ষার্থীরা"
+      }
+    },
     "signOut": "সাইন আউট",
     "studentsStat": "১২,০০০+",
     "institutesStat": "৫০০+",
@@ -354,6 +370,10 @@
     "recentAdmissions": "সাম্প্রতিক ভর্তি"
   },
   "admissions": {
+    "blankFormDownloaded": "খালি ভর্তি ফর্ম PDF ডাউনলোড হয়েছে",
+    "blankFormDownloadFailed": "খালি ভর্তি ফর্ম PDF ডাউনলোড করতে ব্যর্থ",
+    "blankFormTitle": "প্রিন্টযোগ্য খালি ভর্তি ফর্ম / আবেদন কিট",
+    "blankForm": "খালি ফর্ম",
     "title": "ভর্তি",
     "description": "শিক্ষার্থী ভর্তি এবং শ্রেণী নিবন্ধন পরিচালনা",
     "addAdmission": "ভর্তি যোগ করুন",
@@ -413,6 +433,8 @@
     "requiredField": "{field} আবশ্যক"
   },
   "students": {
+    "admissionFormDownloaded": "ভর্তি ফর্ম PDF ডাউনলোড হয়েছে",
+    "admissionFormFailed": "ফর্ম তৈরি করতে ব্যর্থ",
     "title": "শিক্ষার্থী",
     "description": "শিক্ষার্থী প্রোফাইল, ভর্তি, এবং রেকর্ড পরিচালনা করুন।",
     "addStudent": "শিক্ষার্থী যোগ করুন",
@@ -486,6 +508,7 @@
       "description": "আপনার প্রথম শিক্ষার্থী যোগ করে শুরু করুন অথবা ফিল্টার পরিবর্তন করুন।"
     },
     "actions": {
+      "export": "এক্সপোর্ট করুন",
       "view": "দেখুন",
       "edit": "সম্পাদনা",
       "delete": "মুছে ফেলুন",
@@ -597,7 +620,9 @@
       "gender": "লিঙ্গ:",
       "previewPhoto": "{name}-এর ছবি দেখতে ক্লিক করুন",
       "profilePhotoAlt": "{name}-এর প্রোফাইল ছবি"
-    }
+    },
+    "idCards": "ID Cards",
+    "admissionForm": "Admission Form"
   },
   "fees": {
     "title": "ফি ব্যবস্থাপনা কেন্দ্র",
@@ -705,6 +730,9 @@
     }
   },
   "staff": {
+    "noStaffToPrint": "প্রিন্ট করার জন্য কোনো কর্মী নেই",
+    "staffIdCardsDownloaded": "কর্মীদের আইডি কার্ড ({count}) PDF ডাউনলোড হয়েছে",
+    "pdfFailed": "PDF তৈরি করতে ব্যর্থ",
     "title": "কর্মচারী",
     "description": "কর্মচারী প্রোফাইল এবং চাকরির রেকর্ড পরিচালনা করুন।",
     "addStaff": "কর্মচারী যোগ",
@@ -728,8 +756,8 @@
     },
     "searchPlaceholder": "Search by name, ID, or department...",
     "confirmDelete": "Are you sure you want to delete this staff member?",
-    "deleteSuccess": "Staff member deleted successfully",
-    "deleteError": "Failed to delete staff member",
+    "deleteSuccess": "কর্মচারী সদস্য সফলভাবে মুছে ফেলা হয়েছে!",
+    "deleteError": "কর্মচারী সদস্য মুছে ফেলতে ব্যর্থ হয়েছে",
     "status": {
       "active": "Active",
       "inactive": "Inactive"
@@ -738,7 +766,14 @@
       "department": {
         "all": "All Departments"
       }
-    }
+    },
+    "staffIDs": "স্টাফ আইডি কার্ড",
+    "createSuccess": "কর্মচারী সদস্য সফলভাবে যোগ করা হয়েছে!",
+    "updateSuccess": "কর্মচারী সদস্য সফলভাবে আপডেট করা হয়েছে!",
+    "activatedSuccess": "কর্মচারী সদস্য সক্রিয় করা হয়েছে!",
+    "deactivatedSuccess": "কর্মচারী সদস্য নিষ্ক্রিয় করা হয়েছে!",
+    "createError": "কর্মচারী সদস্য তৈরি করতে ব্যর্থ হয়েছে",
+    "updateError": "কর্মচারী সদস্য আপডেট করতে ব্যর্থ হয়েছে"
   },
   "salary": {
     "title": "বেতন / বেতনপত্র",
@@ -768,7 +803,7 @@
     },
     "searchPlaceholder": "Search by staff name...",
     "confirmDelete": "Are you sure you want to delete this salary ledger?",
-    "deleteSuccess": "Salary ledger deleted successfully",
+    "deleteSuccess": "বেতন লেজার সফলভাবে মুছে ফেলা হয়েছে!",
     "deleteError": "Failed to delete salary ledger",
     "status": {
       "paid": "Paid",
@@ -971,7 +1006,12 @@
         "processSingle": "একক বেতন প্রক্রিয়া করুন"
       },
       "paymentMethodBankTransfer": "ব্যাংক ট্রান্সফার"
-    }
+    },
+    "createSuccess": "বেতন লেজার সফলভাবে তৈরি হয়েছে!",
+    "updateSuccess": "বেতন লেজার সফলভাবে আপডেট হয়েছে!",
+    "paymentSuccess": "পেমেন্ট সফলভাবে রেকর্ড করা হয়েছে!",
+    "bulkPayrollSuccess": "বাল্ক পে-রোল সফলভাবে সম্পন্ন হয়েছে!",
+    "error": "বেতন প্রক্রিয়া সম্পন্ন করতে ব্যর্থ হয়েছে"
   },
   "attendance": {
     "title": "উপস্থিতি",
@@ -1048,6 +1088,13 @@
     "historicalLogs": "ঐতিহাসিক লগ"
   },
   "exams": {
+    "batchAdmitCardsDownloaded": "ব্যাচ প্রবেশপত্র ({count}) PDF ডাউনলোড হয়েছে",
+    "admitCardDownloaded": "প্রবেশপত্র PDF ডাউনলোড হয়েছে",
+    "admitCardFailed": "প্রবেশপত্র তৈরি করতে ব্যর্থ",
+    "transcriptDownloaded": "ট্রান্সক্রিপ্ট PDF ডাউনলোড হয়েছে",
+    "pdfFailed": "PDF তৈরি করতে ব্যর্থ",
+    "singleAdmitCard": "একক প্রবেশপত্র",
+    "noExam": "কোনো পরীক্ষা নেই",
     "title": "পরীক্ষা",
     "description": "পরীক্ষা এবং শিক্ষার্থী দের ফলাফল পরিচালনা করুন।",
     "createExam": "পরীক্ষা তৈরি",
@@ -1153,6 +1200,8 @@
     "backToExams": "পরীক্ষায় ফিরে যান",
     "back": "পেছনে",
     "resultsEntry": {
+      "marksLockedDuePromotion": "শিক্ষার্থীর পদোন্নতির কারণে তার নম্বর লক করা হয়েছে।",
+      "allMarksLockedDuePromotion": "পদোন্নতির কারণে এই বিষয়ে সব শিক্ষার্থীর নম্বর লক করা হয়েছে।",
       "title": "পরীক্ষার ফলাফল প্রবেশ",
       "description": "পরীক্ষার ফলাফল লিখুন ও পরিচালনা করুন",
       "backToExams": "পরীক্ষায় ফিরে যান",
@@ -1216,9 +1265,27 @@
     },
     "examNamePlaceholder": "মধ্যবর্তী পরীক্ষা ২০২৫",
     "to": "পর্যন্ত",
-    "notAvailable": "পাওয়া যায়নি"
+    "notAvailable": "পাওয়া যায়নি",
+    "admitCard": "প্রবেশপত্র",
+    "downloadAdmitCard": "প্রবেশপত্র PDF ডাউনলোড করুন",
+    "batchAdmitCards": "ব্যাচ প্রবেশপত্র",
+    "transcriptPDF": "ট্রান্সক্রিপ্ট PDF",
+    "subjectCreated": "বিষয় সফলভাবে তৈরি হয়েছে!",
+    "subjectUpdated": "বিষয় সফলভাবে আপডেট হয়েছে!",
+    "subjectDeleted": "বিষয় সফলভাবে মুছে ফেলা হয়েছে!",
+    "examCreated": "পরীক্ষা সফলভাবে তৈরি হয়েছে!",
+    "examUpdated": "পরীক্ষা সফলভাবে আপডেট হয়েছে!",
+    "examDeleted": "পরীক্ষা সফলভাবে মুছে ফেলা হয়েছে!",
+    "resultsSaved": "পরীক্ষার ফলাফল সফলভাবে সংরক্ষিত হয়েছে!",
+    "promotionRuleCreated": "পদোন্নতির নিয়ম সফলভাবে তৈরি হয়েছে!",
+    "promotionsExecuted": "পদোন্নতি সফলভাবে সম্পন্ন হয়েছে!",
+    "error": "পরীক্ষা কার্যক্রমে ব্যর্থ হয়েছে"
   },
   "results": {
+    "marksLockedDuePromotion": "শিক্ষার্থীর পদোন্নতির কারণে তার নম্বর লক করা হয়েছে।",
+    "editMarks": "নম্বর সম্পাদনা করুন",
+    "examResultLockedDuePromotion": "শিক্ষার্থীর পদোন্নতি হয়ে যাওয়ায় পরীক্ষার ফলাফল লক করা হয়েছে।",
+    "transcriptDownloaded": "ট্রান্সক্রিপ্ট PDF ডাউনলোড হয়েছে",
     "title": "পরীক্ষার ফলাফল",
     "description": "পরীক্ষার ফলাফল প্রবেশ এবং পরিচালনা করুন",
     "enterResults": "ফলাফল প্রবেশ",
@@ -1304,7 +1371,8 @@
     "passedStatus": "উত্তীর্ণ",
     "failedStatus": "অকৃতকার্য",
     "notAvailable": "পাওয়া যায়নি",
-    "gradebookSummary": "শ্রেণীর ফলাফল, স্বয়ংক্রিয় মেধাক্রম এবং এক-ক্লিক ব্যাচ পিডিএফ এক্সপোর্ট"
+    "gradebookSummary": "শ্রেণীর ফলাফল, স্বয়ংক্রিয় মেধাক্রম এবং এক-ক্লিক ব্যাচ পিডিএফ এক্সপোর্ট",
+    "transcriptPDF": "Transcript PDF"
   },
   "academicYear": {
     "title": "শিক্ষাবর্ষ ও সেশন",
@@ -1349,6 +1417,7 @@
     "createError": "শিক্ষাবর্ষ তৈরি করতে ব্যর্থ",
     "deleteSession": "সেশন মুছুন",
     "sessionsUnit": "সেশন",
+    "yearBadge": "শিক্ষাবর্ষ",
     "sessionIdentification": "সেশন শনাক্তকরণ",
     "sessionIdentificationDescription": "মানসম্মত সেশন শনাক্তকারী ও প্রদর্শনের শিরোনাম দিন।",
     "yearIdHelper": "সিস্টেম ইনডেক্সিংয়ের জন্য অনন্য শনাক্তকারী কোড (যেমন 2026-2027)",
@@ -1394,7 +1463,12 @@
     "status": {
       "active": "Active",
       "inactive": "Inactive"
-    }
+    },
+    "permissionsReset": "অনুমতিসমূহ ডিফল্ট অবস্থায় রিসেট করা হয়েছে",
+    "permissionsUpdated": "অনুমতিসমূহ সফলভাবে আপডেট করা হয়েছে",
+    "userCreated": "ব্যবহারকারী সফলভাবে তৈরি হয়েছে",
+    "userUpdated": "ব্যবহারকারী সফলভাবে আপডেট হয়েছে",
+    "fillRequired": "অনুগ্রহ করে সমস্ত প্রয়োজনীয় ক্ষেত্র পূরণ করুন।"
   },
   "settings": {
     "title": "সেটিংস",
@@ -1530,7 +1604,9 @@
         "DD_MM_YYYY_DASH": "DD-MM-YYYY (31-12-2026)",
         "DD_MMM_YYYY": "DD MMM YYYY (31 ডিসেম্বর 2026)",
         "MMM_DD_YYYY": "MMM DD, YYYY (31 ডিসেম্বর 2026)",
-        "D_MMMM_YYYY": "D MMMM YYYY (31 ডিসেম্বর 2026)"
+        "D_MMMM_YYYY": "D MMMM YYYY (31 ডিসেম্বর 2026)",
+        "time24": "২৪ ঘণ্টা (14:30)",
+        "time12": "১২ ঘণ্টা (2:30 PM)"
       },
       "timezoneDhaka": "এশিয়া/ঢাকা (GMT+6)",
       "timezoneKolkata": "এশিয়া/কলকাতা (GMT+5:30)",
@@ -1552,7 +1628,49 @@
       "timezoneLabel": "সময় অঞ্চল",
       "firstDayLabel": "সপ্তাহের প্রথম দিন",
       "academicYearLabel": "শিক্ষাবর্ষের শুরু",
-      "gradingLabel": "গ্রেডিং ব্যবস্থা"
+      "gradingLabel": "গ্রেডিং ব্যবস্থা",
+      "paymentMethodsTab": "পেমেন্ট মাধ্যম",
+      "paymentMethodsTabShort": "পেমেন্ট"
+    },
+    "paymentMethods": {
+      "title": "কাস্টম পেমেন্ট মাধ্যম ও গেটওয়ে",
+      "description": "ডায়নামিক পেমেন্ট চ্যানেল ও কাউন্টার পদ্ধতি কনফিগার করুন এবং সাধারণ লেজার সম্পদ হিসাবের সাথে সংযুক্ত করুন।",
+      "activeCount": "{total} টির মধ্যে {active} টি সক্রিয় মাধ্যম",
+      "resetDefaults": "ডিফল্টে রিসেট করুন",
+      "addMethod": "পেমেন্ট মাধ্যম যোগ করুন",
+      "defaultBadge": "ডিফল্ট",
+      "glPrefix": "জিএল",
+      "cashInHand": "হাতে নগদ",
+      "bankDigital": "ব্যাংক / ডিজিটাল",
+      "setAsDefault": "ডিফল্ট হিসেবে সেট করুন",
+      "edit": "সম্পাদনা",
+      "delete": "মুছে ফেলুন",
+      "modal": {
+        "titleAdd": "নতুন পেমেন্ট মাধ্যম যোগ করুন",
+        "titleEdit": "পেমেন্ট মাধ্যম সম্পাদনা করুন",
+        "nameLabel": "পেমেন্ট মাধ্যমের নাম *",
+        "namePlaceholder": "যেমন বিকাশ মার্চেন্ট, নগদ কাউন্টার, সোনালী ব্যাংক",
+        "codeLabel": "অভ্যন্তরীণ কোড *",
+        "codePlaceholder": "যেমন BKASH_MERCHANT",
+        "typeLabel": "চ্যানেলের ধরন",
+        "typeDigital": "মোবাইল ওয়ালেট / ডিজিটাল গেটওয়ে",
+        "typeBank": "ব্যাংক হিসাব / ট্রান্সফার",
+        "typeCash": "হাতে নগদ",
+        "typeCheque": "চেক / ড্রাফট",
+        "typePos": "পিওএস মেশিন / কার্ড",
+        "glAccountLabel": "সাধারণ লেজার হিসাব কোড",
+        "glAccount1010": "১০১০ - ব্যাংক হিসাব ও গেটওয়ে (ডেবিট সম্পদ)",
+        "glAccount1020": "১০২০ - হাতে নগদ (কাউন্টার ফ্লোট)",
+        "glAccount1030": "১০৩০ - প্রাপ্য হিসাব",
+        "glHint": "ফি সংগ্রহের সময় ডাবল-এন্ট্রি লেনদেন স্বয়ংক্রিয়ভাবে এই হিসাবটিকে ডেবিট করবে।",
+        "instructionsLabel": "পেমেন্ট নির্দেশাবলী / নোট (ঐচ্ছিক)",
+        "instructionsPlaceholder": "যেমন কাউন্টার ২-এ কিউআর স্ক্যান করুন বা অ্যাকাউন্টে পাঠান",
+        "activeInPos": "পিওএস কাউন্টারে সক্রিয়",
+        "activeInPosDesc": "ক্যাশিয়ারদের এই পদ্ধতি নির্বাচন করার অনুমতি দিন",
+        "cancel": "বাতিল",
+        "saveChanges": "পরিবর্তন সংরক্ষণ করুন",
+        "addBtn": "মাধ্যম যোগ করুন"
+      }
     }
   },
   "subjects": {
@@ -1710,6 +1828,10 @@
     "noSubjectsAvailable": "কোনো বিষয় পাওয়া যায়নি। আগে বিষয় তৈরি করুন।",
     "editToAssignSubjects": "বিষয় নির্ধারণ করতে এই শ্রেণী সম্পাদনা করুন।",
     "unknownSubject": "অজানা",
+    "studentAppShort": "শি",
+    "parentAppShort": "অ",
+    "subjectCategoryCompulsory": "বাধ্যতামূলক",
+    "subjectCategoryElective": "ঐচ্ছিক",
     "studentsTitle": "শিক্ষার্থী",
     "subjectsTitle": "বিষয়"
   },
@@ -1737,6 +1859,7 @@
     "reExamAllowed": "Re-exam Allowed",
     "reExamRequired": "Re-exam Required",
     "calculator": {
+      "prepareFailed": "পদোন্নতির ডেটা প্রস্তুত করা যায়নি। শিক্ষার্থী আইডি বা পরবর্তী শ্রেণির কনফিগারেশন অনুপস্থিত।",
       "title": "পদোন্নতি ক্যালকুলেটর",
       "description": "একাডেমিক ফলাফল এবং উপস্থিতির ভিত্তিতে শিক্ষার্থীদের পদোন্নতির যোগ্যতা গণনা ও পর্যালোচনা করুন",
       "backToRules": "নিয়মে ফিরে যান",
@@ -1895,7 +2018,22 @@
     "system": "সিস্টেম অপারেশনস",
     "featureFlags": "ফিচার ফ্ল্যাগ",
     "users": "প্ল্যাটফর্ম ব্যবহারকারী",
-    "settings": "প্ল্যাটফর্ম সেটিংস"
+    "settings": "প্ল্যাটফর্ম সেটিংস",
+    "broadcastRequired": "অনুগ্রহ করে বার্তার শিরোনাম এবং বিষয়বস্তু প্রদান করুন",
+    "selectTenant": "অনুগ্রহ করে কমপক্ষে একটি স্কুল নির্বাচন করুন",
+    "broadcastNetworkError": "বার্তা প্রেরণে নেটওয়ার্ক ত্রুটি",
+    "tenantNameRequired": "স্কুলের নাম আবশ্যক",
+    "tenantConfigUpdated": "স্কুল কনফিগারেশন সফলভাবে আপডেট হয়েছে!",
+    "tenantNetworkError": "স্কুল আপডেট করতে নেটওয়ার্ক ত্রুটি",
+    "passwordGenerated": "নিরাপদ অস্থায়ী পাসওয়ার্ড তৈরি করা হয়েছে",
+    "onboardSuccess": "প্রতিষ্ঠান সফলভাবে যুক্ত হয়েছে!",
+    "credentialsCopied": "লগইন তথ্য ক্লিপবোর্ডে কপি করা হয়েছে",
+    "impersonateSuccess": "{name} হিসেবে লগ ইন করা হয়েছে",
+    "impersonateError": "স্কুল রূপ ধারণ করতে ব্যর্থ হয়েছে",
+    "exitImpersonationSuccess": "সিস্টেম অ্যাডমিন কনসোলে ফিরে আসা হয়েছে",
+    "exitImpersonationError": "রূপ ত্যাগ করতে ব্যর্থ হয়েছে",
+    "statusUpdated": "স্ট্যাটাস সফলভাবে আপডেট হয়েছে!",
+    "statusError": "স্ট্যাটাস আপডেট করতে ব্যর্থ হয়েছে"
   },
   "sections": {
     "title": "শাখাসমূহ",
@@ -1946,6 +2084,7 @@
     "deleteFailed": "শাখা মুছতে ব্যর্থ",
     "requiredFields": "অনুগ্রহ করে সব প্রয়োজনীয় ঘর পূরণ করুন।",
     "classUnavailable": "পাওয়া যায়নি",
+    "requiredField": "{field} আবশ্যক",
     "classOption": "শ্রেণী {number}"
   },
   "reports": {
@@ -1953,6 +2092,34 @@
     "description": "প্রাতিষ্ঠানিক বুদ্ধিমত্তা, অডিট ও এক্সপোর্টযোগ্য লেজার",
     "overview": "রিপোর্ট ওভারভিউ",
     "feeReport": {
+      "status": "Status",
+      "method": "Method",
+      "cash": "Cash",
+      "digital": "Digital",
+      "voucherNo": "Voucher No.",
+      "studentName": "Student Name",
+      "class": "Class",
+      "section": "Section",
+      "totalAmount": "Total Amount",
+      "paid": "Paid",
+      "due": "Due",
+      "paymentMethod": "Payment Method",
+      "date": "Date",
+      "voucherStatusDistribution": "Voucher Status Distribution",
+      "pending": "Pending",
+      "partial": "Partial",
+      "overdue": "Overdue",
+      "voucherDetailsDescription": "Voucher-level detail for the selected period.",
+      "noVouchersTitle": "No vouchers found",
+      "noVouchersDescription": "Try another payment status, method, or date range.",
+      "generateTitle": "Generate a fee report",
+      "generateDescription": "Select the reporting period, then generate the report to review collection totals and export the result.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "present": "Present",
+      "generateFailed": "ফি রিপোর্ট তৈরি করতে ব্যর্থ",
+      "exported": "ফি রিপোর্ট এক্সপোর্ট হয়েছে",
+      "exportFailed": "ফি রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "ফি আদায় ও বকেয়া রিপোর্ট",
       "description": "ব্যাপক ফি আদায়, বকেয়া ব্যালেন্স ও পেমেন্ট পদ্ধতির বিশ্লেষণ",
       "totalCollected": "মোট আদায়",
@@ -1963,18 +2130,156 @@
       "voucherDetails": "ভাউচারের বিবরণ"
     },
     "salaryReport": {
+      "staffId": "Staff ID",
+      "employeeName": "Employee Name",
+      "department": "Department",
+      "period": "Period",
+      "grossBase": "Gross Base",
+      "deductions": "Deductions",
+      "netPayable": "Net Payable",
+      "paidAmount": "Paid Amount",
+      "status": "Status",
+      "disbursedPaid": "Disbursed / Paid",
+      "pendingPayout": "Pending Payout",
+      "deductionsWithheld": "Deductions/Withheld",
+      "year": "Year",
+      "month": "Month",
+      "allMonths": "All Months",
+      "allDepartments": "All Departments",
+      "academicTeaching": "Academic / Teaching",
+      "administration": "Administration",
+      "accountsFinance": "Accounts & Finance",
+      "supportTransport": "Support & Transport",
+      "payoutStatus": "Payout Status",
+      "allStatuses": "All Statuses",
+      "paidDisbursed": "Paid / Disbursed",
+      "partial": "Partial",
+      "all": "All",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "totalGrossPayroll": "Total Gross Payroll",
+      "netDisbursed": "Net Disbursed",
+      "pendingPayouts": "Pending Payouts",
+      "totalDeductions": "Total Deductions",
+      "payrollByDepartment": "Payroll by Department",
+      "payrollByDepartmentDescription": "Gross salary allocation across departments",
+      "disbursementComposition": "Disbursement Composition",
+      "disbursementCompositionDescription": "Ratio of disbursed vs pending vs deductions",
+      "noReportTitle": "No Payroll Report Generated",
+      "noReportDescription": "Select fiscal year, month, and department filters above then click Generate Report.",
+      "generateFailed": "বেতন পেরোল রিপোর্ট তৈরি করতে ব্যর্থ",
+      "exportedExcel": "পেরোল রিপোর্ট Excel-এ এক্সপোর্ট হয়েছে",
+      "exportFailed": "পেরোল রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "স্টাফ বেতন ও পেরোল রিপোর্ট",
       "description": "মাসিক বেতন বিতরণ, মোট বেতন, কর্তন ও অপেক্ষমাণ পেমেন্ট"
     },
     "financialReport": {
+      "voucherNumber": "Voucher #",
+      "descriptionPurpose": "Description / Purpose",
+      "category": "Category",
+      "amount": "Amount",
+      "method": "Method",
+      "date": "Date",
+      "recordedBy": "Recorded By",
+      "cashExpenses": "Cash Expenses",
+      "bankDigital": "Bank & Digital",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "allCategories": "All Categories",
+      "allPaymentMethods": "All Payment Methods",
+      "cash": "Cash",
+      "bankAccount": "Bank Account",
+      "cheque": "Cheque",
+      "digitalGateway": "Digital Gateway",
+      "range": "Range",
+      "start": "Start",
+      "present": "Present",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "totalFeeCollections": "Total Fee Collections",
+      "totalOperationalExpenses": "Total Operational Expenses",
+      "netCashBalance": "Net Cash Balance",
+      "topExpenseCategory": "Top Expense Category",
+      "expensesByCategory": "Expenses by Category",
+      "expensesByCategoryDescription": "Spending breakdown across operational heads",
+      "paymentMethodsDistribution": "Payment Methods Distribution",
+      "paymentMethodsDistributionDescription": "Cash vs Bank disbursement proportion",
+      "noReportTitle": "No Financial Report Generated",
+      "noReportDescription": "Select date range, expense categories, and payment method filters above then click Generate Report.",
+      "generateFailed": "আর্থিক ব্যয়ের রিপোর্ট তৈরি করতে ব্যর্থ",
+      "exportedExcel": "আর্থিক ব্যয়ের রিপোর্ট Excel-এ এক্সপোর্ট হয়েছে",
+      "exportFailed": "আর্থিক রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "আর্থিক ব্যয় ও নগদ প্রবাহ রিপোর্ট",
       "description": "পরিচালন ব্যয় খাত, পেমেন্ট ভাউচার, ফি রসিদ ও নেট নগদ ব্যালেন্স"
     },
     "admissionsReport": {
+      "applicantStudent": "Applicant / Student",
+      "contactPhone": "Contact Phone",
+      "targetGrade": "Target Grade",
+      "leadSource": "Lead Source",
+      "pipelineStatus": "Pipeline Status",
+      "admissionOfficer": "Admission Officer",
+      "enquiryDate": "Enquiry Date",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "allStatuses": "All Statuses",
+      "newLead": "New Lead",
+      "contacted": "Contacted",
+      "campusVisited": "Campus Visited",
+      "admittedEnrolled": "Admitted / Enrolled",
+      "rejected": "Rejected",
+      "allSources": "All Sources",
+      "walkIn": "Walk In",
+      "phoneInquiry": "Phone Inquiry",
+      "websiteForm": "Website Form",
+      "parentReferral": "Parent Referral",
+      "socialMedia": "Social Media",
+      "targetClass": "Target Class",
+      "allClasses": "All Classes",
+      "reset": "Reset",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "start": "Start",
+      "present": "Present",
+      "range": "Range",
+      "totalEnquiries": "Total Enquiries",
+      "admittedStudents": "Admitted Students",
+      "conversionRate": "Conversion Rate",
+      "pendingFollowups": "Pending Follow-ups",
+      "leadsBySource": "Leads by Source",
+      "leadsBySourceDescription": "Marketing channel distribution for applicant inquiries",
+      "pipelineStatusBreakdown": "Pipeline Status Breakdown",
+      "pipelineStatusBreakdownDescription": "Distribution of applicant statuses across the intake funnel",
+      "noReportTitle": "No Admissions Report Generated",
+      "noReportDescription": "Select date range, pipeline status, lead source, and target class filters above then click Generate Report.",
+      "generateFailed": "ভর্তি কনভার্সন রিপোর্ট তৈরি করতে ব্যর্থ",
+      "exportedExcel": "ভর্তি কনভার্সন রিপোর্ট Excel-এ এক্সপোর্ট হয়েছে",
+      "exportFailed": "ভর্তি রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "ভর্তি পাইপলাইন ও কনভার্সন রিপোর্ট",
       "description": "অনুসন্ধান ট্র্যাকিং, লিড উৎস, কনভার্সন হার ও ভর্তি পরিসংখ্যান"
     },
     "attendanceReport": {
+      "class": "Class",
+      "section": "Section",
+      "rollNo": "Roll No.",
+      "studentName": "Student Name",
+      "present": "Present",
+      "absent": "Absent",
+      "totalDays": "Total Days",
+      "attendancePercentage": "Attendance %",
+      "status": "Status",
+      "attendanceTrend": "Attendance Trend",
+      "attendanceDetails": "Attendance Details",
+      "attendanceDetailsDescription": "Attendance status for the generated period.",
+      "noDataTitle": "No attendance data found",
+      "noDataDescription": "Try a different period or broader class filters.",
+      "generateTitle": "Generate an attendance report",
+      "generateDescription": "Select the date range and optional class filters to review attendance trends and export the report.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "generateFailed": "উপস্থিতি রিপোর্ট তৈরি করতে ব্যর্থ",
+      "exported": "উপস্থিতি রিপোর্ট এক্সপোর্ট হয়েছে",
+      "exportFailed": "উপস্থিতি রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "শিক্ষার্থী উপস্থিতি রিপোর্ট",
       "description": "দৈনিক উপস্থিতি, অনুপস্থিতির ধরণ ও শ্রেণিভিত্তিক উপস্থিতির হার",
       "averageAttendance": "গড় উপস্থিতি",
@@ -1984,6 +2289,35 @@
       "classWiseAttendance": "শ্রেণিভিত্তিক উপস্থিতি"
     },
     "studentReport": {
+      "admissionNo": "Admission No.",
+      "studentName": "Student Name",
+      "class": "Class",
+      "section": "Section",
+      "rollNo": "Roll No.",
+      "gender": "Gender",
+      "status": "Status",
+      "admissionDate": "Admission Date",
+      "guardianName": "Guardian Name",
+      "contact": "Contact",
+      "active": "Active",
+      "inactive": "Inactive",
+      "graduated": "Graduated",
+      "transferred": "Transferred",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "studentDetails": "Student Details",
+      "studentDetailsDescription": "Generated results based on the selected filters.",
+      "noStudentsTitle": "No students found",
+      "noStudentsDescription": "Try widening the date range or removing one of the filters.",
+      "generateTitle": "Generate a student report",
+      "generateDescription": "Select a period and optional filters, then generate the report to view metrics, charts, and export options.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "present": "Present",
+      "generateFailed": "শিক্ষার্থী রিপোর্ট তৈরি করতে ব্যর্থ",
+      "exported": "শিক্ষার্থী রিপোর্ট এক্সপোর্ট হয়েছে",
+      "exportFailed": "শিক্ষার্থী রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "শিক্ষার্থী জনমিতি ও ভর্তি রিপোর্ট",
       "description": "সক্রিয় ভর্তি, শ্রেণিভিত্তিক বণ্টন ও শিক্ষার্থী রেকর্ড",
       "totalStudents": "মোট শিক্ষার্থী",
@@ -2029,6 +2363,30 @@
       "examType": "পরীক্ষার ধরন"
     },
     "filters": {
+      "selectClass": "শ্রেণি নির্বাচন করুন",
+      "allClasses": "সব শ্রেণি",
+      "selectSection": "শাখা নির্বাচন করুন",
+      "allSections": "সব শাখা",
+      "selectGroup": "গ্রুপ নির্বাচন করুন",
+      "allGroups": "সব গ্রুপ",
+      "selectStatus": "অবস্থা নির্বাচন করুন",
+      "allStatus": "সব অবস্থা",
+      "pending": "বকেয়া",
+      "paid": "পরিশোধিত",
+      "partial": "আংশিক",
+      "overdue": "মেয়াদোত্তীর্ণ",
+      "selectPaymentMethod": "পেমেন্ট পদ্ধতি নির্বাচন করুন",
+      "allMethods": "সব পদ্ধতি",
+      "cash": "নগদ",
+      "digital": "ডিজিটাল",
+      "selectExamType": "পরীক্ষার ধরন নির্বাচন করুন",
+      "allExamTypes": "সব পরীক্ষার ধরন",
+      "midTerm": "মধ্যবর্তী",
+      "final": "চূড়ান্ত",
+      "unitTest": "ইউনিট টেস্ট",
+      "quarterly": "ত্রৈমাসিক",
+      "halfYearly": "অর্ধ-বার্ষিক",
+      "annual": "বার্ষিক",
       "fromDate": "শুরুর তারিখ",
       "toDate": "শেষ তারিখ",
       "class": "শ্রেণী",
@@ -2044,9 +2402,11 @@
       "exportPDF": "PDF ডাউনলোড",
       "exportExcel": "Excel ডাউনলোড",
       "exportCSV": "CSV ডাউনলোড",
-      "print": "প্রিন্ট"
+      "print": "প্রিন্ট",
+      "export": "এক্সপোর্ট করুন"
     },
     "common": {
+      "export": "এক্সপোর্ট করুন",
       "generating": "তৈরি হচ্ছে...",
       "noData": "কোনো তথ্য নেই"
     }
@@ -2121,9 +2481,11 @@
       "vouchersCount": "{count} ভাউচার",
       "metricStructure": "কাঠামো",
       "activeCategories": "সক্রিয় শ্রেণী",
+      "categoriesUnit": "শ্রেণী",
       "expenseStreams": "ব্যয়ের ধারা",
       "metricAudit": "অডিট স্টেটাস",
       "avgVoucherSize": "গড় ভাউচার আকার",
+      "averageVoucherUnit": "গড় / ভাউচার",
       "perTransaction": "প্রতি লেনদেনে",
       "metricTreasury": "কোষাগার",
       "cashVsBank": "নগদ বনাম ব্যাংক",
@@ -2684,7 +3046,7 @@
     "dayFriday": "শুক্রবার",
     "daySaturday": "শনিবার",
     "daySunday": "রবিবার",
-    "period": "পিরিয়ড {number}",
+    "period": "পিরিয়ড",
     "break": "বিরতি",
     "tiffinBreak": "টিফিন বিরতি",
     "subject": "বিষয়",
@@ -2704,10 +3066,32 @@
     "deleteFailed": "পিরিয়ড মুছতে ব্যর্থ",
     "confirmDelete": "এই পিরিয়ডটি মুছবেন?",
     "print": "রুটিন প্রিন্ট করুন",
-    "copyToNextYear": "পরের বছরে কপি করুন"
+    "copyToNextYear": "পরের বছরে কপি করুন",
+    "printPDF": "টাইমটেবিল PDF প্রিন্ট",
+    "periodAdded": "পিরিয়ড সফলভাবে যোগ করা হয়েছে!",
+    "periodUpdated": "পিরিয়ড সফলভাবে আপডেট করা হয়েছে!",
+    "periodRemoved": "পিরিয়ড সফলভাবে সরানো হয়েছে!",
+    "error": "সময়সূচী পিরিয়ডে ব্যর্থ হয়েছে",
+    "periodWithNumber": "পিরিয়ড {number}"
   },
   "notifications": {
     "title": "বিজ্ঞপ্তি ও নোটিশ",
+    "automationTitle": "স্বয়ংক্রিয় বিজ্ঞপ্তি প্রেরণ",
+    "automationDescription": "অভিভাবকদের জানাতে ইভেন্ট ও চ্যানেল নির্বাচন করুন।",
+    "automationEnabled": "স্বয়ংক্রিয় বিজ্ঞপ্তি চালু করুন",
+    "channels": "প্রেরণ চ্যানেল",
+    "saveSettings": "বিজ্ঞপ্তি সেটিং সংরক্ষণ করুন",
+    "saving": "সংরক্ষণ হচ্ছে...",
+    "settingsSaved": "বিজ্ঞপ্তি সেটিং সংরক্ষিত হয়েছে",
+    "settingsSaveFailed": "বিজ্ঞপ্তি সেটিং সংরক্ষণ ব্যর্থ",
+    "settingsTab": "বিজ্ঞপ্তি",
+    "settingsShort": "অ্যালার্ট",
+    "events": {
+      "ABSENCE_ALERT": "শিক্ষার্থীর অনুপস্থিতি অ্যালার্ট",
+      "FEE_REMINDER": "ফি দেওয়ার অনুস্মারক",
+      "EXAM_RESULT_PUBLISHED": "প্রকাশিত পরীক্ষার ফলাফল",
+      "EMERGENCY_BROADCAST": "জরুরি সম্প্রচার"
+    },
     "unreadCount": "{count} নতুন",
     "markAllRead": "সবগুলো পঠিত হিসেবে চিহ্নিত করুন",
     "markAsRead": "পঠিত চিহ্নিত করুন",
@@ -2737,6 +3121,9 @@
     "publishNotice": "নোটিশ প্রকাশ করুন"
   },
   "enquiries": {
+    "search": "অনুসন্ধান",
+    "phonePlaceholder": "01XXXXXXXXX",
+    "emailPlaceholder": "student@email.com",
     "title": "ভর্তি অনুসন্ধান",
     "description": "লিড, ফলো-আপ এবং ভর্তিতে রূপান্তর",
     "addEnquiry": "অনুসন্ধান যোগ করুন",
@@ -2762,7 +3149,7 @@
     "noEnquiries": "কোনো অনুসন্ধান পাওয়া যায়নি",
     "noEnquiriesHint": "ওয়াক-ইন, কল বা ওয়েবসাইট লিড থেকে অনুসন্ধান যোগ করুন",
     "confirmDelete": "এই অনুসন্ধানটি মুছবেন?",
-    "deleteSuccess": "অনুসন্ধান মুছে ফেলা হয়েছে",
+    "deleteSuccess": "অনুসন্ধান সফলভাবে মুছে ফেলা হয়েছে!",
     "deleteFailed": "অনুসন্ধান মুছতে ব্যর্থ",
     "saveSuccess": "অনুসন্ধান সংরক্ষিত",
     "saveFailed": "অনুসন্ধান সংরক্ষণ ব্যর্থ",
@@ -2788,7 +3175,11 @@
     "selectStatus": "অবস্থা নির্বাচন করুন",
     "save": "সংরক্ষণ",
     "cancel": "বাতিল",
-    "followUpOverdue": "ফলো-আপ বিলম্বিত"
+    "followUpOverdue": "ফলো-আপ বিলম্বিত",
+    "createSuccess": "অনুসন্ধান সফলভাবে যোগ করা হয়েছে!",
+    "updateSuccess": "অনুসন্ধান সফলভাবে আপডেট করা হয়েছে!",
+    "convertedSuccess": "সফলভাবে ভর্তিতে রূপান্তরিত হয়েছে!",
+    "error": "অনুসন্ধান প্রক্রিয়া করতে ব্যর্থ হয়েছে"
   },
   "library": {
     "title": "লাইব্রেরি ব্যবস্থাপনা",
@@ -2850,7 +3241,15 @@
     "selectBorrower": "ধারগ্রহীতা নির্বাচন করুন",
     "save": "সংরক্ষণ",
     "cancel": "বাতিল",
-    "actions": "অ্যাকশন"
+    "actions": "অ্যাকশন",
+    "clearance": "ক্লিয়ারেন্স",
+    "clearanceSuccess": "ক্লিয়ারেন্স PDF ডাউনলোড",
+    "bookCreated": "বই সফলভাবে যোগ করা হয়েছে!",
+    "bookUpdated": "বই সফলভাবে আপডেট করা হয়েছে!",
+    "bookDeleted": "বই সফলভাবে মুছে ফেলা হয়েছে!",
+    "bookIssued": "বই সফলভাবে ইস্যু করা হয়েছে!",
+    "bookReturned": "বই সফলভাবে ফেরত নেওয়া হয়েছে!",
+    "error": "লাইব্রেরি অপারেশনে ব্যর্থ হয়েছে"
   },
   "transport": {
     "title": "পরিবহন ব্যবস্থাপনা",
@@ -2910,7 +3309,16 @@
     "actions": "অ্যাকশন",
     "totalVehicles": "মোট গাড়ি",
     "totalRoutes": "মোট রুট",
-    "totalAllocations": "মোট বণ্টন"
+    "totalAllocations": "মোট বণ্টন",
+    "vehicleCreated": "যানবাহন সফলভাবে যোগ করা হয়েছে!",
+    "vehicleUpdated": "যানবাহন সফলভাবে আপডেট করা হয়েছে!",
+    "vehicleDeleted": "যানবাহন সফলভাবে মুছে ফেলা হয়েছে!",
+    "routeCreated": "রুট সফলভাবে যোগ করা হয়েছে!",
+    "routeUpdated": "রুট সফলভাবে আপডেট করা হয়েছে!",
+    "routeDeleted": "রুট সফলভাবে মুছে ফেলা হয়েছে!",
+    "allocatedSuccess": "শিক্ষার্থী সফলভাবে বরাদ্দ করা হয়েছে!",
+    "allocationRemoved": "বরাদ্দ সফলভাবে সরানো হয়েছে!",
+    "error": "পরিবহন অপারেশনে ব্যর্থ হয়েছে"
   },
   "homework": {
     "title": "হোমওয়ার্ক ও অ্যাসাইনমেন্ট",
@@ -2947,7 +3355,7 @@
     "noSubmissions": "এখনও কোনো জমা নেই",
     "saveSuccess": "হোমওয়ার্ক সংরক্ষিত",
     "saveFailed": "হোমওয়ার্ক সংরক্ষণ ব্যর্থ",
-    "deleteSuccess": "হোমওয়ার্ক মুছে ফেলা হয়েছে",
+    "deleteSuccess": "হোমওয়ার্ক সফলভাবে মুছে ফেলা হয়েছে!",
     "deleteFailed": "মুছতে ব্যর্থ",
     "submitSuccess": "হোমওয়ার্ক জমা দেওয়া হয়েছে",
     "submitFailed": "জমা ব্যর্থ",
@@ -2960,7 +3368,11 @@
     "actions": "অ্যাকশন",
     "totalHomework": "মোট হোমওয়ার্ক",
     "pendingSubmissions": "মুলতুবি",
-    "gradedSubmissions": "গ্রেডকৃত"
+    "gradedSubmissions": "গ্রেডকৃত",
+    "createSuccess": "হোমওয়ার্ক সফলভাবে তৈরি হয়েছে!",
+    "updateSuccess": "হোমওয়ার্ক সফলভাবে আপডেট হয়েছে!",
+    "gradedSuccess": "সফলভাবে মূল্যায়ন করা হয়েছে!",
+    "error": "হোমওয়ার্ক প্রক্রিয়া করতে ব্যর্থ হয়েছে"
   },
   "leaves": {
     "title": "ছুটি ব্যবস্থাপনা",
@@ -2991,7 +3403,7 @@
     "noLeaves": "কোনো ছুটির আবেদন নেই",
     "noLeavesHint": "শুরু করতে ছুটির আবেদন করুন",
     "confirmDelete": "এই আবেদনটি মুছবেন?",
-    "deleteSuccess": "ছুটি মুছে ফেলা হয়েছে",
+    "deleteSuccess": "ছুটির আবেদন সফলভাবে মুছে ফেলা হয়েছে!",
     "deleteFailed": "মুছতে ব্যর্থ",
     "saveSuccess": "ছুটির আবেদন জমা হয়েছে",
     "saveFailed": "জমা দিতে ব্যর্থ",
@@ -3008,7 +3420,10 @@
     "actions": "অ্যাকশন",
     "totalLeaves": "মোট ছুটি",
     "pendingLeaves": "মুলতুবি",
-    "approvedLeaves": "অনুমোদিত"
+    "approvedLeaves": "অনুমোদিত",
+    "createSuccess": "ছুটির আবেদন সফলভাবে জমা হয়েছে!",
+    "updateSuccess": "ছুটির আবেদন সফলভাবে আপডেট হয়েছে!",
+    "error": "ছুটির আবেদন প্রক্রিয়া করতে ব্যর্থ হয়েছে"
   },
   "inventory": {
     "title": "ইনভেন্টরি ও স্টোর",
@@ -3063,7 +3478,14 @@
     "unitCost": "একক মূল্য",
     "save": "সংরক্ষণ",
     "cancel": "বাতিল",
-    "actions": "অ্যাকশন"
+    "actions": "অ্যাকশন",
+    "stockPDF": "স্টক PDF",
+    "itemCreated": "ইনভেন্টরি আইটেম সফলভাবে যোগ করা হয়েছে!",
+    "itemUpdated": "ইনভেন্টরি আইটেম সফলভাবে আপডেট করা হয়েছে!",
+    "itemDeleted": "ইনভেন্টরি আইটেম সফলভাবে মুছে ফেলা হয়েছে!",
+    "transactionRecorded": "ইনভেন্টরি লেনদেন সফলভাবে রেকর্ড করা হয়েছে!",
+    "transactionDeleted": "লেনদেন সফলভাবে মুছে ফেলা হয়েছে!",
+    "error": "ইনভেন্টরি অপারেশনে ব্যর্থ হয়েছে"
   },
   "hostel": {
     "title": "হোস্টেল ব্যবস্থাপনা",
@@ -3127,9 +3549,25 @@
     "totalHostels": "মোট হোস্টেল",
     "totalRooms": "মোট রুম",
     "totalAllocations": "মোট বণ্টন",
-    "occupancy": "দখল"
+    "occupancy": "দখল",
+    "hostelCreated": "হোস্টেল সফলভাবে যোগ করা হয়েছে!",
+    "hostelUpdated": "হোস্টেল সফলভাবে আপডেট করা হয়েছে!",
+    "hostelDeleted": "হোস্টেল সফলভাবে মুছে ফেলা হয়েছে!",
+    "roomCreated": "রুম সফলভাবে যোগ করা হয়েছে!",
+    "roomUpdated": "রুম সফলভাবে আপডেট করা হয়েছে!",
+    "roomDeleted": "রুম সফলভাবে মুছে ফেলা হয়েছে!",
+    "allocatedSuccess": "শিক্ষার্থী সফলভাবে বরাদ্দ করা হয়েছে!",
+    "vacatedSuccess": "বরাদ্দ সফলভাবে খালি করা হয়েছে!",
+    "error": "হোস্টেল অপারেশনে ব্যর্থ হয়েছে"
   },
   "certificates": {
+    "certificateNumberPlaceholder": "খালি রাখলে স্বয়ংক্রিয়ভাবে তৈরি হবে",
+    "defaultConduct": "ভালো",
+    "defaultCharacterRating": "চমৎকার",
+    "defaultPurpose": "ব্যাংক / পাসপোর্ট / ভিসা যাচাই",
+    "defaultStudent": "শিক্ষার্থী",
+    "generalPurpose": "সাধারণ যাচাই",
+    "transferReason": "অভিভাবকের অনুরোধে",
     "title": "সার্টিফিকেট",
     "description": "ট্রান্সফার, চরিত্র, বোনাফাইড ও অন্যান্য সার্টিফিকেট",
     "addCertificate": "সার্টিফিকেট যোগ করুন",
@@ -3161,7 +3599,7 @@
     "confirmRevoke": "এই সার্টিফিকেটটি বাতিল করবেন?",
     "revoke": "বাতিল করুন",
     "print": "প্রিন্ট করুন",
-    "deleteSuccess": "সার্টিফিকেট মুছে ফেলা হয়েছে",
+    "deleteSuccess": "সার্টিফিকেট সফলভাবে মুছে ফেলা হয়েছে!",
     "deleteFailed": "মুছতে ব্যর্থ",
     "saveSuccess": "সার্টিফিকেট সংরক্ষিত",
     "saveFailed": "সংরক্ষণ ব্যর্থ",
@@ -3171,7 +3609,13 @@
     "actions": "অ্যাকশন",
     "totalCertificates": "মোট সার্টিফিকেট",
     "issuedCount": "ইস্যুকৃত",
-    "revokedCount": "বাতিল"
+    "revokedCount": "বাতিল",
+    "printSuccess": "সার্টিফিকেট PDF ডাউনলোড হয়েছে",
+    "printFailed": "PDF তৈরি করতে ব্যর্থ",
+    "admitCardDownloaded": "প্রবেশপত্র PDF ডাউনলোড হয়েছে",
+    "createSuccess": "সার্টিফিকেট সফলভাবে প্রদান করা হয়েছে!",
+    "updateSuccess": "সার্টিফিকেট সফলভাবে আপডেট করা হয়েছে!",
+    "error": "সার্টিফিকেট প্রক্রিয়া করতে ব্যর্থ হয়েছে"
   },
   "health": {
     "title": "স্বাস্থ্য রেকর্ড",
@@ -3195,7 +3639,7 @@
     "noRecords": "কোনো স্বাস্থ্য রেকর্ড পাওয়া যায়নি",
     "noRecordsHint": "শিক্ষার্থীদের জন্য চিকিৎসা প্রোফাইল যোগ করুন",
     "confirmDelete": "এই রেকর্ডটি মুছবেন?",
-    "deleteSuccess": "রেকর্ড মুছে ফেলা হয়েছে",
+    "deleteSuccess": "স্বাস্থ্য রেকর্ড সফলভাবে মুছে ফেলা হয়েছে!",
     "deleteFailed": "মুছতে ব্যর্থ",
     "saveSuccess": "রেকর্ড সংরক্ষিত",
     "saveFailed": "সংরক্ষণ ব্যর্থ",
@@ -3206,7 +3650,10 @@
     "actions": "অ্যাকশন",
     "totalRecords": "মোট রেকর্ড",
     "withAllergies": "অ্যালার্জি সহ",
-    "lastCheckup": "শেষ চেকআপ"
+    "lastCheckup": "শেষ চেকআপ",
+    "createSuccess": "স্বাস্থ্য রেকর্ড সফলভাবে যোগ করা হয়েছে!",
+    "updateSuccess": "স্বাস্থ্য রেকর্ড সফলভাবে আপডেট করা হয়েছে!",
+    "error": "স্বাস্থ্য রেকর্ড প্রক্রিয়া করতে ব্যর্থ হয়েছে"
   },
   "educationSystems": {
     "title": "জাতীয় শিক্ষা ব্যবস্থা",
@@ -3239,6 +3686,12 @@
     }
   },
   "feeStructures": {
+    "selectTargetClass": "অনুগ্রহ করে একটি লক্ষ্য শ্রেণী নির্বাচন করুন।",
+    "selectAcademicYear": "অনুগ্রহ করে একটি শিক্ষাবর্ষ নির্বাচন করুন।",
+    "saveFailed": "ফি কাঠামো সংরক্ষণ করতে ব্যর্থ",
+    "deleteFailed": "ফি কাঠামো মুছতে ব্যর্থ",
+    "invalidStudentProfileId": "অনুগ্রহ করে সঠিক শিক্ষার্থী প্রোফাইল আইডি দিন।",
+    "concessionSaveFailed": "ছাড় সংরক্ষণ করতে ব্যর্থ",
     "title": "শ্রেণিভিত্তিক টিউশন ফি কাঠামো",
     "description": "প্রতিটি শ্রেণির জন্য টিউশন ফি, বিভিন্ন ফি খাত এবং শিক্ষার্থী বৃত্তি/ছাড় কনফিগার করুন।",
     "manageConcessions": "ছাড় ও বৃত্তি ব্যবস্থাপনা",
@@ -3371,7 +3824,29 @@
     "saveFailed": "প্রশ্ন সংরক্ষণ ব্যর্থ হয়েছে",
     "deleteConfirm": "আপনি কি নিশ্চিতভাবে এই প্রশ্নটি মুছে ফেলতে চান?",
     "deleteSuccess": "প্রশ্ন সফলভাবে মুছে ফেলা হয়েছে",
-    "deleteFailed": "প্রশ্ন মুছে ফেলা ব্যর্থ হয়েছে"
+    "deleteFailed": "প্রশ্ন মুছে ফেলা ব্যর্থ হয়েছে",
+    "validationRequired": "অনুগ্রহ করে শ্রেণী, বিষয় এবং প্রশ্নের টেক্সট পূরণ করুন।",
+    "repositoryQuestions": "রিপোজিটরির সব প্রশ্ন",
+    "multipleChoice": "বহুনির্বাচনী",
+    "creativeBroad": "NCTB CQ ও বিস্তৃত",
+    "shortPrompts": "১-২ নম্বরের প্রশ্ন",
+    "viewDetails": "বিস্তারিত দেখুন",
+    "deleteQuestion": "প্রশ্ন মুছুন",
+    "selectClass": "শ্রেণী নির্বাচন করুন",
+    "selectSubject": "বিষয় নির্বাচন করুন",
+    "chapterPlaceholder": "উদাহরণ: অধ্যায় ৩: বল ও গতি",
+    "topicPlaceholder": "উদাহরণ: নিউটনের দ্বিতীয় সূত্র",
+    "questionTextPlaceholder": "সম্পূর্ণ প্রশ্ন বা সমস্যা লিখুন...",
+    "answerPlaceholder": "মূল বিষয়, সূত্র বা সঠিক উত্তরের সারাংশ...",
+    "explanationPlaceholder": "শিক্ষকের মূল্যায়ন নির্দেশনা বা তাত্ত্বিক ব্যাখ্যা...",
+    "optionalLabel": "ঐচ্ছিক",
+    "points": "পয়েন্ট",
+    "correctOption": "সঠিক",
+    "stimulusLabel": "উদ্দীপক / অনুচ্ছেদ",
+    "solutionKeyLabel": "সমাধান নির্দেশিকা:",
+    "promptPartPlaceholder": "অংশ ({label})-এর প্রশ্ন...",
+    "classFallback": "শ্রেণী",
+    "subjectFallback": "বিষয়"
   },
   "questionPapers": {
     "title": "প্রশ্নপত্র তৈরি ও লাইব্রেরি",
@@ -3451,7 +3926,70 @@
     "deleteSuccess": "প্রশ্নপত্র মুছে ফেলা হয়েছে",
     "deleteFailed": "প্রশ্নপত্র মুছে ফেলা ব্যর্থ হয়েছে",
     "noPapers": "কোনো প্রশ্নপত্র পাওয়া যায়নি",
-    "noPapersHint": "আপনার প্রথম প্রশ্নপত্র তৈরি করুন অথবা স্মার্ট জেনারেটর ব্যবহার করুন।"
+    "noPapersHint": "আপনার প্রথম প্রশ্নপত্র তৈরি করুন অথবা স্মার্ট জেনারেটর ব্যবহার করুন।",
+    "blueprintComposed": "ব্লুপ্রিন্ট সফলভাবে তৈরি হয়েছে!",
+    "savedReady": "প্রশ্নপত্র সংরক্ষিত ও প্রস্তুত!",
+    "requiredDetails": "অনুগ্রহ করে শিরোনাম, শ্রেণী, বিষয় ও শিক্ষাবর্ষ পূরণ করুন।",
+    "repositoryPapers": "রিপোজিটরির সব প্রশ্নপত্র",
+    "readyForExamDay": "পরীক্ষার জন্য প্রস্তুত",
+    "inProgressCustomSets": "চলমান ও কাস্টম সেট",
+    "searchPlaceholder": "শিরোনাম বা কোড দিয়ে খুঁজুন...",
+    "allStatuses": "সব অবস্থা",
+    "fullMarks": "পূর্ণমান",
+    "duration": "সময়কাল",
+    "sectionsCount": "বিভাগ",
+    "deletePaper": "প্রশ্নপত্র মুছুন",
+    "paperTitlePlaceholder": "উদাহরণ: বার্ষিক পরীক্ষা ২০২৬ - গণিত",
+    "selectAcademicYear": "শিক্ষাবর্ষ নির্বাচন করুন",
+    "selectClass": "শ্রেণী নির্বাচন করুন",
+    "selectSubject": "বিষয় নির্বাচন করুন",
+    "blueprintQuestionDistribution": "ব্লুপ্রিন্ট প্রশ্ন বণ্টন",
+    "count": "সংখ্যা",
+    "pointsPerQuestion": "প্রতি প্রশ্নের নম্বর",
+    "sectionMinimum": "প্রশ্নপত্রে অন্তত একটি বিভাগ থাকতে হবে",
+    "savedSuccess": "প্রশ্নপত্র সফলভাবে সংরক্ষিত হয়েছে!",
+    "saveDraft": "খসড়া হিসেবে সংরক্ষণ করুন",
+    "finalizePaper": "সংরক্ষণ করে প্রশ্নপত্র সম্পূর্ণ করুন",
+    "marksBudget": "নম্বর বাজেট",
+    "timeAllowed": "নির্ধারিত সময়",
+    "totalQuestions": "মোট প্রশ্ন",
+    "questionsSelectedLabel": "নির্বাচিত প্রশ্ন",
+    "difficultyRatio": "কঠিনতার অনুপাত",
+    "easy": "সহজ",
+    "medium": "মাঝারি",
+    "hard": "কঠিন",
+    "paperDetailsDescription": "পরীক্ষার শিরোনামের জন্য লক্ষ্য শ্রেণী, বিষয় ও সাধারণ নির্দেশনা নির্ধারণ করুন।",
+    "annualExamPlaceholder": "উদাহরণ: বার্ষিক পরীক্ষা ২০২৬",
+    "paperCodePlaceholder": "উদাহরণ: SET-A / QP-101",
+    "selectClassSubjectAbove": "অনুগ্রহ করে উপরে লক্ষ্য শ্রেণী ও বিষয় নির্বাচন করুন।",
+    "sectionInstructionsPlaceholder": "বিভাগের নির্দেশনা (যেমন এই বিভাগের সব প্রশ্নের উত্তর দিন)...",
+    "selectClassSubjectFirst": "অনুগ্রহ করে আগে লক্ষ্য শ্রেণী ও বিষয় নির্বাচন করুন।",
+    "searchQuestions": "প্রশ্ন খুঁজুন...",
+    "allTypes": "সব ধরন",
+    "allDifficulties": "সব কঠিনতার স্তর",
+    "targetMarks": "লক্ষ্য",
+    "points": "পয়েন্ট",
+    "pickerTitle": "{section}-এর জন্য প্রশ্ন নির্বাচন করুন",
+    "selectedCount": "{count} নির্বাচিত",
+    "pickerDescription": "এই বিভাগে যোগ করার জন্য প্রশ্ন ব্যাংক থেকে প্রশ্ন দেখুন ও নির্বাচন করুন।",
+    "noQuestionsInSection": "এই বিভাগে এখনও কোনো প্রশ্ন যোগ করা হয়নি। ক্লিক করুন",
+    "pickFromBank": "ব্যাংক থেকে নির্বাচন করুন",
+    "toChooseQuestions": "প্রশ্ন নির্বাচন করতে।",
+    "noQuestionsMatch": "এই বিষয়ের প্রশ্ন ব্যাংকে আপনার মানদণ্ডের সঙ্গে মেলে এমন কোনো প্রশ্ন নেই।",
+    "doneSelected": "সম্পন্ন ({count} নির্বাচিত)",
+    "loadingPreview": "প্রশ্নপত্র লোড হচ্ছে...",
+    "previewNotFound": "প্রশ্নপত্র পাওয়া যায়নি।",
+    "hideSolutionKey": "সমাধান কী লুকান",
+    "teacherSolutionKey": "শিক্ষকের সমাধান কী",
+    "schoolExamFallback": "স্কুল / কলেজ পরীক্ষা",
+    "studentNameLine": "শিক্ষার্থীর নাম: _________________________________________",
+    "rollNoSectionLine": "রোল নং: _______________ বিভাগ: ________",
+    "generalInstructions": "সাধারণ নির্দেশনা:",
+    "context": "প্রেক্ষাপট:",
+    "solutionKeyAnswer": "সমাধান কী / উত্তর:",
+    "referTextbook": "মানক পাঠ্যবই দেখুন",
+    "note": "নোট:",
+    "endOfQuestionPaper": "*** প্রশ্নপত্রের সমাপ্তি ***"
   },
   "notices": {
     "allNotices": "সব নোটিশ",
@@ -3463,7 +4001,7 @@
     "urgentAlerts": "জরুরি সতর্কতা",
     "loadFailed": "স্কুলের নোটিশ লোড করা যায়নি",
     "networkLoad": "নোটিশ বোর্ড লোডে নেটওয়ার্ক ত্রুটি",
-    "deleted": "নোটিশ মুছে ফেলা হয়েছে",
+    "deleted": "বিজ্ঞপ্তি সফলভাবে মুছে ফেলা হয়েছে!",
     "deleteFailed": "নোটিশ মুছে ফেলা যায়নি",
     "networkDelete": "নোটিশ মুছতে নেটওয়ার্ক ত্রুটি",
     "unpinned": "নোটিশ আনপিন করা হয়েছে",
@@ -3506,9 +4044,17 @@
     "delete": "মুছুন",
     "directory": "নোটিশ ডিরেক্টরি",
     "showing": "{count}টি প্রকাশিত নোটিশ দেখানো হচ্ছে",
-    "filterTable": "নোটিশ টেবিল ফিল্টার করুন..."
+    "filterTable": "নোটিশ টেবিল ফিল্টার করুন...",
+    "requiredFields": "অনুগ্রহ করে বিজ্ঞপ্তির শিরোনাম এবং বিষয়বস্তু উভয়ই প্রদান করুন",
+    "networkError": "বিজ্ঞপ্তি সংরক্ষণ করতে নেটওয়ার্ক ত্রুটি",
+    "copied": "বিজ্ঞপ্তি ক্লিপবোর্ডে কপি করা হয়েছে",
+    "created": "বিজ্ঞপ্তি সফলভাবে তৈরি হয়েছে!",
+    "updated": "বিজ্ঞপ্তি সফলভাবে আপডেট হয়েছে!"
   },
   "bulkFees": {
+    "challansDownloaded": "চালান PDF ডাউনলোড হয়েছে (৩ কপি)",
+    "pdfFailed": "PDF তৈরি করতে ব্যর্থ",
+    "challansTitle": "নির্বাচিতদের জন্য ৩-কপি ব্যাংক চালান",
     "title": "শ্রেণির বাল্ক ফি এন্ট্রি",
     "description": "১২ মাসের শিক্ষাবর্ষের ভিত্তিতে পুরো শ্রেণির ফি স্প্রেডশিটের মতো সংগ্রহ করুন।",
     "singlePos": "সিঙ্গেল POS কাউন্টার",
@@ -3707,5 +4253,169 @@
     "updateFailed": "Update failed",
     "impersonateFailed": "Impersonate failed",
     "status": "অবস্থা"
+  },
+  "verify": {
+    "certificate": {
+      "title": "সার্টিফিকেট যাচাই",
+      "verified": "যাচাইকৃত",
+      "notFound": "সার্টিফিকেট পাওয়া যায়নি",
+      "revoked": "বাতিল",
+      "authentic": "এই নথিটি প্রামাণিক",
+      "certificateNo": "সার্টিফিকেট নং",
+      "studentName": "শিক্ষার্থীর নাম",
+      "status": "অবস্থা",
+      "scanToVerify": "যাচাই করতে QR স্ক্যান করুন"
+    },
+    "admitCard": {
+      "title": "পরীক্ষার প্রবেশপত্র"
+    }
+  },
+  "portal": {
+    "nav": {
+      "home": "হোম",
+      "homework": "বাড়ির কাজ",
+      "timetable": "সময়সূচি",
+      "results": "ফলাফল",
+      "overview": "সারসংক্ষেপ",
+      "fees": "ফি"
+    },
+    "notifications": "বিজ্ঞপ্তি",
+    "theme": {
+      "toggle": "থিম পরিবর্তন করুন"
+    },
+    "signOut": "সাইন আউট",
+    "noData": "পোর্টাল ডেটা পাওয়া যায়নি",
+    "viewAll": "সব দেখুন",
+    "viewTimetable": "সময়সূচি দেখুন",
+    "children": {
+      "switch": "সন্তান পরিবর্তন করুন"
+    },
+    "student": {
+      "greeting": "শুভ সকাল"
+    },
+    "parent": {
+      "overview": "অভিভাবক সারসংক্ষেপ"
+    },
+    "attendance": {
+      "title": "উপস্থিতি",
+      "last90": "গত ৯০ দিন"
+    },
+    "homework": {
+      "pending": "বকেয়া বাড়ির কাজ",
+      "title": "বাড়ির কাজ",
+      "description": "অ্যাসাইনমেন্ট দেখুন এবং কাজ জমা দিন।",
+      "none": "কোনও বাড়ির কাজ নেই।",
+      "general": "সাধারণ",
+      "due": "শেষ তারিখ",
+      "pendingStatus": "বকেয়া",
+      "openAttachment": "সংযুক্তি খুলুন",
+      "remarksPlaceholder": "শিক্ষকের জন্য নোট (ঐচ্ছিক)",
+      "chooseFile": "ফাইল নির্বাচন করুন",
+      "submit": "বাড়ির কাজ জমা দিন",
+      "submitting": "জমা হচ্ছে...",
+      "uploadFailed": "আপলোড ব্যর্থ",
+      "submitFailed": "জমা ব্যর্থ"
+    },
+    "exams": {
+      "upcoming": "আসন্ন পরীক্ষা",
+      "published": "প্রকাশিত পরীক্ষা",
+      "upcomingTitle": "আসন্ন পরীক্ষা",
+      "none": "কোনও আসন্ন পরীক্ষা নেই।"
+    },
+    "timetable": {
+      "today": "আজকের ক্লাস",
+      "todayTitle": "আজকের সময়সূচি",
+      "noToday": "আজ কোনও ক্লাস নেই।",
+      "noRoom": "কক্ষ নির্ধারিত নেই",
+      "break": "বিরতি",
+      "title": "সময়সূচি",
+      "description": "আপনার সাপ্তাহিক ক্লাসের সময়সূচি।",
+      "period": "পিরিয়ড",
+      "empty": "কোনও সময়সূচি নেই।",
+      "free": "ফাঁকা"
+    },
+    "results": {
+      "latest": "সর্বশেষ ফলাফল",
+      "none": "কোনও প্রকাশিত ফলাফল নেই",
+      "title": "ফলাফল",
+      "description": "টার্ম অনুযায়ী প্রকাশিত পরীক্ষার ফলাফল।",
+      "gpa": "জিপিএ",
+      "subject": "বিষয়",
+      "marks": "নম্বর",
+      "grade": "গ্রেড",
+      "status": "অবস্থা"
+    },
+    "fees": {
+      "balance": "বকেয়া ফি",
+      "viewDetails": "ফি বিবরণ দেখুন",
+      "recentPayments": "সাম্প্রতিক পেমেন্ট",
+      "noPayments": "কোনও পেমেন্ট নেই।",
+      "title": "ফি",
+      "description": "ফি ভাউচার, বকেয়া এবং পেমেন্ট ইতিহাস।",
+      "totalBalance": "মোট বকেয়া",
+      "vouchers": "ফি ভাউচার",
+      "noVouchers": "কোনও ফি ভাউচার পাওয়া যায়নি।",
+      "voucher": "ভাউচার",
+      "type": "ধরন",
+      "dueDate": "শেষ তারিখ",
+      "amount": "পরিমাণ",
+      "status": "অবস্থা",
+      "paymentHistory": "পেমেন্ট ইতিহাস",
+      "downloadReceipt": "রসিদ ডাউনলোড করুন"
+    }
+  },
+  "error": {
+    "title": "কিছু ভুল হয়েছে!",
+    "message": "একটি অপ্রত্যাশিত ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন বা সহায়তায় যোগাযোগ করুন।",
+    "tryAgain": "আবার চেষ্টা করুন",
+    "returnHome": "হোমে ফিরে যান",
+    "error": {
+      "title": "কিছু ভুল হয়েছে!",
+      "message": "একটি অপ্রত্যাশিত ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন বা সহায়তায় যোগাযোগ করুন।",
+      "tryAgain": "আবার চেষ্টা করুন",
+      "returnHome": "হোমে ফিরে যান"
+    }
+  },
+  "ForbiddenPage": {
+    "title": "অ্যাক্সেস নিষিদ্ধ",
+    "subtitle": "আপনার এই সম্পদে অ্যাক্সেস করার অনুমতি নেই",
+    "message": "আপনি যদি মনে করেন এটি একটি ত্রুটি তবে অনুগ্রহ করে আপনার স্কুল প্রশাসকের সাথে যোগাযোগ করুন।",
+    "dashboard": "ড্যাশবোর্ডে ফিরে যান",
+    "goBack": "ফিরে যান"
+  },
+  "notFound": {
+    "title": "পৃষ্ঠা পাওয়া যায়নি",
+    "description": "আপনি যে পৃষ্ঠাটি খুঁজছেন তা মুছে ফেলা হতে পারে, এর নাম পরিবর্তন করা হতে পারে, বা সাময়িকভাবে অনুপলব্ধ।",
+    "goBack": "ফিরে যান",
+    "dashboardSetup": "ড্যাশবোর্ডে যান"
+  },
+  "unauthorized": {
+    "title": "প্রমাণীকরণ প্রয়োজন",
+    "subtitle": "চালিয়ে যেতে অনুগ্রহ করে লগ ইন করুন",
+    "message": "এই পৃষ্ঠায় অ্যাক্সেস করতে আপনাকে সাইন ইন করতে হবে।",
+    "goToLogin": "লগইনে যান"
+  },
+  "header": {
+    "theme": {
+      "toggle": "থিম পরিবর্তন করুন"
+    },
+    "user": {
+      "fallbackName": "ব্যবহারকারী",
+      "fallbackRole": "কর্মী"
+    },
+    "systemAdmin": {
+      "label": "সিস্টেম অ্যাডমিন"
+    }
+  },
+  "pdf": {
+    "markSheetSuccess": "নম্বরপত্র সফলভাবে তৈরি হয়েছে!",
+    "markSheetError": "নম্বরপত্র তৈরি করতে ব্যর্থ হয়েছে",
+    "reportCardSuccess": "রিপোর্ট কার্ড সফলভাবে তৈরি হয়েছে!",
+    "reportCardError": "রিপোর্ট কার্ড তৈরি করতে ব্যর্থ হয়েছে",
+    "idCardSuccess": "আইডি কার্ড সফলভাবে তৈরি হয়েছে!",
+    "idCardError": "আইডি কার্ড তৈরি করতে ব্যর্থ হয়েছে",
+    "selectExam": "অনুগ্রহ করে একটি পরীক্ষা নির্বাচন করুন",
+    "noMarksFound": "এই পরীক্ষার জন্য কোনো নম্বর পাওয়া যায়নি",
+    "selectYear": "অনুগ্রহ করে একটি শিক্ষাবর্ষ নির্বাচন করুন"
   }
 }

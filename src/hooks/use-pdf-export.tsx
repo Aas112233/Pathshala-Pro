@@ -18,6 +18,17 @@ import {
   FeeReportTemplate,
   AttendanceReportTemplate,
   ExamReportTemplate,
+  TransferCertificateTemplate,
+  CharacterCertificateTemplate,
+  BonafideCertificateTemplate,
+  ExamAdmitCardTemplate,
+  BatchAdmitCardDocument,
+  TranscriptTemplate,
+  StaffIDCardTemplate,
+  LibraryClearanceTemplate,
+  AdmissionFormTemplate,
+  TimetableReportTemplate,
+  InventoryStockReportTemplate,
   type PdfFilterItem,
   type BatchStudentResult,
   type FeeVoucherPDFData,
@@ -27,6 +38,15 @@ import {
   type LibraryIssueSlipData,
   type HostelManifestPDFData,
   type HostelResident,
+  type TransferCertificateData,
+  type CharacterCertificateData,
+  type BonafideCertificateData,
+  type ExamAdmitCardData,
+  type TranscriptData,
+  type StaffIDCardData,
+  type LibraryClearanceData,
+  type TimetableReportData,
+  type InventoryStockItem,
 } from "@/lib/pdf-templates";
 
 export type {
@@ -37,6 +57,15 @@ export type {
   LibraryIssueSlipData,
   HostelManifestPDFData,
   HostelResident,
+  TransferCertificateData,
+  CharacterCertificateData,
+  BonafideCertificateData,
+  ExamAdmitCardData,
+  TranscriptData,
+  StaffIDCardData,
+  LibraryClearanceData,
+  TimetableReportData,
+  InventoryStockItem,
 };
 
 interface SchoolInfo {
@@ -383,6 +412,106 @@ export function usePDFExport() {
     return generatePDF(document, name);
   }, [generatePDF]);
 
+  const exportTransferCertificatePDF = useCallback(async (
+    school: SchoolInfo,
+    data: TransferCertificateData,
+    verificationUrl?: string
+  ) => {
+    const document = <TransferCertificateTemplate school={school} data={data} verificationUrl={verificationUrl} />;
+    return generatePDF(document, `TC_${data.certificateNumber}.pdf`);
+  }, [generatePDF]);
+
+  const exportCharacterCertificatePDF = useCallback(async (
+    school: SchoolInfo,
+    data: CharacterCertificateData,
+    verificationUrl?: string
+  ) => {
+    const document = <CharacterCertificateTemplate school={school} data={data} verificationUrl={verificationUrl} />;
+    return generatePDF(document, `CC_${data.certificateNumber}.pdf`);
+  }, [generatePDF]);
+
+  const exportBonafideCertificatePDF = useCallback(async (
+    school: SchoolInfo,
+    data: BonafideCertificateData,
+    verificationUrl?: string
+  ) => {
+    const document = <BonafideCertificateTemplate school={school} data={data} verificationUrl={verificationUrl} />;
+    return generatePDF(document, `Bonafide_${data.certificateNumber}.pdf`);
+  }, [generatePDF]);
+
+  const exportExamAdmitCardPDF = useCallback(async (
+    school: SchoolInfo,
+    data: ExamAdmitCardData,
+    verificationUrl?: string
+  ) => {
+    const document = <ExamAdmitCardTemplate school={school} data={data} verificationUrl={verificationUrl} />;
+    return generatePDF(document, `AdmitCard_${data.rollNumber}_${data.examName.replace(/\s+/g, "_")}.pdf`);
+  }, [generatePDF]);
+
+  const exportBatchAdmitCardsPDF = useCallback(async (
+    school: SchoolInfo,
+    cards: ExamAdmitCardData[],
+    verificationBaseUrl?: string
+  ) => {
+    const document = <BatchAdmitCardDocument school={school} cards={cards} verificationBaseUrl={verificationBaseUrl} />;
+    return generatePDF(document, `Batch_AdmitCards_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportTranscriptPDF = useCallback(async (
+    school: SchoolInfo,
+    data: TranscriptData,
+    verificationUrl?: string
+  ) => {
+    const document = <TranscriptTemplate school={school} data={data} verificationUrl={verificationUrl} />;
+    return generatePDF(document, `Transcript_${data.admissionNumber}.pdf`);
+  }, [generatePDF]);
+
+  const exportStaffIDCardsPDF = useCallback(async (
+    school: SchoolInfo,
+    staff: StaffIDCardData[],
+    academicYear?: string,
+    verificationBaseUrl?: string
+  ) => {
+    const document = <StaffIDCardTemplate school={school} staff={staff} academicYear={academicYear} verificationBaseUrl={verificationBaseUrl} />;
+    return generatePDF(document, `Staff_ID_Cards_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportLibraryClearancePDF = useCallback(async (
+    school: SchoolInfo,
+    data: LibraryClearanceData,
+    verificationUrl?: string
+  ) => {
+    const document = <LibraryClearanceTemplate school={school} data={data} verificationUrl={verificationUrl} />;
+    return generatePDF(document, `Clearance_${data.certificateNumber}.pdf`);
+  }, [generatePDF]);
+
+  const exportAdmissionFormPDF = useCallback(async (
+    school: SchoolInfo,
+    academicYear?: string,
+    formNumber?: string
+  ) => {
+    const document = <AdmissionFormTemplate school={school} academicYear={academicYear} formNumber={formNumber} />;
+    return generatePDF(document, `Admission_Form_${academicYear || "2026"}.pdf`);
+  }, [generatePDF]);
+
+  const exportTimetablePDF = useCallback(async (
+    school: SchoolInfo,
+    data: TimetableReportData,
+    generatedAt?: string
+  ) => {
+    const document = <TimetableReportTemplate school={school} data={data} generatedAt={generatedAt} />;
+    return generatePDF(document, `Timetable_${data.className.replace(/\s+/g, "_")}_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportInventoryStockPDF = useCallback(async (
+    school: SchoolInfo,
+    items: InventoryStockItem[],
+    generatedAt?: string
+  ) => {
+    const document = <InventoryStockReportTemplate school={school} items={items} generatedAt={generatedAt || new Date().toLocaleDateString()} />;
+    return generatePDF(document, `Inventory_Stock_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
   return {
     exportStudentIDCard,
     exportMarkSheet,
@@ -399,6 +528,17 @@ export function usePDFExport() {
     exportBatchPayslipsPDF,
     exportLibrarySlipPDF,
     exportHostelManifestPDF,
+    exportTransferCertificatePDF,
+    exportCharacterCertificatePDF,
+    exportBonafideCertificatePDF,
+    exportExamAdmitCardPDF,
+    exportBatchAdmitCardsPDF,
+    exportTranscriptPDF,
+    exportStaffIDCardsPDF,
+    exportLibraryClearancePDF,
+    exportAdmissionFormPDF,
+    exportTimetablePDF,
+    exportInventoryStockPDF,
   };
 }
 

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !access.authContext.isImpersonated) {
       return errorResponse("Platform System Admin access required", 403);
     }
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !access.authContext.isImpersonated) {
       return errorResponse("Platform System Admin access required", 403);
     }
 

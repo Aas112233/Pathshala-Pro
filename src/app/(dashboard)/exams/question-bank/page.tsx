@@ -307,7 +307,7 @@ export default function QuestionBankPage() {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!classId || !subjectId || !questionText.trim()) {
-      toast.error("Please fill in Class, Subject, and Question text.");
+      toast.error(t("questionBank.validationRequired"));
       return;
     }
 
@@ -369,25 +369,25 @@ export default function QuestionBankPage() {
         <ERPMetricCard
           title={t("questionBank.totalQuestions")}
           value={totalCount}
-          subtitle="All repository questions"
+          subtitle={t("questionBank.repositoryQuestions")}
           icon={FileQuestion}
         />
         <ERPMetricCard
           title={t("questionBank.mcqCount")}
           value={mcqCount}
-          subtitle="Multiple Choice"
+          subtitle={t("questionBank.multipleChoice")}
           icon={CheckCircle2}
         />
         <ERPMetricCard
           title={t("questionBank.creativeCount")}
           value={creativeCount}
-          subtitle="NCTB CQ & Broad"
+          subtitle={t("questionBank.creativeBroad")}
           icon={Sparkles}
         />
         <ERPMetricCard
           title={t("questionBank.shortCount")}
           value={shortCount}
-          subtitle="1-2 Mark Prompts"
+          subtitle={t("questionBank.shortPrompts")}
           icon={BookOpen}
         />
       </div>
@@ -490,10 +490,10 @@ export default function QuestionBankPage() {
                         #{idx + 1}
                       </span>
                       <Badge variant="outline" className="text-xs bg-primary/5 font-semibold">
-                        {q.class?.name || "Class"}
+                        {q.class?.name || t("questionBank.classFallback")}
                       </Badge>
                       <Badge variant="secondary" className="text-xs font-medium">
-                        {q.subject?.name || "Subject"}
+                        {q.subject?.name || t("questionBank.subjectFallback")}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         {t(`questionBank.types.${q.type}` as any) || q.type}
@@ -570,7 +570,7 @@ export default function QuestionBankPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setPreviewQuestion(q)}
-                      title="View Details"
+                      title={t("questionBank.viewDetails")}
                       className="h-8 w-8 p-0"
                     >
                       <Eye className="h-4 w-4 text-muted-foreground" />
@@ -579,7 +579,7 @@ export default function QuestionBankPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleOpenEdit(q)}
-                      title="Edit Question"
+                      title={t("questionBank.editQuestion")}
                       className="h-8 w-8 p-0"
                     >
                       <Edit2 className="h-4 w-4 text-muted-foreground" />
@@ -588,7 +588,7 @@ export default function QuestionBankPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDelete(q.id)}
-                      title="Delete Question"
+                      title={t("questionBank.deleteQuestion")}
                       className="h-8 w-8 p-0 hover:text-rose-600"
                     >
                       <Trash2 className="h-4 w-4 text-muted-foreground hover:text-rose-600" />
@@ -621,7 +621,7 @@ export default function QuestionBankPage() {
               </label>
               <Select value={classId} onValueChange={(value) => { setClassId(value); setSubjectId(""); }} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Class" />
+                  <SelectValue placeholder={t("questionBank.selectClass")} />
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((c: any) => (
@@ -639,7 +639,7 @@ export default function QuestionBankPage() {
               </label>
               <Select value={subjectId} onValueChange={setSubjectId} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Subject" />
+                  <SelectValue placeholder={t("questionBank.selectSubject")} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredSubjects.map((s: any) => (
@@ -694,7 +694,7 @@ export default function QuestionBankPage() {
                 {t("questionBank.chapter")}
               </label>
               <Input
-                placeholder="e.g. Chapter 3: Force & Motion"
+                placeholder={t("questionBank.chapterPlaceholder")}
                 value={chapter}
                 onChange={(e) => setChapter(e.target.value)}
               />
@@ -704,7 +704,7 @@ export default function QuestionBankPage() {
                 {t("questionBank.topic")}
               </label>
               <Input
-                placeholder="e.g. Newton's Second Law"
+                placeholder={t("questionBank.topicPlaceholder")}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
               />
@@ -728,7 +728,7 @@ export default function QuestionBankPage() {
           <div>
             <label className="text-xs font-semibold text-foreground mb-1 flex items-center justify-between">
               <span>{t("questionBank.stimulus")}</span>
-              <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
+              <span className="text-[10px] text-muted-foreground font-normal">{t("questionBank.optionalLabel")}</span>
             </label>
             <Textarea
               placeholder={t("questionBank.stimulusPlaceholder")}
@@ -745,7 +745,7 @@ export default function QuestionBankPage() {
               {t("questionBank.questionText")} *
             </label>
             <Textarea
-              placeholder="Enter complete question statement / problem..."
+              placeholder={t("questionBank.questionTextPlaceholder")}
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
               rows={3}
@@ -795,7 +795,7 @@ export default function QuestionBankPage() {
                       }}
                       className="h-8 text-xs shrink-0"
                     >
-                      {opt.isCorrect ? <Check className="h-3.5 w-3.5" /> : "Correct"}
+                      {opt.isCorrect ? <Check className="h-3.5 w-3.5" /> : t("questionBank.correctOption")}
                     </Button>
                   </div>
                 ))}
@@ -816,7 +816,7 @@ export default function QuestionBankPage() {
                       ({sq.label})
                     </span>
                     <Input
-                      placeholder={`Prompt for part (${sq.label})...`}
+                      placeholder={t("questionBank.promptPartPlaceholder", { label: sq.label })}
                       value={sq.text}
                       onChange={(e) => {
                         const text = e.target.value;
@@ -839,7 +839,7 @@ export default function QuestionBankPage() {
                       }}
                       className="w-16 h-8 text-xs bg-background font-mono text-center"
                     />
-                    <span className="text-[11px] text-muted-foreground font-mono">pts</span>
+                    <span className="text-[11px] text-muted-foreground font-mono">{t("questionBank.points")}</span>
                   </div>
                 ))}
               </div>
@@ -853,7 +853,7 @@ export default function QuestionBankPage() {
                 {t("questionBank.correctAnswer")}
               </label>
               <Textarea
-                placeholder="Key points, formula, or correct answer summary..."
+                placeholder={t("questionBank.answerPlaceholder")}
                 value={correctAnswer}
                 onChange={(e) => setCorrectAnswer(e.target.value)}
                 rows={2}
@@ -865,7 +865,7 @@ export default function QuestionBankPage() {
                 {t("questionBank.explanation")}
               </label>
               <Textarea
-                placeholder="Teacher grading guidelines or theoretical explanation..."
+                placeholder={t("questionBank.explanationPlaceholder")}
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
                 rows={2}
@@ -902,7 +902,7 @@ export default function QuestionBankPage() {
                 {previewQuestion.class?.name} - {previewQuestion.subject?.name}
               </DialogTitle>
               <DialogDescription>
-                {t(`questionBank.types.${previewQuestion.type}` as any)} • {previewQuestion.marks} Marks •{" "}
+                {t(`questionBank.types.${previewQuestion.type}` as any)} • {previewQuestion.marks} {t("questionBank.marks")} •{" "}
                 {previewQuestion.difficulty}
               </DialogDescription>
             </DialogHeader>
@@ -911,7 +911,7 @@ export default function QuestionBankPage() {
               {previewQuestion.stimulus && (
                 <div className="p-3 bg-muted rounded-md text-xs italic border-l-4 border-primary">
                   <div className="font-bold uppercase text-[10px] text-muted-foreground not-italic mb-1">
-                    Stimulus / উদ্দীপক
+                    {t("questionBank.stimulusLabel")}
                   </div>
                   {previewQuestion.stimulus}
                 </div>
@@ -947,7 +947,7 @@ export default function QuestionBankPage() {
                         <strong className="mr-2 font-mono">({sq.label})</strong> {sq.text}
                       </span>
                       <Badge variant="outline" className="font-mono text-[10px]">
-                        {sq.marks} Marks
+                        {sq.marks} {t("questionBank.marks")}
                       </Badge>
                     </div>
                   ))}
@@ -957,7 +957,7 @@ export default function QuestionBankPage() {
               {previewQuestion.correctAnswer && (
                 <div className="p-3 bg-emerald-500/5 rounded border border-emerald-500/20 text-xs">
                   <span className="font-bold text-emerald-700 dark:text-emerald-400 block mb-0.5">
-                    Solution Key:
+                    {t("questionBank.solutionKeyLabel")}
                   </span>
                   {previewQuestion.correctAnswer}
                 </div>

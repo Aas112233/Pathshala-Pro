@@ -4,6 +4,7 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { handleApiError } from "@/lib/api-error";
 import { createNoticeSchema } from "@/lib/schemas";
+import { verifyInternalFileUrl } from "@/lib/upload-security";
 
 export async function GET(req: NextRequest) {
   try {
@@ -104,6 +105,9 @@ export async function POST(req: NextRequest) {
     }
 
     const data = parsed.data;
+    if (data.attachmentUrl && !(await verifyInternalFileUrl(data.attachmentUrl, tenantId))) {
+      return errorResponse("Invalid attachment file", 400);
+    }
 
     const notice = await prisma.notice.create({
       data: {

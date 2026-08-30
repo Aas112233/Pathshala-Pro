@@ -39,6 +39,7 @@ export function StudentFormModal({
   isEditing = false,
 }: StudentFormModalProps) {
   const t = useTranslations("students");
+  const placementLocked = isEditing && !!initialData?.classId;
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -452,7 +453,7 @@ export function StudentFormModal({
                     type="file"
                     accept="image/png, image/jpeg, image/webp"
                     onChange={handleFileChange}
-                    disabled={isLoading || isUploading}
+                    disabled={isLoading || isUploading || placementLocked}
                     className="hidden"
                   />
                 </label>
@@ -619,6 +620,11 @@ export function StudentFormModal({
 
             {/* Academic Placement */}
             <ERPFormSection title={t("section.academicPlacement")}>
+              {isEditing && !!initialData?.classId && (
+                <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                  <span className="font-semibold">Class Assignment Locked:</span> Direct class modification is disabled for enrolled students to preserve historical academic and financial records. To advance or change class, use the <strong>Promotions & Progression</strong> module.
+                </div>
+              )}
               <ERPFormGrid cols={3}>
                 <ERPFormField label={t("class")} htmlFor="student-classId">
                   <AppDropdown
@@ -631,7 +637,7 @@ export function StudentFormModal({
                         sectionId: "",
                       }));
                     }}
-                    disabled={isLoading || isUploading}
+                    disabled={isLoading || isUploading || (isEditing && !!initialData?.classId)}
                     options={classOptions}
                   />
                 </ERPFormField>
@@ -646,7 +652,7 @@ export function StudentFormModal({
                         sectionId: "",
                       }));
                     }}
-                    disabled={isLoading || isUploading || !formData.classId}
+                    disabled={isLoading || isUploading || !formData.classId || placementLocked}
                     options={groupOptions}
                   />
                 </ERPFormField>
@@ -655,7 +661,7 @@ export function StudentFormModal({
                   <AppDropdown
                     value={formData.sectionId}
                     onChange={(val) => handleDropdownChange("sectionId", val)}
-                    disabled={isLoading || isUploading || !formData.classId}
+                    disabled={isLoading || isUploading || !formData.classId || placementLocked}
                     options={sectionOptions}
                   />
                 </ERPFormField>

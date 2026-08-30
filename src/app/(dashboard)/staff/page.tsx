@@ -6,7 +6,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
-import { Users, Plus } from "lucide-react";
+import { Users, Plus, IdCard, FileText } from "lucide-react";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { usePDFExport } from "@/hooks/use-pdf-export";
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -27,6 +30,7 @@ import type { CreateStaffDTO } from "@/types/entities";
 
 export default function StaffPage() {
   const t = useTranslations('staff');
+  const tCommon = useTranslations("common");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<CreateStaffDTO & { id?: string } | null>(null);
@@ -53,6 +57,8 @@ export default function StaffPage() {
   const canReadStaff = hasPermission(perms, "staff", "read");
   const canWriteStaff = hasPermission(perms, "staff", "write");
   const canManageStaff = hasPermission(perms, "staff", "manage");
+  const { settings } = useTenantSettings();
+  const { exportStaffIDCardsPDF, exportAdmissionFormPDF } = usePDFExport();
 
   const handleEdit = useCallback((staffMember: StaffProfile) => {
     setEditingStaff({
@@ -191,6 +197,24 @@ export default function StaffPage() {
     },
   ];
 
+  const handleStaffIDs = useCallback(async () => {
+    if (staff.length === 0) { toast.error(t("noStaffToPrint")); return; }
+    const school = { name: settings.name || "Pathshala Pro School", address: settings.address || "", phone: settings.phone || "", email: settings.email || "", logoUrl: settings.logoUrl };
+    const data = staff.slice(0,12).map((s:any)=>({
+      staffId: s.staffId || s.id.slice(0,8),
+      name: `${s.firstName||""} ${s.lastName||""}`.trim()||"Staff",
+      designation: s.designation||"-",
+      department: s.department||"-",
+      phone: s.phone, email: s.email, bloodGroup: s.bloodGroup,
+      joiningDate: s.hireDate ? new Date(s.hireDate).toLocaleDateString() : undefined,
+      photoUrl: s.profilePictureUrl,
+      validUntil: new Date(new Date().setFullYear(new Date().getFullYear()+1)).toLocaleDateString(),
+    }));
+    const res = await exportStaffIDCardsPDF(school, data, new Date().getFullYear().toString(), typeof window!=="undefined"? window.location.origin: undefined);
+    if(res.success) toast.success(t("staffIdCardsDownloaded", { count: data.length }));
+    else toast.error(t("pdfFailed"));
+  },[staff, settings, exportStaffIDCardsPDF]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -207,6 +231,9 @@ export default function StaffPage() {
           >
             {viewMode === "table" ? "Grid view" : "Table view"}
           </Button>
+          <Button variant="outline" size="sm" onClick={handleStaffIDs} disabled={staff.length===0} title="Printable PVC 8-up Staff ID cards with QR">
+            <IdCard className="mr-2 h-4 w-4" />Staff IDs
+          </Button>
           {canWriteStaff && (
             <Button onClick={() => setIsFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -217,7 +244,7 @@ export default function StaffPage() {
       </PageHeader>
 
       {!isAuthLoading && !canReadStaff ? (
-        <div className="rounded-lg border border-border bg-card p-6"><h2 className="text-lg font-semibold">Access restricted</h2><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view staff.</p></div>
+        <div className="rounded-lg border border-border bg-card p-6"><h2 className="text-lg font-semibold">{tCommon("accessRestricted")}</h2><p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p></div>
       ) : (
         <>
       {/* Filters */}

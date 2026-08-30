@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function ImpersonationBanner() {
+  const t = useTranslations("systemAdmin");
   const { user } = useAuth();
   const [isExiting, setIsExiting] = useState(false);
 
@@ -25,14 +27,14 @@ export function ImpersonationBanner() {
 
       const json = await response.json();
       if (response.ok && json.success) {
-        toast.success("Returned to System Admin console");
+        toast.success(t("exitImpersonationSuccess"));
         window.location.href = "/system-admin/tenants";
       } else {
-        toast.error("Failed to exit impersonation");
+        toast.error(t("exitImpersonationError"));
         setIsExiting(false);
       }
     } catch {
-      toast.error("Error exiting impersonation");
+      toast.error(t("exitImpersonationError"));
       setIsExiting(false);
     }
   };

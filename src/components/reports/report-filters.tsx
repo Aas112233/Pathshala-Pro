@@ -57,18 +57,19 @@ export function ReportFilters({
   showStatusFilter = false,
   showPaymentMethodFilter = false,
   showExamTypeFilter = false,
-  statusOptions = [
-    { value: "PENDING", label: "Pending" },
-    { value: "PAID", label: "Paid" },
-    { value: "PARTIAL", label: "Partial" },
-    { value: "OVERDUE", label: "Overdue" },
-  ],
+  statusOptions,
   classes = [],
   sections = [],
   groups = [],
   exportComponent,
 }: ReportFiltersProps) {
   const t = useTranslations("reports");
+  const resolvedStatusOptions = statusOptions ?? [
+    { value: "PENDING", label: t("filters.pending") },
+    { value: "PAID", label: t("filters.paid") },
+    { value: "PARTIAL", label: t("filters.partial") },
+    { value: "OVERDUE", label: t("filters.overdue") },
+  ];
 
   const handleFromDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFilterChange({ ...filters, fromDate: e.target.value });
@@ -134,10 +135,10 @@ export function ReportFilters({
               <Label>{t("filters.class")}</Label>
               <Select value={filters.classId || ""} onValueChange={handleClassChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
+                  <SelectValue placeholder={t("filters.selectClass")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Classes</SelectItem>
+                  <SelectItem value="all">{t("filters.allClasses")}</SelectItem>
                   {classes.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
@@ -154,10 +155,10 @@ export function ReportFilters({
               <Label>{t("filters.section")}</Label>
               <Select value={filters.sectionId || ""} onValueChange={handleSectionChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select section" />
+                  <SelectValue placeholder={t("filters.selectSection")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
+                  <SelectItem value="all">{t("filters.allSections")}</SelectItem>
                   {sections.map((section) => (
                     <SelectItem key={section.id} value={section.id}>
                       {section.name}
@@ -174,10 +175,10 @@ export function ReportFilters({
               <Label>{t("filters.group")}</Label>
               <Select value={filters.groupId || ""} onValueChange={handleGroupChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select group" />
+                  <SelectValue placeholder={t("filters.selectGroup")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Groups</SelectItem>
+                  <SelectItem value="all">{t("filters.allGroups")}</SelectItem>
                   {groups.map((group) => (
                     <SelectItem key={group.id} value={group.id}>
                       {group.name}
@@ -194,11 +195,11 @@ export function ReportFilters({
               <Label>{t("filters.status")}</Label>
               <Select value={filters.status || ""} onValueChange={handleStatusChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue placeholder={t("filters.selectStatus")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  {statusOptions.map((option) => (
+                  <SelectItem value="all">{t("filters.allStatus")}</SelectItem>
+                  {resolvedStatusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -217,12 +218,12 @@ export function ReportFilters({
                 onValueChange={handlePaymentMethodChange}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select payment method" />
+                  <SelectValue placeholder={t("filters.selectPaymentMethod")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Methods</SelectItem>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="DIGITAL">Digital</SelectItem>
+                  <SelectItem value="all">{t("filters.allMethods")}</SelectItem>
+                  <SelectItem value="CASH">{t("filters.cash")}</SelectItem>
+                  <SelectItem value="DIGITAL">{t("filters.digital")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -234,16 +235,16 @@ export function ReportFilters({
               <Label>{t("filters.examType")}</Label>
               <Select value={filters.examType || ""} onValueChange={handleExamTypeChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select exam type" />
+                  <SelectValue placeholder={t("filters.selectExamType")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Exam Types</SelectItem>
-                  <SelectItem value="MID_TERM">Mid Term</SelectItem>
-                  <SelectItem value="FINAL">Final</SelectItem>
-                  <SelectItem value="UNIT_TEST">Unit Test</SelectItem>
-                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                  <SelectItem value="HALF_YEARLY">Half Yearly</SelectItem>
-                  <SelectItem value="ANNUAL">Annual</SelectItem>
+                  <SelectItem value="all">{t("filters.allExamTypes")}</SelectItem>
+                  <SelectItem value="MID_TERM">{t("filters.midTerm")}</SelectItem>
+                  <SelectItem value="FINAL">{t("filters.final")}</SelectItem>
+                  <SelectItem value="UNIT_TEST">{t("filters.unitTest")}</SelectItem>
+                  <SelectItem value="QUARTERLY">{t("filters.quarterly")}</SelectItem>
+                  <SelectItem value="HALF_YEARLY">{t("filters.halfYearly")}</SelectItem>
+                  <SelectItem value="ANNUAL">{t("filters.annual")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

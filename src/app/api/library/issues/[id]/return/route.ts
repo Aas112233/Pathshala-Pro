@@ -23,6 +23,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json().catch(() => ({}));
     let fineAmount: number = 0;
     if (typeof body.fineAmount === "number") {
+      if (!Number.isFinite(body.fineAmount) || body.fineAmount < 0) {
+        return badRequest("Fine amount must be a non-negative finite number");
+      }
       fineAmount = body.fineAmount;
     } else {
       // Auto-calc
@@ -33,13 +36,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    const [updated] = await prisma.$transaction([
-      prisma.bookIssue.update({
-        where: { id },
+    const updated = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.bookIssue.updateMany({
+        where: { id, tenantId, status: { not: "RETURNED" } },
         data: { status: "RETURNED", returnDate: new Date(), fineAmount },
-      }),
-      prisma.book.update({ where: { id: issue.bookId }, data: { availableCopies: { increment: 1 } } }),
-    ]);
+      });
+      if (claimed.count !== 1) throw new Error("Already returned");
+      await tx.book.update({ where: { id: issue.bookId }, data: { availableCopies: { increment: 1 } } });
+      return tx.bookIssue.findUniqueOrThrow({ where: { id } });
+    });
 
     return successResponse(updated, "Book returned");
   } catch (error) {

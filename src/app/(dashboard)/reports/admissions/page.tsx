@@ -30,6 +30,7 @@ import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 
 interface AdmissionRecord {
   id: string;
@@ -136,7 +137,7 @@ export default function AdmissionsReportPage() {
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate admissions report:", error);
-      toast.error("Failed to generate admissions conversion report");
+      toast.error(t("generateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -159,19 +160,19 @@ export default function AdmissionsReportPage() {
   const handleExportExcel = async () => {
     const result = await exportAdmissionsReport(data, {
       from: fromDate || "All Time",
-      to: toDate || "Present",
+      to: toDate || t("present"),
     });
     if (result.success) {
-      toast.success("Admissions conversion report exported to Excel");
+      toast.success(t("exportedExcel"));
       return;
     }
-    toast.error("Failed to export admissions report");
+    toast.error(t("exportFailed"));
   };
 
   const columns: ColumnDef<AdmissionRecord>[] = [
     {
       accessorKey: "studentName",
-      header: "Applicant / Student",
+      header: t("applicantStudent"),
       cell: (info: any) => (
         <div>
           <p className="font-semibold text-foreground text-xs">{info?.row?.original?.studentName ?? info?.studentName ?? "-"}</p>
@@ -181,12 +182,12 @@ export default function AdmissionsReportPage() {
     },
     {
       accessorKey: "phone",
-      header: "Contact Phone",
+      header: t("contactPhone"),
       cell: (info: any) => <span className="font-mono text-xs">{info?.row?.original?.phone ?? info?.phone ?? "-"}</span>,
     },
     {
       accessorKey: "className",
-      header: "Target Grade",
+      header: t("targetGrade"),
       cell: (info: any) => (
         <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-md">
           {info?.row?.original?.className ?? info?.className ?? "-"}
@@ -195,7 +196,7 @@ export default function AdmissionsReportPage() {
     },
     {
       accessorKey: "source",
-      header: "Lead Source",
+      header: t("leadSource"),
       cell: (info: any) => (
         <span className="text-xs font-mono uppercase text-muted-foreground">
           {info?.row?.original?.source ?? info?.source ?? "-"}
@@ -204,7 +205,7 @@ export default function AdmissionsReportPage() {
     },
     {
       accessorKey: "status",
-      header: "Pipeline Status",
+      header: t("pipelineStatus"),
       cell: (info: any) => {
         const s = info?.row?.original?.status ?? info?.status ?? "ENQUIRY";
         const variant =
@@ -214,14 +215,14 @@ export default function AdmissionsReportPage() {
     },
     {
       accessorKey: "assignedToName",
-      header: "Admission Officer",
+      header: t("admissionOfficer"),
       cell: (info: any) => (
         <span className="text-xs text-muted-foreground">{info?.row?.original?.assignedToName ?? info?.assignedToName ?? "-"}</span>
       ),
     },
     {
       accessorKey: "createdAt",
-      header: "Enquiry Date",
+      header: t("enquiryDate"),
       cell: (info: any) => (
         <span className="text-xs font-mono text-muted-foreground">
           {formatDate(info?.row?.original?.createdAt ?? info?.createdAt ?? "")}
@@ -270,7 +271,7 @@ export default function AdmissionsReportPage() {
       <div className="rounded-lg border border-border/80 bg-card p-4 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">From Date</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("fromDate")}</label>
             <input
               type="date"
               value={fromDate}
@@ -280,7 +281,7 @@ export default function AdmissionsReportPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">To Date</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("toDate")}</label>
             <input
               type="date"
               value={toDate}
@@ -290,57 +291,23 @@ export default function AdmissionsReportPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Pipeline Status</label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Statuses</option>
-              <option value="NEW">New Lead</option>
-              <option value="CONTACTED">Contacted</option>
-              <option value="VISITED">Campus Visited</option>
-              <option value="ADMITTED">Admitted / Enrolled</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Lead Source</label>
-            <select
-              value={selectedSource}
-              onChange={(e) => setSelectedSource(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Sources</option>
-              <option value="WALK_IN">Walk In</option>
-              <option value="PHONE">Phone Inquiry</option>
-              <option value="WEBSITE">Website Form</option>
-              <option value="REFERRAL">Parent Referral</option>
-              <option value="SOCIAL">Social Media</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Target Class</label>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Classes</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>
-                  {cls.name}
-                </option>
-              ))}
-            </select>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("pipelineStatus")}</label>
+            <AppDropdown
+            value={selectedClass}
+            onChange={(v) => setSelectedClass(v)}
+            options={[
+              { value: "ALL", label: "All Classes" },
+              ...classes.map((cls: any) => ({ value: cls.id, label: cls.name }))
+            ]}
+            searchable
+            className="w-48"
+          />
           </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
           <Button variant="ghost" size="sm" onClick={handleReset} className="text-xs h-8">
-            Reset
+            {t("reset")}
           </Button>
           <Button
             size="sm"
@@ -348,7 +315,7 @@ export default function AdmissionsReportPage() {
             disabled={isLoading}
             className="text-xs h-8 bg-primary text-primary-foreground"
           >
-            {isLoading ? "Generating..." : "Generate Report"}
+            {isLoading ? t("generating") : t("generateReport")}
           </Button>
         </div>
       </div>
@@ -357,33 +324,33 @@ export default function AdmissionsReportPage() {
       {hasGenerated && metrics && (
         <>
           <ReportSummaryBar
-            dateRangeLabel={`${fromDate || "Start"} to ${toDate || "Present"}`}
+            dateRangeLabel={`${fromDate || t("start")} to ${toDate || t("present")}`}
             generatedAtLabel={generatedAt}
             recordCount={data.length}
             appliedFilters={[
-              { label: "Range", value: `${fromDate || "Start"} to ${toDate || "Present"}` },
+              { label: t("range"), value: `${fromDate || t("start")} to ${toDate || t("present")}` },
             ]}
           />
 
           {/* Metric Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ReportMetricCard
-              title="Total Enquiries"
+              title={t("totalEnquiries")}
               value={metrics.totalEnquiries}
               icon={Users}
             />
             <ReportMetricCard
-              title="Admitted Students"
+              title={t("admittedStudents")}
               value={metrics.admittedCount}
               icon={CheckCircle2}
             />
             <ReportMetricCard
-              title="Conversion Rate"
+              title={t("conversionRate")}
               value={`${metrics.conversionRate}%`}
               icon={TrendingUp}
             />
             <ReportMetricCard
-              title="Pending Follow-ups"
+              title={t("pendingFollowups")}
               value={metrics.pendingFollowups}
               icon={Clock}
             />
@@ -392,13 +359,13 @@ export default function AdmissionsReportPage() {
           {/* Charts Row */}
           <div className="grid gap-6 md:grid-cols-2">
             <BarChart
-              title="Leads by Source"
-              description="Marketing channel distribution for applicant inquiries"
+              title={t("leadsBySource")}
+              description={t("leadsBySourceDescription")}
               data={barChartData}
             />
             <PieChart
-              title="Pipeline Status Breakdown"
-              description="Distribution of applicant statuses across the intake funnel"
+              title={t("pipelineStatusBreakdown")}
+              description={t("pipelineStatusBreakdownDescription")}
               data={statusPieData}
             />
           </div>
@@ -416,8 +383,8 @@ export default function AdmissionsReportPage() {
 
       {!hasGenerated && (
         <ReportEmptyState
-          title="No Admissions Report Generated"
-          description="Select date range, pipeline status, lead source, and target class filters above then click Generate Report."
+          title={t("noReportTitle")}
+          description={t("noReportDescription")}
         />
       )}
     </ReportPageShell>

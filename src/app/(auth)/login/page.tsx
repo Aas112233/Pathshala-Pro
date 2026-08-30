@@ -202,7 +202,7 @@ export default function LoginPage() {
           <div className="relative h-full w-full overflow-hidden rounded-[2rem]">
             <Image
               src="/login-bg.png"
-              alt={t("login.alt.studentsImage")}
+              alt={t("students")}
               fill
               className="object-cover transition-transform duration-[10s] hover:scale-110"
               priority
@@ -219,13 +219,21 @@ export default function LoginPage() {
               <span className="flex items-center gap-3.5">
                 <div className="relative h-14 w-14 overflow-hidden rounded-[12px] border border-white/10 shadow-sm">
                   <Image
-                    src="/pathshalapro-app-icon.webp"
-                    alt="App Icon"
+                    src="/logo.png"
+                    alt="Pathshala Pro Logo"
                     fill
-                    className="rounded-[12px] object-cover object-[center_72%] scale-110"
+                    className="object-cover"
+                    priority
                   />
                 </div>
-                Pathshala Pro
+                <div>
+                  <span className="block text-lg font-black tracking-tight text-white">
+                    Pathshala Pro
+                  </span>
+                  <span className="block text-[11px] font-medium tracking-wide text-indigo-300">
+                    Smart Education ERP
+                  </span>
+                </div>
               </span>
             </div>
 
@@ -242,9 +250,9 @@ export default function LoginPage() {
                   <GraduationCap className="h-4 w-4" />
                 </div>
                 <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">{t("dashboard.stats.studentsCount")}</p>
+                  <p className="text-sm font-bold text-white">{t("studentsStat")}</p>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    {t("dashboard.stats.studentsLabel")}
+                    {t("students")}
                   </p>
                 </div>
               </div>
@@ -256,9 +264,9 @@ export default function LoginPage() {
                   <Building2 className="h-4 w-4" />
                 </div>
                 <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">{t("dashboard.stats.institutesCount")}</p>
+                  <p className="text-sm font-bold text-white">{t("institutesStat")}</p>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    {t("dashboard.stats.institutesLabel")}
+                    {t("institutes")}
                   </p>
                 </div>
               </div>
@@ -270,9 +278,9 @@ export default function LoginPage() {
                   <Zap className="h-4 w-4" />
                 </div>
                 <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">{t("dashboard.stats.uptimeValue")}</p>
+                  <p className="text-sm font-bold text-white">{t("uptimeStat")}</p>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    {t("dashboard.stats.uptimeLabel")}
+                    {t("uptime")}
                   </p>
                 </div>
               </div>
@@ -383,7 +391,7 @@ export default function LoginPage() {
                 {t("welcome")}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t("login.description")}
+                {t("description")}
               </p>
             </div>
 
@@ -483,9 +491,9 @@ export default function LoginPage() {
 
               <div className="text-center pt-4">
                 <p className="text-xs text-slate-500">
-                  {t("login.newSchool")}{" "}
+                  {t("newSchool")}{" "}
                   <Link href="/onboarding" className="font-semibold text-primary hover:underline">
-                    {t("login.onboardTrial")}
+                    {t("onboardTrial")}
                   </Link>
                 </p>
               </div>

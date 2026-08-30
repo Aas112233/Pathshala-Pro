@@ -77,7 +77,7 @@ export function handleApiError(
     }));
 
     const summary = details
-      .map((err) => (err.field ? `${err.field}: ${err.message}` : err.message))
+      .map((err) => (err.field ? `${err.field}: ${err.message}${err.code ? ` (${err.code})` : ""}` : err.message))
       .filter(Boolean)
       .join("; ");
 

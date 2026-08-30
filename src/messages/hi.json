@@ -38,7 +38,15 @@
     "rowsPerPage": "प्रति पृष्ठ पंक्तियाँ",
     "noData": "कोई डेटा उपलब्ध नहीं",
     "connectDb": "लाइव डेटा देखने के लिए डेटाबेस कनेक्ट करें।",
-    "students": "छात्र"
+    "accessRestricted": "पहुंच प्रतिबंधित है",
+    "noPermission": "आपको यह अनुभाग देखने की अनुमति नहीं है।",
+    "students": "छात्र",
+    "modal": {
+      "close": "मोडल बंद करें"
+    },
+    "required": "आवश्यक है",
+    "pleaseFillRequired": "कृपया सभी आवश्यक फ़ील्ड भरें।",
+    "validationFailed": "कृपया हाइलाइट किए गए फ़ील्ड जांचें।"
   },
   "sidebar": {
     "search": {
@@ -293,6 +301,14 @@
     "welcomeToast": "वापसी पर स्वागत है!",
     "invalidCredentials": "क्रेडेंशियल अमान्य हैं। फिर प्रयास करें।",
     "currentDate": "वर्तमान तारीख",
+    "login": {
+      "description": "अपने स्कूल प्रबंधन क्लाउड पोर्टल में साइन इन करें",
+      "newSchool": "नया स्कूल?",
+      "onboardTrial": "अपना संस्थान जोड़ें (30 दिन का निःशुल्क ट्रायल)",
+      "alt": {
+        "studentsImage": "कक्षा में साथ सीखते हुए विद्यार्थी"
+      }
+    },
     "signOut": "साइन आउट",
     "studentsStat": "12,000+",
     "institutesStat": "500+",
@@ -354,6 +370,10 @@
     "recentAdmissions": "हालिया प्रवेश"
   },
   "admissions": {
+    "blankFormDownloaded": "रिक्त प्रवेश फॉर्म PDF डाउनलोड हो गया",
+    "blankFormDownloadFailed": "रिक्त प्रवेश फॉर्म PDF डाउनलोड करने में विफल",
+    "blankFormTitle": "प्रिंट करने योग्य रिक्त प्रवेश फॉर्म / आवेदन किट",
+    "blankForm": "रिक्त फॉर्म",
     "title": "प्रवेश",
     "description": "छात्र प्रवेशों और कक्षा नामांकन प्रबंधित करें",
     "addAdmission": "प्रवेश जोड़ें",
@@ -413,6 +433,8 @@
     "requiredField": "{field} आवश्यक है"
   },
   "students": {
+    "admissionFormDownloaded": "प्रवेश फॉर्म PDF डाउनलोड हो गया",
+    "admissionFormFailed": "फॉर्म बनाने में विफल",
     "title": "छात्र",
     "description": "छात्र प्रोफाइल, नामांकन, और रिकॉर्ड प्रबंधन।",
     "addStudent": "छात्र जोड़ें",
@@ -484,6 +506,7 @@
       "description": "अपना पहला छात्र जोड़कर शुरुआत करें या अपने फ़िल्टर बदलें।"
     },
     "actions": {
+      "export": "निर्यात करें",
       "view": "देखें",
       "edit": "संपादित करें",
       "delete": "हटाएं",
@@ -597,7 +620,9 @@
       "gender": "लिंग:",
       "previewPhoto": "{name} की फ़ोटो का पूर्वावलोकन करने के लिए क्लिक करें",
       "profilePhotoAlt": "{name} की प्रोफ़ाइल फ़ोटो"
-    }
+    },
+    "idCards": "ID Cards",
+    "admissionForm": "Admission Form"
   },
   "fees": {
     "title": "शुल्क प्रबंधन केंद्र",
@@ -705,6 +730,9 @@
     }
   },
   "staff": {
+    "noStaffToPrint": "प्रिंट करने के लिए कोई स्टाफ नहीं है",
+    "staffIdCardsDownloaded": "स्टाफ आईडी कार्ड ({count}) PDF डाउनलोड हो गए",
+    "pdfFailed": "PDF बनाने में विफल",
     "title": "कर्मचारी",
     "description": "कर्मचारी प्रोफाइल और रोजगार रिकॉर्ड।",
     "addStaff": "कर्मचारी जोड़ें",
@@ -728,8 +756,8 @@
     },
     "searchPlaceholder": "Search by name, ID, or department...",
     "confirmDelete": "Are you sure you want to delete this staff member?",
-    "deleteSuccess": "Staff member deleted successfully",
-    "deleteError": "Failed to delete staff member",
+    "deleteSuccess": "कर्मचारी सदस्य सफलतापूर्वक हटाया गया!",
+    "deleteError": "कर्मचारी सदस्य हटाने में विफल",
     "status": {
       "active": "Active",
       "inactive": "Inactive"
@@ -738,7 +766,14 @@
       "department": {
         "all": "All Departments"
       }
-    }
+    },
+    "staffIDs": "स्टाफ आईडी कार्ड",
+    "createSuccess": "कर्मचारी सदस्य सफलतापूर्वक जोड़ा गया!",
+    "updateSuccess": "कर्मचारी सदस्य सफलतापूर्वक अपडेट किया गया!",
+    "activatedSuccess": "कर्मचारी सदस्य सक्रिय हो गया!",
+    "deactivatedSuccess": "कर्मचारी सदस्य निष्क्रिय हो गया!",
+    "createError": "कर्मचारी सदस्य बनाने में विफल",
+    "updateError": "कर्मचारी सदस्य अपडेट करने में विफल"
   },
   "salary": {
     "title": "वेतन / वेतनपत्र",
@@ -768,7 +803,7 @@
     },
     "searchPlaceholder": "Search by staff name...",
     "confirmDelete": "Are you sure you want to delete this salary ledger?",
-    "deleteSuccess": "Salary ledger deleted successfully",
+    "deleteSuccess": "वेतन खाता सफलतापूर्वक हटाया गया!",
     "deleteError": "Failed to delete salary ledger",
     "status": {
       "paid": "Paid",
@@ -971,7 +1006,12 @@
         "processSingle": "एकल वेतन प्रोसेस करें"
       },
       "paymentMethodBankTransfer": "बैंक ट्रांसफर"
-    }
+    },
+    "createSuccess": "वेतन खाता सफलतापूर्वक बनाया गया!",
+    "updateSuccess": "वेतन खाता सफलतापूर्वक अपडेट किया गया!",
+    "paymentSuccess": "भुगतान सफलतापूर्वक दर्ज किया गया!",
+    "bulkPayrollSuccess": "थोक पेरोल सफलतापूर्वक संसाधित किया गया!",
+    "error": "वेतन कार्रवाई संसाधित करने में विफल"
   },
   "attendance": {
     "title": "उपस्थिति",
@@ -1048,6 +1088,13 @@
     "historicalLogs": "ऐतिहासिक लॉग"
   },
   "exams": {
+    "batchAdmitCardsDownloaded": "बैच प्रवेश पत्र ({count}) PDF डाउनलोड हो गए",
+    "admitCardDownloaded": "प्रवेश पत्र PDF डाउनलोड हो गया",
+    "admitCardFailed": "प्रवेश पत्र बनाने में विफल",
+    "transcriptDownloaded": "ट्रांसक्रिप्ट PDF डाउनलोड हो गया",
+    "pdfFailed": "PDF बनाने में विफल",
+    "singleAdmitCard": "एकल प्रवेश पत्र",
+    "noExam": "कोई परीक्षा नहीं",
     "title": "परीक्षा",
     "description": "परीक्षा और छात्र परिणाम।",
     "createExam": "परीक्षा बनाएं",
@@ -1153,6 +1200,8 @@
     "editExamDescription": "परीक्षा की जानकारी और विषय अपडेट करें",
     "examNotFound": "परीक्षा नहीं मिली",
     "resultsEntry": {
+      "marksLockedDuePromotion": "पदोन्नति के कारण इस छात्र के अंक लॉक हैं।",
+      "allMarksLockedDuePromotion": "पदोन्नति के कारण इस विषय के सभी छात्रों के अंक लॉक हैं।",
       "title": "परीक्षा परिणाम प्रविष्टि",
       "description": "परीक्षा परिणाम दर्ज और प्रबंधित करें",
       "backToExams": "परीक्षाओं पर वापस जाएं",
@@ -1216,9 +1265,27 @@
     },
     "examNamePlaceholder": "मध्यावधि परीक्षा 2025",
     "to": "तक",
-    "notAvailable": "उपलब्ध नहीं"
+    "notAvailable": "उपलब्ध नहीं",
+    "admitCard": "प्रवेश पत्र",
+    "downloadAdmitCard": "प्रवेश पत्र PDF डाउनलोड करें",
+    "batchAdmitCards": "बैच प्रवेश पत्र",
+    "transcriptPDF": "ट्रांसक्रिप्ट PDF",
+    "subjectCreated": "विषय सफलतापूर्वक बनाया गया!",
+    "subjectUpdated": "विषय सफलतापूर्वक अपडेट किया गया!",
+    "subjectDeleted": "विषय सफलतापूर्वक हटाया गया!",
+    "examCreated": "परीक्षा सफलतापूर्वक बनाई गई!",
+    "examUpdated": "परीक्षा सफलतापूर्वक अपडेट की गई!",
+    "examDeleted": "परीक्षा सफलतापूर्वक हटाई गई!",
+    "resultsSaved": "परीक्षा परिणाम सफलतापूर्वक सहेजे गए!",
+    "promotionRuleCreated": "पदोन्नति नियम सफलतापूर्वक बनाया गया!",
+    "promotionsExecuted": "पदोन्नति सफलतापूर्वक निष्पादित की गई!",
+    "error": "परीक्षा कार्रवाई में विफल"
   },
   "results": {
+    "marksLockedDuePromotion": "पदोन्नति के कारण इस छात्र के अंक लॉक हैं।",
+    "editMarks": "अंक संपादित करें",
+    "examResultLockedDuePromotion": "छात्र की पदोन्नति हो चुकी है, इसलिए परीक्षा परिणाम लॉक है।",
+    "transcriptDownloaded": "ट्रांसक्रिप्ट PDF डाउनलोड हो गया",
     "title": "परीक्षा परिणाम",
     "description": "परीक्षा परिणाम दर्ज और प्रबंधित करें",
     "enterResults": "परिणाम दर्ज करें",
@@ -1304,7 +1371,8 @@
     "passedStatus": "उत्तीर्ण",
     "failedStatus": "अनुत्तीर्ण",
     "notAvailable": "उपलब्ध नहीं",
-    "gradebookSummary": "कक्षा के परिणाम, स्वचालित मेरिट रैंकिंग और एक-क्लिक बैच पीडीएफ निर्यात"
+    "gradebookSummary": "कक्षा के परिणाम, स्वचालित मेरिट रैंकिंग और एक-क्लिक बैच पीडीएफ निर्यात",
+    "transcriptPDF": "Transcript PDF"
   },
   "academicYear": {
     "title": "शैक्षणिक वर्ष और सत्र",
@@ -1349,6 +1417,7 @@
     "createError": "शैक्षणिक वर्ष बनाने में विफल",
     "deleteSession": "सत्र हटाएं",
     "sessionsUnit": "सत्र",
+    "yearBadge": "शैक्षिक वर्ष",
     "sessionIdentification": "सत्र पहचान",
     "sessionIdentificationDescription": "मानक सत्र पहचान और प्रदर्शन शीर्षक दर्ज करें।",
     "yearIdHelper": "सिस्टम इंडेक्सिंग के लिए विशिष्ट पहचान कोड (उदा. 2026-2027)",
@@ -1394,7 +1463,12 @@
     "status": {
       "active": "Active",
       "inactive": "Inactive"
-    }
+    },
+    "permissionsReset": "अनुमतियां भूमिका डिफ़ॉल्ट पर रीसेट की गईं",
+    "permissionsUpdated": "अनुमतियां सफलतापूर्वक अपडेट की गईं",
+    "userCreated": "उपयोगकर्ता सफलतापूर्वक बनाया गया",
+    "userUpdated": "उपयोगकर्ता सफलतापूर्वक अपडेट किया गया",
+    "fillRequired": "कृपया सभी आवश्यक फ़ील्ड भरें।"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -1530,7 +1604,9 @@
         "DD_MM_YYYY_DASH": "DD-MM-YYYY (31-12-2026)",
         "DD_MMM_YYYY": "DD MMM YYYY (31 दिसंबर 2026)",
         "MMM_DD_YYYY": "MMM DD, YYYY (31 दिसंबर 2026)",
-        "D_MMMM_YYYY": "D MMMM YYYY (31 दिसंबर 2026)"
+        "D_MMMM_YYYY": "D MMMM YYYY (31 दिसंबर 2026)",
+        "time24": "24 घंटे (14:30)",
+        "time12": "12 घंटे (2:30 PM)"
       },
       "timezoneDhaka": "एशिया/ढाका (GMT+6)",
       "timezoneKolkata": "एशिया/कोलकाता (GMT+5:30)",
@@ -1552,7 +1628,49 @@
       "timezoneLabel": "समय क्षेत्र",
       "firstDayLabel": "सप्ताह का पहला दिन",
       "academicYearLabel": "शैक्षणिक वर्ष की शुरुआत",
-      "gradingLabel": "ग्रेडिंग प्रणाली"
+      "gradingLabel": "ग्रेडिंग प्रणाली",
+      "paymentMethodsTab": "भुगतान के तरीके",
+      "paymentMethodsTabShort": "भुगतान"
+    },
+    "paymentMethods": {
+      "title": "कस्टम भुगतान विधियां और गेटवे",
+      "description": "गतिशील भुगतान चैनल, काउंटर विधियां कॉन्फ़िगर करें और उन्हें जनरल लेज़र संपत्ति खातों से जोड़ें।",
+      "activeCount": "{total} में से {active} सक्रिय विधियां",
+      "resetDefaults": "डिफ़ॉल्ट पर रीसेट करें",
+      "addMethod": "भुगतान विधि जोड़ें",
+      "defaultBadge": "डिफ़ॉल्ट",
+      "glPrefix": "जीएल",
+      "cashInHand": "हाथ में नकद",
+      "bankDigital": "बैंक / डिजिटल",
+      "setAsDefault": "डिफ़ॉल्ट के रूप में सेट करें",
+      "edit": "संपादित करें",
+      "delete": "हटाएं",
+      "modal": {
+        "titleAdd": "नई भुगतान विधि जोड़ें",
+        "titleEdit": "भुगतान विधि संपादित करें",
+        "nameLabel": "भुगतान विधि का नाम *",
+        "namePlaceholder": "जैसे यूपीआई क्यूआर, स्टेट बैंक, काउंटर नकद",
+        "codeLabel": "आंतरिक कोड *",
+        "codePlaceholder": "जैसे UPI_MERCHANT",
+        "typeLabel": "चैनल प्रकार",
+        "typeDigital": "मोबाइल वॉलेट / डिजिटल गेटवे",
+        "typeBank": "बैंक खाता / ट्रांसफर",
+        "typeCash": "हाथ में नकद",
+        "typeCheque": "चेक / ड्राफ्ट",
+        "typePos": "पीओएस मशीन / कार्ड",
+        "glAccountLabel": "जनरल लेज़र खाता कोड",
+        "glAccount1010": "1010 - बैंक खाते और गेटवे (डेबिट संपत्ति)",
+        "glAccount1020": "1020 - हाथ में नकद",
+        "glAccount1030": "1030 - प्राप्य खाते",
+        "glHint": "एकत्र करने पर डबल-एंट्री लेनदेन स्वचालित रूप से इस लेज़र को डेबिट करेगा।",
+        "instructionsLabel": "भुगतान निर्देश / नोट्स (वैकल्पिक)",
+        "instructionsPlaceholder": "जैसे काउंटर #2 पर क्यूआर स्कैन करें या खाते में भेजें",
+        "activeInPos": "पीओएस काउंटर पर सक्रिय",
+        "activeInPosDesc": "कैशियर को यह विधि चुनने की अनुमति दें",
+        "cancel": "रद्द करें",
+        "saveChanges": "परिवर्तन सहेजें",
+        "addBtn": "विधि जोड़ें"
+      }
     }
   },
   "subjects": {
@@ -1654,6 +1772,7 @@
     "reExamAllowed": "Re-exam Allowed",
     "reExamRequired": "Re-exam Required",
     "calculator": {
+      "prepareFailed": "पदोन्नति डेटा तैयार नहीं हो सका। छात्र आईडी या अगली कक्षा का कॉन्फ़िगरेशन उपलब्ध नहीं है।",
       "title": "पदोन्नति कैलकुलेटर",
       "description": "शैक्षणिक प्रदर्शन और उपस्थिति के आधार पर छात्र पदोन्नति पात्रता की गणना और समीक्षा करें",
       "backToRules": "नियमों पर वापस जाएं",
@@ -1826,6 +1945,10 @@
     "noSubjectsAvailable": "कोई विषय उपलब्ध नहीं है। पहले विषय बनाएं।",
     "editToAssignSubjects": "विषय असाइन करने के लिए इस कक्षा को संपादित करें।",
     "unknownSubject": "अज्ञात",
+    "studentAppShort": "छा",
+    "parentAppShort": "अ",
+    "subjectCategoryCompulsory": "अनिवार्य",
+    "subjectCategoryElective": "वैकल्पिक",
     "studentsTitle": "छात्र",
     "subjectsTitle": "विषय"
   },
@@ -1895,7 +2018,22 @@
     "system": "सिस्टम संचालन",
     "featureFlags": "फ़ीचर फ़्लैग",
     "users": "प्लेटफ़ॉर्म उपयोगकर्ता",
-    "settings": "प्लेटफ़ॉर्म सेटिंग्स"
+    "settings": "प्लेटफ़ॉर्म सेटिंग्स",
+    "broadcastRequired": "कृपया प्रसारण शीर्षक और मुख्य भाग प्रदान करें",
+    "selectTenant": "कृपया लक्ष्य करने के लिए कम से कम एक स्कूल चुनें",
+    "broadcastNetworkError": "प्रसारण भेजने में नेटवर्क त्रुटि",
+    "tenantNameRequired": "स्कूल का नाम आवश्यक है",
+    "tenantConfigUpdated": "स्कूल कॉन्फ़िगरेशन सफलतापूर्वक अपडेट किया गया!",
+    "tenantNetworkError": "स्कूल अपडेट करने में नेटवर्क त्रुटि",
+    "passwordGenerated": "सुरक्षित अस्थायी पासवर्ड जनरेट किया गया",
+    "onboardSuccess": "संस्थान सफलतापूर्वक शामिल किया गया!",
+    "credentialsCopied": "क्रेडेंशियल क्लिपबोर्ड पर कॉपी किए गए",
+    "impersonateSuccess": "{name} के रूप में लॉग इन किया गया",
+    "impersonateError": "स्कूल का प्रतिरूपण करने में विफल",
+    "exitImpersonationSuccess": "सिस्टम व्यवस्थापक कंसोल पर वापस लौटे",
+    "exitImpersonationError": "प्रतिरूपण से बाहर निकलने में विफल",
+    "statusUpdated": "स्थिति सफलतापूर्वक अपडेट की गई!",
+    "statusError": "स्थिति अपडेट करने में विफल"
   },
   "sections": {
     "title": "वर्ग",
@@ -1946,6 +2084,7 @@
     "deleteFailed": "वर्ग हटाने में विफल",
     "requiredFields": "कृपया सभी आवश्यक फ़ील्ड भरें।",
     "classUnavailable": "उपलब्ध नहीं",
+    "requiredField": "{field} आवश्यक है",
     "classOption": "कक्षा {number}"
   },
   "reports": {
@@ -1953,6 +2092,34 @@
     "description": "संस्थागत विश्लेषण, ऑडिट और निर्यात योग्य रिपोर्टें",
     "overview": "रिपोर्ट अवलोकन",
     "feeReport": {
+      "status": "Status",
+      "method": "Method",
+      "cash": "Cash",
+      "digital": "Digital",
+      "voucherNo": "Voucher No.",
+      "studentName": "Student Name",
+      "class": "Class",
+      "section": "Section",
+      "totalAmount": "Total Amount",
+      "paid": "Paid",
+      "due": "Due",
+      "paymentMethod": "Payment Method",
+      "date": "Date",
+      "voucherStatusDistribution": "Voucher Status Distribution",
+      "pending": "Pending",
+      "partial": "Partial",
+      "overdue": "Overdue",
+      "voucherDetailsDescription": "Voucher-level detail for the selected period.",
+      "noVouchersTitle": "No vouchers found",
+      "noVouchersDescription": "Try another payment status, method, or date range.",
+      "generateTitle": "Generate a fee report",
+      "generateDescription": "Select the reporting period, then generate the report to review collection totals and export the result.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "present": "Present",
+      "generateFailed": "शुल्क रिपोर्ट बनाने में विफल",
+      "exported": "शुल्क रिपोर्ट निर्यात की गई",
+      "exportFailed": "शुल्क रिपोर्ट निर्यात करने में विफल",
       "title": "शुल्क संग्रह और बकाया रिपोर्ट",
       "description": "व्यापक शुल्क संग्रह, बकाया राशि और भुगतान विधि विश्लेषण",
       "totalCollected": "कुल संग्रहीत",
@@ -1963,18 +2130,156 @@
       "voucherDetails": "वाउचर विवरण"
     },
     "salaryReport": {
+      "staffId": "Staff ID",
+      "employeeName": "Employee Name",
+      "department": "Department",
+      "period": "Period",
+      "grossBase": "Gross Base",
+      "deductions": "Deductions",
+      "netPayable": "Net Payable",
+      "paidAmount": "Paid Amount",
+      "status": "Status",
+      "disbursedPaid": "Disbursed / Paid",
+      "pendingPayout": "Pending Payout",
+      "deductionsWithheld": "Deductions/Withheld",
+      "year": "Year",
+      "month": "Month",
+      "allMonths": "All Months",
+      "allDepartments": "All Departments",
+      "academicTeaching": "Academic / Teaching",
+      "administration": "Administration",
+      "accountsFinance": "Accounts & Finance",
+      "supportTransport": "Support & Transport",
+      "payoutStatus": "Payout Status",
+      "allStatuses": "All Statuses",
+      "paidDisbursed": "Paid / Disbursed",
+      "partial": "Partial",
+      "all": "All",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "totalGrossPayroll": "Total Gross Payroll",
+      "netDisbursed": "Net Disbursed",
+      "pendingPayouts": "Pending Payouts",
+      "totalDeductions": "Total Deductions",
+      "payrollByDepartment": "Payroll by Department",
+      "payrollByDepartmentDescription": "Gross salary allocation across departments",
+      "disbursementComposition": "Disbursement Composition",
+      "disbursementCompositionDescription": "Ratio of disbursed vs pending vs deductions",
+      "noReportTitle": "No Payroll Report Generated",
+      "noReportDescription": "Select fiscal year, month, and department filters above then click Generate Report.",
+      "generateFailed": "वेतन पेरोल रिपोर्ट बनाने में विफल",
+      "exportedExcel": "पेरोल रिपोर्ट Excel में निर्यात की गई",
+      "exportFailed": "पेरोल रिपोर्ट निर्यात करने में विफल",
       "title": "कर्मचारी वेतन और पेरोल रिपोर्ट",
       "description": "मासिक वेतन वितरण, सकल वेतन, कटौतियाँ और लंबित भुगतान"
     },
     "financialReport": {
+      "voucherNumber": "Voucher #",
+      "descriptionPurpose": "Description / Purpose",
+      "category": "Category",
+      "amount": "Amount",
+      "method": "Method",
+      "date": "Date",
+      "recordedBy": "Recorded By",
+      "cashExpenses": "Cash Expenses",
+      "bankDigital": "Bank & Digital",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "allCategories": "All Categories",
+      "allPaymentMethods": "All Payment Methods",
+      "cash": "Cash",
+      "bankAccount": "Bank Account",
+      "cheque": "Cheque",
+      "digitalGateway": "Digital Gateway",
+      "range": "Range",
+      "start": "Start",
+      "present": "Present",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "totalFeeCollections": "Total Fee Collections",
+      "totalOperationalExpenses": "Total Operational Expenses",
+      "netCashBalance": "Net Cash Balance",
+      "topExpenseCategory": "Top Expense Category",
+      "expensesByCategory": "Expenses by Category",
+      "expensesByCategoryDescription": "Spending breakdown across operational heads",
+      "paymentMethodsDistribution": "Payment Methods Distribution",
+      "paymentMethodsDistributionDescription": "Cash vs Bank disbursement proportion",
+      "noReportTitle": "No Financial Report Generated",
+      "noReportDescription": "Select date range, expense categories, and payment method filters above then click Generate Report.",
+      "generateFailed": "वित्तीय व्यय रिपोर्ट बनाने में विफल",
+      "exportedExcel": "वित्तीय व्यय रिपोर्ट Excel में निर्यात की गई",
+      "exportFailed": "वित्तीय रिपोर्ट निर्यात करने में विफल",
       "title": "वित्तीय व्यय और नकदी प्रवाह रिपोर्ट",
       "description": "परिचालन व्यय मदें, भुगतान वाउचर, शुल्क प्राप्तियां और शुद्ध नकदी शेष"
     },
     "admissionsReport": {
+      "applicantStudent": "Applicant / Student",
+      "contactPhone": "Contact Phone",
+      "targetGrade": "Target Grade",
+      "leadSource": "Lead Source",
+      "pipelineStatus": "Pipeline Status",
+      "admissionOfficer": "Admission Officer",
+      "enquiryDate": "Enquiry Date",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "allStatuses": "All Statuses",
+      "newLead": "New Lead",
+      "contacted": "Contacted",
+      "campusVisited": "Campus Visited",
+      "admittedEnrolled": "Admitted / Enrolled",
+      "rejected": "Rejected",
+      "allSources": "All Sources",
+      "walkIn": "Walk In",
+      "phoneInquiry": "Phone Inquiry",
+      "websiteForm": "Website Form",
+      "parentReferral": "Parent Referral",
+      "socialMedia": "Social Media",
+      "targetClass": "Target Class",
+      "allClasses": "All Classes",
+      "reset": "Reset",
+      "generating": "Generating...",
+      "generateReport": "Generate Report",
+      "start": "Start",
+      "present": "Present",
+      "range": "Range",
+      "totalEnquiries": "Total Enquiries",
+      "admittedStudents": "Admitted Students",
+      "conversionRate": "Conversion Rate",
+      "pendingFollowups": "Pending Follow-ups",
+      "leadsBySource": "Leads by Source",
+      "leadsBySourceDescription": "Marketing channel distribution for applicant inquiries",
+      "pipelineStatusBreakdown": "Pipeline Status Breakdown",
+      "pipelineStatusBreakdownDescription": "Distribution of applicant statuses across the intake funnel",
+      "noReportTitle": "No Admissions Report Generated",
+      "noReportDescription": "Select date range, pipeline status, lead source, and target class filters above then click Generate Report.",
+      "generateFailed": "प्रवेश रूपांतरण रिपोर्ट बनाने में विफल",
+      "exportedExcel": "प्रवेश रूपांतरण रिपोर्ट Excel में निर्यात की गई",
+      "exportFailed": "प्रवेश रिपोर्ट निर्यात करने में विफल",
       "title": "प्रवेश पाइपलाइन और रूपांतरण रिपोर्ट",
       "description": "पूछताछ ट्रैकिंग, लीड स्रोत, रूपांतरण दर और नामांकन आंकड़े"
     },
     "attendanceReport": {
+      "class": "Class",
+      "section": "Section",
+      "rollNo": "Roll No.",
+      "studentName": "Student Name",
+      "present": "Present",
+      "absent": "Absent",
+      "totalDays": "Total Days",
+      "attendancePercentage": "Attendance %",
+      "status": "Status",
+      "attendanceTrend": "Attendance Trend",
+      "attendanceDetails": "Attendance Details",
+      "attendanceDetailsDescription": "Attendance status for the generated period.",
+      "noDataTitle": "No attendance data found",
+      "noDataDescription": "Try a different period or broader class filters.",
+      "generateTitle": "Generate an attendance report",
+      "generateDescription": "Select the date range and optional class filters to review attendance trends and export the report.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "generateFailed": "उपस्थिति रिपोर्ट बनाने में विफल",
+      "exported": "उपस्थिति रिपोर्ट निर्यात की गई",
+      "exportFailed": "उपस्थिति रिपोर्ट ���िर्यात करने में विफल",
       "title": "छात्र उपस्थिति रिपोर्ट",
       "description": "दैनिक उपस्थिति, अनुपस्थिति पैटर्न और कक्षा उपस्थिति प्रतिशत",
       "averageAttendance": "औसत उपस्थिति",
@@ -1984,6 +2289,35 @@
       "classWiseAttendance": "कक्षानुसार उपस्थिति"
     },
     "studentReport": {
+      "admissionNo": "Admission No.",
+      "studentName": "Student Name",
+      "class": "Class",
+      "section": "Section",
+      "rollNo": "Roll No.",
+      "gender": "Gender",
+      "status": "Status",
+      "admissionDate": "Admission Date",
+      "guardianName": "Guardian Name",
+      "contact": "Contact",
+      "active": "Active",
+      "inactive": "Inactive",
+      "graduated": "Graduated",
+      "transferred": "Transferred",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "studentDetails": "Student Details",
+      "studentDetailsDescription": "Generated results based on the selected filters.",
+      "noStudentsTitle": "No students found",
+      "noStudentsDescription": "Try widening the date range or removing one of the filters.",
+      "generateTitle": "Generate a student report",
+      "generateDescription": "Select a period and optional filters, then generate the report to view metrics, charts, and export options.",
+      "generateReport": "Generate report",
+      "start": "Start",
+      "present": "Present",
+      "generateFailed": "छात्र रिपोर्ट बनाने में विफल",
+      "exported": "छात्र रिपोर्ट निर्यात की गई",
+      "exportFailed": "छात्र रिपोर्ट निर्यात करने में विफल",
       "title": "छात्र जनसांख्यिकी और नामांकन रिपोर्ट",
       "description": "सक्रिय नामांकन, कक्षा अनुसार वितरण और छात्र रिकॉर्ड",
       "totalStudents": "कुल छात्र",
@@ -2029,6 +2363,30 @@
       "examType": "परीक्षा प्रकार"
     },
     "filters": {
+      "selectClass": "कक्षा चुनें",
+      "allClasses": "सभी कक्षाएं",
+      "selectSection": "वर्ग चुनें",
+      "allSections": "सभी वर्ग",
+      "selectGroup": "समूह चुनें",
+      "allGroups": "सभी समूह",
+      "selectStatus": "स्थिति चुनें",
+      "allStatus": "सभी स्थितियां",
+      "pending": "लंबित",
+      "paid": "भुगतान किया गया",
+      "partial": "आंशिक",
+      "overdue": "अतिदेय",
+      "selectPaymentMethod": "भुगतान विधि चुनें",
+      "allMethods": "सभी विधियां",
+      "cash": "नकद",
+      "digital": "डिजिटल",
+      "selectExamType": "परीक्षा प्रकार चुनें",
+      "allExamTypes": "सभी परीक्षा प्रकार",
+      "midTerm": "मध्यावधि",
+      "final": "अंतिम",
+      "unitTest": "यूनिट टेस्ट",
+      "quarterly": "त्रैमासिक",
+      "halfYearly": "अर्धवार्षिक",
+      "annual": "वार्षिक",
       "fromDate": "से तिथि",
       "toDate": "तक तिथि",
       "class": "कक्षा",
@@ -2044,9 +2402,11 @@
       "exportPDF": "PDF निर्यात",
       "exportExcel": "Excel निर्यात",
       "exportCSV": "CSV निर्यात",
-      "print": "प्रिंट"
+      "print": "प्रिंट",
+      "export": "निर्यात करें"
     },
     "common": {
+      "export": "निर्यात करें",
       "generating": "बनाया जा रहा है...",
       "noData": "कोई डेटा उपलब्ध नहीं"
     }
@@ -2121,9 +2481,11 @@
       "vouchersCount": "{count} वाउचर",
       "metricStructure": "संरचना",
       "activeCategories": "सक्रिय श्रेणियाँ",
+      "categoriesUnit": "श्रेणियाँ",
       "expenseStreams": "व्यय धाराएँ",
       "metricAudit": "ऑडिट स्थिति",
       "avgVoucherSize": "औसत वाउचर आकार",
+      "averageVoucherUnit": "औसत / वाउचर",
       "perTransaction": "प्रति लेन-देन",
       "metricTreasury": "कोष",
       "cashVsBank": "नकद बनाम बैंक",
@@ -2684,7 +3046,7 @@
     "dayFriday": "शुक्रवार",
     "daySaturday": "शनिवार",
     "daySunday": "रविवार",
-    "period": "पीरियड {number}",
+    "period": "पीरियड",
     "break": "अवकाश",
     "tiffinBreak": "टिफिन ब्रेक",
     "subject": "विषय",
@@ -2704,10 +3066,32 @@
     "deleteFailed": "पीरियड हटाने में विफल",
     "confirmDelete": "क्या इस पीरियड को हटाना है?",
     "print": "रूटीन प्रिंट करें",
-    "copyToNextYear": "अगले वर्ष में कॉपी करें"
+    "copyToNextYear": "अगले वर्ष में कॉपी करें",
+    "printPDF": "टाइमटेबल PDF प्रिंट करें",
+    "periodAdded": "अवधि सफलतापूर्वक जोड़ी गई!",
+    "periodUpdated": "अवधि सफलतापूर्वक अपडेट की गई!",
+    "periodRemoved": "अवधि सफलतापूर्वक हटाई गई!",
+    "error": "समय सारिणी अवधि में विफल",
+    "periodWithNumber": "पीरियड {number}"
   },
   "notifications": {
     "title": "सूचनाएं और परिपत्र",
+    "automationTitle": "स्वचालित सूचना प्रेषण",
+    "automationDescription": "अभिभावकों को सूचित करने वाली घटनाएं और चैनल चुनें।",
+    "automationEnabled": "स्वचालित सूचनाएं सक्षम करें",
+    "channels": "प्रेषण चैनल",
+    "saveSettings": "सूचना सेटिंग सहेजें",
+    "saving": "सहेजा जा रहा है...",
+    "settingsSaved": "सूचना सेटिंग सहेजी गई",
+    "settingsSaveFailed": "सूचना सेटिंग सहेजने में विफल",
+    "settingsTab": "सूचनाएं",
+    "settingsShort": "अलर्ट",
+    "events": {
+      "ABSENCE_ALERT": "छात्र अनुपस्थिति अलर्ट",
+      "FEE_REMINDER": "शुल्क अनुस्मारक",
+      "EXAM_RESULT_PUBLISHED": "प्रकाशित परीक्षा परिणाम",
+      "EMERGENCY_BROADCAST": "आपातकालीन प्रसारण"
+    },
     "unreadCount": "{count} नई",
     "markAllRead": "सभी को पढ़ा हुआ चिह्नित करें",
     "markAsRead": "पढ़ा हुआ चिह्नित करें",
@@ -2737,6 +3121,9 @@
     "publishNotice": "सूचना प्रकाशित करें"
   },
   "enquiries": {
+    "search": "खोजें",
+    "phonePlaceholder": "01XXXXXXXXX",
+    "emailPlaceholder": "student@email.com",
     "title": "प्रवेश पूछताछ",
     "description": "लीड, फॉलो-अप और प्रवेश में रूपांतरण",
     "addEnquiry": "पूछताछ जोड़ें",
@@ -2762,7 +3149,7 @@
     "noEnquiries": "कोई पूछताछ नहीं मिली",
     "noEnquiriesHint": "वॉक-इन, कॉल या वेबसाइट लीड से पूछताछ जोड़ें",
     "confirmDelete": "क्या इस पूछताछ को हटाना है?",
-    "deleteSuccess": "पूछताछ हटा दी गई",
+    "deleteSuccess": "पूछताछ सफलतापूर्वक हटाई गई!",
     "deleteFailed": "पूछताछ हटाने में विफल",
     "saveSuccess": "पूछताछ सहेजी गई",
     "saveFailed": "पूछताछ सहेजने में विफल",
@@ -2788,7 +3175,11 @@
     "selectStatus": "स्थिति चुनें",
     "save": "सहेजें",
     "cancel": "रद्द करें",
-    "followUpOverdue": "फॉलो-अप लंबित"
+    "followUpOverdue": "फॉलो-अप लंबित",
+    "createSuccess": "पूछताछ सफलतापूर्वक जोड़ी गई!",
+    "updateSuccess": "पूछताछ सफलतापूर्वक अपडेट की गई!",
+    "convertedSuccess": "प्रवेश में सफलतापूर्वक परिवर्तित किया गया!",
+    "error": "पूछताछ संसाधित करने में विफल"
   },
   "library": {
     "title": "पुस्तकालय प्रबंधन",
@@ -2850,7 +3241,15 @@
     "selectBorrower": "उधारकर्ता चुनें",
     "save": "सहेजें",
     "cancel": "रद्द करें",
-    "actions": "कार्रवाइयाँ"
+    "actions": "कार्रवाइयाँ",
+    "clearance": "क्लीयरेंस",
+    "clearanceSuccess": "क्लीयरेंस PDF डाउनलोड",
+    "bookCreated": "पुस्तक सफलतापूर्वक जोड़ी गई!",
+    "bookUpdated": "पुस्तक सफलतापूर्वक अपडेट की गई!",
+    "bookDeleted": "पुस्तक सफलतापूर्वक हटाई गई!",
+    "bookIssued": "पुस्तक सफलतापूर्वक जारी की गई!",
+    "bookReturned": "पुस्तक सफलतापूर्वक वापस की गई!",
+    "error": "पुस्तकालय संचालन में विफल"
   },
   "transport": {
     "title": "परिवहन प्रबंधन",
@@ -2910,7 +3309,16 @@
     "actions": "कार्रवाइयाँ",
     "totalVehicles": "कुल वाहन",
     "totalRoutes": "कुल मार्ग",
-    "totalAllocations": "कुल आवंटन"
+    "totalAllocations": "कुल आवंटन",
+    "vehicleCreated": "वाहन सफलतापूर्वक जोड़ा गया!",
+    "vehicleUpdated": "वाहन सफलतापूर्वक अपडेट किया गया!",
+    "vehicleDeleted": "वाहन सफलतापूर्वक हटाया गया!",
+    "routeCreated": "मार्ग सफलतापूर्वक जोड़ा गया!",
+    "routeUpdated": "मार्ग सफलतापूर्वक अपडेट किया गया!",
+    "routeDeleted": "मार्ग सफलतापूर्वक हटाया गया!",
+    "allocatedSuccess": "छात्र को सफलतापूर्वक आवंटित किया गया!",
+    "allocationRemoved": "आवंटन सफलतापूर्वक हटाया गया!",
+    "error": "परिवहन संचालन में विफल"
   },
   "homework": {
     "title": "गृहकार्य और असाइनमेंट",
@@ -2947,7 +3355,7 @@
     "noSubmissions": "अभी कोई जमा नहीं",
     "saveSuccess": "गृहकार्य सहेजा गया",
     "saveFailed": "गृहकार्य सहेजने में विफल",
-    "deleteSuccess": "गृहकार्य हटा दिया गया",
+    "deleteSuccess": "गृहकार्य सफलतापूर्वक हटाया गया!",
     "deleteFailed": "हटाने में विफल",
     "submitSuccess": "गृहकार्य जमा किया गया",
     "submitFailed": "जमा करने में विफल",
@@ -2960,7 +3368,11 @@
     "actions": "कार्रवाइयाँ",
     "totalHomework": "कुल गृहकार्य",
     "pendingSubmissions": "लंबित",
-    "gradedSubmissions": "ग्रेड किया"
+    "gradedSubmissions": "ग्रेड किया",
+    "createSuccess": "गृहकार्य सफलतापूर्वक बनाया गया!",
+    "updateSuccess": "गृहकार्य सफलतापूर्वक अपडेट किया गया!",
+    "gradedSuccess": "सफलतापूर्वक अंक दिए गए!",
+    "error": "गृहकार्य संसाधित करने में विफल"
   },
   "leaves": {
     "title": "अवकाश प्रबंधन",
@@ -2991,7 +3403,7 @@
     "noLeaves": "कोई अवकाश अनुरोध नहीं",
     "noLeavesHint": "शुरू करने हेतु अवकाश आवेदन करें",
     "confirmDelete": "क्या इस अनुरोध को हटाना है?",
-    "deleteSuccess": "अवकाश हटा दिया गया",
+    "deleteSuccess": "अवकाश अनुरोध सफलतापूर्वक हटाया गया!",
     "deleteFailed": "हटाने में विफल",
     "saveSuccess": "अवकाश अनुरोध जमा किया गया",
     "saveFailed": "जमा करने में विफल",
@@ -3008,7 +3420,10 @@
     "actions": "कार्रवाइयाँ",
     "totalLeaves": "कुल अवकाश",
     "pendingLeaves": "लंबित",
-    "approvedLeaves": "स्वीकृत"
+    "approvedLeaves": "स्वीकृत",
+    "createSuccess": "अवकाश अनुरोध सफलतापूर्वक प्रस्तुत किया गया!",
+    "updateSuccess": "अवकाश अनुरोध सफलतापूर्वक अपडेट किया गया!",
+    "error": "अवकाश अनुरोध संसाधित करने में विफल"
   },
   "inventory": {
     "title": "इन्वेंटरी और स्टोर",
@@ -3063,7 +3478,14 @@
     "unitCost": "इकाई लागत",
     "save": "सहेजें",
     "cancel": "रद्द करें",
-    "actions": "कार्रवाइयाँ"
+    "actions": "कार्रवाइयाँ",
+    "stockPDF": "स्टॉक PDF",
+    "itemCreated": "इन्वेंटरी आइटम सफलतापूर्वक जोड़ा गया!",
+    "itemUpdated": "इन्वेंटरी आइटम सफलतापूर्वक अपडेट किया गया!",
+    "itemDeleted": "इन्वेंटरी आइटम सफलतापूर्वक हटाया गया!",
+    "transactionRecorded": "इन्वेंटरी लेनदेन सफलतापूर्वक दर्ज किया गया!",
+    "transactionDeleted": "लेनदेन सफलतापूर्वक हटाया गया!",
+    "error": "इन्वेंटरी संचालन में विफल"
   },
   "hostel": {
     "title": "छात्रावास प्रबंधन",
@@ -3127,9 +3549,25 @@
     "totalHostels": "कुल छात्रावास",
     "totalRooms": "कुल कमरे",
     "totalAllocations": "कुल आवंटन",
-    "occupancy": "अधिभोग"
+    "occupancy": "अधिभोग",
+    "hostelCreated": "छात्रावास सफलतापूर्वक जोड़ा गया!",
+    "hostelUpdated": "छात्रावास सफलतापूर्वक अपडेट किया गया!",
+    "hostelDeleted": "छात्रावास सफलतापूर्वक हटाया गया!",
+    "roomCreated": "कमरा सफलतापूर्वक जोड़ा गया!",
+    "roomUpdated": "कमरा सफलतापूर्वक अपडेट किया गया!",
+    "roomDeleted": "कमरा सफलतापूर्वक हटाया गया!",
+    "allocatedSuccess": "छात्र को सफलतापूर्वक आवंटित किया गया!",
+    "vacatedSuccess": "आवंटन सफलतापूर्वक खाली किया गया!",
+    "error": "छात्रावास संचालन में विफल"
   },
   "certificates": {
+    "certificateNumberPlaceholder": "खाली छोड़ने पर स्वतः बनाया जाएगा",
+    "defaultConduct": "अच्छा",
+    "defaultCharacterRating": "उत्कृष्ट",
+    "defaultPurpose": "बैंक / पासपोर्ट / वीज़ा सत्यापन",
+    "defaultStudent": "छात्र",
+    "generalPurpose": "सामान्य सत्यापन",
+    "transferReason": "माता-पिता के अनुरोध पर",
     "title": "प्रमाणपत्र",
     "description": "ट्रांसफर, चरित्र, बोनाफाइड और अन्य प्रमाणपत्र",
     "addCertificate": "प्रमाणपत्र जोड़ें",
@@ -3161,7 +3599,7 @@
     "confirmRevoke": "क्या इस प्रमाणपत्र को रद्द करना है?",
     "revoke": "रद्द करें",
     "print": "प्रिंट करें",
-    "deleteSuccess": "प्रमाणपत्र हटा दिया गया",
+    "deleteSuccess": "प्रमाण पत्र सफलतापूर्वक हटाया गया!",
     "deleteFailed": "हटाने में विफल",
     "saveSuccess": "प्रमाणपत्र सहेजा गया",
     "saveFailed": "सहेजने में विफल",
@@ -3171,7 +3609,13 @@
     "actions": "कार्रवाइयाँ",
     "totalCertificates": "कुल प्रमाणपत्र",
     "issuedCount": "जारी",
-    "revokedCount": "रद्द"
+    "revokedCount": "रद्द",
+    "printSuccess": "प्रमाणपत्र PDF डाउनलोड हो गया",
+    "printFailed": "PDF बनाने में विफल",
+    "admitCardDownloaded": "प्रवेश पत्र PDF डाउनलोड हो गया",
+    "createSuccess": "प्रमाण पत्र सफलतापूर्वक जारी किया गया!",
+    "updateSuccess": "प्रमाण पत्र सफलतापूर्वक अपडेट किया गया!",
+    "error": "प्रमाण पत्र संसाधित करने में विफल"
   },
   "health": {
     "title": "स्वास्थ्य रिकॉर्ड",
@@ -3195,7 +3639,7 @@
     "noRecords": "कोई स्वास्थ्य रिकॉर्ड नहीं मिला",
     "noRecordsHint": "छात्रों हेतु चिकित्सा प्रोफाइल जोड़ें",
     "confirmDelete": "क्या इस रिकॉर्ड को हटाना है?",
-    "deleteSuccess": "रिकॉर्ड हटा दिया गया",
+    "deleteSuccess": "स्वास्थ्य रिकॉर्ड सफलतापूर्वक हटाया गया!",
     "deleteFailed": "हटाने में विफल",
     "saveSuccess": "रिकॉर्ड सहेजा गया",
     "saveFailed": "सहेजने में विफल",
@@ -3206,7 +3650,10 @@
     "actions": "कार्रवाइयाँ",
     "totalRecords": "कुल रिकॉर्ड",
     "withAllergies": "एलर्जी के साथ",
-    "lastCheckup": "अंतिम जांच"
+    "lastCheckup": "अंतिम जांच",
+    "createSuccess": "स्वास्थ्य रिकॉर्ड सफलतापूर्वक जोड़ा गया!",
+    "updateSuccess": "स्वास्थ्य रिकॉर्ड सफलतापूर्वक अपडेट किया गया!",
+    "error": "स्वास्थ्य रिकॉर्ड संसाधित करने में विफल"
   },
   "educationSystems": {
     "title": "राष्ट्रीय शिक्षा प्रणाली",
@@ -3239,6 +3686,12 @@
     }
   },
   "feeStructures": {
+    "selectTargetClass": "कृपया लक्ष्य कक्षा चुनें।",
+    "selectAcademicYear": "कृपया शैक्षणिक वर्ष चुनें।",
+    "saveFailed": "शुल्क संरचना सहेजने में विफल",
+    "deleteFailed": "शुल्क संरचना हटाने में विफल",
+    "invalidStudentProfileId": "कृपया मान्य छात्र प्रोफ़ाइल आईडी दर्ज करें।",
+    "concessionSaveFailed": "रियायत सहेजने में विफल",
     "title": "कक्षा-वार शिक्षण शुल्क संरचना",
     "description": "प्रत्येक कक्षा के लिए शिक्षण शुल्क, विभिन्न शुल्क मदें और छात्र छूट/छात्रवृत्ति कॉन्फ़िगर करें।",
     "manageConcessions": "छूट और छात्रवृत्ति प्रबंधित करें",
@@ -3371,7 +3824,29 @@
     "saveFailed": "प्रश्न सहेजने में विफल",
     "deleteConfirm": "क्या आप वाकई इस प्रश्न को हटाना चाहते हैं?",
     "deleteSuccess": "प्रश्न सफलतापूर्वक हटा दिया गया",
-    "deleteFailed": "प्रश्न हटाने में विफल"
+    "deleteFailed": "प्रश्न हटाने में विफल",
+    "validationRequired": "कृपया कक्षा, विषय और प्रश्न पाठ भरें।",
+    "repositoryQuestions": "रिपॉजिटरी के सभी प्रश्न",
+    "multipleChoice": "बहुविकल्पीय",
+    "creativeBroad": "NCTB CQ और विस्तृत",
+    "shortPrompts": "1-2 अंक के प्रश्न",
+    "viewDetails": "विवरण देखें",
+    "deleteQuestion": "प्रश्न हटाएं",
+    "selectClass": "कक्षा चुनें",
+    "selectSubject": "विषय चुनें",
+    "chapterPlaceholder": "उदाहरण: अध्याय 3: बल और गति",
+    "topicPlaceholder": "उदाहरण: न्यूटन का दूसरा नियम",
+    "questionTextPlaceholder": "पूरा प्रश्न या समस्या दर्ज करें...",
+    "answerPlaceholder": "मुख्य बिंदु, सूत्र या सही उत्तर का सारांश...",
+    "explanationPlaceholder": "शिक्षक के मूल्यांकन निर्देश या सैद्धांतिक व्याख्या...",
+    "optionalLabel": "वैकल्पिक",
+    "points": "अंक",
+    "correctOption": "सही",
+    "stimulusLabel": "उद्दीपक / गद्यांश",
+    "solutionKeyLabel": "समाधान कुंजी:",
+    "promptPartPlaceholder": "भाग ({label}) का प्रश्न...",
+    "classFallback": "कक्षा",
+    "subjectFallback": "विषय"
   },
   "questionPapers": {
     "title": "प्रश्न पत्र निर्माण और लाइब्रेरी",
@@ -3451,7 +3926,70 @@
     "deleteSuccess": "प्रश्न पत्र हटा दिया गया",
     "deleteFailed": "प्रश्न पत्र हटाने में विफल",
     "noPapers": "कोई प्रश्न पत्र नहीं मिला",
-    "noPapersHint": "अपना पहला प्रश्न पत्र बनाएं या स्मार्ट जनरेटर का उपयोग करें।"
+    "noPapersHint": "अपना पहला प्रश्न पत्र बनाएं या स्मार्ट जनरेटर का उपयोग करें।",
+    "blueprintComposed": "ब्लूप्रिंट सफलतापूर्वक तैयार किया गया!",
+    "savedReady": "प्रश्न पत्र सहेजा और तैयार है!",
+    "requiredDetails": "कृपया शीर्षक, कक्षा, विषय और शिक्षा वर्ष भरें।",
+    "repositoryPapers": "रिपॉजिटरी के सभी प्रश्न पत्र",
+    "readyForExamDay": "परीक्षा के लिए तैयार",
+    "inProgressCustomSets": "प्रगति में और कस्टम सेट",
+    "searchPlaceholder": "शीर्षक या कोड से खोजें...",
+    "allStatuses": "सभी स्थितियां",
+    "fullMarks": "पूर्णांक",
+    "duration": "अवधि",
+    "sectionsCount": "अनुभाग",
+    "deletePaper": "प्रश्न पत्र हटाएं",
+    "paperTitlePlaceholder": "उदाहरण: वार्षिक परीक्षा 2026 - गणित",
+    "selectAcademicYear": "शिक्षा वर्ष चुनें",
+    "selectClass": "कक्षा चुनें",
+    "selectSubject": "विषय चुनें",
+    "blueprintQuestionDistribution": "ब्लूप्रिंट प्रश्न वितरण",
+    "count": "संख्या",
+    "pointsPerQuestion": "प्रति प्रश्न अंक",
+    "sectionMinimum": "प्रश्न पत्र में कम से कम एक अनुभाग होना चाहिए",
+    "savedSuccess": "प्रश्न पत्र सफलतापूर्वक सहेजा गया!",
+    "saveDraft": "ड्राफ्ट के रूप में सहेजें",
+    "finalizePaper": "सहेजें और प्रश्न पत्र पूरा करें",
+    "marksBudget": "अंक बजट",
+    "timeAllowed": "अनुमत समय",
+    "totalQuestions": "कुल प्रश्न",
+    "questionsSelectedLabel": "चयनित प्रश्न",
+    "difficultyRatio": "कठिनाई अनुपात",
+    "easy": "सरल",
+    "medium": "मध्यम",
+    "hard": "कठिन",
+    "paperDetailsDescription": "परीक्षा शीर्षक के लिए लक्षित कक्षा, विषय और सामान्य निर्देश कॉन्फ़िगर करें।",
+    "annualExamPlaceholder": "उदाहरण: वार्षिक परीक्षा 2026",
+    "paperCodePlaceholder": "उदाहरण: SET-A / QP-101",
+    "selectClassSubjectAbove": "कृपया ऊपर लक्षित कक्षा और विषय चुनें।",
+    "sectionInstructionsPlaceholder": "अनुभाग निर्देश (जैसे इस अनुभाग के सभी प्रश्नों के उत्तर दें)...",
+    "selectClassSubjectFirst": "कृपया पहले लक्षित कक्षा और विषय चुनें।",
+    "searchQuestions": "प्रश्न खोजें...",
+    "allTypes": "सभी प्रकार",
+    "allDifficulties": "सभी कठिनाई स्तर",
+    "targetMarks": "लक्ष्य",
+    "points": "अंक",
+    "pickerTitle": "{section} के लिए प्रश्न चुनें",
+    "selectedCount": "{count} चयनित",
+    "pickerDescription": "इस अनुभाग में शामिल करने के लिए प्रश्न बैंक से प्रश्न देखें और चुनें।",
+    "noQuestionsInSection": "इस अनुभाग में अभी कोई प्रश्न नहीं जोड़ा गया है। क्लिक करें",
+    "pickFromBank": "बैंक से चुनें",
+    "toChooseQuestions": "प्रश्न चुनने के लिए।",
+    "noQuestionsMatch": "इस विषय के प्रश्न बैंक में आपके मानदंड से मेल खाने वाला कोई प्रश्न नहीं मिला।",
+    "doneSelected": "पूर्ण ({count} चयनित)",
+    "loadingPreview": "प्रश्न पत्र लोड हो रहा है...",
+    "previewNotFound": "प्रश्न पत्र नहीं मिला।",
+    "hideSolutionKey": "समाधान कुंजी छिपाएं",
+    "teacherSolutionKey": "शिक्षक समाधान कुंजी",
+    "schoolExamFallback": "स्कूल / कॉलेज परीक्षा",
+    "studentNameLine": "छात्र का नाम: _________________________________________",
+    "rollNoSectionLine": "अनुक्रमांक: _______________ अनुभाग: ________",
+    "generalInstructions": "सामान्य निर्देश:",
+    "context": "संदर्भ:",
+    "solutionKeyAnswer": "समाधान कुंजी / उत्तर:",
+    "referTextbook": "मानक पाठ्यपुस्तक देखें",
+    "note": "नोट:",
+    "endOfQuestionPaper": "*** प्रश्न पत्र समाप्त ***"
   },
   "notices": {
     "allNotices": "सभी सूचनाएँ",
@@ -3463,7 +4001,7 @@
     "urgentAlerts": "तत्काल अलर्ट",
     "loadFailed": "स्कूल सूचनाएँ लोड नहीं हो सकीं",
     "networkLoad": "नोटिस बोर्ड लोड करने में नेटवर्क त्रुटि",
-    "deleted": "सूचना हटा दी गई",
+    "deleted": "नोटिस सफलतापूर्वक हटाया गया!",
     "deleteFailed": "सूचना हटाई नहीं जा सकी",
     "networkDelete": "सूचना हटाने में नेटवर्क त्रुटि",
     "unpinned": "सूचना अनपिन की गई",
@@ -3506,9 +4044,17 @@
     "delete": "हटाएँ",
     "directory": "सूचना निर्देशिका",
     "showing": "{count} प्रकाशित सूचनाएँ दिखाई जा रही हैं",
-    "filterTable": "सूचना तालिका फ़िल्टर करें..."
+    "filterTable": "सूचना तालिका फ़िल्टर करें...",
+    "requiredFields": "कृपया नोटिस के लिए शीर्षक और सामग्री दोनों प्रदान करें",
+    "networkError": "नोटिस सहेजने में नेटवर्क त्रुटि",
+    "copied": "नोटिस क्लिपबोर्ड पर कॉपी किया गया",
+    "created": "नोटिस सफलतापूर्वक बनाया गया!",
+    "updated": "नोटिस सफलतापूर्वक अपडेट किया गया!"
   },
   "bulkFees": {
+    "challansDownloaded": "चालान PDF डाउनलोड हो गए (3 प्रतियां)",
+    "pdfFailed": "PDF बनाने में विफल",
+    "challansTitle": "चयनित छात्रों के लिए 3-प्रतियों वाले बैंक चालान",
     "title": "कक्षा बल्क शुल्क प्रविष्टि",
     "description": "12-महीने के शैक्षणिक वर्ष के आधार पर पूरी कक्षा की फीस स्प्रेडशीट शैली में लें।",
     "singlePos": "सिंगल POS काउंटर",
@@ -3707,5 +4253,169 @@
     "updateFailed": "Update failed",
     "impersonateFailed": "Impersonate failed",
     "status": "स्थिति"
+  },
+  "verify": {
+    "certificate": {
+      "title": "प्रमाणपत्र सत्यापन",
+      "verified": "सत्यापित",
+      "notFound": "प्रमाणपत्र नहीं मिला",
+      "revoked": "रद्द",
+      "authentic": "यह दस्तावेज़ प्रामाणिक है",
+      "certificateNo": "प्रमाणपत्र संख्या",
+      "studentName": "छात्र का नाम",
+      "status": "स्थिति",
+      "scanToVerify": "सत्यापन के लिए QR स्कैन करें"
+    },
+    "admitCard": {
+      "title": "परीक्षा प्रवेश पत्र"
+    }
+  },
+  "portal": {
+    "nav": {
+      "home": "होम",
+      "homework": "गृहकार्य",
+      "timetable": "समय-सारणी",
+      "results": "परिणाम",
+      "overview": "अवलोकन",
+      "fees": "फीस"
+    },
+    "notifications": "सूचनाएं",
+    "theme": {
+      "toggle": "थीम बदलें"
+    },
+    "signOut": "साइन आउट",
+    "noData": "पोर्टल डेटा उपलब्ध नहीं है",
+    "viewAll": "सभी देखें",
+    "viewTimetable": "समय-सारणी देखें",
+    "children": {
+      "switch": "बच्चा बदलें"
+    },
+    "student": {
+      "greeting": "सुप्रभात"
+    },
+    "parent": {
+      "overview": "अभिभावक अवलोकन"
+    },
+    "attendance": {
+      "title": "उपस्थिति",
+      "last90": "पिछले 90 दिन"
+    },
+    "homework": {
+      "pending": "लंबित गृहकार्य",
+      "title": "गृहकार्य",
+      "description": "असाइनमेंट देखें और अपना कार्य जमा करें।",
+      "none": "कोई गृहकार्य नहीं है।",
+      "general": "सामान्य",
+      "due": "अंतिम तिथि",
+      "pendingStatus": "लंबित",
+      "openAttachment": "संलग्नक खोलें",
+      "remarksPlaceholder": "शिक्षक के लिए टिप्पणी (वैकल्पिक)",
+      "chooseFile": "संलग्नक चुनें",
+      "submit": "गृहकार्य जमा करें",
+      "submitting": "जमा हो रहा है...",
+      "uploadFailed": "अपलोड विफल",
+      "submitFailed": "जमा करना विफल"
+    },
+    "exams": {
+      "upcoming": "आगामी परीक्षाएं",
+      "published": "प्रकाशित परीक्षाएं",
+      "upcomingTitle": "आगामी परीक्षाएं",
+      "none": "कोई आगामी परीक्षा नहीं है।"
+    },
+    "timetable": {
+      "today": "आज की कक्षाएं",
+      "todayTitle": "आज की समय-सारणी",
+      "noToday": "आज कोई कक्षा निर्धारित नहीं है।",
+      "noRoom": "कक्ष निर्धारित नहीं",
+      "break": "अवकाश",
+      "title": "समय-सारणी",
+      "description": "आपका साप्ताहिक कक्षा कार्यक्रम।",
+      "period": "पीरियड",
+      "empty": "समय-सारणी उपलब्ध नहीं है।",
+      "free": "खाली"
+    },
+    "results": {
+      "latest": "नवीनतम परिणाम",
+      "none": "कोई प्रकाशित परिणाम नहीं",
+      "title": "परिणाम",
+      "description": "टर्म के अनुसार प्रकाशित परीक्षा परिणाम।",
+      "gpa": "जीपीए",
+      "subject": "विषय",
+      "marks": "अ���क",
+      "grade": "ग्रेड",
+      "status": "स्थिति"
+    },
+    "fees": {
+      "balance": "बकाया राशि",
+      "viewDetails": "फीस विवरण देखें",
+      "recentPayments": "हाल की भुगतान",
+      "noPayments": "कोई भुगतान दर्ज नहीं है।",
+      "title": "फीस",
+      "description": "फीस वाउचर, बकाया और भुगतान इतिहास।",
+      "totalBalance": "कुल बकाया",
+      "vouchers": "फीस वाउचर",
+      "noVouchers": "कोई फीस वाउचर नहीं मिला।",
+      "voucher": "वाउचर",
+      "type": "प्रकार",
+      "dueDate": "अंतिम तिथि",
+      "amount": "राशि",
+      "status": "स्थिति",
+      "paymentHistory": "भुगतान इतिहास",
+      "downloadReceipt": "रसीद डाउनलोड करें"
+    }
+  },
+  "error": {
+    "title": "कुछ गलत हो गया!",
+    "message": "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें या सहायता से संपर्क करें।",
+    "tryAgain": "पुनः प्रयास करें",
+    "returnHome": "होम पर लौटें",
+    "error": {
+      "title": "कुछ गलत हो गया!",
+      "message": "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें या सहायता से संपर्क करें।",
+      "tryAgain": "पुनः प्रयास करें",
+      "returnHome": "होम पर लौटें"
+    }
+  },
+  "ForbiddenPage": {
+    "title": "पहुंच निषेध",
+    "subtitle": "आपके पास इस संसाधन तक पहुँचने की अनुमति नहीं है",
+    "message": "यदि आपको लगता है कि यह एक त्रुटि है तो कृपया अपने स्कूल व्यवस्थापक से संपर्क करें।",
+    "dashboard": "डैशबोर्ड पर वापस जाएं",
+    "goBack": "वापस जाएं"
+  },
+  "notFound": {
+    "title": "पृष्ठ नहीं मिला",
+    "description": "जिस पृष्ठ को आप ढूंढ रहे हैं उसे हटा दिया गया है, उसका नाम बदल दिया गया है, या वह अस्थायी रूप से अनुपलब्ध है।",
+    "goBack": "वापस जाएं",
+    "dashboardSetup": "डैशबोर्ड पर जाएं"
+  },
+  "unauthorized": {
+    "title": "प्रमाणीकरण आवश्यक है",
+    "subtitle": "जारी रखने के लिए कृपया लॉग इन करें",
+    "message": "इस पृष्ठ तक पहुँचने के लिए आपको साइन इन करना होगा।",
+    "goToLogin": "लॉगिन पर जाएं"
+  },
+  "header": {
+    "theme": {
+      "toggle": "थीम बदलें"
+    },
+    "user": {
+      "fallbackName": "उपयोगकर्ता",
+      "fallbackRole": "कर्मचारी"
+    },
+    "systemAdmin": {
+      "label": "सिस्टम व्यवस्थापक"
+    }
+  },
+  "pdf": {
+    "markSheetSuccess": "अंक पत्र सफलतापूर्वक तैयार किया गया!",
+    "markSheetError": "अंक पत्र तैयार करने में विफल",
+    "reportCardSuccess": "प्रगति पत्र सफलतापूर्वक तैयार किया गया!",
+    "reportCardError": "प्रगति पत्र तैयार करने में विफल",
+    "idCardSuccess": "पहचान पत्र सफलतापूर्वक तैयार किया गया!",
+    "idCardError": "पहचान पत्र तैयार करने में विफल",
+    "selectExam": "कृपया एक परीक्षा चुनें",
+    "noMarksFound": "इस परीक्षा के लिए कोई अंक नहीं मिले",
+    "selectYear": "कृपया एक शैक्षणिक वर्ष चुनें"
   }
 }

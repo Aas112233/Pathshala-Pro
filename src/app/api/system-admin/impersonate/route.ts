@@ -24,13 +24,8 @@ export async function POST(request: NextRequest) {
 
     const { user } = access.authContext;
 
-    // Only Platform System Admins can initiate impersonation
-    if (
-      user.role !== "SYSTEM_ADMIN" &&
-      user.role !== "SUPER_ADMIN" &&
-      user.tenantId?.toLowerCase() !== "system" &&
-      !isPlatformOwnerEmail(user.email)
-    ) {
+    // Only platform System Admins can initiate impersonation
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email)) {
       return unauthorized("Only platform system administrators can impersonate tenants.");
     }
 
@@ -93,16 +88,29 @@ export async function DELETE(request: NextRequest) {
     const { payload } = await jwtVerify(token, getJwtSecretKey());
 
     const originalAdminEmail = payload.impersonatedBy as string;
-    if (!originalAdminEmail) {
+    if (!originalAdminEmail || payload.isImpersonated !== true) {
       return badRequest("No active impersonation session found.");
     }
 
-    // Re-issue System Admin token
+    const originalAdmin = await prisma.user.findFirst({
+      where: {
+        email: originalAdminEmail,
+        isActive: true,
+      },
+      select: { id: true, tenantId: true, role: true, email: true, updatedAt: true },
+    });
+    if (!originalAdmin || (originalAdmin.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(originalAdmin.email))) {
+      return unauthorized("Original administrator account is no longer active.");
+    }
+
+    // Re-issue a token for the real System Admin account so getAuthContext
+    // can validate it against the database.
     const systemAdminToken = await new SignJWT({
-      userId: "system-admin",
-      tenantId: "system",
-      email: originalAdminEmail,
-      role: "SYSTEM_ADMIN",
+      userId: originalAdmin.id,
+      tenantId: originalAdmin.tenantId,
+      email: originalAdmin.email,
+      role: originalAdmin.role,
+      sessionVersion: originalAdmin.updatedAt.getTime(),
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()

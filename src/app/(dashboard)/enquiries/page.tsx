@@ -46,6 +46,7 @@ function statusColor(s: string) {
 
 export default function EnquiriesPage() {
   const t = useTranslations("enquiries");
+  const tCommon = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "enquiries", "read");
@@ -121,9 +122,9 @@ export default function EnquiriesPage() {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!formData.studentName.trim()) errs.studentName = "Required";
-    if (!formData.guardianName.trim()) errs.guardianName = "Required";
-    if (!formData.phone.trim()) errs.phone = "Required";
+    if (!formData.studentName.trim()) errs.studentName = tCommon("required");
+    if (!formData.guardianName.trim()) errs.guardianName = tCommon("required");
+    if (!formData.phone.trim()) errs.phone = tCommon("required");
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -251,7 +252,7 @@ export default function EnquiriesPage() {
       {!canRead && !isAuthLoading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view enquiries.</p>
+            <p className="text-sm text-muted-foreground">{tCommon("noPermission")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -271,7 +272,7 @@ export default function EnquiriesPage() {
                   className="pl-9"
                 />
               </div>
-              <Button variant="outline" onClick={handleSearch}>Search</Button>
+              <Button variant="outline" onClick={handleSearch}>{t("search")}</Button>
             </div>
             <AppDropdown
               value={filters.status}
@@ -401,10 +402,10 @@ export default function EnquiriesPage() {
                 <Input value={formData.guardianName} onChange={(e) => setFormData((p) => ({ ...p, guardianName: e.target.value }))} placeholder={t("guardianName")} />
               </ERPFormField>
               <ERPFormField label={t("phone")} required error={formErrors.phone}>
-                <Input value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} placeholder="01XXXXXXXXX" />
+                <Input value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} placeholder={t("phonePlaceholder")} />
               </ERPFormField>
               <ERPFormField label={t("email")}>
-                <Input value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} placeholder="student@email.com" />
+                <Input value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} placeholder={t("emailPlaceholder")} />
               </ERPFormField>
               <ERPFormField label={t("classApplied")}>
                 <AppDropdown value={formData.classAppliedId} onChange={(v) => setFormData((p) => ({ ...p, classAppliedId: v }))} options={classOptions} placeholder={t("selectClass")} searchable />

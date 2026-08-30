@@ -1,22 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { TopSheet } from "@/components/ui/top-sheet";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { 
-  Bell, 
-  Save, 
-  Loader2, 
-  Pin, 
+import {
+  Bell,
   Calendar,
+  Pin,
+  Globe,
+  Loader2,
+  CheckCircle2,
   AlertTriangle,
-  GraduationCap,
-  Users,
-  Building2,
+  Info,
+  CalendarDays,
+  FileText,
 } from "lucide-react";
 
 interface CreateNoticeModalProps {
@@ -27,27 +31,26 @@ interface CreateNoticeModalProps {
 }
 
 const CATEGORIES = [
-  { value: "GENERAL", label: "General Announcement" },
-  { value: "ACADEMIC", label: "Academic Circular" },
-  { value: "EXAMINATION", label: "Exam Schedule & Info" },
-  { value: "FEE_REMINDER", label: "Fee Due Reminder" },
-  { value: "HOLIDAY", label: "Holiday / Vacation Notice" },
-  { value: "EVENT", label: "School Function / Event" },
-  { value: "URGENT_ALERT", label: "Urgent Campus Alert" },
-];
-
-const AUDIENCES = [
-  { value: "ALL", label: "Entire School Community (All)", desc: "Students, Teachers, Staff & Parents" },
-  { value: "TEACHERS", label: "Faculty & Teaching Staff", desc: "Teachers & Academic Coordinators only" },
-  { value: "STUDENTS", label: "Students & Guardians", desc: "All enrolled students and parent accounts" },
-  { value: "PARENTS", label: "Parents & Guardians", desc: "Primary guardians & fee payers" },
+  { value: "GENERAL", label: "General Circular" },
+  { value: "ACADEMIC", label: "Academic / Exam Schedule" },
+  { value: "HOLIDAY", label: "Holiday & Vacation Notice" },
+  { value: "FEE", label: "Fee Reminder & Payment Schedule" },
+  { value: "EVENT", label: "Sports & Cultural Event" },
+  { value: "EMERGENCY", label: "Urgent Campus Alert" },
 ];
 
 const PRIORITIES = [
-  { value: "LOW", label: "Low", color: "bg-muted text-muted-foreground" },
-  { value: "NORMAL", label: "Normal", color: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" },
-  { value: "HIGH", label: "High", color: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" },
-  { value: "URGENT", label: "Urgent", color: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300" },
+  { value: "LOW", label: "Low", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+  { value: "NORMAL", label: "Normal", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  { value: "HIGH", label: "High", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+  { value: "URGENT", label: "Urgent Alert", color: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
+];
+
+const AUDIENCES = [
+  { value: "ALL", label: "Campus-Wide", desc: "Visible to Students, Teachers & Parents" },
+  { value: "STUDENTS", label: "Students Only", desc: "Filtered to Student Profiles" },
+  { value: "TEACHERS", label: "Teaching Staff", desc: "Faculty and Department Staff" },
+  { value: "PARENTS", label: "Parents", desc: "Parent Portal Feed" },
 ];
 
 export function CreateNoticeModal({
@@ -56,6 +59,7 @@ export function CreateNoticeModal({
   onSuccess,
   initialData,
 }: CreateNoticeModalProps) {
+  const t = useTranslations("notices");
   const isEditing = !!initialData?.id;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,8 +82,8 @@ export function CreateNoticeModal({
         category: initialData.category || "GENERAL",
         priority: initialData.priority || "NORMAL",
         audience: initialData.audience || "ALL",
-        isPinned: initialData.isPinned || false,
-        isPublished: initialData.isPublished !== undefined ? initialData.isPublished : true,
+        isPinned: !!initialData.isPinned,
+        isPublished: initialData.isPublished ?? true,
         expiresAt: initialData.expiresAt
           ? new Date(initialData.expiresAt).toISOString().split("T")[0]
           : "",
@@ -101,7 +105,7 @@ export function CreateNoticeModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) {
-      toast.error("Please provide both title and content for the notice");
+      toast.error(t("requiredFields"));
       return;
     }
 
@@ -127,7 +131,7 @@ export function CreateNoticeModal({
         toast.error(json.error?.message || "Failed to save notice");
       }
     } catch {
-      toast.error("Network error saving notice");
+      toast.error(t("networkError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -163,18 +167,12 @@ export function CreateNoticeModal({
             <Label htmlFor="notice-category" className="text-xs font-semibold">
               Category
             </Label>
-            <select
+            <AppDropdown
               id="notice-category"
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setFormData({ ...formData, category: v })}
+              options={CATEGORIES}
+            />
           </div>
         </div>
 
@@ -255,54 +253,51 @@ export function CreateNoticeModal({
             <p className="text-[10px] text-muted-foreground">Notice will auto-archive after this date.</p>
           </div>
 
-          <div className="flex flex-col justify-center space-y-2">
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
+          <div className="flex flex-col justify-center space-y-3 pt-2 sm:pt-0">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isPinned"
                 checked={formData.isPinned}
-                onChange={(e) => setFormData({ ...formData, isPinned: e.target.checked })}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                onCheckedChange={(checked) => setFormData({ ...formData, isPinned: !!checked })}
               />
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <Pin className="h-3.5 w-3.5 text-primary" />
-                <span>Pin notice to top of Noticeboard</span>
-              </div>
-            </label>
+              <Label htmlFor="isPinned" className="text-xs font-medium cursor-pointer flex items-center gap-1">
+                <Pin className="h-3 w-3 text-amber-500" /> Pin to Top of Noticeboard
+              </Label>
+            </div>
 
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isPublished"
                 checked={formData.isPublished}
-                onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                onCheckedChange={(checked) => setFormData({ ...formData, isPublished: !!checked })}
               />
-              <span className="text-xs text-muted-foreground">Publish immediately upon saving</span>
-            </label>
+              <Label htmlFor="isPublished" className="text-xs font-medium cursor-pointer flex items-center gap-1">
+                <Globe className="h-3 w-3 text-emerald-500" /> Publish Immediately
+              </Label>
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="text-xs h-9"
-          >
+        {/* Footer Actions */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+          <Button variant="ghost" type="button" onClick={onClose} disabled={isSubmitting} className="text-xs">
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 text-xs h-9 cursor-pointer"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs px-6"
           >
             {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : isEditing ? (
+              "Save Changes"
             ) : (
-              <Save className="h-4 w-4" />
+              "Publish Notice"
             )}
-            <span>{isEditing ? "Save Changes" : "Publish Notice"}</span>
           </Button>
         </div>
       </form>

@@ -10,6 +10,8 @@ import {
 import { createAttendanceSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { triggerAbsenceAlert } from "@/lib/notifications/triggers/absence-alert";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 
 /**
  * GET /api/attendance
@@ -32,6 +34,7 @@ export async function GET(request: NextRequest) {
     const staffId = searchParams.get("staffId") || "";
     const status = searchParams.get("status") || "";
     const classId = searchParams.get("classId") || "";
+    const academicYearId = searchParams.get("academicYearId") || "";
 
     const skip = (page - 1) * limit;
 
@@ -66,6 +69,8 @@ export async function GET(request: NextRequest) {
     if (classId) {
       where.studentProfile = { classId };
     }
+
+    if (academicYearId) where.academicYearId = academicYearId;
 
     const [totalCount, attendance] = await Promise.all([
       prisma.attendance.count({ where }),
@@ -139,6 +144,12 @@ export async function POST(request: NextRequest) {
       attendanceDate.setHours(0, 0, 0, 0);
       const nextDate = new Date(attendanceDate);
       nextDate.setDate(nextDate.getDate() + 1);
+      const academicYear = await prisma.academicYear.findFirst({
+        where: { tenantId, startDate: { lte: attendanceDate }, endDate: { gte: attendanceDate } },
+        orderBy: { startDate: "desc" },
+      });
+      if (!academicYear) return badRequest("No academic year covers the attendance date");
+      await assertAcademicYearOpen(tenantId, academicYear.id);
 
       let presentCount = 0;
       let absentCount = 0;
@@ -161,6 +172,7 @@ export async function POST(request: NextRequest) {
             where: {
               tenantId,
               studentProfileId: item.studentProfileId,
+              academicYearId: academicYear.id,
               date: { gte: attendanceDate, lt: nextDate },
             },
           });
@@ -179,6 +191,7 @@ export async function POST(request: NextRequest) {
               data: {
                 tenantId,
                 studentProfileId: item.studentProfileId,
+                academicYearId: academicYear.id,
                 date: attendanceDate,
                 status,
                 note: item.note || undefined,
@@ -188,6 +201,8 @@ export async function POST(request: NextRequest) {
           }
         }
       });
+
+      void Promise.all(absentees.map((studentProfileId) => triggerAbsenceAlert({ tenantId, studentProfileId, date: attendanceDate })));
 
       return successResponse(
         {
@@ -232,33 +247,91 @@ export async function POST(request: NextRequest) {
       if (!staff) return badRequest("Staff member not found");
     }
 
-    const attendance = await prisma.attendance.create({
-      data: {
+    const targetDate = new Date(data.date);
+    targetDate.setHours(0, 0, 0, 0);
+    const nextDate = new Date(targetDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { tenantId, startDate: { lte: targetDate }, endDate: { gte: targetDate } },
+      orderBy: { startDate: "desc" },
+    });
+    if (!academicYear) return badRequest("No academic year covers the attendance date");
+    await assertAcademicYearOpen(tenantId, academicYear.id);
+
+    const existing = await prisma.attendance.findFirst({
+      where: {
         tenantId,
-        ...data,
-        markedById: user.id,
-      },
-      include: {
-        studentProfile: {
-          select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            rollNumber: true,
-          },
-        },
-        staffProfile: {
-          select: {
-            staffId: true,
-            firstName: true,
-            lastName: true,
-            designation: true,
-          },
-        },
+        ...(data.studentProfileId ? { studentProfileId: data.studentProfileId } : {}),
+        ...(data.staffProfileId ? { staffProfileId: data.staffProfileId } : {}),
+        academicYearId: academicYear.id,
+        date: { gte: targetDate, lt: nextDate },
       },
     });
 
-    return successResponse(attendance, "Attendance marked successfully", 201);
+    let attendance;
+    if (existing) {
+      attendance = await prisma.attendance.update({
+        where: { id: existing.id },
+        data: {
+          ...data,
+          academicYearId: academicYear.id,
+          date: targetDate,
+          markedById: user.id,
+        },
+        include: {
+          studentProfile: {
+            select: {
+              studentId: true,
+              firstName: true,
+              lastName: true,
+              rollNumber: true,
+            },
+          },
+          staffProfile: {
+            select: {
+              staffId: true,
+              firstName: true,
+              lastName: true,
+              designation: true,
+            },
+          },
+        },
+      });
+    } else {
+      attendance = await prisma.attendance.create({
+        data: {
+          tenantId,
+          ...data,
+          academicYearId: academicYear.id,
+          date: targetDate,
+          markedById: user.id,
+        },
+        include: {
+          studentProfile: {
+            select: {
+              studentId: true,
+              firstName: true,
+              lastName: true,
+              rollNumber: true,
+            },
+          },
+          staffProfile: {
+            select: {
+              staffId: true,
+              firstName: true,
+              lastName: true,
+              designation: true,
+            },
+          },
+        },
+      });
+    }
+
+    if (data.status === "ABSENT" && data.studentProfileId) {
+      void triggerAbsenceAlert({ tenantId, studentProfileId: data.studentProfileId, date: targetDate });
+    }
+
+    return successResponse(attendance, "Attendance marked successfully", existing ? 200 : 201);
   } catch (error) {
     return handleApiError(error);
   }

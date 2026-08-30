@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TopSheet } from "@/components/ui/top-sheet";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,18 +113,14 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
           {/* Category */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">{t("accounting.expensesForm.categoryLabel")}</Label>
-            <select
+            <AppDropdown
               value={formData.categoryId || categories[0]?.id || ""}
-              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              onChange={(v) => setFormData({ ...formData, categoryId: v })}
+              options={categories.map((cat: any) => ({ value: cat.id, label: cat.name }))}
+              placeholder={t("accounting.expensesForm.categoryLabel")}
               disabled={isCategoriesLoading}
-            >
-              {categories.map((cat: any) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+              searchable
+            />
           </div>
 
           {/* Amount */}
@@ -146,16 +143,16 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
           {/* Payment Method */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Payment Method</Label>
-            <select
+            <AppDropdown
               value={formData.paymentMethod}
-              onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as any })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="CASH">Petty Cash Register</option>
-              <option value="BANK">Bank Account Transfer</option>
-              <option value="CHEQUE">Bank Cheque / Pay Order</option>
-              <option value="DIGITAL">Digital / Online Wallet</option>
-            </select>
+              onChange={(v) => setFormData({ ...formData, paymentMethod: v as any })}
+              options={[
+                { value: "CASH", label: "Petty Cash Register" },
+                { value: "BANK", label: "Bank Account Transfer" },
+                { value: "CHEQUE", label: "Bank Cheque / Pay Order" },
+                { value: "DIGITAL", label: "Digital / Online Wallet" }
+              ]}
+            />
           </div>
 
           {/* Expense Date */}

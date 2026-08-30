@@ -9,11 +9,14 @@ import {
 import { batchFeeInvoicingSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { postLegacyFeeInvoiceAccrual } from "@/lib/fee-service";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { getNextVoucherNumber } from "@/lib/accounting-sequence";
+import { Prisma } from "@prisma/client";
+import { computeStackedConcession, prorateMonthlyFee } from "@/lib/fee-service";
 
 /**
  * POST /api/fees/batch
- * Generate batch fee invoices across entire classes or schools
- * with automated arrears rollover and sequential voucher IDs.
+ * Generate batch fee invoices — Decimal-safe, tuition-capped, prorated, idempotent.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -36,7 +39,8 @@ export async function POST(request: NextRequest) {
       return badRequest("Selected Academic Year was not found.");
     }
 
-    // Build target student query filter
+    await assertAcademicYearOpen(tenantId, academicYear.id);
+
     const studentWhere: any = {
       tenantId,
       status: "ACTIVE",
@@ -58,6 +62,7 @@ export async function POST(request: NextRequest) {
         lastName: true,
         classId: true,
         sectionId: true,
+        admissionDate: true,
       },
     });
 
@@ -65,7 +70,6 @@ export async function POST(request: NextRequest) {
       return badRequest("No active students found matching the selected target criteria.");
     }
 
-    // Fetch class fee structures for this academic year if using structure
     const feeStructures = await prisma.classFeeStructure.findMany({
       where: {
         tenantId,
@@ -75,8 +79,8 @@ export async function POST(request: NextRequest) {
     });
     const structureMap = new Map(feeStructures.map((s) => [s.classId, s]));
 
-    // Fetch student concessions for all matching students
     const studentIds = students.map((s) => s.id);
+    // Fetch ALL active concessions — now supports stacking per student
     const concessions = await prisma.studentFeeConcession.findMany({
       where: {
         tenantId,
@@ -84,123 +88,188 @@ export async function POST(request: NextRequest) {
         isActive: true,
       },
     });
-    const concessionMap = new Map(concessions.map((c) => [c.studentProfileId, c]));
-
-    // Find starting sequence number for this year's vouchers
-    const currentYear = data.year || new Date().getFullYear();
-    const latestVoucher = await prisma.feeVoucher.findFirst({
-      where: {
-        tenantId,
-        voucherId: { startsWith: `VCH-${currentYear}-` },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    let nextSequence = 1;
-    if (latestVoucher) {
-      const parts = latestVoucher.voucherId.split("-");
-      const lastNum = parseInt(parts[2], 10);
-      if (!isNaN(lastNum)) {
-        nextSequence = lastNum + 1;
-      }
+    // Group by student
+    const concessionsByStudent = new Map<string, typeof concessions>();
+    for (const c of concessions) {
+      const arr = concessionsByStudent.get(c.studentProfileId) || [];
+      arr.push(c as any);
+      concessionsByStudent.set(c.studentProfileId, arr);
     }
 
+    const currentYear = data.year || new Date().getFullYear();
+    const billingMonth = data.month || new Date().getMonth() + 1;
+    const billingYear = data.year || new Date().getFullYear();
     const dueDate = new Date(data.dueDate);
 
-    // Calculate vouchers payload
-    let totalGeneratedDue = 0;
-    let totalArrearsRolled = 0;
-    let totalConcessionsApplied = 0;
-    const vouchersToCreate: any[] = [];
+    let totalGeneratedDue = new Prisma.Decimal(0);
+    let totalArrearsRolled = new Prisma.Decimal(0);
+    let totalConcessionsApplied = new Prisma.Decimal(0);
+    let createdCount = 0;
+    let skippedDuplicate = 0;
 
-    for (const student of students) {
-      let arrears = 0;
-
-      if (data.carryForwardArrears) {
-        // Sum any unpaid balances from prior pending or partial vouchers
-        const unpaidVouchers = await prisma.feeVoucher.findMany({
-          where: {
-            tenantId,
-            studentProfileId: student.id,
-            status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
-          },
-          select: { balance: true },
-        });
-
-        arrears = unpaidVouchers.reduce((acc, v) => acc + (v.balance || 0), 0);
-        totalArrearsRolled += arrears;
-      }
-
-      // Determine base fee from class structure or fallback
-      let baseAmount = data.baseAmount || 0;
-      if (data.useClassFeeStructure !== false && student.classId && structureMap.has(student.classId)) {
-        const struct = structureMap.get(student.classId)!;
-        baseAmount = struct.totalMonthlyFee || struct.tuitionFee || data.baseAmount || 0;
-      }
-
-      // Determine concession/discount
-      let discountAmount = 0;
-      if (concessionMap.has(student.id)) {
-        const conc = concessionMap.get(student.id)!;
-        if (conc.discountType === "PERCENTAGE") {
-          discountAmount = Math.round(((baseAmount * conc.discountValue) / 100) * 100) / 100;
-        } else {
-          discountAmount = Math.min(conc.discountValue, baseAmount);
-        }
-      }
-      totalConcessionsApplied += discountAmount;
-
-      const netBase = Math.max(0, baseAmount - discountAmount);
-      const totalDue = netBase + arrears;
-      totalGeneratedDue += totalDue;
-
-      const voucherId = `VCH-${currentYear}-${nextSequence.toString().padStart(5, "0")}`;
-      nextSequence++;
-
-      vouchersToCreate.push({
+    // Pre-lock existing vouchers for idempotency check: fetch all relevant FeeVouchers with billingMonth/Year
+    const existingForPeriod = await prisma.feeVoucher.findMany({
+      where: {
         tenantId,
-        voucherId,
-        studentProfileId: student.id,
         academicYearId: data.academicYearId,
-        feeType: data.feeType,
-        baseAmount,
-        discountAmount,
-        arrears,
-        totalDue,
-        amountPaid: 0,
-        balance: totalDue,
-        dueDate,
-        status: "PENDING",
+        feeType: data.feeType || "TUITION",
+        billingYear,
+        billingMonth,
+        studentProfileId: { in: studentIds },
+      },
+      select: { studentProfileId: true },
+    });
+    const alreadyInvoiced = new Set(existingForPeriod.map((v) => v.studentProfileId));
+
+    // For arrears, we need to compute once outside loop via map to avoid N+1
+    const arrearsMap = new Map<string, Prisma.Decimal>();
+    if (data.carryForwardArrears) {
+      // Single query for all students' pending balances. Only vouchers from a
+      // period strictly before the one we're about to generate are counted:
+      // otherwise every re-run of batch invoicing would re-sum balances that
+      // were already rolled into a later voucher's `arrears`, compounding
+      // the same shortfall every cycle. Vouchers without a billing period
+      // (e.g. one-off ADMISSION/TERM fees) have no period to compare against
+      // and are always treated as prior-period arrears.
+      const unpaid = await prisma.feeVoucher.findMany({
+        where: {
+          tenantId,
+          studentProfileId: { in: studentIds },
+          status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+          OR: [
+            { billingYear: null },
+            { billingYear: { lt: billingYear } },
+            { billingYear, billingMonth: { lt: billingMonth } },
+          ],
+        },
+        select: { studentProfileId: true, balance: true },
       });
+      for (const v of unpaid) {
+        const cur = arrearsMap.get(v.studentProfileId) || new Prisma.Decimal(0);
+        arrearsMap.set(v.studentProfileId, cur.add(new Prisma.Decimal(v.balance as any)));
+      }
     }
 
-    // Batch creation and GL accruals are atomic.
     await prisma.$transaction(async (tx) => {
-      for (const voucherData of vouchersToCreate) {
-        await tx.feeVoucher.create({ data: voucherData });
-        await postLegacyFeeInvoiceAccrual(tx, {
+      for (const student of students) {
+        if (alreadyInvoiced.has(student.id)) {
+          skippedDuplicate++;
+          continue;
+        }
+
+        const arrears = arrearsMap.get(student.id) || new Prisma.Decimal(0);
+        if (arrears.greaterThan(0)) totalArrearsRolled = totalArrearsRolled.add(arrears);
+
+        // Determine base fee from class structure or fallback, with billing cycle multiplier
+        let baseAmount = new Prisma.Decimal(data.baseAmount || 0);
+        const struct = student.classId ? structureMap.get(student.classId) : undefined;
+        if (data.useClassFeeStructure !== false && struct) {
+          // Use Decimal values — totalMonthlyFee is Decimal now
+          const monthly = new Prisma.Decimal((struct as any).totalMonthlyFee ?? (struct as any).tuitionFee ?? 0);
+          // Apply billing cycle multiplier
+          let cycleBase = monthly;
+          const cycle = (struct as any).billingCycle || "MONTHLY";
+          if (cycle === "QUARTERLY") cycleBase = monthly.mul(3);
+          else if (cycle === "BI_ANNUAL") cycleBase = monthly.mul(6);
+          else if (cycle === "ANNUAL") cycleBase = monthly.mul(12);
+          // Prorate if mid-term admission
+          if ((struct as any).prorateOnAdmission !== false && student.admissionDate) {
+            cycleBase = prorateMonthlyFee(cycleBase, new Date(student.admissionDate), billingYear, billingMonth);
+          }
+          baseAmount = cycleBase;
+        }
+        // Fallback if still zero — use provided baseAmount
+        if (baseAmount.isZero() && data.baseAmount) baseAmount = new Prisma.Decimal(data.baseAmount);
+
+        // Determine concession via stacking, tuition-only cap
+        let discountAmount = new Prisma.Decimal(0);
+        const studentConcessions = concessionsByStudent.get(student.id) || [];
+        if (studentConcessions.length > 0) {
+          // For tuition-only cap, need tuition component separately
+          const tuitionOnly = struct ? new Prisma.Decimal((struct as any).tuitionFee ?? 0) : baseAmount;
+          // If billing cycle multiplies, tuitionOnly should scale similarly
+          let tuitionEligible = tuitionOnly;
+          if (struct) {
+            const cycle = (struct as any).billingCycle || "MONTHLY";
+            if (cycle === "QUARTERLY") tuitionEligible = tuitionOnly.mul(3);
+            else if (cycle === "BI_ANNUAL") tuitionEligible = tuitionOnly.mul(6);
+            else if (cycle === "ANNUAL") tuitionEligible = tuitionOnly.mul(12);
+            if ((struct as any).prorateOnAdmission !== false && student.admissionDate) {
+              tuitionEligible = prorateMonthlyFee(tuitionEligible, new Date(student.admissionDate), billingYear, billingMonth);
+            }
+          }
+          discountAmount = computeStackedConcession(tuitionEligible, studentConcessions.map(c=>({
+            discountType: c.discountType,
+            discountValue: new Prisma.Decimal(c.discountValue as any),
+            appliesToHead: (c as any).appliesToHead || "TUITION",
+            priority: (c as any).priority,
+            validFrom: (c as any).validFrom,
+            validUntil: (c as any).validUntil,
+          })), baseAmount);
+        }
+        totalConcessionsApplied = totalConcessionsApplied.add(discountAmount);
+
+        const netBase = Prisma.Decimal.max(new Prisma.Decimal(0), baseAmount.minus(discountAmount));
+        const totalDue = netBase.add(arrears);
+        totalGeneratedDue = totalGeneratedDue.add(totalDue);
+
+        const voucherId = await getNextVoucherNumber(tx, tenantId, "SALES_FEE", currentYear);
+
+        // Idempotent upsert via natural key (student + period + feeType) — Decimal calc, Float store (2dp)
+        try {
+          await tx.feeVoucher.create({
+            data: {
+              tenantId,
+              voucherId,
+              studentProfileId: student.id,
+              academicYearId: data.academicYearId,
+              feeType: data.feeType || "TUITION",
+              billingMonth,
+              billingYear,
+              baseAmount: Number(baseAmount.toFixed(2)),
+              discountAmount: Number(discountAmount.toFixed(2)),
+              arrears: Number(arrears.toFixed(2)),
+              lateFine: 0,
+              totalDue: Number(totalDue.toFixed(2)),
+              amountPaid: 0,
+              balance: Number(totalDue.toFixed(2)),
+              dueDate,
+              status: "PENDING",
+            },
+          });
+        } catch (e:any) {
+          if (e?.code === "P2002") {
+            skippedDuplicate++;
+            continue;
+          }
+          throw e;
+        }
+
+        await postLegacyFeeInvoiceAccrual(tx as any, {
           tenantId,
-          studentProfileId: voucherData.studentProfileId,
+          studentProfileId: student.id,
           feeHeadCode,
-          amount: voucherData.baseAmount,
-          discountAmount: voucherData.discountAmount,
+          amount: baseAmount,
+          discountAmount,
           executedById: access.authContext.user.id,
-          reference: voucherData.voucherId,
+          reference: voucherId,
           dueDate,
         });
+        createdCount++;
       }
     });
 
     return successResponse(
       {
-        totalVouchersCreated: vouchersToCreate.length,
-        totalInvoiceAmount: totalGeneratedDue,
-        totalArrearsIncluded: totalArrearsRolled,
-        totalConcessionsApplied,
+        totalVouchersCreated: createdCount,
+        skippedDuplicates: skippedDuplicate,
+        totalInvoiceAmount: totalGeneratedDue.toFixed(2),
+        totalArrearsIncluded: totalArrearsRolled.toFixed(2),
+        totalConcessionsApplied: totalConcessionsApplied.toFixed(2),
         dueDate: data.dueDate,
         target: data.target,
       },
-      `Successfully generated ${vouchersToCreate.length} individualized fee vouchers!`,
+      `Successfully generated ${createdCount} individualized fee vouchers!${skippedDuplicate? ` Skipped ${skippedDuplicate} duplicates.` : ""}`,
       201
     );
   } catch (error) {

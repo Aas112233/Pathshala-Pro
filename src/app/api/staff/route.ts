@@ -13,6 +13,7 @@ import {
 import { createStaffSchema, updateStaffSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { verifyInternalFileUrl } from "@/lib/upload-security";
 
 /**
  * GET /api/staff
@@ -128,6 +129,9 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
+    if (data.profilePictureUrl && !(await verifyInternalFileUrl(data.profilePictureUrl, tenantId))) {
+      return badRequest("Invalid profile picture file");
+    }
 
     let staffId: string = data.staffId ?? "";
 

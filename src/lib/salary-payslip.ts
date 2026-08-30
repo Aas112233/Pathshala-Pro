@@ -48,9 +48,11 @@ export interface EarningsBreakdown {
 export interface DeductionsBreakdown {
   lopDays: number;
   lopAmount: Prisma.Decimal;
+  /** Amount actually applied/collected this period (capped at what remains of gross). */
   pfAmount: Prisma.Decimal;
   taxAmount: Prisma.Decimal;
   loanRecovery: Prisma.Decimal;
+  /** Sum of the *applied* amounts above — always <= grossSalary. */
   totalDeductions: Prisma.Decimal;
 }
 
@@ -69,6 +71,14 @@ export interface PayrollCalculation {
   deductions: DeductionsBreakdown;
   netPayable: Prisma.Decimal;
   dailyRate: Prisma.Decimal;
+  /**
+   * Aggregate amount that could not be collected this period because
+   * configured PF/tax/loan recovery exceeded what remained of gross after
+   * higher-priority deductions. Always >= 0. This is reportable, uncollected
+   * money — it must be surfaced (e.g. carried into next month's loan
+   * recovery, or flagged to payroll admin), never silently discarded.
+   */
+  shortfall: Prisma.Decimal;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -107,11 +117,20 @@ export const getAttendanceUnpaidDays = async (
   // Staff attendance — ABSENT counts as unpaid; LEAVE status handled via LeaveApplication
   const attendances = await (tx as any).attendance.findMany({
     where: { tenantId, staffProfileId, date: { gte: start, lte: end } },
-    select: { status: true },
+    select: { status: true, date: true },
   });
 
   const present = attendances.filter((a: any) => a.status === 'PRESENT').length;
-  const absent = attendances.filter((a: any) => a.status === 'ABSENT').length;
+  const absentRecords = attendances.filter((a: any) => a.status === 'ABSENT');
+  const absent = absentRecords.length;
+
+  // Calendar-day key (date components only, no time-of-day) so the same day
+  // reached via an ABSENT attendance row and via an approved-leave range
+  // collapses to one entry instead of being counted twice.
+  const dateKey = (d: Date): string => d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+
+  const unpaidDateKeys = new Set<string>();
+  for (const a of absentRecords) unpaidDateKeys.add(dateKey(new Date(a.date)));
 
   // Approved leaves that overlap this month — each overlapping day counts as unpaid
   // LeaveApplication has fromDate/toDate, status APPROVED, applicantType STAFF
@@ -127,19 +146,34 @@ export const getAttendanceUnpaidDays = async (
     select: { fromDate: true, toDate: true, leaveType: true },
   });
 
+  const clampToMonth = (d: Date): Date => {
+    if (d.getTime() < start.getTime()) return new Date(start);
+    if (d.getTime() > end.getTime()) return new Date(end);
+    return d;
+  };
+
   let leaveUnpaid = 0;
   for (const l of leaves) {
-    const s = new Date(Math.max(new Date(l.fromDate).getTime(), start.getTime()));
-    const e = new Date(Math.min(new Date(l.toDate).getTime(), end.getTime()));
-    const days = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     // All approved staff leaves are treated as unpaid for payroll unless leaveType is explicitly PAID
     // Extend here if you add LeaveType.PAID
-    if (days > 0) leaveUnpaid += days;
+    const s = clampToMonth(new Date(l.fromDate));
+    const e = clampToMonth(new Date(l.toDate));
+    const cursor = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+    const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+    let days = 0;
+    while (cursor.getTime() <= last.getTime()) {
+      unpaidDateKeys.add(dateKey(cursor));
+      days += 1;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    leaveUnpaid += days; // kept for the returned shape; may double-count vs. `absent` on overlapping days
   }
 
-  // Avoid double-counting: if attendance already marked ABSENT on a leave day, don't double add
-  // Conservative: take max of absent vs leave overlap — here sum but cap at daysInMonth
-  const unpaidDays = Math.min(absent + leaveUnpaid, getDaysInMonth(year, month));
+  // unpaidDays is the size of the de-duplicated set of unpaid calendar dates
+  // (ABSENT attendance UNION approved-unpaid-leave dates), not `absent +
+  // leaveUnpaid`, so a day marked both ABSENT and covered by an approved
+  // leave is only counted once.
+  const unpaidDays = Math.min(unpaidDateKeys.size, getDaysInMonth(year, month));
 
   return { present, absent, leaveUnpaid, unpaidDays };
 };
@@ -181,20 +215,58 @@ export async function calculateEmployeePayroll(
   const grossSalary = baseSalary.add(hra).add(medical).add(transport).add(special).add(other);
 
   const dailyRate = daysInMonth ? grossSalary.div(daysInMonth) : new Prisma.Decimal(0);
-  const lopAmount = dailyRate.mul(unpaidDays).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
-  // Deductions
+  // LOP as the *residual* of proration, not `dailyRate x unpaidDays`: the
+  // latter rounds twice (once implicitly in the displayed daily rate, once in
+  // the LOP amount), so the payslip's printed daily rate multiplied by the
+  // days shown no longer equals the actual deduction (off by a paisa). The
+  // residual form guarantees earnedGross + lopAmount === grossSalary exactly;
+  // the displayed `dailyRate` below is informational only.
+  const earnedGross = daysInMonth
+    ? grossSalary.mul(payableDays).div(daysInMonth).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+    : new Prisma.Decimal(0);
+  const lopAmount = grossSalary.sub(earnedGross).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+  // Deductions — each *configured* amount is capped against what remains of
+  // gross after higher-priority deductions, so `netPayable` is non-negative
+  // BY CONSTRUCTION and the accrual journal (gross debited in full; net + pf
+  // + tax + loan + lop credited) always balances. Previously, netPayable was
+  // clamped to 0 without capping the credited pf/tax/loan lines, which made
+  // debits != credits whenever configured deductions exceeded gross —
+  // postDoubleEntryJournal correctly rejects that, which aborted the entire
+  // batch payroll transaction for every other employee already processed in
+  // the same run. Priority: LOP (inherent to the period, bounded <= gross by
+  // construction since unpaidDays is clamped to daysInMonth) -> PF (statutory)
+  // -> Tax (statutory) -> Loan recovery (the most deferrable). Any amount
+  // that could not be collected this period is reported in `shortfall`, never
+  // silently discarded.
   const pfFlat = deductionsConfig.pfFlat != null ? D(deductionsConfig.pfFlat) : null;
-  const pfRate = deductionsConfig.pfRate ?? 0.0833; // 8.33% default on gross
-  const pfAmount = pfFlat != null ? pfFlat : grossSalary.mul(pfRate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  // PF (Provident Fund) is computed on Basic Salary per Bangladeshi labor law,
+  // not on Gross Salary (which includes exempt allowances like HRA, medical, etc.)
+  const baseSalaryForPF = baseSalary; // already Decimal from line 175
+  const pfRate = deductionsConfig.pfRate != null ? D(deductionsConfig.pfRate) : new Prisma.Decimal(0.0833); // 8.33% as Decimal
+  const configuredPfAmount = pfFlat != null ? pfFlat : baseSalaryForPF.mul(pfRate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const configuredTaxAmount = D(deductionsConfig.taxAmount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const configuredLoanRecovery = D(deductionsConfig.loanInstallment).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
-  const taxAmount = D(deductionsConfig.taxAmount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-  const loanRecovery = D(deductionsConfig.loanInstallment).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  let remainingAfterLop = grossSalary.sub(lopAmount);
+  if (remainingAfterLop.isNegative()) remainingAfterLop = new Prisma.Decimal(0); // defensive only; lopAmount <= grossSalary by construction
 
-  const totalDeductions = lopAmount.add(pfAmount).add(taxAmount).add(loanRecovery);
-  let netPayable = grossSalary.sub(totalDeductions);
-  if (netPayable.isNegative()) netPayable = new Prisma.Decimal(0);
-  netPayable = netPayable.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const pfAmount = Prisma.Decimal.min(configuredPfAmount, remainingAfterLop);
+  const remainingAfterPf = remainingAfterLop.sub(pfAmount);
+
+  const taxAmount = Prisma.Decimal.min(configuredTaxAmount, remainingAfterPf);
+  const remainingAfterTax = remainingAfterPf.sub(taxAmount);
+
+  const loanRecovery = Prisma.Decimal.min(configuredLoanRecovery, remainingAfterTax);
+  const netPayable = remainingAfterTax.sub(loanRecovery).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+  const totalDeductions = lopAmount.add(pfAmount).add(taxAmount).add(loanRecovery).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const shortfall = configuredPfAmount
+    .sub(pfAmount)
+    .add(configuredTaxAmount.sub(taxAmount))
+    .add(configuredLoanRecovery.sub(loanRecovery))
+    .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
   const earnings: EarningsBreakdown = { baseSalary, hra, medical, transport, special, other, grossSalary };
   const deductions: DeductionsBreakdown = { lopDays: unpaidDays, lopAmount, pfAmount, taxAmount, loanRecovery, totalDeductions };
@@ -214,6 +286,7 @@ export async function calculateEmployeePayroll(
     deductions,
     netPayable,
     dailyRate: dailyRate.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+    shortfall,
   };
 }
 
@@ -274,12 +347,30 @@ export async function postPayrollAccrual(
 
 export async function postSalaryDisbursement(
   tx: Prisma.TransactionClient | typeof prisma,
-  params: { tenantId: string; salaryLedgerId: string; amount: Prisma.Decimal | number | string; bankAccountCode?: string; executedById?: string }
+  params: {
+    tenantId: string;
+    salaryLedgerId: string;
+    amount: Prisma.Decimal | number | string;
+    bankAccountCode?: string;
+    executedById?: string;
+    /**
+     * Distinguishes this disbursement from any other disbursement against the
+     * same ledger (e.g. the running cumulative paidAmount after this call).
+     * Without this, every call — including a genuine second, partial
+     * disbursement — shares the same idempotency key, so
+     * postDoubleEntryJournal's idempotency check returns the *first*
+     * disbursement's journal and silently skips posting the second one.
+     */
+    idempotencySuffix?: string;
+  }
 ) {
   const amount = D(params.amount);
   if (amount.lessThanOrEqualTo(0)) throw new Error('Disbursement amount must be >0');
 
-  // Idempotency via ledger paidAmount check handled by caller; here journal idempotency
+  const idempotencyKey = params.idempotencySuffix
+    ? `payroll-pay-${params.salaryLedgerId}-${params.idempotencySuffix}`
+    : `payroll-pay-${params.salaryLedgerId}`;
+
   return postDoubleEntryJournal(tx, {
     tenantId: params.tenantId,
     voucherType: 'PAYROLL_DISBURSEMENT',
@@ -290,7 +381,7 @@ export async function postSalaryDisbursement(
       { accountCode: '2020', side: 'DEBIT', amount, narration: `Salary Payable` },
       { accountCode: params.bankAccountCode ?? '1010', side: 'CREDIT', amount, narration: `Bank/Cash` },
     ],
-    idempotencyKey: `payroll-pay-${params.salaryLedgerId}`,
+    idempotencyKey,
   });
 }
 
@@ -400,6 +491,12 @@ export async function executeBatchMonthlyPayroll(params: {
             loanRecovery: calc.deductions.loanRecovery.toFixed(2),
             totalDeductions: calc.deductions.totalDeductions.toFixed(2),
             attendance: calc.attendance,
+            // Uncollected amount, if configured pf/tax/loan exceeded what remained
+            // of gross after higher-priority deductions. Always 0.00 unless the
+            // employee's deductions were mis-configured relative to their gross
+            // this period — surfaced here rather than silently discarded so it
+            // can be reviewed and carried forward.
+            shortfall: calc.shortfall.toFixed(2),
           },
           status: 'PENDING',
         },
@@ -439,8 +536,24 @@ export async function disburseSalaryLedger(params: {
     assertNotPaid(ledger, 'disburse');
 
     const net = D(ledger.netPayable);
-    const amount = params.amount != null ? D(params.amount) : net;
-    if (amount.greaterThan(net)) throw new Error(`Disbursement ${amount.toFixed(2)} exceeds netPayable ${net.toFixed(2)}`);
+    // Accumulate against whatever has already been disbursed, rather than
+    // overwriting it — a second, partial disbursement call must add to the
+    // first one's `paidAmount`, not replace it, and must be validated against
+    // the *outstanding* balance, not the full netPayable (which is why a
+    // legitimate second disbursement for the remainder used to erroneously
+    // succeed and then wipe out the record of the first payment).
+    const alreadyPaid = D(ledger.paidAmount ?? 0);
+    const outstanding = net.sub(alreadyPaid);
+    const amount = params.amount != null ? D(params.amount) : outstanding;
+
+    if (amount.lessThanOrEqualTo(0)) throw new Error('Disbursement amount must be >0');
+    if (amount.greaterThan(outstanding)) {
+      throw new Error(
+        `Disbursement ${amount.toFixed(2)} exceeds outstanding balance ${outstanding.toFixed(2)} (netPayable ${net.toFixed(2)}, already paid ${alreadyPaid.toFixed(2)})`,
+      );
+    }
+
+    const newPaidAmount = alreadyPaid.add(amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
     await postSalaryDisbursement(tx as any, {
       tenantId: params.tenantId,
@@ -448,13 +561,14 @@ export async function disburseSalaryLedger(params: {
       amount,
       bankAccountCode: params.bankAccountCode,
       executedById: params.executedById,
+      idempotencySuffix: newPaidAmount.toFixed(2),
     });
 
     const updated: any = await tx.salaryLedger.update({
       where: { id: ledger.id },
       data: {
-        paidAmount: amount.toNumber(),
-        status: amount.equals(net) ? 'PAID' : 'PARTIAL',
+        paidAmount: newPaidAmount.toNumber(),
+        status: newPaidAmount.greaterThanOrEqualTo(net) ? 'PAID' : 'PARTIAL',
         paidAt: new Date(),
       },
       select: { id: true, paidAmount: true },

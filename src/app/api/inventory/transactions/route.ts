@@ -63,12 +63,13 @@ export async function POST(request: NextRequest) {
     else if (d.transactionType === "ISSUE") delta = -d.quantity;
     else if (d.transactionType === "ADJUSTMENT") delta = d.quantity; // allow positive/negative via quantity sign? For now treat as +
 
-    if (delta < 0 && item.quantity + delta < 0) {
-      return badRequest("Insufficient stock", [{ field: "quantity", code: "insufficient_stock", message: `Only ${item.quantity} in stock` }]);
-    }
-
-    const [tx] = await prisma.$transaction([
-      prisma.inventoryTransaction.create({
+    const tx = await prisma.$transaction(async (db) => {
+      const updated = await db.inventoryItem.updateMany({
+        where: { id: d.itemId, tenantId, ...(delta < 0 ? { quantity: { gte: Math.abs(delta) } } : {}) },
+        data: { quantity: { increment: delta } },
+      });
+      if (updated.count !== 1) throw new Error(`Insufficient stock; only ${item.quantity} available`);
+      return db.inventoryTransaction.create({
         data: {
           tenantId,
           itemId: d.itemId,
@@ -79,9 +80,8 @@ export async function POST(request: NextRequest) {
           notes: d.notes || null,
           performedById: user.id,
         },
-      }),
-      prisma.inventoryItem.update({ where: { id: d.itemId }, data: { quantity: { increment: delta } } }),
-    ]);
+      });
+    });
 
     return successResponse(tx, "Transaction recorded", 201);
   } catch (e) { return handleApiError(e); }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { TopSheet } from "@/components/ui/top-sheet";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -217,46 +218,33 @@ export function BatchInvoiceModal({
             {/* Step 1: Academic Year & Billing Month */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("academicYearLabel")}</Label>
-              <select
+              <AppDropdown
                 value={formData.academicYearId || academicYears[0]?.id || ""}
-                onChange={(e) => setFormData({ ...formData, academicYearId: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-input bg-background text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {academicYears.map((ay: any) => (
-                  <option key={ay.id} value={ay.id}>
-                    {ay.label} {ay.isClosed ? t("closedSuffix") : t("activeSuffix")}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setFormData({ ...formData, academicYearId: v })}
+                options={academicYears.map((ay: any) => ({
+                  value: ay.id,
+                  label: `${ay.label} ${ay.isClosed ? t("closedSuffix") : t("activeSuffix")}`.trim()
+                }))}
+                searchable
+              />
             </div>
 
             {/* Billing Month & Year */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("billingMonth")}</Label>
               <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={formData.month}
-                  onChange={(e) => setFormData({ ...formData, month: parseInt(e.target.value, 10) })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {MONTHS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {tMonths(m.key)}
-                    </option>
-                  ))}
-                </select>
+                <AppDropdown
+                  value={String(formData.month)}
+                  onChange={(v) => setFormData({ ...formData, month: parseInt(v, 10) })}
+                  options={MONTHS.map((m) => ({ value: String(m.value), label: tMonths(m.key) }))}
+                  searchable
+                />
 
-                <select
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value, 10) })}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {[2025, 2026, 2027, 2028].map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
+                <AppDropdown
+                  value={String(formData.year)}
+                  onChange={(v) => setFormData({ ...formData, year: parseInt(v, 10) })}
+                  options={[2025, 2026, 2027, 2028].map((y) => ({ value: String(y), label: String(y) }))}
+                />
               </div>
             </div>
 
@@ -295,36 +283,25 @@ export function BatchInvoiceModal({
               <div className="space-y-1.5 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-muted/20 rounded-lg border border-border">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">{t("selectClassLabel")}</Label>
-                  <select
+                  <AppDropdown
                     value={formData.classId}
-                    onChange={(e) => setFormData({ ...formData, classId: e.target.value, sectionId: "" })}
-                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs"
-                  >
-                    <option value="">{t("chooseClass")}</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setFormData({ ...formData, classId: v, sectionId: "" })}
+                    options={classes.map((c) => ({ value: c.id, label: c.name }))}
+                    placeholder={t("chooseClass")}
+                    searchable
+                  />
                 </div>
 
                 {formData.target === "SECTION" && (
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">{t("selectSectionLabel")}</Label>
-                    <select
+                    <AppDropdown
                       value={formData.sectionId}
-                      onChange={(e) => setFormData({ ...formData, sectionId: e.target.value })}
+                      onChange={(v) => setFormData({ ...formData, sectionId: v })}
                       disabled={!formData.classId}
-                      className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs disabled:opacity-50"
-                    >
-                      <option value="">{t("chooseSection")}</option>
-                      {availableSections.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={availableSections.map((s) => ({ value: s.id, label: s.name }))}
+                      placeholder={t("chooseSection")}
+                    />
                   </div>
                 )}
               </div>

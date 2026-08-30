@@ -51,6 +51,7 @@ const INITIAL_FORM: AcademicYearFormData = {
 
 export default function AcademicYearPage() {
   const t = useTranslations("academicYear");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "academic-years", "read");
@@ -192,7 +193,7 @@ export default function AcademicYearPage() {
       cell: ({ getValue }) => (
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground font-mono text-xs font-medium">
-            AY
+            {t("yearBadge")}
           </div>
           <span className="font-semibold text-foreground font-mono">{getValue<string>()}</span>
         </div>
@@ -288,8 +289,8 @@ export default function AcademicYearPage() {
 
       {!isAuthLoading && !canRead ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2>Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+          <h2>{common("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{common("noPermission")}</p>
         </div>
       ) : (
         <>

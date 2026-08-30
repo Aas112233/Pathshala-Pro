@@ -22,6 +22,7 @@ import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 
 interface SalaryRecord {
   id: string;
@@ -104,7 +105,7 @@ export default function SalaryReportPage() {
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate salary report:", error);
-      toast.error("Failed to generate salary payroll report");
+      toast.error(t("generateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -128,23 +129,23 @@ export default function SalaryReportPage() {
       to: "Disbursement",
     });
     if (result.success) {
-      toast.success("Payroll report exported to Excel");
+      toast.success(t("exportedExcel"));
       return;
     }
-    toast.error("Failed to export payroll report");
+    toast.error(t("exportFailed"));
   };
 
   const columns: ColumnDef<SalaryRecord>[] = [
     {
       accessorKey: "staffId",
-      header: "Staff ID",
+      header: t("staffId"),
       cell: (info: any) => (
         <span className="font-mono text-xs font-semibold">{info?.row?.original?.staffId ?? info?.staffId ?? "-"}</span>
       ),
     },
     {
       accessorKey: "staffName",
-      header: "Employee Name",
+      header: t("employeeName"),
       cell: (info: any) => (
         <div>
           <p className="font-medium text-foreground">{info?.row?.original?.staffName ?? info?.staffName ?? "-"}</p>
@@ -154,7 +155,7 @@ export default function SalaryReportPage() {
     },
     {
       accessorKey: "department",
-      header: "Department",
+      header: t("department"),
       cell: (info: any) => (
         <span className="text-xs bg-muted px-2 py-0.5 rounded-md font-medium">
           {info?.row?.original?.department ?? info?.department ?? "-"}
@@ -163,19 +164,19 @@ export default function SalaryReportPage() {
     },
     {
       accessorKey: "period",
-      header: "Period",
+      header: t("period"),
       cell: (info: any) => <span className="text-xs font-mono">{info?.row?.original?.period ?? info?.period ?? "-"}</span>,
     },
     {
       accessorKey: "baseSalary",
-      header: "Gross Base",
+      header: t("grossBase"),
       cell: (info: any) => (
         <span className="text-xs font-medium">{formatCurrency(info?.row?.original?.baseSalary ?? info?.baseSalary ?? 0)}</span>
       ),
     },
     {
       accessorKey: "deductions",
-      header: "Deductions",
+      header: t("deductions"),
       cell: (info: any) => {
         const deductions = info?.row?.original?.deductions ?? info?.deductions ?? 0;
         return (
@@ -187,7 +188,7 @@ export default function SalaryReportPage() {
     },
     {
       accessorKey: "netPayable",
-      header: "Net Payable",
+      header: t("netPayable"),
       cell: (info: any) => (
         <span className="text-xs font-bold text-foreground">
           {formatCurrency(info?.row?.original?.netPayable ?? info?.netPayable ?? 0)}
@@ -196,7 +197,7 @@ export default function SalaryReportPage() {
     },
     {
       accessorKey: "paidAmount",
-      header: "Paid Amount",
+      header: t("paidAmount"),
       cell: (info: any) => (
         <span className="text-xs font-semibold text-emerald-600">
           {formatCurrency(info?.row?.original?.paidAmount ?? info?.paidAmount ?? 0)}
@@ -205,7 +206,7 @@ export default function SalaryReportPage() {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: t("status"),
       cell: (info: any) => {
         const s = info?.row?.original?.status ?? info?.status ?? "UNPAID";
         const variant = s === "PAID" ? "success" : s === "PARTIAL" ? "warning" : "error";
@@ -221,9 +222,9 @@ export default function SalaryReportPage() {
 
   const statusPieData = metrics
     ? [
-        { label: "Disbursed / Paid", value: metrics.totalPaid, color: "#10b981" },
-        { label: "Pending Payout", value: metrics.totalPending, color: "#f59e0b" },
-        { label: "Deductions/Withheld", value: metrics.totalDeductions, color: "#64748b" },
+        { label: t("disbursedPaid"), value: metrics.totalPaid, color: "#10b981" },
+        { label: t("pendingPayout"), value: metrics.totalPending, color: "#f59e0b" },
+        { label: t("deductionsWithheld"), value: metrics.totalDeductions, color: "#64748b" },
       ].filter((x) => x.value > 0)
     : [];
 
@@ -247,76 +248,69 @@ export default function SalaryReportPage() {
       <div className="rounded-lg border border-border/80 bg-card p-4 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Year</label>
-            <select
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("year")}</label>
+            <AppDropdown
               value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              {[2024, 2025, 2026, 2027].map((y) => (
-                <option key={y} value={y.toString()}>
-                  {y}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSelectedYear(v)}
+              options={["2024", "2025", "2026", "2027", "2028"].map((y) => ({ value: y, label: y }))}
+              className="mt-1"
+            />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Month</label>
-            <select
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("month")}</label>
+            <AppDropdown
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Months</option>
-              {[
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-              ].map((m, idx) => (
-                <option key={m} value={(idx + 1).toString()}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSelectedMonth(v)}
+              options={[
+                { value: "all", label: t("allMonths") },
+                { value: "1", label: "January" },
+                { value: "2", label: "February" },
+                { value: "3", label: "March" },
+                { value: "4", label: "April" },
+                { value: "5", label: "May" },
+                { value: "6", label: "June" },
+                { value: "7", label: "July" },
+                { value: "8", label: "August" },
+                { value: "9", label: "September" },
+                { value: "10", label: "October" },
+                { value: "11", label: "November" },
+                { value: "12", label: "December" },
+              ]}
+              searchable
+              className="mt-1"
+            />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Department</label>
-            <select
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("department")}</label>
+            <AppDropdown
               value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Departments</option>
-              <option value="Academic">Academic / Teaching</option>
-              <option value="Administration">Administration</option>
-              <option value="Accounts">Accounts & Finance</option>
-              <option value="Support">Support & Transport</option>
-            </select>
+              onChange={(v) => setSelectedDept(v)}
+              options={[
+                { value: "all", label: t("allDepartments") },
+                { value: "Academic", label: t("academicTeaching") },
+                { value: "Administration", label: t("administration") },
+                { value: "Accounts", label: t("accountsFinance") },
+                { value: "Support", label: t("supportTransport") },
+              ]}
+              className="mt-1"
+            />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Payout Status</label>
-            <select
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("payoutStatus")}</label>
+            <AppDropdown
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Statuses</option>
-              <option value="PAID">Paid / Disbursed</option>
-              <option value="PENDING">Pending Payout</option>
-              <option value="PARTIAL">Partial</option>
-            </select>
+              onChange={(v) => setSelectedStatus(v)}
+              options={[
+                { value: "all", label: t("allStatuses") },
+                { value: "PAID", label: t("paidDisbursed") },
+                { value: "PENDING", label: t("pendingPayout") },
+                { value: "PARTIAL", label: t("partial") },
+              ]}
+              className="mt-1"
+            />
           </div>
         </div>
 
@@ -330,7 +324,7 @@ export default function SalaryReportPage() {
             disabled={isLoading}
             className="text-xs h-8 bg-primary text-primary-foreground"
           >
-            {isLoading ? "Generating..." : "Generate Report"}
+            {isLoading ? t("generating") : t("generateReport")}
           </Button>
         </div>
       </div>
@@ -343,30 +337,30 @@ export default function SalaryReportPage() {
             generatedAtLabel={generatedAt}
             recordCount={data.length}
             appliedFilters={[
-              { label: "Year", value: selectedYear },
-              { label: "Month", value: selectedMonth === "all" ? "All" : `Month ${selectedMonth}` },
+              { label: t("year"), value: selectedYear },
+              { label: t("month"), value: selectedMonth === "all" ? t("all") : `${t("month")} ${selectedMonth}` },
             ]}
           />
 
           {/* Metrics Grid */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ReportMetricCard
-              title="Total Gross Payroll"
+              title={t("totalGrossPayroll")}
               value={formatCurrency(metrics.totalGross)}
               icon={DollarSign}
             />
             <ReportMetricCard
-              title="Net Disbursed"
+              title={t("netDisbursed")}
               value={formatCurrency(metrics.totalPaid)}
               icon={CheckCircle2}
             />
             <ReportMetricCard
-              title="Pending Payouts"
+              title={t("pendingPayouts")}
               value={formatCurrency(metrics.totalPending)}
               icon={Clock}
             />
             <ReportMetricCard
-              title="Total Deductions"
+              title={t("totalDeductions")}
               value={formatCurrency(metrics.totalDeductions)}
               icon={Wallet}
             />
@@ -375,13 +369,13 @@ export default function SalaryReportPage() {
           {/* Charts Row */}
           <div className="grid gap-6 md:grid-cols-2">
             <BarChart
-              title="Payroll by Department"
-              description="Gross salary allocation across departments"
+              title={t("payrollByDepartment")}
+              description={t("payrollByDepartmentDescription")}
               data={chartData}
             />
             <PieChart
-              title="Disbursement Composition"
-              description="Ratio of disbursed vs pending vs deductions"
+              title={t("disbursementComposition")}
+              description={t("disbursementCompositionDescription")}
               data={statusPieData}
             />
           </div>
@@ -396,8 +390,8 @@ export default function SalaryReportPage() {
 
       {!hasGenerated && (
         <ReportEmptyState
-          title="No Payroll Report Generated"
-          description="Select fiscal year, month, and department filters above then click Generate Report."
+          title={t("noReportTitle")}
+          description={t("noReportDescription")}
         />
       )}
     </ReportPageShell>

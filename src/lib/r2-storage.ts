@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { signFileAccessToken } from "@/lib/jwt";
 
 export const getR2Client = () => {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -48,28 +49,21 @@ export async function uploadToR2(
       })
     );
 
-    // Format the public URL
-    const publicDomain = process.env.R2_PUBLIC_DOMAIN;
-    let fileUrl: string;
-
-    if (publicDomain) {
-      // Use Custom sub-domain routed through Cloudflare
-      // e.g. https://cdn.mypathshala.com/Tenant_123/student_profiles/abc.jpg
-      const cleanDomain = publicDomain.endsWith("/") ? publicDomain.slice(0, -1) : publicDomain;
-      fileUrl = `${cleanDomain}/${objectKey}`;
-    } else {
-      // Fallback: This only works if your bucket explicitly enables R2.dev public access
-      fileUrl = `https://pub-${process.env.R2_ACCOUNT_ID}.r2.dev/${objectKey}`;
-    }
-
+    // Never expose the R2 bucket or a public CDN URL. The application file
+    // endpoint authenticates the caller and enforces the tenant prefix.
     return {
       fileId: objectKey,
-      webViewLink: fileUrl,
+      webViewLink: await createR2FileUrl(objectKey, tenantId),
     };
   } catch (error) {
     console.error("Error uploading to Cloudflare R2:", error);
     throw error;
   }
+}
+
+export async function createR2FileUrl(objectKey: string, tenantId: string): Promise<string> {
+  const token = await signFileAccessToken(objectKey, tenantId);
+  return `/api/files?token=${encodeURIComponent(token)}`;
 }
 
 export async function renameR2Object(oldKey: string, newKey: string) {

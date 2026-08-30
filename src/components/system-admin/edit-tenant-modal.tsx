@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { School, Save, Loader2 } from "lucide-react";
@@ -123,32 +124,30 @@ export function EditTenantModal({
           {/* Subscription Status */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Subscription Status *</Label>
-            <select
+            <AppDropdown
               value={formData.subscriptionStatus}
-              onChange={(e) => setFormData({ ...formData, subscriptionStatus: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="ACTIVE">ACTIVE (Full Subscription Paid)</option>
-              <option value="TRIAL">TRIAL (30-Day Free Evaluation)</option>
-              <option value="SUSPENDED">SUSPENDED (Access Blocked)</option>
-              <option value="EXPIRED">EXPIRED (Renewal Required)</option>
-            </select>
+              onChange={(v) => setFormData({ ...formData, subscriptionStatus: v })}
+              options={[
+                { value: "ACTIVE", label: "ACTIVE (Full Subscription Paid)" },
+                { value: "TRIAL", label: "TRIAL (30-Day Free Evaluation)" },
+                { value: "SUSPENDED", label: "SUSPENDED (Access Blocked)" },
+                { value: "EXPIRED", label: "EXPIRED (Renewal Required)" }
+              ]}
+            />
           </div>
 
           {/* Currency */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Operating Currency</Label>
-            <select
+            <AppDropdown
               value={formData.currency}
-              onChange={(e) => handleCurrencyChange(e.target.value)}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {CURRENCY_LIST.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name} ({c.symbol})
-                </option>
-              ))}
-            </select>
+              onChange={(v) => handleCurrencyChange(v)}
+              options={CURRENCY_LIST.map((cur) => ({
+                value: cur.code,
+                label: `${cur.name} (${cur.symbol})`
+              }))}
+              searchable
+            />
           </div>
 
           {/* Tax Rate */}
@@ -167,60 +166,61 @@ export function EditTenantModal({
           {/* Date Format */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Date Format</Label>
-            <select
+            <AppDropdown
               value={formData.dateFormat}
-              onChange={(e) => setFormData({ ...formData, dateFormat: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 26/08/2026)</option>
-              <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 08/26/2026)</option>
-              <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-08-26)</option>
-            </select>
+              onChange={(v) => setFormData({ ...formData, dateFormat: v })}
+              options={[
+                { value: "DD/MM/YYYY", label: "DD/MM/YYYY (e.g. 26/08/2026)" },
+                { value: "MM/DD/YYYY", label: "MM/DD/YYYY (e.g. 08/26/2026)" },
+                { value: "YYYY-MM-DD", label: "YYYY-MM-DD (e.g. 2026-08-26)" }
+              ]}
+            />
           </div>
 
           {/* Timezone */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Timezone</Label>
-            <select
+            <AppDropdown
               value={formData.timezone}
-              onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="Asia/Karachi">Asia/Karachi (PKT +05:00)</option>
-              <option value="Asia/Dhaka">Asia/Dhaka (BST +06:00)</option>
-              <option value="Asia/Kolkata">Asia/Kolkata (IST +05:30)</option>
-              <option value="Asia/Dubai">Asia/Dubai (GST +04:00)</option>
-              <option value="Asia/Riyadh">Asia/Riyadh (AST +03:00)</option>
-              <option value="UTC">UTC (+00:00)</option>
-            </select>
+              onChange={(v) => setFormData({ ...formData, timezone: v })}
+              options={[
+                { value: "Asia/Karachi", label: "Asia/Karachi (PKT +05:00)" },
+                { value: "Asia/Dhaka", label: "Asia/Dhaka (BST +06:00)" },
+                { value: "Asia/Kolkata", label: "Asia/Kolkata (IST +05:30)" },
+                { value: "Asia/Dubai", label: "Asia/Dubai (GST +04:00)" },
+                { value: "Asia/Riyadh", label: "Asia/Riyadh (AST +03:00)" },
+                { value: "UTC", label: "UTC (+00:00)" }
+              ]}
+              searchable
+            />
           </div>
 
           {/* Grading System */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Grading System</Label>
-            <select
+            <AppDropdown
               value={formData.gradingSystem}
-              onChange={(e) => setFormData({ ...formData, gradingSystem: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="GPA">GPA Scale (4.0 / 5.0)</option>
-              <option value="PERCENTAGE">Percentage Only (0 - 100%)</option>
-              <option value="LETTER">Letter Grades (A+, A, B, C, D, F)</option>
-            </select>
+              onChange={(v) => setFormData({ ...formData, gradingSystem: v })}
+              options={[
+                { value: "GPA", label: "GPA Scale (4.0 / 5.0)" },
+                { value: "PERCENTAGE", label: "Percentage Only (0 - 100%)" },
+                { value: "LETTER", label: "Letter Grades (A+, A, B, C, D, F)" }
+              ]}
+            />
           </div>
 
           {/* Curriculum */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Board Curriculum</Label>
-            <select
+            <AppDropdown
               value={formData.curriculum}
-              onChange={(e) => setFormData({ ...formData, curriculum: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="NCTB">Bangladesh NCTB</option>
-              <option value="CBSE">India CBSE</option>
-              <option value="FBISE">Pakistan FBISE</option>
-            </select>
+              onChange={(v) => setFormData({ ...formData, curriculum: v })}
+              options={[
+                { value: "NCTB", label: "Bangladesh NCTB" },
+                { value: "CBSE", label: "India CBSE" },
+                { value: "FBISE", label: "Pakistan FBISE" }
+              ]}
+            />
           </div>
 
           {/* Max Grace Per Subject */}

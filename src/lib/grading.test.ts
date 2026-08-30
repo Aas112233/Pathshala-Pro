@@ -181,6 +181,15 @@ describe("Grading & Academic Merit Engine", () => {
       const rankings = calculateClassMeritRankings([]);
       expect(rankings).toEqual([]);
     });
+
+    it("uses standard competition ranking for equal percentages", () => {
+      const rankings = calculateClassMeritRankings([
+        { studentProfileId: "a", studentName: "A", rollNumber: "1", results: [{ subjectName: "Math", subjectCode: "M", maxMarks: 100, obtainedMarks: 92.4 }] },
+        { studentProfileId: "b", studentName: "B", rollNumber: "2", results: [{ subjectName: "Math", subjectCode: "M", maxMarks: 100, obtainedMarks: 92.4 }] },
+        { studentProfileId: "c", studentName: "C", rollNumber: "3", results: [{ subjectName: "Math", subjectCode: "M", maxMarks: 100, obtainedMarks: 88 }] },
+      ]);
+      expect(rankings.map((item) => item.rank)).toEqual([1, 1, 3]);
+    });
   });
 
   describe("Sub-Component Pass / Fail Cascade Engine", () => {

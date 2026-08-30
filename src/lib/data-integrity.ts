@@ -10,6 +10,30 @@ type IntegrityDetail = {
 
 type UsageCounts = Record<string, number>;
 
+export type StudentUsageCounts = {
+  feeVouchers: number;
+  attendances: number;
+  examResults: number;
+  promotions: number;
+  bookIssues: number;
+  transportAllocations: number;
+};
+
+export function hasStudentHistoricalUsage(counts: StudentUsageCounts) {
+  return Object.values(counts).some((count) => count > 0);
+}
+
+export function getLockedStudentPlacementFields(
+  counts: StudentUsageCounts,
+  requested: Partial<Record<"classId" | "groupId" | "sectionId" | "rollNumber", unknown>>,
+  current: Partial<Record<"classId" | "groupId" | "sectionId" | "rollNumber", unknown>>
+) {
+  if (!hasStudentHistoricalUsage(counts)) return [];
+  return (["classId", "groupId", "sectionId", "rollNumber"] as const).filter(
+    (field) => Object.prototype.hasOwnProperty.call(requested, field) && requested[field] !== current[field]
+  );
+}
+
 function usageMessage(label: string, counts: UsageCounts) {
   const active = Object.entries(counts)
     .filter(([, count]) => count > 0)
@@ -40,15 +64,17 @@ export function buildLockedFieldsDetails(
   }));
 }
 
-export async function getStudentUsageCounts(tenantId: string, studentId: string) {
-  const [feeVouchers, attendances, examResults, promotions] = await Promise.all([
+export async function getStudentUsageCounts(tenantId: string, studentId: string): Promise<StudentUsageCounts> {
+  const [feeVouchers, attendances, examResults, promotions, bookIssues, transportAllocations] = await Promise.all([
     prisma.feeVoucher.count({ where: { tenantId, studentProfileId: studentId } }),
     prisma.attendance.count({ where: { tenantId, studentProfileId: studentId } }),
     prisma.examResult.count({ where: { tenantId, studentProfileId: studentId } }),
     prisma.classPromotion.count({ where: { tenantId, studentProfileId: studentId } }),
+    prisma.bookIssue.count({ where: { tenantId, studentProfileId: studentId } }),
+    prisma.transportAllocation.count({ where: { tenantId, studentProfileId: studentId } }),
   ]);
 
-  return { feeVouchers, attendances, examResults, promotions };
+  return { feeVouchers, attendances, examResults, promotions, bookIssues, transportAllocations };
 }
 
 export async function getExamUsageCounts(tenantId: string, examId: string) {
@@ -71,7 +97,7 @@ export async function getSubjectUsageCounts(tenantId: string, subjectId: string)
 }
 
 export async function getAcademicYearUsageCounts(tenantId: string, academicYearId: string) {
-  const [feeVouchers, salaryLedgers, examResults, exams, promotionRules, fromPromotions, toPromotions] =
+  const [feeVouchers, salaryLedgers, examResults, exams, promotionRules, fromPromotions, toPromotions, sessions, timetables, questionPapers, holidays, substitutions, admissions, attendances] =
     await Promise.all([
       prisma.feeVoucher.count({ where: { tenantId, academicYearId } }),
       prisma.salaryLedger.count({ where: { tenantId, academicYearId } }),
@@ -80,6 +106,13 @@ export async function getAcademicYearUsageCounts(tenantId: string, academicYearI
       prisma.promotionRule.count({ where: { tenantId, academicYearId } }),
       prisma.classPromotion.count({ where: { tenantId, fromAcademicYearId: academicYearId } }),
       prisma.classPromotion.count({ where: { tenantId, toAcademicYearId: academicYearId } }),
+      prisma.studentAcademicSession.count({ where: { tenantId, academicYearId } }),
+      prisma.timetable.count({ where: { tenantId, academicYearId } }),
+      prisma.questionPaper.count({ where: { tenantId, academicYearId } }),
+      prisma.academicHoliday.count({ where: { tenantId, academicYearId } }),
+      prisma.teacherSubstitution.count({ where: { tenantId, academicYearId } }),
+      prisma.admissionApplication.count({ where: { tenantId, academicYearId } }),
+      prisma.attendance.count({ where: { tenantId, academicYearId } }),
     ]);
 
   return {
@@ -89,6 +122,13 @@ export async function getAcademicYearUsageCounts(tenantId: string, academicYearI
     exams,
     promotionRules,
     promotions: fromPromotions + toPromotions,
+    sessions,
+    timetables,
+    questionPapers,
+    holidays,
+    substitutions,
+    admissions,
+    attendances,
   };
 }
 

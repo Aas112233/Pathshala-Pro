@@ -89,7 +89,10 @@ export function conflict(message = "Resource already exists"): NextResponse<Erro
 export function validationError(
   errors: Array<{ field?: string; code: string; message: string }>
 ): NextResponse<ErrorResponse> {
-  const summary = errors.map((d) => (d.field ? `${d.field}: ${d.message}` : d.message)).filter(Boolean).join("; ");
+  const summary = errors
+    .map((d) => (d.field ? `${d.field}: ${d.message}${d.code ? ` (${d.code})` : ""}` : d.message))
+    .filter(Boolean)
+    .join("; ");
   return errorResponse(summary ? `Validation failed: ${summary}` : "Validation failed", 422, errors);
 }
 

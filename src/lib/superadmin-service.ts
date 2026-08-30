@@ -279,13 +279,18 @@ export async function generateTenantImpersonationToken(
   const targetUser = await tx.user.findFirst({
     where: {
       tenantId: targetTenantId,
+      isActive: true,
       role: { in: ["ADMIN", "SCHOOL_ADMIN", "PRINCIPAL", "SUPER_ADMIN"] },
     },
   });
 
-  const impersonatedEmail = targetUser?.email || `admin@${targetTenantId}.pathshala.pro`;
-  const impersonatedUserId = targetUser?.id || "temp-impersonated-admin";
-  const role = targetUser?.role || "ADMIN";
+  if (!targetUser) {
+    throw new Error(`Target tenant '${targetTenantId}' has no active administrator account.`);
+  }
+
+  const impersonatedEmail = targetUser.email;
+  const impersonatedUserId = targetUser.id;
+  const role = targetUser.role;
 
   // 3. Issue Signed Impersonation JWT (Valid for 2 hours)
   const token = await signJwtToken({

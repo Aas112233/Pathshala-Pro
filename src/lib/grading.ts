@@ -1,3 +1,5 @@
+import { safePercentage } from "@/lib/math-utils";
+
 export interface SubjectResult {
   subjectName: string;
   subjectCode: string;
@@ -90,9 +92,16 @@ export function getGradeFromBands(
   percentage: number,
   bands: GradeBand[] = DEFAULT_GPA_BANDS
 ): { letterGrade: string; gpa: number; remarks: string } {
-  const rounded = Math.round(percentage * 100) / 100;
-  for (const band of bands) {
-    if (rounded >= band.min) {
+  // Defensively sort a copy descending by `min` — callers may pass a
+  // tenant-supplied table that isn't already ordered correctly, and
+  // `bands.find(b => percentage >= b.min)`-style lookups silently pick the
+  // wrong band on anything but a descending table.
+  const sorted = [...bands].sort((a, b) => b.min - a.min);
+
+  // Do NOT round before grade lookup — rounding at 2dp can flip boundaries
+  // e.g., 89.994 → 89.99 = A, 89.996 → 90.00 = A+. Use full precision.
+  for (const band of sorted) {
+    if (percentage >= band.min) {
       return {
         letterGrade: band.grade,
         gpa: band.point,
@@ -100,7 +109,7 @@ export function getGradeFromBands(
       };
     }
   }
-  const last = bands[bands.length - 1];
+  const last = sorted[sorted.length - 1];
   return {
     letterGrade: last.grade,
     gpa: last.point,
@@ -203,21 +212,26 @@ export function evaluateSubjectComponents(
 
   for (const comp of components) {
     const isMandatory = comp.isMandatory !== false;
-    const isPassed = comp.obtained >= comp.passMarks;
-    const compPercentage = comp.max > 0 ? (comp.obtained / comp.max) * 100 : 0;
+    const isPassed = Number.isFinite(comp.obtained) && Number.isFinite(comp.passMarks) && comp.max > 0 && comp.obtained >= comp.passMarks;
+    // Clamp into [0, max] before any percentage/contribution math — an
+    // obtained value above max (data-entry error) must never inflate the
+    // percentage past 100%. The raw `comp.obtained` is still recorded as-is
+    // below for transparency.
+    const clampedObtained = Math.min(Math.max(0, comp.obtained), comp.max);
+    const compPercentage = safePercentage(clampedObtained, comp.max);
 
     let contribution: number;
     if (typeof comp.weightage === "number" && comp.weightage > 0) {
-      contribution = comp.max > 0 ? (comp.obtained / comp.max) * comp.weightage : 0;
+      contribution = safePercentage(clampedObtained, comp.max, 6) * comp.weightage / 100;
       totalWeightedContribution += contribution;
       totalWeightage += comp.weightage;
     } else {
       hasWeights = false;
-      contribution = comp.obtained;
+      contribution = clampedObtained;
     }
 
     totalRawMax += comp.max;
-    totalRawObtained += comp.obtained;
+    totalRawObtained += clampedObtained;
 
     if (isMandatory && !isPassed) {
       failedComponents.push(comp.componentName);
@@ -238,9 +252,9 @@ export function evaluateSubjectComponents(
   // Calculate final percentage
   let overallPercentage = 0;
   if (hasWeights && totalWeightage > 0) {
-    overallPercentage = (totalWeightedContribution / totalWeightage) * 100;
+    overallPercentage = safePercentage(totalWeightedContribution, totalWeightage);
   } else if (totalRawMax > 0) {
-    overallPercentage = (totalRawObtained / totalRawMax) * 100;
+    overallPercentage = safePercentage(totalRawObtained, totalRawMax);
   }
   overallPercentage = Number(overallPercentage.toFixed(2));
 
@@ -313,12 +327,39 @@ export function calculateClassMeritRankings(
   }>,
   gradingSystem: GradingSystemType = "GPA"
 ): StudentMeritRank[] {
+  // Derive the active band table for this grading system the same way
+  // evaluateSubjectComponents does, so the pass/fail cutoff below can never
+  // contradict the letter grade computed from this exact table.
+  let activeBands: GradeBand[];
+  if (gradingSystem === "CBSE_9_POINT") {
+    activeBands = CBSE_9POINT_BANDS;
+  } else if (gradingSystem === "NCTB_GPA_5") {
+    activeBands = NCTB_GPA_BANDS;
+  } else if (gradingSystem === "FBISE_MARKS") {
+    activeBands = FBISE_MATRIC_BANDS;
+  } else {
+    activeBands = DEFAULT_GPA_BANDS;
+  }
+  const failCutoff = activeBands[activeBands.length - 2]?.min ?? 33;
+
   const scored = studentsData.map((st) => {
     const totalMax = st.results.reduce((acc, r) => acc + r.maxMarks, 0);
     const totalObtained = st.results.reduce((acc, r) => acc + r.obtainedMarks, 0);
-    const percentage = totalMax > 0 ? Number(((totalObtained / totalMax) * 100).toFixed(2)) : 0;
+    // Clamp each subject's obtainedMarks into [0, maxMarks] before summing
+    // for the percentage — an over-max entry must never push the cohort
+    // percentage past 100%. `totalObtainedMarks` below still reports the raw
+    // recorded sum for transparency.
+    const totalObtainedClamped = st.results.reduce(
+      (acc, r) => acc + Math.min(Math.max(0, r.obtainedMarks), r.maxMarks),
+      0
+    );
+    const percentage = safePercentage(totalObtainedClamped, totalMax);
     const { letterGrade, gpa } = calculateGradeFromPercentage(percentage, gradingSystem);
-    const passed = !st.results.some((r) => r.maxMarks > 0 && r.obtainedMarks / r.maxMarks < 0.33);
+    const passed = !st.results.some((r) => {
+      if (r.maxMarks <= 0) return false;
+      const clampedObtained = Math.min(Math.max(0, r.obtainedMarks), r.maxMarks);
+      return safePercentage(clampedObtained, r.maxMarks) < failCutoff;
+    });
 
     return {
       studentProfileId: st.studentProfileId,
@@ -337,9 +378,15 @@ export function calculateClassMeritRankings(
 
   scored.sort((a, b) => b.percentage - a.percentage);
 
+  let previousPercentage: number | null = null;
+  let previousRank = 0;
   scored.forEach((item, idx) => {
-    item.rank = idx + 1;
-    item.rankLabel = formatRankLabel(idx + 1);
+    if (item.percentage !== previousPercentage) {
+      previousRank = idx + 1;
+      previousPercentage = item.percentage;
+    }
+    item.rank = previousRank;
+    item.rankLabel = formatRankLabel(previousRank);
   });
 
   return scored;

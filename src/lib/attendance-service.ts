@@ -70,7 +70,7 @@ export async function submitBulkStudentAttendance(
   tx: Prisma.TransactionClient,
   params: BulkStudentAttendanceParams
 ): Promise<BulkAttendanceResult> {
-  const { tenantId, date, markedById, records } = params;
+  const { tenantId, academicYearId, date, markedById, records } = params;
   const dateOnly = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 
   // 1. Check for Academic Holiday
@@ -105,6 +105,7 @@ export async function submitBulkStudentAttendance(
       where: {
         tenantId,
         studentProfileId: entry.studentProfileId,
+        ...(academicYearId ? { academicYearId } : {}),
         date: dateOnly,
       },
     });
@@ -123,6 +124,7 @@ export async function submitBulkStudentAttendance(
         data: {
           tenantId,
           studentProfileId: entry.studentProfileId,
+          academicYearId,
           date: dateOnly,
           status: finalStatus,
           note: entry.note,
@@ -316,13 +318,13 @@ export async function getStaffMonthlyAttendanceSummary(
   }
   const totalWorkingDays = Math.max(0, totalCalendarDays - sundaysCount - totalHolidays);
 
-  // Late penalty: Every 3 late days = 0.5 day LOP
-  const latePenaltyDays = Math.floor(lateDays / 3) * 0.5;
+// Late penalty: Every 3 late days = 0.5 day LOP (rounded to 2dp for precision)
+  const latePenaltyDays = Math.round((Math.floor(lateDays / 3) * 0.5 + Number.EPSILON) * 100) / 100;
 
-  // LOP = Unexcused Absences + Half-day deductions + Late penalty
-  const lopDays = unexcusedAbsences + halfDays * 0.5 + latePenaltyDays;
+// LOP = Unexcused Absences + Half-day deductions + Late penalty (rounded)
+  const lopDays = Math.round((unexcusedAbsences + halfDays * 0.5 + latePenaltyDays) * 100) / 100;
 
-  // Payable Days = Calendar Days - LOP
+// Payable Days = Calendar Days - LOP (integer safe)
   const payableDays = Math.max(0, totalCalendarDays - lopDays);
 
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;

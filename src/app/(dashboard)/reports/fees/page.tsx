@@ -85,14 +85,14 @@ export default function FeeReportPage() {
     logoUrl: settings.logoUrl,
   };
   const dateRange = {
-    from: filters.fromDate || "Start",
-    to: filters.toDate || "Present",
+    from: filters.fromDate || tFee("start"),
+    to: filters.toDate || tFee("present"),
   };
   const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
   const appliedFilters = [
-    filters.status && filters.status !== "all" ? { label: "Status", value: filters.status } : null,
+    filters.status && filters.status !== "all" ? { label: tFee("status"), value: filters.status } : null,
     filters.paymentMethod && filters.paymentMethod !== "all"
-      ? { label: "Method", value: filters.paymentMethod }
+      ? { label: tFee("method"), value: filters.paymentMethod }
       : null,
   ].filter((value): value is { label: string; value: string } => Boolean(value));
 
@@ -116,7 +116,7 @@ export default function FeeReportPage() {
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate fee report:", error);
-      toast.error("Failed to generate fee report");
+      toast.error(tFee("generateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -138,10 +138,10 @@ export default function FeeReportPage() {
   const handleExportExcel = async () => {
     const result = await exportFeeReport(data, dateRange);
     if (result.success) {
-      toast.success("Fee report exported");
+      toast.success(tFee("exported"));
       return;
     }
-    toast.error("Failed to export fee report");
+    toast.error(tFee("exportFailed"));
   };
 
   const handleExportPdf = async () => {
@@ -173,10 +173,10 @@ export default function FeeReportPage() {
     });
 
     if (result.success) {
-      toast.success("Fee report exported");
+      toast.success(tFee("exported"));
       return;
     }
-    toast.error("Failed to export fee report");
+    toast.error(tFee("exportFailed"));
   };
 
   const handleExport = async (type: "excel" | "pdf") => {
@@ -188,8 +188,8 @@ export default function FeeReportPage() {
   };
 
   const paymentMethodData = [
-    { label: "Cash", value: metrics?.cashCollected || 0, color: "hsl(var(--primary))" },
-    { label: "Digital", value: metrics?.digitalCollected || 0, color: "hsl(var(--secondary))" },
+    { label: tFee("cash"), value: metrics?.cashCollected || 0, color: "hsl(var(--primary))" },
+    { label: tFee("digital"), value: metrics?.digitalCollected || 0, color: "hsl(var(--secondary))" },
   ];
   const statusCounts = {
     PAID: data.filter((voucher) => voucher.status === "PAID").length,
@@ -201,25 +201,25 @@ export default function FeeReportPage() {
   const columns: ColumnDef<FeeVoucher>[] = [
     {
       accessorKey: "voucherNumber",
-      header: "Voucher No.",
+      header: tFee("voucherNo"),
       cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span>,
     },
-    { accessorKey: "studentName", header: "Student Name" },
-    { accessorKey: "className", header: "Class" },
-    { accessorKey: "section", header: "Section" },
+    { accessorKey: "studentName", header: tFee("studentName") },
+    { accessorKey: "className", header: tFee("class") },
+    { accessorKey: "section", header: tFee("section") },
     {
       accessorKey: "amount",
-      header: "Total Amount",
+      header: tFee("totalAmount"),
       cell: ({ getValue }) => formatCurrency(getValue<number>()),
     },
     {
       accessorKey: "paidAmount",
-      header: "Paid",
+      header: tFee("paid"),
       cell: ({ getValue }) => formatCurrency(getValue<number>()),
     },
     {
       accessorKey: "dueAmount",
-      header: "Due",
+      header: tFee("due"),
       cell: ({ getValue }) => {
         const due = getValue<number>();
         return (
@@ -231,7 +231,7 @@ export default function FeeReportPage() {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: tFee("status"),
       cell: ({ getValue }) => (
         <StatusBadge
           status={getValue<string>()}
@@ -241,10 +241,10 @@ export default function FeeReportPage() {
     },
     {
       accessorKey: "paymentMethod",
-      header: "Payment Method",
+      header: tFee("paymentMethod"),
       cell: ({ getValue }) => (getValue<string>() === "CASH" ? "Cash" : "Digital"),
     },
-    { accessorKey: "date", header: "Date" },
+    { accessorKey: "date", header: tFee("date") },
   ];
 
   return (
@@ -305,12 +305,12 @@ export default function FeeReportPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               <PieChart title={tFee("paymentMethodBreakdown")} data={paymentMethodData} size={200} />
               <BarChart
-                title="Voucher Status Distribution"
+                title={tFee("voucherStatusDistribution")}
                 data={[
-                  { label: "Paid", value: statusCounts.PAID, color: "hsl(var(--primary))" },
-                  { label: "Pending", value: statusCounts.PENDING, color: "hsl(var(--secondary))" },
-                  { label: "Partial", value: statusCounts.PARTIAL, color: "hsl(var(--accent))" },
-                  { label: "Overdue", value: statusCounts.OVERDUE, color: "hsl(var(--destructive))" },
+                  { label: tFee("paid"), value: statusCounts.PAID, color: "hsl(var(--primary))" },
+                  { label: tFee("pending"), value: statusCounts.PENDING, color: "hsl(var(--secondary))" },
+                  { label: tFee("partial"), value: statusCounts.PARTIAL, color: "hsl(var(--accent))" },
+                  { label: tFee("overdue"), value: statusCounts.OVERDUE, color: "hsl(var(--destructive))" },
                 ]}
                 height={200}
               />
@@ -322,7 +322,7 @@ export default function FeeReportPage() {
             data.length > 0 || isLoading ? (
               <ReportTable
                 title={tFee("voucherDetails")}
-                description="Voucher-level detail for the selected period."
+                description={tFee("voucherDetailsDescription")}
                 columns={columns}
                 data={data}
                 isLoading={isLoading}
@@ -331,15 +331,15 @@ export default function FeeReportPage() {
               />
             ) : (
               <ReportEmptyState
-                title="No vouchers found"
-                description="Try another payment status, method, or date range."
+                title={tFee("noVouchersTitle")}
+                description={tFee("noVouchersDescription")}
               />
             )
           ) : (
             <ReportEmptyState
-              title="Generate a fee report"
-              description="Select the reporting period, then generate the report to review collection totals and export the result."
-              actionLabel="Generate report"
+              title={tFee("generateTitle")}
+              description={tFee("generateDescription")}
+              actionLabel={tFee("generateReport")}
               onAction={handleGenerateReport}
             />
           )

@@ -4,10 +4,13 @@ import { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { getJwtSecretKey } from "@/lib/jwt";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 
 export interface AuthContext {
   user: User;
   tenantId: string;
+  impersonatedBy?: string;
+  isImpersonated?: boolean;
 }
 
 /**
@@ -32,12 +35,28 @@ export async function getAuthContext(
     // Cryptographically decode and verify from token using jose
     let userId: string | null = null;
     let tenantId: string | null = null;
+    let sessionVersion: number | undefined;
+    let issuedAt: number | undefined;
+    let impersonatedBy: string | undefined;
+    let isImpersonated = false;
 
     try {
       const { payload } = await jwtVerify(token, getJwtSecretKey());
 
       userId = payload.userId as string;
       tenantId = payload.tenantId as string;
+      issuedAt = payload.iat;
+      sessionVersion = payload.sessionVersion === undefined ? undefined : Number(payload.sessionVersion);
+      const hasImpersonationClaims =
+        payload.impersonatedBy !== undefined || payload.isImpersonated !== undefined;
+      if (hasImpersonationClaims && (payload.isImpersonated !== true || typeof payload.impersonatedBy !== "string")) {
+        return null;
+      }
+      impersonatedBy = typeof payload.impersonatedBy === "string" ? payload.impersonatedBy : undefined;
+      isImpersonated = payload.isImpersonated === true && !!impersonatedBy;
+      if (!issuedAt || !Number.isFinite(issuedAt)) {
+        return null;
+      }
     } catch (error) {
       console.warn("Invalid or expired JWT token");
       return null;
@@ -59,9 +78,27 @@ export async function getAuthContext(
       return null;
     }
 
+    if (sessionVersion !== undefined && sessionVersion !== user.updatedAt.getTime()) {
+      return null;
+    }
+    if (sessionVersion === undefined && Math.floor(user.updatedAt.getTime() / 1000) > issuedAt!) {
+      return null;
+    }
+
+    if (isImpersonated && impersonatedBy) {
+      const originalAdmin = await prisma.user.findFirst({
+        where: { email: impersonatedBy, isActive: true },
+        select: { email: true, role: true },
+      });
+      if (!originalAdmin || (originalAdmin.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(originalAdmin.email))) {
+        return null;
+      }
+    }
+
     return {
       user,
       tenantId,
+      ...(isImpersonated && impersonatedBy ? { impersonatedBy, isImpersonated: true } : {}),
     };
   } catch (error) {
     console.error("Auth context error:", error);
@@ -96,12 +133,13 @@ export async function generateAuthToken(
   userId: string,
   tenantId: string,
   role?: string,
-  email?: string
+  email?: string,
+  sessionVersion?: number
 ): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + 24 * 60 * 60; // 24 hours
 
-  return new SignJWT({ userId, tenantId, role, email })
+  return new SignJWT({ userId, tenantId, role, email, sessionVersion })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setExpirationTime(exp)
     .setIssuedAt(iat)
@@ -113,7 +151,7 @@ export async function generateAuthToken(
  * Hash password securely using bcryptjs for production
  */
 export async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(12);
   return bcrypt.hash(password, salt);
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ export function MarkSheetGenerator({
   getMarksForExam,
   school,
 }: MarkSheetGeneratorProps) {
+  const t = useTranslations("pdf");
   const { exportMarkSheet } = usePDFExport();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -75,7 +77,7 @@ export function MarkSheetGenerator({
 
   const handleGenerate = async () => {
     if (!selectedExamId) {
-      toast.error("Please select an exam");
+      toast.error(t("selectExam"));
       return;
     }
 
@@ -84,7 +86,7 @@ export function MarkSheetGenerator({
 
     const marks = getMarksForExam(selectedExamId);
     if (marks.length === 0) {
-      toast.error("No marks found for this exam");
+      toast.error(t("noMarksFound"));
       return;
     }
 
@@ -113,13 +115,13 @@ export function MarkSheetGenerator({
       );
 
       if (result.success) {
-        toast.success("Mark sheet generated successfully");
+        toast.success(t("markSheetSuccess"));
         setIsOpen(false);
       } else {
-        toast.error("Failed to generate mark sheet");
+        toast.error(t("markSheetError"));
       }
     } catch (error) {
-      toast.error("Failed to generate mark sheet");
+      toast.error(t("markSheetError"));
     } finally {
       setIsGenerating(false);
     }

@@ -97,16 +97,16 @@ export default function StudentReportPage() {
     logoUrl: settings.logoUrl,
   };
   const dateRange = {
-    from: filters.fromDate || "Start",
-    to: filters.toDate || "Present",
+    from: filters.fromDate || tStudent("start"),
+    to: filters.toDate || tStudent("present"),
   };
   const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
   const appliedFilters = [
-    filters.classId && filters.classId !== "all" ? { label: "Class", value: filters.classId } : null,
+    filters.classId && filters.classId !== "all" ? { label: tStudent("class"), value: filters.classId } : null,
     filters.sectionId && filters.sectionId !== "all"
-      ? { label: "Section", value: filters.sectionId }
+      ? { label: tStudent("section"), value: filters.sectionId }
       : null,
-    filters.status && filters.status !== "all" ? { label: "Status", value: filters.status } : null,
+    filters.status && filters.status !== "all" ? { label: tStudent("status"), value: filters.status } : null,
   ].filter((value): value is { label: string; value: string } => Boolean(value));
 
   const handleGenerateReport = async () => {
@@ -131,7 +131,7 @@ export default function StudentReportPage() {
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate student report:", error);
-      toast.error("Failed to generate student report");
+      toast.error(tStudent("generateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -157,10 +157,10 @@ export default function StudentReportPage() {
   const handleExportExcel = async () => {
     const result = await exportStudentReport(data, dateRange);
     if (result.success) {
-      toast.success("Student report exported");
+      toast.success(tStudent("exported"));
       return;
     }
-    toast.error("Failed to export student report");
+    toast.error(tStudent("exportFailed"));
   };
 
   const handleExportPdf = async () => {
@@ -176,10 +176,10 @@ export default function StudentReportPage() {
     });
 
     if (result.success) {
-      toast.success("Student report exported");
+      toast.success(tStudent("exported"));
       return;
     }
-    toast.error("Failed to export student report");
+    toast.error(tStudent("exportFailed"));
   };
 
   const handleExport = async (type: "excel" | "pdf") => {
@@ -193,17 +193,17 @@ export default function StudentReportPage() {
   const columns: ColumnDef<StudentRecord>[] = [
     {
       accessorKey: "admissionNumber",
-      header: "Admission No.",
+      header: tStudent("admissionNo"),
       cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span>,
     },
-    { accessorKey: "studentName", header: "Student Name" },
-    { accessorKey: "className", header: "Class" },
-    { accessorKey: "section", header: "Section" },
-    { accessorKey: "rollNumber", header: "Roll No." },
-    { accessorKey: "gender", header: "Gender", cell: ({ getValue }) => getValue<string>() },
+    { accessorKey: "studentName", header: tStudent("studentName") },
+    { accessorKey: "className", header: tStudent("class") },
+    { accessorKey: "section", header: tStudent("section") },
+    { accessorKey: "rollNumber", header: tStudent("rollNo") },
+    { accessorKey: "gender", header: tStudent("gender"), cell: ({ getValue }) => getValue<string>() },
     {
       accessorKey: "status",
-      header: "Status",
+      header: tStudent("status"),
       cell: ({ getValue }) => (
         <StatusBadge
           status={getValue<string>()}
@@ -211,9 +211,9 @@ export default function StudentReportPage() {
         />
       ),
     },
-    { accessorKey: "admissionDate", header: "Admission Date" },
-    { accessorKey: "guardianName", header: "Guardian Name" },
-    { accessorKey: "contactNumber", header: "Contact" },
+    { accessorKey: "admissionDate", header: tStudent("admissionDate") },
+    { accessorKey: "guardianName", header: tStudent("guardianName") },
+    { accessorKey: "contactNumber", header: tStudent("contact") },
   ];
 
   return (
@@ -236,10 +236,10 @@ export default function StudentReportPage() {
             showSectionFilter
             showStatusFilter
             statusOptions={[
-              { value: "ACTIVE", label: "Active" },
-              { value: "INACTIVE", label: "Inactive" },
-              { value: "GRADUATED", label: "Graduated" },
-              { value: "TRANSFERRED", label: "Transferred" },
+              { value: "ACTIVE", label: tStudent("active") },
+              { value: "INACTIVE", label: tStudent("inactive") },
+              { value: "GRADUATED", label: tStudent("graduated") },
+              { value: "TRANSFERRED", label: tStudent("transferred") },
             ]}
             exportComponent={<ExportDropdown onExport={handleExport} disabled={data.length === 0} />}
           />
@@ -287,9 +287,9 @@ export default function StudentReportPage() {
                 <PieChart
                   title={tStudent("genderDistribution")}
                   data={[
-                    { label: "Male", value: genderData?.male || 0, color: "hsl(var(--primary))" },
-                    { label: "Female", value: genderData?.female || 0, color: "hsl(var(--secondary))" },
-                    { label: "Other", value: genderData?.other || 0, color: "hsl(var(--accent))" },
+                    { label: tStudent("male"), value: genderData?.male || 0, color: "hsl(var(--primary))" },
+                    { label: tStudent("female"), value: genderData?.female || 0, color: "hsl(var(--secondary))" },
+                    { label: tStudent("other"), value: genderData?.other || 0, color: "hsl(var(--accent))" },
                   ]}
                   size={200}
                 />
@@ -320,8 +320,8 @@ export default function StudentReportPage() {
           hasGenerated || isLoading ? (
             data.length > 0 || isLoading ? (
               <ReportTable
-                title="Student Details"
-                description="Generated results based on the selected filters."
+                title={tStudent("studentDetails")}
+                description={tStudent("studentDetailsDescription")}
                 columns={columns}
                 data={data}
                 isLoading={isLoading}
@@ -330,15 +330,15 @@ export default function StudentReportPage() {
               />
             ) : (
               <ReportEmptyState
-                title="No students found"
-                description="Try widening the date range or removing one of the filters."
+                title={tStudent("noStudentsTitle")}
+                description={tStudent("noStudentsDescription")}
               />
             )
           ) : (
             <ReportEmptyState
-              title="Generate a student report"
-              description="Select a period and optional filters, then generate the report to view metrics, charts, and export options."
-              actionLabel="Generate report"
+              title={tStudent("generateTitle")}
+              description={tStudent("generateDescription")}
+              actionLabel={tStudent("generateReport")}
               onAction={handleGenerateReport}
             />
           )

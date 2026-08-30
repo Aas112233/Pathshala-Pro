@@ -52,6 +52,7 @@ function getAuthHeaders() {
 // ──────────── Main Page ────────────
 export default function ClassesPage() {
   const t = useTranslations("classes");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "academic", "read");
@@ -330,8 +331,8 @@ export default function ClassesPage() {
         const c = row.original as any;
         if (!c.appAccessEnabled) return <Badge variant="outline" className="text-[10px]">{t("disabled")}</Badge>;
         const parts = [];
-        if (c.studentAppEnabled) parts.push("S");
-        if (c.parentAppEnabled) parts.push("P");
+        if (c.studentAppEnabled) parts.push(t("studentAppShort"));
+        if (c.parentAppEnabled) parts.push(t("parentAppShort"));
         return <Badge variant="default" className="text-[10px]">{t("appStatus", { value: parts.join("+") || t("on") })}</Badge>;
       },
     },
@@ -402,8 +403,8 @@ export default function ClassesPage() {
 
       {!isAuthLoading && !canRead ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2>Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+          <h2>{common("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{common("noPermission")}</p>
         </div>
       ) : (
         <>
@@ -598,7 +599,9 @@ export default function ClassesPage() {
                             variant={subject.category === "COMPULSORY" ? "default" : "secondary"}
                             className="text-[10px] h-4 px-1.5"
                           >
-                            {subject.category}
+                            {subject.category === "COMPULSORY"
+                              ? t("subjectCategoryCompulsory")
+                              : t("subjectCategoryElective")}
                           </Badge>
                         </div>
                       </div>

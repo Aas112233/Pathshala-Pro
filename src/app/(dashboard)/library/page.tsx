@@ -43,13 +43,15 @@ const CATEGORIES = ["GENERAL", "TEXTBOOK", "REFERENCE", "STORY", "SCIENCE", "HIS
 
 export default function LibraryPage() {
   const t = useTranslations("library");
+  const tCommon = useTranslations("common");
+  const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "library", "read");
   const canWrite = hasPermission(perms, "library", "write");
   const canManage = hasPermission(perms, "library", "manage");
   const { settings } = useTenantSettings();
-  const { exportLibrarySlipPDF } = usePDFExport();
+  const { exportLibrarySlipPDF, exportLibraryClearancePDF } = usePDFExport();
   const { run: runLibrarySubmit, isPending: isGuardedLibrary } = useSubmitGuard();
 
   const [activeTab, setActiveTab] = useState("books");
@@ -91,11 +93,11 @@ export default function LibraryPage() {
   const handleBookSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!bookForm.title.trim()) errs.title = "Required";
-    if (!bookForm.author.trim()) errs.author = "Required";
-    if (!bookForm.accessionNo.trim()) errs.accessionNo = "Required";
+    if (!bookForm.title.trim()) errs.title = tCommon("required");
+    if (!bookForm.author.trim()) errs.author = tCommon("required");
+    if (!bookForm.accessionNo.trim()) errs.accessionNo = tCommon("required");
     setBookErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runLibrarySubmit(async () => {
       try {
         const payload: any = { ...bookForm, copies: Number(bookForm.copies), isbn: bookForm.isbn || null, publisher: bookForm.publisher || null, shelfLocation: bookForm.shelfLocation || null };
@@ -118,12 +120,12 @@ export default function LibraryPage() {
   const handleIssueSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!issueForm.bookId) errs.bookId = "Required";
-    if (!issueForm.borrowerName.trim()) errs.borrowerName = "Required";
-    if (!issueForm.borrowerIdNo.trim()) errs.borrowerIdNo = "Required";
-    if (!issueForm.dueDate) errs.dueDate = "Required";
+    if (!issueForm.bookId) errs.bookId = tCommon("required");
+    if (!issueForm.borrowerName.trim()) errs.borrowerName = tCommon("required");
+    if (!issueForm.borrowerIdNo.trim()) errs.borrowerIdNo = tCommon("required");
+    if (!issueForm.dueDate) errs.dueDate = tCommon("required");
     setIssueErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) { toast.error(tCommon("pleaseFillRequired")); return; }
     void runLibrarySubmit(async () => {
       try {
         await issueBook({ ...issueForm, dueDate: new Date(issueForm.dueDate).toISOString() });
@@ -287,10 +289,47 @@ export default function LibraryPage() {
     },
   ];
 
+  const handleClearance = async () => {
+    // Demo: generate for first borrower or generic
+    const demo = issues[0];
+    const borrower = demo ? { name: demo.borrowerName, id: demo.borrowerIdNo, type: demo.borrowerType } : { name: "Demo Student", id: "R-001", type: "STUDENT" };
+    const overdue = overdueCount > 0;
+    const pendingBooks = overdue ? 1 : 0;
+    const clearanceData: any = {
+      certificateNumber: `CLR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+      issueDate: new Date().toLocaleDateString(),
+      studentName: borrower.name,
+      admissionNumber: borrower.id,
+      rollNumber: borrower.id,
+      className: "Class 10",
+      academicYear: new Date().getFullYear().toString(),
+      libraryDues: [
+        { checked: pendingBooks===0, label: "All issued books returned", note: pendingBooks===0 ? "—" : `${pendingBooks} pending` },
+        { checked: true, label: "Library fine cleared", note: "No fine" },
+        { checked: true, label: "Library card surrendered", note: "—" },
+        { checked: true, label: "No damaged/missing books", note: "—" },
+      ],
+      totalBooksIssued: totalIssued + overdue,
+      totalBooksReturned: totalIssued,
+      pendingBooks,
+      fineDue: 0,
+      currencySymbol: settings.currencySymbol || "৳",
+      isClear: pendingBooks===0,
+      librarianName: "Librarian",
+    };
+    const school = { name: settings.name||"Pathshala Pro School", address: settings.address||"", phone: settings.phone||"", email: settings.email||"", logoUrl: settings.logoUrl };
+    const url = typeof window!=="undefined" ? `${window.location.origin}/verify/certificate/${clearanceData.certificateNumber}` : undefined;
+    const res = await exportLibraryClearancePDF(school, clearanceData, url);
+    if(res.success) toast.success("Library clearance PDF downloaded"); else toast.error("Failed");
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={Library}>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleClearance} title="Library No-Dues Clearance (QR verifiable)">
+            <CheckCircle className="mr-2 h-4 w-4" />Clearance
+          </Button>
           {activeTab === "books" && canWrite && (
             <Button onClick={openAddBook} className="gap-2"><Plus className="h-4 w-4" />{t("addBook")}</Button>
           )}
@@ -303,7 +342,7 @@ export default function LibraryPage() {
       {!canRead && !isAuthLoading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view library records.</p>
+            <p className="text-sm text-muted-foreground">{common("noPermission")}</p>
           </CardContent>
         </Card>
       ) : (

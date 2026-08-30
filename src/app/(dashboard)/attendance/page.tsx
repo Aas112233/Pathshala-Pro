@@ -40,6 +40,7 @@ import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function AttendancePage() {
   const t = useTranslations('attendance');
+  const common = useTranslations("common");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
@@ -231,7 +232,7 @@ export default function AttendancePage() {
       {!canRead && !isAuthLoading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">You don&apos;t have permission to view attendance records.</p>
+            <p className="text-sm text-muted-foreground">{common("noPermission")}</p>
           </CardContent>
         </Card>
       ) : (

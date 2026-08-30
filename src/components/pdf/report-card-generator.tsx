@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
@@ -94,6 +95,7 @@ export function ReportCardGenerator({
   coCurricular,
   school,
 }: ReportCardGeneratorProps) {
+  const t = useTranslations("pdf");
   const { exportReportCard } = usePDFExport();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -103,7 +105,7 @@ export function ReportCardGenerator({
 
   const handleGenerate = async () => {
     if (!selectedYear) {
-      toast.error("Please select an academic year");
+      toast.error(t("selectYear"));
       return;
     }
 
@@ -134,13 +136,13 @@ export function ReportCardGenerator({
       );
 
       if (result.success) {
-        toast.success("Report card generated successfully");
+        toast.success(t("reportCardSuccess"));
         setIsOpen(false);
       } else {
-        toast.error("Failed to generate report card");
+        toast.error(t("reportCardError"));
       }
     } catch (error) {
-      toast.error("Failed to generate report card");
+      toast.error(t("reportCardError"));
     } finally {
       setIsGenerating(false);
     }

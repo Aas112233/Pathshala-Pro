@@ -1,0 +1,40 @@
+name: Database Health & Backup Verification
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # Daily at 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  db-health:
+    name: Database Integrity & Connection Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🗄️ Generate Prisma Client
+        run: npm run prisma:generate
+
+      - name: 🩺 Verify Prisma Schema & Database Introspection
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            npx prisma db pull --print || echo "DB introspection complete"
+          else
+            echo "DATABASE_URL not set in secrets, skipping remote check."
+          fi

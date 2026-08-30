@@ -30,6 +30,7 @@ import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 
 interface ExpenseRecord {
   id: string;
@@ -128,7 +129,7 @@ export default function FinancialReportPage() {
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate financial report:", error);
-      toast.error("Failed to generate financial expenses report");
+      toast.error(t("generateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -149,19 +150,19 @@ export default function FinancialReportPage() {
   const handleExportExcel = async () => {
     const result = await exportFinancialReport(data, {
       from: fromDate || "All Time",
-      to: toDate || "Present",
+      to: toDate || t("present"),
     });
     if (result.success) {
-      toast.success("Financial expenses report exported to Excel");
+      toast.success(t("exportedExcel"));
       return;
     }
-    toast.error("Failed to export financial report");
+    toast.error(t("exportFailed"));
   };
 
   const columns: ColumnDef<ExpenseRecord>[] = [
     {
       accessorKey: "expenseNumber",
-      header: "Voucher #",
+      header: t("voucherNumber"),
       cell: (info: any) => (
         <span className="font-mono text-xs font-semibold text-foreground">
           {info?.row?.original?.expenseNumber ?? info?.expenseNumber ?? "-"}
@@ -170,7 +171,7 @@ export default function FinancialReportPage() {
     },
     {
       accessorKey: "title",
-      header: "Description / Purpose",
+      header: t("descriptionPurpose"),
       cell: (info: any) => (
         <div>
           <p className="font-medium text-foreground text-xs">{info?.row?.original?.title ?? info?.title ?? "-"}</p>
@@ -180,7 +181,7 @@ export default function FinancialReportPage() {
     },
     {
       accessorKey: "category",
-      header: "Category",
+      header: t("category"),
       cell: (info: any) => (
         <span className="text-xs bg-muted px-2 py-0.5 rounded-md font-medium">
           {info?.row?.original?.category ?? info?.category ?? "-"}
@@ -189,7 +190,7 @@ export default function FinancialReportPage() {
     },
     {
       accessorKey: "amount",
-      header: "Amount",
+      header: t("amount"),
       cell: (info: any) => (
         <span className="text-xs font-bold text-foreground">
           {formatCurrency(info?.row?.original?.amount ?? info?.amount ?? 0)}
@@ -198,14 +199,14 @@ export default function FinancialReportPage() {
     },
     {
       accessorKey: "paymentMethod",
-      header: "Method",
+      header: t("method"),
       cell: (info: any) => (
         <span className="text-xs font-mono font-medium">{info?.row?.original?.paymentMethod ?? info?.paymentMethod ?? "-"}</span>
       ),
     },
     {
       accessorKey: "expenseDate",
-      header: "Date",
+      header: t("date"),
       cell: (info: any) => (
         <span className="text-xs text-muted-foreground font-mono">
           {formatDate(info?.row?.original?.expenseDate ?? info?.expenseDate ?? "")}
@@ -214,7 +215,7 @@ export default function FinancialReportPage() {
     },
     {
       accessorKey: "recordedByName",
-      header: "Recorded By",
+      header: t("recordedBy"),
       cell: (info: any) => (
         <span className="text-xs text-muted-foreground">{info?.row?.original?.recordedByName ?? info?.recordedByName ?? "-"}</span>
       ),
@@ -228,8 +229,8 @@ export default function FinancialReportPage() {
 
   const methodPieData = metrics
     ? [
-        { label: "Cash Expenses", value: metrics.cashExpense, color: "#3b82f6" },
-        { label: "Bank & Digital", value: metrics.bankExpense, color: "#10b981" },
+        { label: t("cashExpenses"), value: metrics.cashExpense, color: "#3b82f6" },
+        { label: t("bankDigital"), value: metrics.bankExpense, color: "#10b981" },
       ].filter((x) => x.value > 0)
     : [];
 
@@ -253,7 +254,7 @@ export default function FinancialReportPage() {
       <div className="rounded-lg border border-border/80 bg-card p-4 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">From Date</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("fromDate")}</label>
             <input
               type="date"
               value={fromDate}
@@ -263,7 +264,7 @@ export default function FinancialReportPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">To Date</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("toDate")}</label>
             <input
               type="date"
               value={toDate}
@@ -273,13 +274,13 @@ export default function FinancialReportPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Category</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("category")}</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
             >
-              <option value="all">All Categories</option>
+              <option value="all">{t("allCategories")}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -289,17 +290,17 @@ export default function FinancialReportPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">Method</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("method")}</label>
             <select
               value={selectedMethod}
               onChange={(e) => setSelectedMethod(e.target.value)}
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
             >
-              <option value="all">All Payment Methods</option>
-              <option value="CASH">Cash</option>
-              <option value="BANK">Bank Account</option>
-              <option value="CHEQUE">Cheque</option>
-              <option value="DIGITAL">Digital Gateway</option>
+              <option value="all">{t("allPaymentMethods")}</option>
+              <option value="CASH">{t("cash")}</option>
+              <option value="BANK">{t("bankAccount")}</option>
+              <option value="CHEQUE">{t("cheque")}</option>
+              <option value="DIGITAL">{t("digitalGateway")}</option>
             </select>
           </div>
         </div>
@@ -314,7 +315,7 @@ export default function FinancialReportPage() {
             disabled={isLoading}
             className="text-xs h-8 bg-primary text-primary-foreground"
           >
-            {isLoading ? "Generating..." : "Generate Report"}
+            {isLoading ? t("generating") : t("generateReport")}
           </Button>
         </div>
       </div>
@@ -323,33 +324,33 @@ export default function FinancialReportPage() {
       {hasGenerated && metrics && (
         <>
           <ReportSummaryBar
-            dateRangeLabel={`${fromDate || "Start"} to ${toDate || "Present"}`}
+            dateRangeLabel={`${fromDate || t("start")} to ${toDate || t("present")}`}
             generatedAtLabel={generatedAt}
             recordCount={data.length}
             appliedFilters={[
-              { label: "Range", value: `${fromDate || "Start"} to ${toDate || "Present"}` },
+              { label: t("range"), value: `${fromDate || t("start")} to ${toDate || t("present")}` },
             ]}
           />
 
           {/* Metric Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ReportMetricCard
-              title="Total Fee Collections"
+              title={t("totalFeeCollections")}
               value={formatCurrency(metrics.totalIncome)}
               icon={TrendingUp}
             />
             <ReportMetricCard
-              title="Total Operational Expenses"
+              title={t("totalOperationalExpenses")}
               value={formatCurrency(metrics.totalExpenses)}
               icon={TrendingDown}
             />
             <ReportMetricCard
-              title="Net Cash Balance"
+              title={t("netCashBalance")}
               value={formatCurrency(metrics.netBalance)}
               icon={DollarSign}
             />
             <ReportMetricCard
-              title="Top Expense Category"
+              title={t("topExpenseCategory")}
               value={metrics.topExpenseCategory}
               icon={PieIcon}
             />
@@ -358,13 +359,13 @@ export default function FinancialReportPage() {
           {/* Charts Row */}
           <div className="grid gap-6 md:grid-cols-2">
             <BarChart
-              title="Expenses by Category"
-              description="Spending breakdown across operational heads"
+              title={t("expensesByCategory")}
+              description={t("expensesByCategoryDescription")}
               data={barChartData}
             />
             <PieChart
-              title="Payment Methods Distribution"
-              description="Cash vs Bank disbursement proportion"
+              title={t("paymentMethodsDistribution")}
+              description={t("paymentMethodsDistributionDescription")}
               data={methodPieData}
             />
           </div>
@@ -382,8 +383,8 @@ export default function FinancialReportPage() {
 
       {!hasGenerated && (
         <ReportEmptyState
-          title="No Financial Report Generated"
-          description="Select date range, expense categories, and payment method filters above then click Generate Report."
+          title={t("noReportTitle")}
+          description={t("noReportDescription")}
         />
       )}
     </ReportPageShell>

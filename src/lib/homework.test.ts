@@ -10,7 +10,7 @@ describe("Homework & Digital Assignments Suite", () => {
         title: "Chapter 4 Science Worksheet",
         description: "Complete all questions from page 45-48",
         dueDate: "2026-09-15T23:59:59.000Z",
-        attachmentUrl: "https://r2.pathshala.pro/homework/ws-45.pdf",
+        attachmentUrl: "/api/files?token=test-token-123",
       };
 
       const result = createHomeworkSchema.safeParse(validPayload);
@@ -35,7 +35,7 @@ describe("Homework & Digital Assignments Suite", () => {
       const submission = {
         homeworkId: "hw-1",
         studentProfileId: "st-99",
-        attachmentUrl: "https://r2.pathshala.pro/submissions/ans-99.pdf",
+        attachmentUrl: "/api/files?token=test-token-456",
         remarks: "Completed assignment with neat diagrams",
       };
 

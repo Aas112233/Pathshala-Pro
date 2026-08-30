@@ -75,9 +75,10 @@ export async function POST(request: NextRequest) {
 
     const concession = await prisma.studentFeeConcession.upsert({
       where: {
-        tenantId_studentProfileId: {
+        tenantId_studentProfileId_concessionType: {
           tenantId,
           studentProfileId: data.studentProfileId,
+          concessionType: data.concessionType || "CUSTOM",
         },
       },
       create: {
@@ -86,6 +87,10 @@ export async function POST(request: NextRequest) {
         concessionType: data.concessionType || "CUSTOM",
         discountType: data.discountType || "PERCENTAGE",
         discountValue: data.discountValue,
+        appliesToHead: (data as any).appliesToHead || "TUITION",
+        priority: (data as any).priority ?? 10,
+        validFrom: (data as any).validFrom ? new Date((data as any).validFrom) : null,
+        validUntil: (data as any).validUntil ? new Date((data as any).validUntil) : null,
         reason: data.reason,
         isActive: data.isActive ?? true,
       },
@@ -93,6 +98,10 @@ export async function POST(request: NextRequest) {
         concessionType: data.concessionType || "CUSTOM",
         discountType: data.discountType || "PERCENTAGE",
         discountValue: data.discountValue,
+        appliesToHead: (data as any).appliesToHead || "TUITION",
+        priority: (data as any).priority ?? 10,
+        validFrom: (data as any).validFrom ? new Date((data as any).validFrom) : null,
+        validUntil: (data as any).validUntil ? new Date((data as any).validUntil) : null,
         reason: data.reason,
         isActive: data.isActive ?? true,
       },

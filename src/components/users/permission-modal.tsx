@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useUpdateUser } from "@/hooks/use-queries";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   ShieldCheck,
@@ -108,6 +109,7 @@ interface PresetButton {
 }
 
 export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps) {
+  const t = useTranslations("users");
   const updateMutation = useUpdateUser(user?.id || "");
   const { user: authUser } = useAuth();
   const [permissions, setPermissions] = useState<PermState>({});
@@ -210,7 +212,7 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
 
   const handleResetToDefaults = () => {
     handleApplyPreset(roleDefaults);
-    toast.info("Permissions reset to role defaults");
+    toast.info(t("permissionsReset"));
   };
 
   const handleLevelChange = (value: string) => {
@@ -218,7 +220,7 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
     setSelectedLevel(lvl);
     if (lvl && ACCESS_LEVEL_PERMISSIONS[lvl]) {
       setPermissions(buildPermState(ACCESS_LEVEL_PERMISSIONS[lvl]));
-      toast.info(`Applied ${ACCESS_LEVEL_LABELS[lvl]} access level`);
+      toast.info(t("permissionsUpdated"));
     }
   };
 
@@ -245,11 +247,11 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
       },
       {
         onSuccess: () => {
-          toast.success("Permissions updated successfully");
+          toast.success(t("permissionsUpdated"));
           onClose();
         },
         onError: (error) => {
-          toast.error(error.message || "Failed to update permissions");
+          toast.error(error.message || t("permissionsUpdated"));
         },
       }
     );

@@ -9,7 +9,9 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 import { integrityViolation, lockedUpdateMessage } from "@/lib/data-integrity";
+import { safePercentage } from "@/lib/math-utils";
 
 // Grading scale configuration
 const GRADING_SCALE = [
@@ -23,7 +25,7 @@ const GRADING_SCALE = [
 ];
 
 function calculateGrade(marks: number, maxMarks: number) {
-  const percentage = (marks / maxMarks) * 100;
+  const percentage = safePercentage(marks, maxMarks);
   const gradeInfo = GRADING_SCALE.find((g) => percentage >= g.minPercentage) || GRADING_SCALE[GRADING_SCALE.length - 1];
   return {
     grade: gradeInfo.grade,
@@ -127,6 +129,8 @@ export async function PUT(
     if (!existingResult) {
       return notFound("Exam result not found");
     }
+
+    await assertAcademicYearOpen(tenantId, existingResult.academicYearId);
 
     // Verify if result is locked
     if (existingResult.isLocked) {
@@ -241,6 +245,8 @@ export async function DELETE(
     if (!existingResult) {
       return notFound("Exam result not found");
     }
+
+    await assertAcademicYearOpen(tenantId, existingResult.academicYearId);
 
     if (existingResult.isLocked) {
       return badRequest("Cannot delete this exam result. Marks are locked because the student has already been promoted.");

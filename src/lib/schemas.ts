@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { internalFileUrlSchema } from "@/lib/file-url";
 
 // Auth schemas
 export const loginSchema = z.object({
@@ -39,7 +40,7 @@ export const updateUserSchema = createUserSchema.partial();
 // Student schemas
 export const createStudentSchema = z.object({
   studentId: z.string().optional(),
-  profilePictureUrl: z.string().url().optional().or(z.literal("")),
+  profilePictureUrl: internalFileUrlSchema.optional().or(z.literal("")),
   driveFileId: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -118,12 +119,16 @@ export const updateClassFeeStructureSchema = createClassFeeStructureSchema.parti
 export type CreateClassFeeStructureInput = z.infer<typeof createClassFeeStructureSchema>;
 export type UpdateClassFeeStructureInput = z.infer<typeof updateClassFeeStructureSchema>;
 
-// Student Fee Concession schemas
+// Student Fee Concession schemas — now supports stacking, tuition-only guard, validity window
 export const createStudentFeeConcessionSchema = z.object({
   studentProfileId: z.string().min(1, "Student is required"),
   concessionType: z.enum(["SIBLING", "STAFF_CHILD", "MERIT", "NEED_BASED", "CUSTOM"]).default("CUSTOM"),
   discountType: z.enum(["PERCENTAGE", "FIXED_AMOUNT"]).default("PERCENTAGE"),
   discountValue: z.number().min(0, "Discount value must be non-negative"),
+  appliesToHead: z.enum(["TUITION", "ALL_HEADS"]).default("TUITION"),
+  priority: z.number().int().min(1).max(100).default(10),
+  validFrom: z.string().optional().nullable(),
+  validUntil: z.string().optional().nullable(),
   reason: z.string().optional(),
   isActive: z.boolean().default(true),
 });
@@ -181,7 +186,7 @@ export const createStaffSchema = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   dateOfBirth: z.string().optional(),
   address: z.string().optional(),
-  profilePictureUrl: z.string().url().optional(),
+  profilePictureUrl: internalFileUrlSchema.optional(),
   driveFileId: z.string().optional(),
   isActive: z.boolean().default(true),
   userId: z.string().optional(),
@@ -209,20 +214,6 @@ export const createAttendanceSchema = z.object({
 });
 
 export const updateAttendanceSchema = createAttendanceSchema.partial();
-
-// Exam result schemas
-export const createExamResultSchema = z.object({
-  studentProfileId: z.string().min(1, "Student is required"),
-  academicYearId: z.string().min(1, "Academic year is required"),
-  examName: z.string().min(1, "Exam name is required"),
-  subject: z.string().min(1, "Subject is required"),
-  maxMarks: z.number().min(0, "Max marks must be non-negative"),
-  obtainedMarks: z.number().min(0, "Obtained marks must be non-negative"),
-  grade: z.string().optional(),
-  remarks: z.string().optional(),
-});
-
-export const updateExamResultSchema = createExamResultSchema.partial();
 
 // Subject schemas
 export const createSubjectSchema = z.object({
@@ -267,7 +258,7 @@ export const createExamSubjectSchema = z.object({
 export const updateExamSubjectSchema = createExamSubjectSchema.partial();
 
 // Exam Result schemas (updated for new structure)
-export const createExamResultNewSchema = z.object({
+const createExamResultNewSchemaShape = z.object({
   studentProfileId: z.string().min(1, "Student is required"),
   academicYearId: z.string().min(1, "Academic year is required"),
   examId: z.string().min(1, "Exam is required"),
@@ -277,7 +268,15 @@ export const createExamResultNewSchema = z.object({
   reExamAllowed: z.boolean().default(false),
 });
 
-export const updateExamResultNewSchema = createExamResultNewSchema.partial();
+// `obtainedMarks` can't be bounded above via a per-field validator since the
+// bound (maxMarks) is a sibling field whose value varies per subject/exam —
+// enforce it with an object-level refinement instead.
+export const createExamResultNewSchema = createExamResultNewSchemaShape.refine(
+  (data) => data.obtainedMarks <= data.maxMarks,
+  { message: "obtainedMarks cannot exceed maxMarks", path: ["obtainedMarks"] }
+);
+
+export const updateExamResultNewSchema = createExamResultNewSchemaShape.partial();
 
 // Promotion Rule schemas
 export const createPromotionRuleSchema = z.object({
@@ -609,7 +608,7 @@ export const createHomeworkSchema = z.object({
   subjectId: z.string().optional().nullable(),
   title: z.string().min(2, "Title is required"),
   description: z.string().min(5, "Description is required"),
-  attachmentUrl: z.string().url().optional().nullable().or(z.literal("")),
+  attachmentUrl: internalFileUrlSchema.optional().nullable().or(z.literal("")),
   dueDate: z.string().min(1, "Due date is required"),
 });
 
@@ -618,7 +617,7 @@ export const updateHomeworkSchema = createHomeworkSchema.partial();
 export const createSubmissionSchema = z.object({
   homeworkId: z.string().min(1, "Homework is required"),
   studentProfileId: z.string().min(1, "Student is required"),
-  attachmentUrl: z.string().url().optional().nullable().or(z.literal("")),
+  attachmentUrl: internalFileUrlSchema.optional().nullable().or(z.literal("")),
   remarks: z.string().optional().nullable(),
 });
 
@@ -780,7 +779,7 @@ export const createNoticeSchema = z.object({
   isPublished: z.boolean().optional().default(true),
   publishDate: z.string().optional(),
   expiresAt: z.preprocess((val) => (val === "" ? null : val), z.string().optional().nullable()),
-  attachmentUrl: z.preprocess((val) => (val === "" ? null : val), z.string().optional().nullable()),
+  attachmentUrl: z.preprocess((val) => (val === "" ? null : val), internalFileUrlSchema.optional().nullable()),
 });
 
 export const updateNoticeSchema = createNoticeSchema.partial();

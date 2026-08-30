@@ -4,6 +4,7 @@ import { successResponse, paginatedResponse, validationError, handleApiError, no
 import { createSubmissionSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { verifyInternalFileUrl } from "@/lib/upload-security";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -51,6 +52,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return validationError(errors);
     }
     const d = parsed.data;
+    if (d.attachmentUrl && !(await verifyInternalFileUrl(d.attachmentUrl, tenantId))) {
+      return badRequest("Invalid attachment file");
+    }
     const student = await prisma.studentProfile.findFirst({ where: { id: d.studentProfileId, tenantId } });
     if (!student) return badRequest("Student not found");
     const dup = await prisma.homeworkSubmission.findFirst({ where: { tenantId, homeworkId, studentProfileId: d.studentProfileId } });

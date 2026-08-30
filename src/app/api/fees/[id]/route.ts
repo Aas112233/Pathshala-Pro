@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import {
   successResponse,
   errorResponse,
@@ -16,6 +17,7 @@ import {
   lockedDeleteMessage,
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 
 /**
  * GET /api/fees/[id]
@@ -117,6 +119,8 @@ export async function PUT(
       return notFound("Fee voucher not found");
     }
 
+    await assertAcademicYearOpen(tenantId, existingVoucher.academicYearId);
+
     const transactionsCount = await prisma.transaction.count({
       where: { tenantId, feeVoucherId: id },
     });
@@ -146,20 +150,30 @@ export async function PUT(
       );
     }
 
-    // Calculate new totals if amounts are being updated
-    const baseAmount = (data as any).baseAmount ?? existingVoucher.baseAmount;
-    const discountAmount = (data as any).discountAmount ?? existingVoucher.discountAmount;
-    const arrears = data.arrears ?? existingVoucher.arrears;
-    const amountPaid = existingVoucher.amountPaid;
+    // Calculate new totals — Decimal-safe
+    const baseAmount = new Prisma.Decimal((data as any).baseAmount ?? existingVoucher.baseAmount);
+    const discountAmount = new Prisma.Decimal((data as any).discountAmount ?? existingVoucher.discountAmount);
+    const arrears = new Prisma.Decimal((data as any).arrears ?? existingVoucher.arrears);
+    const amountPaid = new Prisma.Decimal(existingVoucher.amountPaid as any);
 
-    const totalDue = baseAmount - discountAmount + arrears;
-    const balance = totalDue - amountPaid;
+    if (discountAmount.greaterThan(baseAmount)) {
+      return badRequest("Discount cannot exceed base amount");
+    }
 
-    // Determine status
+    const totalDue = Prisma.Decimal.max(
+      new Prisma.Decimal(0),
+      baseAmount.minus(discountAmount).add(arrears)
+    ).toDecimalPlaces(2);
+    const balance = Prisma.Decimal.max(
+      new Prisma.Decimal(0),
+      totalDue.minus(amountPaid)
+    ).toDecimalPlaces(2);
+
+    // Determine status — Decimal-safe
     let status = existingVoucher.status;
-    if (balance <= 0) {
+    if (balance.lessThanOrEqualTo(0)) {
       status = "PAID";
-    } else if (amountPaid > 0) {
+    } else if (amountPaid.greaterThan(0)) {
       status = "PARTIAL";
     } else {
       status = "PENDING";
@@ -169,8 +183,8 @@ export async function PUT(
       where: { id },
       data: {
         ...data,
-        totalDue,
-        balance,
+        totalDue: Number(totalDue.toFixed(2)),
+        balance: Number(balance.toFixed(2)),
         status,
       },
       include: {
@@ -214,15 +228,18 @@ export async function DELETE(
       return notFound("Fee voucher not found");
     }
 
+    await assertAcademicYearOpen(tenantId, existingVoucher.academicYearId);
+
     const transactions = await prisma.transaction.count({
       where: { tenantId, feeVoucherId: id },
     });
 
-    if (transactions > 0 || existingVoucher.amountPaid > 0 || existingVoucher.status !== "PENDING") {
+    const paidAmtDec = new Prisma.Decimal(existingVoucher.amountPaid as any);
+    if (transactions > 0 || paidAmtDec.greaterThan(0) || existingVoucher.status !== "PENDING") {
       return integrityViolation(
         lockedDeleteMessage("Fee voucher", {
           transactions,
-          payments: existingVoucher.amountPaid > 0 ? 1 : 0,
+          payments: paidAmtDec.greaterThan(0) ? 1 : 0,
           nonPendingStatus: existingVoucher.status !== "PENDING" ? 1 : 0,
         }),
         [

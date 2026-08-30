@@ -63,12 +63,14 @@ async function checkTeacherClash(
   staffProfileId: string,
   dayOfWeek: string,
   periodNumber: number,
+  academicYearId?: string | null,
   excludeId?: string
 ) {
   if (!staffProfileId) return null;
   const clash = await prisma.timetable.findFirst({
     where: {
       tenantId,
+      ...(academicYearId ? { academicYearId } : {}),
       staffProfileId,
       dayOfWeek,
       periodNumber,
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest) {
       // Validate clashes for each entry before writing
       for (const e of parsed.data.entries) {
         if (e.staffProfileId) {
-          const clash = await checkTeacherClash(tenantId, e.staffProfileId, e.dayOfWeek, e.periodNumber);
+          const clash = await checkTeacherClash(tenantId, e.staffProfileId, e.dayOfWeek, e.periodNumber, e.academicYearId);
           if (clash) {
             return badRequest(
               `Teacher clash: already assigned to ${clash.class.name}${clash.section ? ` - ${clash.section.name}` : ""} on ${e.dayOfWeek} period ${e.periodNumber}`,
@@ -157,7 +159,7 @@ export async function POST(request: NextRequest) {
     const d = parsed.data;
 
     if (d.staffProfileId) {
-      const clash = await checkTeacherClash(tenantId, d.staffProfileId, d.dayOfWeek, d.periodNumber);
+          const clash = await checkTeacherClash(tenantId, d.staffProfileId, d.dayOfWeek, d.periodNumber, d.academicYearId);
       if (clash) {
         return badRequest(
           `Teacher clash: already assigned to ${clash.class.name}${clash.section ? ` - ${clash.section.name}` : ""} on ${d.dayOfWeek} period ${d.periodNumber}`,

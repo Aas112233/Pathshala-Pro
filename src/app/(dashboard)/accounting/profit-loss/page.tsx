@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,13 +28,16 @@ import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 export default function ProfitLossPage() {
   const t = useTranslations("accounting.profitLoss");
+  const common = useTranslations("common");
   const { formatCurrency, currencySymbol } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadAccounting = hasPermission(perms, "accounting", "read");
   const canWriteAccounting = hasPermission(perms, "accounting", "write");
   const canManageAccounting = hasPermission(perms, "accounting", "manage");
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const currentYear = new Date().getFullYear();
+  const fiscalYears = Array.from({ length: 5 }, (_, index) => currentYear - 2 + index);
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
 
   const { data: profitLossResponse, isLoading } = useProfitLoss(selectedYear);
   const pnl = (profitLossResponse as any)?.data;
@@ -60,17 +64,15 @@ export default function ProfitLossPage() {
         icon={BarChart3}
       >
         <div className="flex items-center gap-2.5">
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-            className="h-9 px-3 rounded-md border border-input bg-background text-xs font-semibold"
-          >
-            {[2024, 2025, 2026, 2027].map((y) => (
-              <option key={y} value={y}>
-                {t("fiscalYear", { year: y })}
-              </option>
-            ))}
-          </select>
+          <AppDropdown
+            value={String(selectedYear)}
+            onChange={(v) => setSelectedYear(parseInt(v, 10))}
+            options={fiscalYears.map((y) => ({
+              value: String(y),
+              label: t("fiscalYear", { year: y })
+            }))}
+            className="w-44"
+          />
 
           <Button
             variant="outline"
@@ -85,8 +87,8 @@ export default function ProfitLossPage() {
 
       {!isAuthLoading && !canReadAccounting ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view accounting.</p>
+          <h2 className="text-lg font-semibold text-foreground">{common("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{common("noPermission")}</p>
         </div>
       ) : (
         <>

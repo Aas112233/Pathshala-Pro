@@ -52,7 +52,7 @@ export default function QuestionPaperPreviewPage() {
   if (isLoading) {
     return (
       <div className="py-24 text-center text-muted-foreground">
-        Loading Question Paper...
+        {t("questionPapers.loadingPreview")}
       </div>
     );
   }
@@ -60,7 +60,7 @@ export default function QuestionPaperPreviewPage() {
   if (!paper) {
     return (
       <div className="py-24 text-center text-muted-foreground">
-        Question paper not found.
+        {t("questionPapers.previewNotFound")}
       </div>
     );
   }
@@ -86,7 +86,7 @@ export default function QuestionPaperPreviewPage() {
               </Badge>
             </h1>
             <p className="text-xs text-muted-foreground">
-              {paper.class?.name} • {paper.subject?.name} • Full Marks: {paper.totalMarks}
+              {paper.class?.name} • {paper.subject?.name} • {t("questionPapers.print.fullMarks")}: {paper.totalMarks}
             </p>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function QuestionPaperPreviewPage() {
             className="gap-1.5 text-xs font-semibold"
           >
             {showSolutions ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            {showSolutions ? "Hide Solution Key" : "Teacher Solution Key"}
+            {showSolutions ? t("questionPapers.hideSolutionKey") : t("questionPapers.teacherSolutionKey")}
           </Button>
 
           <Button onClick={handlePrint} size="sm" className="gap-2 font-bold shadow-md">
@@ -114,7 +114,7 @@ export default function QuestionPaperPreviewPage() {
         {/* School Header */}
         <div className="text-center border-b-2 border-black pb-4 mb-6 space-y-1">
           <h2 className="text-2xl font-bold uppercase tracking-wide text-black font-sans">
-            {tenant.name || "School / College Examination"}
+            {tenant.name || t("questionPapers.schoolExamFallback")}
           </h2>
           {tenant.address && (
             <p className="text-xs text-gray-700 font-sans">{tenant.address}</p>
@@ -128,21 +128,21 @@ export default function QuestionPaperPreviewPage() {
           {/* Subject, Class, Marks, Time Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 text-xs font-sans font-semibold border-t border-gray-300 mt-3">
             <div className="text-left">
-              <span className="text-gray-600">Class: </span>
+              <span className="text-gray-600">{t("questionPapers.print.class")}: </span>
               <span className="text-black">{paper.class?.name}</span>
             </div>
             <div className="text-left sm:text-center">
-              <span className="text-gray-600">Subject: </span>
+              <span className="text-gray-600">{t("questionPapers.print.subject")}: </span>
               <span className="text-black">{paper.subject?.name}</span>
             </div>
             <div className="text-left sm:text-center">
-              <span className="text-gray-600">Time Allowed: </span>
+              <span className="text-gray-600">{t("questionPapers.timeAllowed")}: </span>
               <span className="text-black">
                 {Math.floor(paper.durationMinutes / 60)}h {paper.durationMinutes % 60}m
               </span>
             </div>
             <div className="text-left sm:text-right">
-              <span className="text-gray-600">Full Marks: </span>
+              <span className="text-gray-600">{t("questionPapers.print.fullMarks")}: </span>
               <span className="text-black font-bold font-mono">{paper.totalMarks}</span>
             </div>
           </div>
@@ -150,10 +150,10 @@ export default function QuestionPaperPreviewPage() {
           {/* Student Fill-in Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 text-xs font-sans text-left">
             <div>
-              <span>Student Name: _________________________________________</span>
+              <span>{t("questionPapers.studentNameLine")}</span>
             </div>
             <div className="sm:text-right">
-              <span>Roll No: _______________ Section: ________</span>
+              <span>{t("questionPapers.rollNoSectionLine")}</span>
             </div>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function QuestionPaperPreviewPage() {
         {paper.instructions && (
           <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded text-xs font-sans italic">
             <strong className="not-italic uppercase font-bold block mb-1">
-              General Instructions:
+              {t("questionPapers.generalInstructions")}
             </strong>
             <div className="whitespace-pre-line text-gray-800">{paper.instructions}</div>
           </div>
@@ -188,7 +188,7 @@ export default function QuestionPaperPreviewPage() {
                     )}
                   </div>
                   <span className="font-mono text-xs font-bold font-sans">
-                    [{sec.totalMarks} Marks]
+                    [{sec.totalMarks} {t("questionPapers.print.marks")}]
                   </span>
                 </div>
 
@@ -200,7 +200,7 @@ export default function QuestionPaperPreviewPage() {
                       {q.stimulus && (
                         <div className="p-3 bg-gray-50 border-l-2 border-black text-xs italic font-serif my-2 text-gray-900">
                           <span className="font-bold uppercase not-italic text-[10px] text-gray-600 block mb-1">
-                            উদ্দীপক / Context:
+                            {t("questionPapers.context")}
                           </span>
                           {q.stimulus}
                         </div>
@@ -261,11 +261,11 @@ export default function QuestionPaperPreviewPage() {
                         <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-300 rounded text-xs font-sans text-emerald-950 space-y-1">
                           <div className="font-bold flex items-center gap-1.5 text-emerald-800">
                             <CheckCircle2 className="h-3.5 w-3.5" />
-                            Solution Key / Answer: {q.correctAnswer || "Refer to standard textbook"}
+                            {t("questionPapers.solutionKeyAnswer")} {q.correctAnswer || t("questionPapers.referTextbook")}
                           </div>
                           {q.explanation && (
                             <div className="text-[11px] text-emerald-900 italic">
-                              Note: {q.explanation}
+                              {t("questionPapers.note")} {q.explanation}
                             </div>
                           )}
                         </div>
@@ -280,7 +280,7 @@ export default function QuestionPaperPreviewPage() {
 
         {/* Paper End Mark */}
         <div className="text-center pt-12 pb-4 text-xs uppercase font-sans font-bold tracking-widest text-gray-500 border-t border-gray-300 mt-12">
-          *** END OF QUESTION PAPER ***
+          {t("questionPapers.endOfQuestionPaper")}
         </div>
       </div>
     </div>

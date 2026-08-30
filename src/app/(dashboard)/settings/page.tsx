@@ -10,7 +10,7 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, School, DollarSign, Calendar, Save, RotateCcw, Globe, Building2, Clock3 } from "lucide-react";
+import { Settings, School, DollarSign, Calendar, Save, RotateCcw, Globe, Building2, Clock3, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import {
@@ -20,6 +20,8 @@ import {
 } from "@/lib/tenant-settings";
 
 import { CURRENCY_LIST } from "@/lib/currencies";
+import { NotificationSettingsSection } from "./notification-settings-section";
+import { PaymentMethodsSettingsSection } from "./payment-methods-settings-section";
 
 const DATE_FORMATS = [
   { value: "DD/MM/YYYY", key: "DD_MM_YYYY" },
@@ -69,6 +71,7 @@ function formatTimePreview(timeFormat: string, timezone: string) {
 
 export default function SettingsPage() {
   const t = useTranslations('settings');
+  const nt = useTranslations('notifications');
   const { settings: savedSettings, isLoading, refreshSettings, setSettings: setGlobalSettings } = useTenantSettings();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("school");
@@ -267,7 +270,7 @@ export default function SettingsPage() {
         }}
       >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="school" className="gap-2">
             <School className="h-4 w-4" />
             <span className="hidden sm:inline">{t("ui.schoolTab")}</span>
@@ -278,10 +281,20 @@ export default function SettingsPage() {
             <span className="hidden sm:inline">{t("ui.financialTab")}</span>
             <span className="sm:hidden">{t("ui.financialTab")}</span>
           </TabsTrigger>
+          <TabsTrigger value="payment_methods" className="gap-2">
+            <CreditCard className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("ui.paymentMethodsTab")}</span>
+            <span className="sm:hidden">{t("ui.paymentMethodsTabShort")}</span>
+          </TabsTrigger>
           <TabsTrigger value="datetime" className="gap-2">
             <Calendar className="h-4 w-4" />
             <span className="hidden sm:inline">{t("ui.dateTimeTab")}</span>
             <span className="sm:hidden">{t("ui.dateTimeShort")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-2">
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">{nt("settingsTab")}</span>
+            <span className="sm:hidden">{nt("settingsShort")}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -529,7 +542,7 @@ export default function SettingsPage() {
                   <SelectContent>
                     {TIME_FORMATS.map((format) => (
                       <SelectItem key={format.value} value={format.value}>
-                        {t(`ui.dateFormats.${format.key}`)}
+                        {t(`ui.${format.key}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -630,6 +643,15 @@ export default function SettingsPage() {
               </div>
             </div>
           </ERPFormSection>
+        </TabsContent>
+        <TabsContent value="payment_methods" className="space-y-4">
+          <PaymentMethodsSettingsSection
+            settings={settings}
+            onChange={updateSetting}
+          />
+        </TabsContent>
+        <TabsContent value="notifications" className="space-y-4">
+          <NotificationSettingsSection />
         </TabsContent>
       </Tabs>
       </form>

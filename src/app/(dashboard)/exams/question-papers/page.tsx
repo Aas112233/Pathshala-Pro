@@ -175,7 +175,7 @@ export default function QuestionPapersLibraryPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast.success("Blueprint composed successfully!");
+      toast.success(t("questionPapers.blueprintComposed"));
       setIsBlueprintOpen(false);
       // Save blueprint generated paper
       saveGeneratedPaper(data.data);
@@ -205,7 +205,7 @@ export default function QuestionPapersLibraryPage() {
 
       if (!res.ok) throw new Error("Failed to save blueprint paper");
       const created = await res.json();
-      toast.success("Question paper saved and ready!");
+      toast.success(t("questionPapers.savedReady"));
       queryClient.invalidateQueries({ queryKey: ["question-papers"] });
       router.push(`/exams/question-papers/${created.data.id}/preview`);
     } catch (err: any) {
@@ -216,7 +216,7 @@ export default function QuestionPapersLibraryPage() {
   const handleGenerateBlueprint = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bpClassId || !bpSubjectId || !bpAcademicYearId || !bpTitle.trim()) {
-      toast.error("Please fill in Title, Class, Subject, and Academic Year.");
+      toast.error(t("questionPapers.requiredDetails"));
       return;
     }
 
@@ -294,19 +294,19 @@ export default function QuestionPapersLibraryPage() {
         <ERPMetricCard
           title={t("questionPapers.kpi.totalPapers")}
           value={totalPapers}
-          subtitle="All repository question papers"
+          subtitle={t("questionPapers.repositoryPapers")}
           icon={FileText}
         />
         <ERPMetricCard
           title={t("questionPapers.kpi.readyPapers")}
           value={readyPapers}
-          subtitle="Ready for Exam Day"
+          subtitle={t("questionPapers.readyForExamDay")}
           icon={CheckCircle2}
         />
         <ERPMetricCard
           title={t("questionPapers.kpi.draftPapers")}
           value={draftPapers}
-          subtitle="In Progress & Custom Sets"
+          subtitle={t("questionPapers.inProgressCustomSets")}
           icon={Clock}
         />
       </div>
@@ -319,7 +319,7 @@ export default function QuestionPapersLibraryPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by title, code..."
+                placeholder={t("questionPapers.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 bg-background"
@@ -359,10 +359,10 @@ export default function QuestionPapersLibraryPage() {
             {/* Status Filter */}
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="bg-background">
-                <SelectValue placeholder="All Statuses" />
+                <SelectValue placeholder={t("questionPapers.allStatuses")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="ALL">{t("questionPapers.allStatuses")}</SelectItem>
                 <SelectItem value="READY">{t("questionPapers.status.READY")}</SelectItem>
                 <SelectItem value="DRAFT">{t("questionPapers.status.DRAFT")}</SelectItem>
                 <SelectItem value="PUBLISHED">{t("questionPapers.status.PUBLISHED")}</SelectItem>
@@ -446,15 +446,15 @@ export default function QuestionPapersLibraryPage() {
                   {/* Stats Row */}
                   <div className="grid grid-cols-3 gap-2 p-2.5 bg-muted/40 rounded-lg text-center font-mono">
                     <div>
-                      <span className="text-[10px] text-muted-foreground block uppercase">Full Marks</span>
+                      <span className="text-[10px] text-muted-foreground block uppercase">{t("questionPapers.fullMarks")}</span>
                       <span className="text-sm font-bold text-foreground">{paper.totalMarks}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground block uppercase">Duration</span>
+                      <span className="text-[10px] text-muted-foreground block uppercase">{t("questionPapers.duration")}</span>
                       <span className="text-sm font-bold text-foreground">{paper.durationMinutes}m</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground block uppercase">Sections</span>
+                      <span className="text-[10px] text-muted-foreground block uppercase">{t("questionPapers.sectionsCount")}</span>
                       <span className="text-sm font-bold text-foreground">
                         {sectionCount} ({totalQuestionsCount} Qs)
                       </span>
@@ -492,7 +492,7 @@ export default function QuestionPapersLibraryPage() {
                           deleteMutation.mutate(paper.id);
                         }
                       }}
-                      title="Delete Paper"
+                      title={t("questionPapers.deletePaper")}
                       className="h-9 px-2.5 hover:text-rose-600"
                     >
                       <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-rose-600" />
@@ -527,7 +527,7 @@ export default function QuestionPapersLibraryPage() {
                 <Input
                   value={bpTitle}
                   onChange={(e) => setBpTitle(e.target.value)}
-                  placeholder="e.g. Annual Exam 2026 - Mathematics"
+                  placeholder={t("questionPapers.paperTitlePlaceholder")}
                   required
                 />
               </div>
@@ -538,7 +538,7 @@ export default function QuestionPapersLibraryPage() {
                 </label>
                 <Select value={bpAcademicYearId || undefined} onValueChange={setBpAcademicYearId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Academic Year" />
+                    <SelectValue placeholder={t("questionPapers.selectAcademicYear")} />
                   </SelectTrigger>
                   <SelectContent className="z-[80]">
                     {academicYears.map((y: any) => (
@@ -556,7 +556,7 @@ export default function QuestionPapersLibraryPage() {
                 </label>
                 <Select value={bpClassId || undefined} onValueChange={setBpClassId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Class" />
+                    <SelectValue placeholder={t("questionPapers.selectClass")} />
                   </SelectTrigger>
                   <SelectContent className="z-[80]">
                     {classes.map((c: any) => (
@@ -574,7 +574,7 @@ export default function QuestionPapersLibraryPage() {
                 </label>
                 <Select value={bpSubjectId || undefined} onValueChange={setBpSubjectId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Subject" />
+                    <SelectValue placeholder={t("questionPapers.selectSubject")} />
                   </SelectTrigger>
                   <SelectContent className="z-[80]">
                     {subjects.map((s: any) => (
@@ -590,9 +590,9 @@ export default function QuestionPapersLibraryPage() {
             {/* Question Breakdown Blueprint */}
             <div className="p-3.5 bg-muted/40 rounded-lg border border-border space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center justify-between">
-                <span>Blueprint Question Distribution</span>
+                <span>{t("questionPapers.blueprintQuestionDistribution")}</span>
                 <Badge variant="outline" className="font-mono">
-                  Target: {bpTotalMarks} Marks
+                  {t("questionPapers.targetMarks")}: {bpTotalMarks} {t("questionPapers.print.marks")}
                 </Badge>
               </h4>
 
@@ -602,12 +602,12 @@ export default function QuestionPapersLibraryPage() {
                   <div className="font-semibold text-foreground flex justify-between">
                     <span>{t("questionPapers.blueprintModal.mcqSection")}</span>
                     <span className="font-mono text-primary font-bold">
-                      {bpMcqCount * bpMcqMarksEach} pts
+                      {bpMcqCount * bpMcqMarksEach} {t("questionPapers.points")}
                     </span>
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <span className="text-[10px] text-muted-foreground">Count</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.count")}</span>
                       <Input
                         type="number"
                         min="0"
@@ -617,7 +617,7 @@ export default function QuestionPapersLibraryPage() {
                       />
                     </div>
                     <div className="w-16">
-                      <span className="text-[10px] text-muted-foreground">Pts/Q</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.pointsPerQuestion")}</span>
                       <Input
                         type="number"
                         min="0.5"
@@ -635,12 +635,12 @@ export default function QuestionPapersLibraryPage() {
                   <div className="font-semibold text-foreground flex justify-between">
                     <span>{t("questionPapers.blueprintModal.shortSection")}</span>
                     <span className="font-mono text-primary font-bold">
-                      {bpShortCount * bpShortMarksEach} pts
+                      {bpShortCount * bpShortMarksEach} {t("questionPapers.points")}
                     </span>
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <span className="text-[10px] text-muted-foreground">Count</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.count")}</span>
                       <Input
                         type="number"
                         min="0"
@@ -650,7 +650,7 @@ export default function QuestionPapersLibraryPage() {
                       />
                     </div>
                     <div className="w-16">
-                      <span className="text-[10px] text-muted-foreground">Pts/Q</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.pointsPerQuestion")}</span>
                       <Input
                         type="number"
                         min="1"
@@ -667,12 +667,12 @@ export default function QuestionPapersLibraryPage() {
                   <div className="font-semibold text-foreground flex justify-between">
                     <span>{t("questionPapers.blueprintModal.descriptiveSection")}</span>
                     <span className="font-mono text-primary font-bold">
-                      {bpDescriptiveCount * bpDescriptiveMarksEach} pts
+                      {bpDescriptiveCount * bpDescriptiveMarksEach} {t("questionPapers.points")}
                     </span>
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <span className="text-[10px] text-muted-foreground">Count</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.count")}</span>
                       <Input
                         type="number"
                         min="0"
@@ -682,7 +682,7 @@ export default function QuestionPapersLibraryPage() {
                       />
                     </div>
                     <div className="w-16">
-                      <span className="text-[10px] text-muted-foreground">Pts/Q</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.pointsPerQuestion")}</span>
                       <Input
                         type="number"
                         min="1"
@@ -699,12 +699,12 @@ export default function QuestionPapersLibraryPage() {
                   <div className="font-semibold text-foreground flex justify-between">
                     <span>{t("questionPapers.blueprintModal.creativeSection")}</span>
                     <span className="font-mono text-primary font-bold">
-                      {bpCreativeCount * bpCreativeMarksEach} pts
+                      {bpCreativeCount * bpCreativeMarksEach} {t("questionPapers.points")}
                     </span>
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <span className="text-[10px] text-muted-foreground">Count</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.count")}</span>
                       <Input
                         type="number"
                         min="0"
@@ -714,7 +714,7 @@ export default function QuestionPapersLibraryPage() {
                       />
                     </div>
                     <div className="w-16">
-                      <span className="text-[10px] text-muted-foreground">Pts/Q</span>
+                      <span className="text-[10px] text-muted-foreground">{t("questionPapers.pointsPerQuestion")}</span>
                       <Input
                         type="number"
                         min="1"

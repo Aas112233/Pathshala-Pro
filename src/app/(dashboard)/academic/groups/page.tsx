@@ -45,6 +45,7 @@ interface SubjectData {
 
 export default function GroupsPage() {
   const t = useTranslations('groups');
+  const common = useTranslations('common');
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "academic", "read");
@@ -374,8 +375,8 @@ export default function GroupsPage() {
 
       {!isAuthLoading && !canRead ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2>Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+          <h2>{common("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{common("noPermission")}</p>
         </div>
       ) : (
         <>

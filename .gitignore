@@ -28,10 +28,8 @@ dist/
 .swc/
 .cache/
 build_output.txt
-next-env.d.ts
 
 # --- Environment Variables & Secrets ---
-# Ignore all .env variants by default
 .env
 .env.*
 .env*.local
@@ -96,6 +94,7 @@ playwright/.cache/
 cypress/videos/
 cypress/screenshots/
 vitest.config.ts.timestamp-*
+.lighthouseci/
 
 # --- Logs & Process Dumps ---
 logs/
@@ -140,17 +139,18 @@ Desktop.ini
 *.swo
 *~
 
-# --- AI Tools & Local Agent Data ---
+# --- AI Tools, Local Agent Memory & Code Graphs ---
 .claude/
 .opencode/
 .gemini/
-.agents/
 .cursor/
+.workbuddy-ai/
+.mimocode/
+.lingma/
+.codegraph/
 
 # --- Temporary & Scratch Files ---
 *.tmp
 *.temp
 *.bak
 scratch/
-.vercel
-.env*

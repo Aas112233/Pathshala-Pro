@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !(user as any).impersonatedBy) {
+    if (user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email) && !access.authContext.isImpersonated) {
       return unauthorized("Only platform system administrators can access tenant directory.");
     }
 

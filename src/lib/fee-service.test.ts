@@ -109,8 +109,9 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
   });
 
   describe("applyLateFineSurcharge", () => {
-    it("posts late fine surcharge against accounts receivable", async () => {
+    it("posts late fine surcharge against accounts receivable and updates the voucher's balance", async () => {
       const createdJournals: any[] = [];
+      const voucherUpdates: any[] = [];
       const mockTx: any = {
         $queryRaw: async () => [{ id: "seq-2", current_number: 102 }],
         $executeRaw: async () => 1,
@@ -124,6 +125,12 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
           create: async (payload: any) => {
             createdJournals.push(payload.data);
             return { id: "jv-fine-1", ...payload.data };
+          },
+        },
+        feeVoucher: {
+          update: async (payload: any) => {
+            voucherUpdates.push(payload);
+            return { id: payload.where.id, ...payload.data };
           },
         },
       };
@@ -142,15 +149,27 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
       const jv = createdJournals[0];
       expect(jv.totalDebit.toString()).toBe("500");
       expect(jv.totalCredit.toString()).toBe("500");
+
+      // The voucher itself must be incremented by the same fine amount that
+      // was posted to the GL, so its balance stays in sync with the ledger.
+      expect(voucherUpdates.length).toBe(1);
+      expect(voucherUpdates[0].where.id).toBe("INV-2026-0099");
+      expect(voucherUpdates[0].data.lateFine.increment).toBe(500);
+      expect(voucherUpdates[0].data.totalDue.increment).toBe(500);
+      expect(voucherUpdates[0].data.balance.increment).toBe(500);
+      expect(voucherUpdates[0].data.status).toBe("OVERDUE");
     });
   });
 
   describe("collectFeePayment", () => {
     it("processes fee payment and routes excess to Student Wallet (2050)", async () => {
       const createdJournals: any[] = [];
+      // Post-fix, collectFeePayment locks the real FeeVoucher row (there is
+      // no FeeInvoice table), so the mock must return totalDue/amountPaid
+      // instead of the old (nonexistent) netAmount/paidAmount shape.
       const mockTx: any = {
         $queryRaw: async () => [
-          { id: "INV-101", netAmount: 5000, paidAmount: 0 },
+          { id: "INV-101", totalDue: 5000, amountPaid: 0 },
         ],
         $executeRaw: async () => 1,
         chartOfAccount: {

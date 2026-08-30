@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 
 interface ChartDataPoint {
   label: string;
@@ -27,11 +28,12 @@ export function BarChart({
   showValues = true,
   showGrid = true,
 }: BarChartProps) {
+  const t = useTranslations("reports");
   if (!data || data.length === 0) {
     return (
       <Card className={className}>
         <CardContent className="flex h-40 items-center justify-center">
-          <p className="text-muted-foreground">No data available</p>
+          <p className="text-muted-foreground">{t("common.noData")}</p>
         </CardContent>
       </Card>
     );
@@ -148,11 +150,12 @@ export function PieChart({
   className,
   showLegend = true,
 }: PieChartProps) {
+  const t = useTranslations("reports");
   if (!data || data.length === 0) {
     return (
       <Card className={className}>
         <CardContent className="flex h-40 items-center justify-center">
-          <p className="text-muted-foreground">No data available</p>
+          <p className="text-muted-foreground">{t("common.noData")}</p>
         </CardContent>
       </Card>
     );
@@ -259,11 +262,12 @@ export function LineChart({
   showPoints = true,
   showGrid = true,
 }: LineChartProps) {
+  const t = useTranslations("reports");
   if (!data || data.length === 0) {
     return (
       <Card className={className}>
         <CardContent className="flex h-40 items-center justify-center">
-          <p className="text-muted-foreground">No data available</p>
+          <p className="text-muted-foreground">{t("common.noData")}</p>
         </CardContent>
       </Card>
     );

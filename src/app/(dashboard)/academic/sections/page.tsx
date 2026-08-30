@@ -38,6 +38,7 @@ interface SectionData {
 
 export default function SectionsPage() {
   const t = useTranslations('sections');
+  const common = useTranslations('common');
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "academic", "read");
@@ -182,9 +183,9 @@ export default function SectionsPage() {
     e.preventDefault();
 
     const nextErrors: typeof formErrors = {};
-    if (!formData.classId) nextErrors.classId = `${t('class')} is required`;
-    if (!formData.name.trim()) nextErrors.name = `${t('sectionName')} is required`;
-    if (!formData.shortName.trim()) nextErrors.shortName = `${t('shortName')} is required`;
+    if (!formData.classId) nextErrors.classId = t('requiredField', { field: t('class') });
+    if (!formData.name.trim()) nextErrors.name = t('requiredField', { field: t('sectionName') });
+    if (!formData.shortName.trim()) nextErrors.shortName = t('requiredField', { field: t('shortName') });
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       toast.error(t("requiredFields"));
@@ -336,8 +337,8 @@ export default function SectionsPage() {
 
       {!isAuthLoading && !canRead ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2>Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+          <h2>{common("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{common("noPermission")}</p>
         </div>
       ) : (
         <>

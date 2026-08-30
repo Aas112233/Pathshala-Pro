@@ -26,7 +26,7 @@ export async function GET(
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    const isPlatformAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email) || !!(user as any).impersonatedBy;
+    const isPlatformAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email) || access.authContext.isImpersonated;
 
     const { id } = await params;
     if (!isPlatformAdmin && id !== user.tenantId) {
@@ -121,7 +121,7 @@ export async function PUT(
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    const isPlatformAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email) || !!(user as any).impersonatedBy;
+    const isPlatformAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email) || access.authContext.isImpersonated;
 
     const { id } = await params;
     if (!isPlatformAdmin && id !== user.tenantId) {
@@ -191,7 +191,7 @@ export async function DELETE(
     if ("response" in access) return access.response;
 
     const { user } = access.authContext;
-    const isPlatformAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email) || !!(user as any).impersonatedBy;
+    const isPlatformAdmin = user.role === "SYSTEM_ADMIN" || isPlatformOwnerEmail(user.email) || access.authContext.isImpersonated;
     if (!isPlatformAdmin) {
       return unauthorized("Only platform system administrators can delete or suspend tenants.");
     }

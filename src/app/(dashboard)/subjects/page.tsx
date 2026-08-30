@@ -40,6 +40,7 @@ const CATEGORIES = [
 
 export default function SubjectsPage() {
   const t = useTranslations('subjects');
+  const tCommon = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "subjects", "read");
@@ -171,8 +172,8 @@ export default function SubjectsPage() {
 
       {!isAuthLoading && !canRead ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2>Access restricted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this section.</p>
+          <h2>{tCommon("accessRestricted")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
         </div>
       ) : (
         <>

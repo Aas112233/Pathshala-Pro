@@ -11,6 +11,8 @@ import {
 } from "@/lib/api-response";
 import { updateExamSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { triggerExamResultPublished } from "@/lib/notifications/triggers/exam-result-published";
 import {
   buildLockedFieldsDetails,
   getExamUsageCounts,
@@ -156,6 +158,8 @@ export async function PUT(
       return notFound("Exam not found");
     }
 
+    await assertAcademicYearOpen(tenantId, existingExam.academicYearId);
+
     const usageCounts = await getExamUsageCounts(tenantId, id);
     const examLocked = existingExam.isPublished || usageCounts.results > 0;
     const attemptedCoreFields = [
@@ -215,6 +219,16 @@ export async function PUT(
       }
     }
 
+    if (data.startDate || data.endDate) {
+      const effectiveStart = data.startDate ? new Date(data.startDate) : existingExam.startDate;
+      const effectiveEnd = data.endDate ? new Date(data.endDate) : existingExam.endDate;
+      if (effectiveStart > effectiveEnd) {
+        return badRequest("Invalid exam dates", [
+          { field: "endDate", code: "invalid_date", message: "End date cannot be before start date" },
+        ]);
+      }
+    }
+
     const updatedExam = await prisma.exam.update({
       where: { id },
       data: {
@@ -234,6 +248,10 @@ export async function PUT(
         },
       },
     });
+
+    if (!existingExam.isPublished && data.isPublished === true) {
+      void triggerExamResultPublished({ tenantId, examId: id });
+    }
 
     return successResponse(updatedExam, "Exam updated successfully");
   } catch (error) {

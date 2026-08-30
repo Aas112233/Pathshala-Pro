@@ -12,6 +12,8 @@ import {
 } from "@/lib/api-response";
 import { createExamResultNewSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { safePercentage } from "@/lib/math-utils";
 
 // Grading scale configuration
 const GRADING_SCALE = [
@@ -24,8 +26,8 @@ const GRADING_SCALE = [
   { minPercentage: 0, grade: "F", point: 0.0, remark: "Fail" },
 ];
 
-function calculateGrade(marks: number, maxMarks: number) {
-  const percentage = (marks / maxMarks) * 100;
+export function calculateGrade(marks: number, maxMarks: number) {
+  const percentage = safePercentage(marks, maxMarks);
   const gradeInfo = GRADING_SCALE.find((g) => percentage >= g.minPercentage) || GRADING_SCALE[GRADING_SCALE.length - 1];
   return {
     grade: gradeInfo.grade,
@@ -221,6 +223,18 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      if (exam.academicYearId !== data.academicYearId) {
+        errors.push({ field: `results[${index}].academicYearId`, code: "YEAR_MISMATCH", message: "Exam and result must belong to the same academic year" });
+        continue;
+      }
+
+      try {
+        await assertAcademicYearOpen(tenantId, data.academicYearId);
+      } catch (error) {
+        errors.push({ field: `results[${index}].academicYearId`, code: "ACADEMIC_YEAR_CLOSED", message: error instanceof Error ? error.message : "Academic year is closed" });
+        continue;
+      }
+
       // Verify subject exists
       const subject = await prisma.subject.findUnique({
         where: { id: data.subjectId, tenantId },
@@ -378,6 +392,7 @@ export async function PUT(request: NextRequest) {
         where: { id: data.examId, tenantId },
         select: {
           id: true,
+          academicYearId: true,
         },
       });
 
@@ -387,6 +402,18 @@ export async function PUT(request: NextRequest) {
           code: "not_found",
           message: "Exam not found",
         });
+        continue;
+      }
+
+      if (exam.academicYearId !== data.academicYearId) {
+        errors.push({ field: `results[${index}].academicYearId`, code: "YEAR_MISMATCH", message: "Exam and result must belong to the same academic year" });
+        continue;
+      }
+
+      try {
+        await assertAcademicYearOpen(tenantId, data.academicYearId);
+      } catch (error) {
+        errors.push({ field: `results[${index}].academicYearId`, code: "ACADEMIC_YEAR_CLOSED", message: error instanceof Error ? error.message : "Academic year is closed" });
         continue;
       }
 

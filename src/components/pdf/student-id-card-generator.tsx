@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ export function StudentIDCardGenerator({
   school,
   academicYear,
 }: StudentIDCardGeneratorProps) {
+  const t = useTranslations("pdf");
   const { exportStudentIDCard, exportBulkIDCards } = usePDFExport();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -76,12 +78,12 @@ export function StudentIDCardGenerator({
       );
 
       if (result.success) {
-        toast.success("ID card generated successfully");
+        toast.success(t("idCardSuccess"));
       } else {
-        toast.error("Failed to generate ID card");
+        toast.error(t("idCardError"));
       }
     } catch (error) {
-      toast.error("Failed to generate ID card");
+      toast.error(t("idCardError"));
     } finally {
       setIsGenerating(false);
     }
@@ -111,9 +113,9 @@ export function StudentIDCardGenerator({
       );
 
       const successCount = results.filter(r => r.success).length;
-      toast.success(`Generated ${successCount} of ${students.length} ID cards`);
+      toast.success(t("idCardSuccess"));
     } catch (error) {
-      toast.error("Failed to generate ID cards");
+      toast.error(t("idCardError"));
     } finally {
       setIsGenerating(false);
     }

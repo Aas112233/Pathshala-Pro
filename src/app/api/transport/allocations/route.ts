@@ -62,8 +62,14 @@ export async function POST(request: NextRequest) {
     if (dup) return badRequest("Student already allocated to a route", [{ field: "studentProfileId", code: "already_allocated", message: "Already allocated" }]);
     const route = await prisma.transportRoute.findFirst({ where: { id: d.routeId, tenantId } });
     if (!route) return badRequest("Route not found");
+    if (!route.vehicleId) return badRequest("Route has no assigned vehicle");
     if (!route.stops.includes(d.stopName)) return badRequest("Stop not on route", [{ field: "stopName", code: "invalid_stop", message: "Stop not on selected route" }]);
-    const allocation = await prisma.transportAllocation.create({
+    const allocation = await prisma.$transaction(async (tx) => {
+      const vehicle = await tx.transportVehicle.findFirst({ where: { id: route.vehicleId!, tenantId, isActive: true } });
+      if (!vehicle) throw new Error("Route vehicle is not available");
+      const activeCount = await tx.transportAllocation.count({ where: { tenantId, vehicleId: vehicle.id, status: "ACTIVE" } });
+      if (activeCount >= vehicle.capacity) throw new Error("Vehicle capacity reached");
+      return tx.transportAllocation.create({
       data: {
         tenantId,
         studentProfileId: d.studentProfileId,
@@ -73,6 +79,7 @@ export async function POST(request: NextRequest) {
         monthlyFee: d.monthlyFee ?? route.monthlyFee ?? 0,
       },
       include: { studentProfile: { select: { firstName: true, lastName: true } }, route: { select: { name: true } } },
+      });
     });
     return successResponse(allocation, "Student allocated", 201);
   } catch (e: any) { if (e?.code === "P2002") return badRequest("Already allocated"); return handleApiError(e); }

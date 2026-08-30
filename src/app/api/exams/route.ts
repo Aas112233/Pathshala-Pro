@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-response";
 import { createExamSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 
 async function generateUniqueExamId(tenantId: string) {
   const latestExam = await prisma.exam.findFirst({
@@ -128,6 +129,23 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
+
+    // Validate date range
+    if (new Date(data.startDate) > new Date(data.endDate)) {
+      return badRequest("Invalid exam dates", [
+        { field: "endDate", code: "invalid_date", message: "End date cannot be before start date" },
+      ]);
+    }
+
+    // Validate subject marks
+    for (const sub of data.subjects) {
+      if (sub.passMarks > sub.maxMarks) {
+        return badRequest("Invalid subject marks", [
+          { field: "subjects", code: "invalid_marks", message: `Pass marks (${sub.passMarks}) cannot exceed max marks (${sub.maxMarks})` },
+        ]);
+      }
+    }
+
     const uniqueSubjectIds = new Set(data.subjects.map((subject) => subject.subjectId));
 
     if (uniqueSubjectIds.size !== data.subjects.length) {
@@ -144,6 +162,8 @@ export async function POST(request: NextRequest) {
     if (!academicYear) {
       return badRequest("Academic year not found");
     }
+
+    await assertAcademicYearOpen(tenantId, academicYear.id);
 
     const subjectIds = data.subjects.map((subject) => subject.subjectId);
     const existingSubjects = await prisma.subject.findMany({

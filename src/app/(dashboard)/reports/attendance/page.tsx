@@ -87,14 +87,14 @@ export default function AttendanceReportPage() {
     logoUrl: settings.logoUrl,
   };
   const dateRange = {
-    from: filters.fromDate || "Start",
-    to: filters.toDate || "Present",
+    from: filters.fromDate || tAttendance("start"),
+    to: filters.toDate || tAttendance("present"),
   };
   const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
   const appliedFilters = [
-    filters.classId && filters.classId !== "all" ? { label: "Class", value: filters.classId } : null,
+    filters.classId && filters.classId !== "all" ? { label: tAttendance("class"), value: filters.classId } : null,
     filters.sectionId && filters.sectionId !== "all"
-      ? { label: "Section", value: filters.sectionId }
+      ? { label: tAttendance("section"), value: filters.sectionId }
       : null,
   ].filter((value): value is { label: string; value: string } => Boolean(value));
 
@@ -119,7 +119,7 @@ export default function AttendanceReportPage() {
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
       console.error("Failed to generate attendance report:", error);
-      toast.error("Failed to generate attendance report");
+      toast.error(tAttendance("generateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -142,10 +142,10 @@ export default function AttendanceReportPage() {
   const handleExportExcel = async () => {
     const result = await exportAttendanceReport(data, dateRange);
     if (result.success) {
-      toast.success("Attendance report exported");
+      toast.success(tAttendance("exported"));
       return;
     }
-    toast.error("Failed to export attendance report");
+    toast.error(tAttendance("exportFailed"));
   };
 
   const handleExportPdf = async () => {
@@ -176,10 +176,10 @@ export default function AttendanceReportPage() {
     });
 
     if (result.success) {
-      toast.success("Attendance report exported");
+      toast.success(tAttendance("exported"));
       return;
     }
-    toast.error("Failed to export attendance report");
+    toast.error(tAttendance("exportFailed"));
   };
 
   const handleExport = async (type: "excel" | "pdf") => {
@@ -195,26 +195,26 @@ export default function AttendanceReportPage() {
   const columns: ColumnDef<AttendanceRecord>[] = [
     {
       accessorKey: "rollNumber",
-      header: "Roll No.",
+      header: tAttendance("rollNo"),
       cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span>,
     },
-    { accessorKey: "studentName", header: "Student Name" },
-    { accessorKey: "className", header: "Class" },
-    { accessorKey: "section", header: "Section" },
+    { accessorKey: "studentName", header: tAttendance("studentName") },
+    { accessorKey: "className", header: tAttendance("class") },
+    { accessorKey: "section", header: tAttendance("section") },
     {
       accessorKey: "presentDays",
-      header: "Present",
+      header: tAttendance("present"),
       cell: ({ getValue }) => <span className="font-medium text-green-600">{getValue<number>()}</span>,
     },
     {
       accessorKey: "absentDays",
-      header: "Absent",
+      header: tAttendance("absent"),
       cell: ({ getValue }) => <span className="font-medium text-red-600">{getValue<number>()}</span>,
     },
-    { accessorKey: "totalDays", header: "Total Days" },
+    { accessorKey: "totalDays", header: tAttendance("totalDays") },
     {
       accessorKey: "attendancePercentage",
-      header: "Attendance %",
+      header: tAttendance("attendancePercentage"),
       cell: ({ getValue }) => {
         const percentage = getValue<number>();
         let colorClass = "text-green-600";
@@ -226,7 +226,7 @@ export default function AttendanceReportPage() {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: tAttendance("status"),
       cell: ({ getValue }) => (
         <StatusBadge
           status={getValue<string>()}
@@ -307,7 +307,7 @@ export default function AttendanceReportPage() {
                   height={200}
                 />
                 <LineChart
-                  title="Attendance Trend"
+                  title={tAttendance("attendanceTrend")}
                   data={data.slice(0, 5).map((record, index) => ({
                     label: `S${index + 1}`,
                     value: record.attendancePercentage,
@@ -352,8 +352,8 @@ export default function AttendanceReportPage() {
           hasGenerated || isLoading ? (
             data.length > 0 || isLoading ? (
               <ReportTable
-                title="Attendance Details"
-                description="Attendance status for the generated period."
+                title={tAttendance("attendanceDetails")}
+                description={tAttendance("attendanceDetailsDescription")}
                 columns={columns}
                 data={data}
                 isLoading={isLoading}
@@ -362,15 +362,15 @@ export default function AttendanceReportPage() {
               />
             ) : (
               <ReportEmptyState
-                title="No attendance data found"
-                description="Try a different period or broader class filters."
+                title={tAttendance("noDataTitle")}
+                description={tAttendance("noDataDescription")}
               />
             )
           ) : (
             <ReportEmptyState
-              title="Generate an attendance report"
-              description="Select the date range and optional class filters to review attendance trends and export the report."
-              actionLabel="Generate report"
+              title={tAttendance("generateTitle")}
+              description={tAttendance("generateDescription")}
+              actionLabel={tAttendance("generateReport")}
               onAction={handleGenerateReport}
             />
           )

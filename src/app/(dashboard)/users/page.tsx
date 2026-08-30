@@ -19,6 +19,7 @@ import type { UserRecord } from "@/types/users";
 
 export default function UsersPage() {
   const t = useTranslations('users');
+  const tCommon = useTranslations("common");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   
@@ -191,9 +192,9 @@ export default function UsersPage() {
 
       {!isAuthLoading && !canReadUsers ? (
         <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-foreground">Access restricted</h2>
+          <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            You do not have permission to view user accounts.
+            {tCommon("noPermission")}
           </p>
         </div>
       ) : (
