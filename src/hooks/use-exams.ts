@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api-client";
@@ -359,7 +358,7 @@ export function useCreateExamResults() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exam-results"] });
-      toast.success(t("resultsSaved"));
+      toast.success("Exam results saved successfully");
     },
     onError: (error: any) => {
       const description = error?.details?.[0]?.message;
@@ -463,4 +462,3 @@ export function usePromotionHistory(params?: { studentProfileId?: string; academ
     },
   });
 }
-

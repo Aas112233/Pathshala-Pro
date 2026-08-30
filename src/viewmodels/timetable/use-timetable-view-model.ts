@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import { useCallback } from "react";
@@ -34,6 +33,7 @@ export function useTimetableViewModel(filters: {
   sectionId?: string;
   academicYearId?: string;
 }) {
+  const t = useTranslations("timetable");
   const { classId, sectionId, academicYearId } = filters;
   const enabled = !!classId;
   const queryKey = ["timetable", classId, sectionId || "", academicYearId || ""] as const;
@@ -95,7 +95,7 @@ export function useTimetableViewModel(filters: {
       const res = await fetch(`/api/timetables/${id}`, { method: "DELETE", credentials: "include" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to delete");
-      return json;
+      return json.data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["timetable"] });
@@ -119,4 +119,3 @@ export function useTimetableViewModel(filters: {
     isMutating: createMutation.isPending || updateMutation.isPending || deleteMutation.isPending,
   };
 }
-

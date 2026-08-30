@@ -1,10 +1,10 @@
-// @ts-nocheck
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiAccess } from "@/lib/api-auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { handleApiError } from "@/lib/api-error";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
+import { updateNoticeSchema } from "@/lib/schemas";
 
 export async function GET(
   req: NextRequest,

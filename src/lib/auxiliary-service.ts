@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Prisma } from "@prisma/client";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
 
@@ -226,23 +225,27 @@ export async function allocateTransportSeat(
     }
   }
 
-  return tx.transportAllocation.upsert({
-    where: {
-      tenantId_studentProfileId: {
-        tenantId,
-        studentProfileId,
+  const existing = await tx.transportAllocation.findFirst({
+    where: { tenantId, studentProfileId },
+  });
+
+  if (existing) {
+    return tx.transportAllocation.update({
+      where: { id: existing.id },
+      data: {
+        routeId,
+        vehicleId: vehicleId ?? null,
+        stopName,
+        monthlyFee,
+        status: "ACTIVE",
       },
-    },
-    create: {
+    });
+  }
+
+  return tx.transportAllocation.create({
+    data: {
       tenantId,
       studentProfileId,
-      routeId,
-      vehicleId: vehicleId ?? null,
-      stopName,
-      monthlyFee,
-      status: "ACTIVE",
-    },
-    update: {
       routeId,
       vehicleId: vehicleId ?? null,
       stopName,
@@ -370,27 +373,31 @@ export async function allocateHostelRoomBed(
     throw new Error(`Room ${room.roomNumber} has reached maximum occupancy (${room.capacity} beds).`);
   }
 
-  return tx.hostelAllocation.upsert({
-    where: {
-      tenantId_studentProfileId: {
-        tenantId,
-        studentProfileId,
+  const existing = await tx.hostelAllocation.findFirst({
+    where: { tenantId, studentProfileId },
+  });
+
+  if (existing) {
+    return tx.hostelAllocation.update({
+      where: { id: existing.id },
+      data: {
+        hostelId,
+        roomId,
+        bedNumber: bedNumber ?? `Bed-${room.allocations.length + 1}`,
+        status: "ACTIVE",
+        vacatedAt: null,
       },
-    },
-    create: {
+    });
+  }
+
+  return tx.hostelAllocation.create({
+    data: {
       tenantId,
       hostelId,
       roomId,
       studentProfileId,
       bedNumber: bedNumber ?? `Bed-${room.allocations.length + 1}`,
       status: "ACTIVE",
-    },
-    update: {
-      hostelId,
-      roomId,
-      bedNumber: bedNumber ?? `Bed-${room.allocations.length + 1}`,
-      status: "ACTIVE",
-      vacatedAt: null,
     },
   });
 }
@@ -405,12 +412,11 @@ export async function vacateHostelRoomBed(
 ) {
   const { tenantId, studentProfileId, vacateDate = new Date() } = params;
 
-  const allocation = await tx.hostelAllocation.findUnique({
+  const allocation = await tx.hostelAllocation.findFirst({
     where: {
-      tenantId_studentProfileId: {
-        tenantId,
-        studentProfileId,
-      },
+      tenantId,
+      studentProfileId,
+      status: "ACTIVE",
     },
   });
 

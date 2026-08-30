@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { requireApiAccess } from "@/lib/api-auth";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -177,7 +176,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [transaction, updatedVoucher] = await prisma.$transaction(async (tx) => {
+    const [transaction, finalVoucher] = await prisma.$transaction(async (tx) => {
       const updatedVoucher = await tx.feeVoucher.updateMany({
         where: {
           id: data.feeVoucherId,

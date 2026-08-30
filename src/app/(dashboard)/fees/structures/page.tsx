@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import { useState, useMemo } from "react";
@@ -676,6 +675,8 @@ export default function FeeStructuresPage() {
                   try {
                     await saveConcessionMutation.mutateAsync({
                       ...concessionForm,
+                      appliesToHead: "ALL_HEADS",
+                      priority: 1,
                       isActive: true,
                     });
                     toast.success(t("concessionSaved"));

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAccess } from "@/lib/api-auth";
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (!result.Body) return notFound("File not found");
 
     const bytes = await result.Body.transformToByteArray();
-    return new NextResponse(bytes, {
+    return new NextResponse(Buffer.from(bytes), {
       headers: {
         "Content-Type": result.ContentType || "application/octet-stream",
         "Content-Length": String(bytes.byteLength),

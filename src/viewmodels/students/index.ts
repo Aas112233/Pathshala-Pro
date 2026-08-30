@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Student View Model
 export { useStudentViewModel } from "./use-student-view-model";
 export type {

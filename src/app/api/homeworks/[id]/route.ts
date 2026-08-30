@@ -1,7 +1,7 @@
-// @ts-nocheck
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, notFound, validationError, handleApiError } from "@/lib/api-response";
+import { requireApiAccess } from "@/lib/api-auth";
 import { updateHomeworkSchema } from "@/lib/schemas";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
 

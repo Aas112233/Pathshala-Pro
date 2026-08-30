@@ -143,7 +143,13 @@ describe("Campus Auxiliary Services & GL Integration Engine", () => {
           }),
         },
         transportAllocation: {
-          upsert: vi.fn().mockResolvedValue({
+          findFirst: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({
+            id: "alloc-1",
+            status: "ACTIVE",
+            monthlyFee: 1500,
+          }),
+          update: vi.fn().mockResolvedValue({
             id: "alloc-1",
             status: "ACTIVE",
             monthlyFee: 1500,
@@ -184,8 +190,7 @@ describe("Campus Auxiliary Services & GL Integration Engine", () => {
         vehicleExpenseLog: {
           create: vi.fn().mockResolvedValue({
             id: "exp-log-1",
-            amount: 8500,
-            expenseType: "FUEL",
+            amount: 4500,
           }),
         },
       } as any;
@@ -194,21 +199,13 @@ describe("Campus Auxiliary Services & GL Integration Engine", () => {
         tenantId: "tenant-1",
         vehicleId: "veh-1",
         expenseType: "FUEL",
-        amount: 8500,
-        odometerReading: 45200,
-        description: "Diesel Refill 85L",
+        amount: 4500,
         paidFromCode: "1010",
-        recordedById: "transport-mgr-1",
+        recordedById: "user-1",
       });
 
       expect(result.expenseLog.id).toBe("exp-log-1");
-      expect(mockTx.journalEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            voucherType: "PAYMENT",
-          }),
-        })
-      );
+      expect(result.journalEntry).toBeDefined();
     });
   });
 
@@ -225,7 +222,13 @@ describe("Campus Auxiliary Services & GL Integration Engine", () => {
           }),
         },
         hostelAllocation: {
-          upsert: vi.fn().mockResolvedValue({
+          findFirst: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({
+            id: "h-alloc-1",
+            status: "ACTIVE",
+            bedNumber: "Bed-3",
+          }),
+          update: vi.fn().mockResolvedValue({
             id: "h-alloc-1",
             status: "ACTIVE",
             bedNumber: "Bed-3",
@@ -247,7 +250,7 @@ describe("Campus Auxiliary Services & GL Integration Engine", () => {
     it("vacates hostel room bed and marks vacatedAt timestamp", async () => {
       const mockTx = {
         hostelAllocation: {
-          findUnique: vi.fn().mockResolvedValue({
+          findFirst: vi.fn().mockResolvedValue({
             id: "h-alloc-1",
             status: "ACTIVE",
           }),

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -243,8 +242,8 @@ export async function POST(request: NextRequest) {
           transactionId,
           feeVoucherId: v.id,
           amountPaid: Number(paymentDecimal.toFixed(2)),
-          appliedToInvoice,
-          excessToWallet,
+          appliedToInvoice: Number(appliedToInvoice.toFixed(2)),
+          excessToWallet: Number(excessToWallet.toFixed(2)),
           paymentMethod: data.paymentMethod || "CASH",
           receiptNumber: rcpt,
           collectedById: user.id,

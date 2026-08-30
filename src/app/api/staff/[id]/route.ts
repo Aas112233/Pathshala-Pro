@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -11,6 +10,7 @@ import {
 } from "@/lib/api-response";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
 import { requireApiAccess } from "@/lib/api-auth";
+import { updateStaffSchema } from "@/lib/schemas";
 import {
   buildLockedFieldsDetails,
   getStaffUsageCounts,
