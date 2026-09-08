@@ -69,15 +69,25 @@ export function ReportTable<TData>({
     );
 
     const csvContent = [
-      headers.join(","),
+      headers.map((h) => `"${String(h).replace(/"/g, '""')}"`).join(","),
       ...rows.map((row) =>
         row
-          .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+          // Quote-escape every cell, and prefix-guard cells Excel would
+          // execute as formulas (=, +, -, @).
+          .map((cell) => {
+            // Only strings are formula-injection vectors; numbers (including
+            // negatives) must stay numeric cells.
+            const s = typeof cell === "number" ? String(cell) : String(cell ?? "");
+            const guarded = typeof cell === "string" && ["=", "+", "-", "@"].includes(s[0]) ? `'${s}` : s;
+            return `"${guarded.replace(/"/g, '""')}"`;
+          })
           .join(",")
       ),
-    ].join("\n");
+    ].join("\r\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    // UTF-8 BOM: Excel on Windows otherwise renders Bengali/Hindi/Urdu text
+    // as mojibake despite the charset header.
+    const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `report_${new Date().toISOString().split("T")[0]}.csv`;

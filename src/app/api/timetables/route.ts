@@ -32,6 +32,18 @@ export async function GET(request: NextRequest) {
       return badRequest("classId is required");
     }
 
+    if (sectionId) {
+      const section = await prisma.section.findFirst({
+        where: { id: sectionId, tenantId, classId },
+        select: { id: true },
+      });
+      if (!section) {
+        return badRequest("Section does not belong to the selected class", [
+          { field: "sectionId", code: "invalid", message: "Select a section from the selected class" },
+        ]);
+      }
+    }
+
     const where: any = { tenantId, classId };
     if (sectionId) where.sectionId = sectionId;
     else if (searchParams.has("sectionId") && !sectionId) {
@@ -108,8 +120,20 @@ export async function POST(request: NextRequest) {
         return validationError(errors);
       }
 
-      // Validate clashes for each entry before writing
+      // Validate section ownership and clashes before writing
       for (const e of parsed.data.entries) {
+        if (e.sectionId) {
+          const section = await prisma.section.findFirst({
+            where: { id: e.sectionId, tenantId, classId: e.classId },
+            select: { id: true },
+          });
+          if (!section) {
+            return badRequest("Section does not belong to the selected class", [
+              { field: "sectionId", code: "invalid", message: "Select a section from the selected class" },
+            ]);
+          }
+        }
+
         if (e.staffProfileId) {
           const clash = await checkTeacherClash(tenantId, e.staffProfileId, e.dayOfWeek, e.periodNumber, e.academicYearId);
           if (clash) {
@@ -157,6 +181,18 @@ export async function POST(request: NextRequest) {
     }
 
     const d = parsed.data;
+
+    if (d.sectionId) {
+      const section = await prisma.section.findFirst({
+        where: { id: d.sectionId, tenantId, classId: d.classId },
+        select: { id: true },
+      });
+      if (!section) {
+        return badRequest("Section does not belong to the selected class", [
+          { field: "sectionId", code: "invalid", message: "Select a section from the selected class" },
+        ]);
+      }
+    }
 
     if (d.staffProfileId) {
           const clash = await checkTeacherClash(tenantId, d.staffProfileId, d.dayOfWeek, d.periodNumber, d.academicYearId);

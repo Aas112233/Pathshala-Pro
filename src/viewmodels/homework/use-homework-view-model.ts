@@ -1,10 +1,12 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { appToast as toast } from "@/lib/notifications/toast";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-fetch";
 
 export function useHomeworkViewModel(filters: { classId?: string; search?: string; page?: number } = {}) {
+  const t = useTranslations("homework");
   const { classId, search, page = 1 } = filters;
   const qc = useQueryClient();
   const queryKey = ["homeworks", { classId: classId || "", search: search || "", page }] as const;
@@ -25,20 +27,29 @@ export function useHomeworkViewModel(filters: { classId?: string; search?: strin
 
   const createMutation = useMutation({
     mutationFn: (p: any) => apiPost("/api/homeworks", p),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homeworks"] }); toast.success("Homework created"); },
-    onError: (e: any) => toast.error(e.message || "Failed"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["homeworks"] });
+      toast.success(t("createSuccess"));
+    },
+    onError: (e: any) => toast.error(e?.message || t("error")),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, ...p }: any) => apiPut(`/api/homeworks/${id}`, p),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homeworks"] }); toast.success("Homework updated"); },
-    onError: (e: any) => toast.error(e.message || "Failed"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["homeworks"] });
+      toast.success(t("updateSuccess"));
+    },
+    onError: (e: any) => toast.error(e?.message || t("error")),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiDelete(`/api/homeworks/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homeworks"] }); toast.success("Homework deleted"); },
-    onError: (e: any) => toast.error(e.message || "Failed"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["homeworks"] });
+      toast.success(t("deleteSuccess"));
+    },
+    onError: (e: any) => toast.error(e?.message || t("error")),
   });
 
   return {
@@ -54,6 +65,7 @@ export function useHomeworkViewModel(filters: { classId?: string; search?: strin
 }
 
 export function useSubmissionsViewModel(homeworkId: string) {
+  const t = useTranslations("homework");
   const qc = useQueryClient();
   const queryKey = ["homeworkSubmissions", homeworkId] as const;
   const { data, isLoading, error } = useQuery({
@@ -65,8 +77,11 @@ export function useSubmissionsViewModel(homeworkId: string) {
 
   const gradeMutation = useMutation({
     mutationFn: ({ id, grade, remarks }: any) => apiPut(`/api/homework-submissions/${id}`, { grade, remarks, status: "GRADED" }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["homeworkSubmissions", homeworkId] }); toast.success("Graded"); },
-    onError: (e: any) => toast.error(e.message || "Failed"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["homeworkSubmissions", homeworkId] });
+      toast.success(t("gradedSuccess"));
+    },
+    onError: (e: any) => toast.error(e?.message || t("error")),
   });
 
   return { submissions, isLoading, error: error as Error | null, gradeSubmission: (id: string, d: any) => gradeMutation.mutateAsync({ id, ...d }) };

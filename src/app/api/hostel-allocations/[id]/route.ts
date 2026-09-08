@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, notFound, handleApiError, validationError } from "@/lib/api-response";
+import { successResponse, notFound, handleApiError, validationError, badRequest } from "@/lib/api-response";
 import { updateHostelAllocationSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, isTenantOwned } from "@/lib/api-auth";
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -26,6 +26,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       if (!room) return handleApiError(new Error("Room not found"));
       const occ = await prisma.hostelAllocation.count({ where: { roomId: targetRoomId, tenantId, status: "ACTIVE", id: { not: id } } });
       if (occ >= room.capacity) return validationError([{ field: "roomId", code: "room_full", message: "Room is full" }]);
+    }
+    // FK-confusion guard: hostel and student must belong to this tenant
+    // (roomId is already tenant-verified by the capacity check above).
+    if (d.hostelId && !(await isTenantOwned(prisma.hostel, d.hostelId, tenantId))) {
+      return badRequest("Selected hostel does not exist in your institution.");
+    }
+    if (d.studentProfileId && !(await isTenantOwned(prisma.studentProfile, d.studentProfileId, tenantId))) {
+      return badRequest("Selected student does not exist in your institution.");
     }
     const updated = await prisma.hostelAllocation.update({
       where: { id },

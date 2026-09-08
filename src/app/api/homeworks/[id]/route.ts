@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, notFound, validationError, handleApiError } from "@/lib/api-response";
-import { requireApiAccess } from "@/lib/api-auth";
+import { successResponse, notFound, validationError, handleApiError, badRequest } from "@/lib/api-response";
+import { requireApiAccess, isTenantOwned } from "@/lib/api-auth";
 import { updateHomeworkSchema } from "@/lib/schemas";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
 
@@ -22,6 +22,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const d = parsed.data;
     if (d.attachmentUrl && !(await verifyInternalFileUrl(d.attachmentUrl, tenantId))) {
       return validationError([{ field: "attachmentUrl", code: "invalid_file", message: "Attachment must belong to this tenant" }]);
+    }
+    // FK-confusion guard: class/section/subject must belong to this tenant.
+    if (d.classId && !(await isTenantOwned(prisma.class, d.classId, tenantId))) {
+      return badRequest("Selected class does not exist in your institution.");
+    }
+    if (d.sectionId && !(await isTenantOwned(prisma.section, d.sectionId, tenantId))) {
+      return badRequest("Selected section does not exist in your institution.");
+    }
+    if (d.subjectId && !(await isTenantOwned(prisma.subject, d.subjectId, tenantId))) {
+      return badRequest("Selected subject does not exist in your institution.");
     }
     const updated = await prisma.homework.update({
       where: { id },

@@ -11,14 +11,14 @@ import { Input } from "@/components/ui/input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
-import { DataTable } from "@/components/shared/data-table";
+import { ERPDataTable, type ColumnDef as ERPColumnDef } from "@/components/ui/erp-data-table";
 import { useCertificatesViewModel } from "@/viewmodels/certificates/use-certificates-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
-import type { ColumnDef } from "@tanstack/react-table";
+
 import { Award, Plus, Pencil, Trash2, Search, Printer, Ban, Eye } from "lucide-react";
 
 const CERT_TYPES = ["TRANSFER", "CHARACTER", "BONAFIDE", "STUDY", "MARKSHEET", "OTHER"] as const;
@@ -183,43 +183,43 @@ export default function CertificatesPage() {
     }
   };
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ERPColumnDef<any>[] = [
     {
-      accessorKey: "certificateNumber",
+      key: "certificateNumber",
       header: t("certificateNumber"),
-      cell: ({ row }) => <span className="font-mono text-sm font-semibold">{row.original.certificateNumber}</span>,
+      cell: (row) => <span className="font-mono text-sm font-semibold">{row.certificateNumber}</span>,
     },
     {
-      accessorKey: "studentProfile",
+      key: "studentProfile",
       header: t("student"),
-      cell: ({ row }) => {
-        const s = row.original.studentProfile;
+      cell: (row) => {
+        const s = row.studentProfile;
         return s ? <span className="text-sm font-medium">{s.firstName} {s.lastName} <span className="text-xs text-muted-foreground">({s.rollNumber})</span></span> : "—";
       },
     },
     {
-      accessorKey: "certificateType",
+      key: "certificateType",
       header: t("certificateType"),
-      cell: ({ getValue }) => <Badge variant="outline" className="text-xs">{String(getValue()).replace("_", " ")}</Badge>,
+      cell: (row) => <Badge variant="outline" className="text-xs">{String(row.certificateType).replace("_", " ")}</Badge>,
     },
     {
-      accessorKey: "issueDate",
+      key: "issueDate",
       header: t("issueDate"),
-      cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString(),
+      cell: (row) => new Date(row.issueDate as string).toLocaleDateString(),
     },
     {
-      accessorKey: "status",
+      key: "status",
       header: t("status"),
-      cell: ({ getValue }) => {
-        const s = String(getValue());
+      cell: (row) => {
+        const s = String(row.status);
         const cls = s === "ISSUED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : s === "REVOKED" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-amber-50 text-amber-700 border-amber-200";
         return <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${cls}`}>{s}</span>;
       },
     },
     {
-      id: "actions",
+      key: "actions",
       header: t("actions"),
-      cell: ({ row }) => (
+      cell: (row) => (
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrint(row.original)} title={t("print")} disabled={printingId === row.original.id}><Printer className="h-3.5 w-3.5" /></Button>
           {canManage && row.original.status === "ISSUED" && (
@@ -273,7 +273,21 @@ export default function CertificatesPage() {
         </CardContent>
       </Card>
 
-      <DataTable columns={columns as any} data={certificates} pagination={pagination} onPageChange={setPage} onSearch={(v) => { setSearch(v); setPage(1); }} isLoading={isLoading} searchPlaceholder={t("searchPlaceholder")} />
+      <ERPDataTable
+        data={certificates}
+        columns={columns}
+        keyExtractor={(row) => row.id}
+        page={pagination?.currentPage || page}
+        pageSize={pagination?.pageSize || 20}
+        totalCount={pagination?.totalCount || 0}
+        onPageChange={setPage}
+        onPageSizeChange={() => {}}
+        isLoading={isLoading}
+        searchValue={search}
+        onSearchChange={(v) => { setSearch(v); setPage(1); }}
+        searchPlaceholder={t("searchPlaceholder")}
+        emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{t("common.noResults") || "No certificates"}</div>}
+      />
         </>
       )}
 

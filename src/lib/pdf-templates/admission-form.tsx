@@ -1,8 +1,10 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface AdmissionFormProps {
+  locale?: string;
   school: PdfSchoolInfo;
   academicYear?: string;
   formNumber?: string;
@@ -25,7 +27,7 @@ const defaultLabels = {
 };
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 18, paddingBottom: 18, paddingHorizontal: 20, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 8, fontFamily: "Helvetica" },
+  page: { paddingTop: 18, paddingBottom: 18, paddingHorizontal: 20, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 8, fontFamily: "NotoSans" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #1D4ED8", paddingBottom: 8, marginBottom: 8 },
   schoolBlock: { flexDirection: "row", flex: 1, alignItems: "center" },
   logo: { width: 42, height: 42, borderRadius: 6, objectFit: "cover", marginRight: 8 },
@@ -63,11 +65,11 @@ const styles = StyleSheet.create({
   footer: { marginTop: 6, paddingTop: 5, borderTop: "1px solid #E2E8F0", flexDirection: "row", justifyContent: "space-between", color: "#64748B", fontSize: 6 },
 });
 
-export function AdmissionFormTemplate({ school, academicYear, formNumber, labels: l }: AdmissionFormProps) {
+export function AdmissionFormTemplate({ locale, school, academicYear, formNumber, labels: l }: AdmissionFormProps) {
   const L = { ...defaultLabels, ...l };
   return (
     <Document title="Admission_Form" author={school.name}>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { fontFamily: getPdfFontFamily(locale, school?.name, school?.address, pdfTextSample([L])) }]}>
         {/* Photo box absolute */}
         <View style={styles.photoBox}>
           <Text style={{ fontSize: 6, color: "#94A3B8", textAlign: "center" }}>Photograph{"\n"}3.5 × 4.5 cm</Text>
@@ -117,8 +119,8 @@ export function AdmissionFormTemplate({ school, academicYear, formNumber, labels
         <View style={styles.section}>
           <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>{L.sectionGuardian}</Text></View>
           <View style={styles.fieldGrid}>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Father's Name *</Text><View style={styles.dottedLine} /></View>
-            <View style={styles.field}><Text style={styles.fieldLabel}>Mother's Name *</Text><View style={styles.dottedLine} /></View>
+            <View style={styles.field}><Text style={styles.fieldLabel}>Father&apos;s Name *</Text><View style={styles.dottedLine} /></View>
+            <View style={styles.field}><Text style={styles.fieldLabel}>Mother&apos;s Name *</Text><View style={styles.dottedLine} /></View>
             <View style={styles.field}><Text style={styles.fieldLabel}>Guardian Name (if other)</Text><View style={styles.dottedLine} /></View>
             <View style={styles.field}><Text style={styles.fieldLabel}>Guardian Contact *</Text><View style={styles.dottedLine} /></View>
             <View style={styles.field}><Text style={styles.fieldLabel}>Guardian Email</Text><View style={styles.dottedLine} /></View>

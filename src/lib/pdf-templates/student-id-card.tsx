@@ -1,17 +1,8 @@
-import { Document, Page, View, Text, Image, StyleSheet, Font } from "@react-pdf/renderer";
-
-// Register fonts (using built-in fonts for simplicity)
-Font.register({
-  family: "Roboto",
-  fonts: [
-    { src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf", fontWeight: 300 },
-    { src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf", fontWeight: 400 },
-    { src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf", fontWeight: 500 },
-    { src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf", fontWeight: 700 },
-  ],
-});
+import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 interface StudentIDCardProps {
+  locale?: string;
   student: {
     name: string;
     admissionNumber: string;
@@ -40,6 +31,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     padding: 20,
+    fontFamily: "NotoSans",
   },
   idCard: {
     width: "48%",
@@ -331,9 +323,15 @@ const styles = StyleSheet.create({
   },
 });
 
-export const StudentIDCardTemplate: React.FC<StudentIDCardProps> = ({ student, school }) => (
+export const StudentIDCardTemplate: React.FC<StudentIDCardProps> = ({ locale, student, school }) => (
   <Document>
-    <Page size="A4" style={styles.idCardPage}>
+    <Page
+      size="A4"
+      style={[
+        styles.idCardPage,
+        { fontFamily: getPdfFontFamily(locale, school?.name, school?.address, pdfTextSample([student])) },
+      ]}
+    >
       {/* Generate 4 ID cards per page */}
       {[0, 1, 2, 3].map((_, index) => (
         <View key={index} style={styles.idCard}>

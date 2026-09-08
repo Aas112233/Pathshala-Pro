@@ -13,7 +13,7 @@ import type {
   BulkPayrollDTO,
   PaymentDTO,
 } from "@/types/entities";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 
 export type SalaryViewMode = "table" | "grid";
 export type SalaryStatusFilter = "ALL" | "PENDING" | "PARTIAL" | "PAID";

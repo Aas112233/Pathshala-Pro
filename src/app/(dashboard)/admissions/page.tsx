@@ -16,8 +16,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { StudentSelectorModal } from "@/components/admissions/student-selector-modal";
 import { StudentFormModal } from "@/components/students/student-form-modal";
-import { DataTable } from "@/components/shared/data-table";
-import type { ColumnDef } from "@tanstack/react-table";
+import { ERPDataTable, type ColumnDef as ERPColumnDef } from "@/components/ui/erp-data-table";
 import { formatStudentName } from "@/lib/utils";
 import type { CreateStudentDTO } from "@/viewmodels/students/use-student-view-model";
 import { useStudentViewModel } from "@/viewmodels/students/use-student-view-model";
@@ -81,9 +80,12 @@ export default function AdmissionsPage() {
     isLoading: isStudentsLoading,
     pagination,
     filters,
+    page: vmPage,
+    pageSize: vmPageSize,
     setFilters,
     setPage,
-  } = useStudentViewModel();
+    setPageSize,
+  } = useStudentViewModel() as any;
 
   // Form state
   const [selectedClass, setSelectedClass] = useState("");
@@ -403,68 +405,53 @@ export default function AdmissionsPage() {
     },
   });
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ERPColumnDef<any>[] = [
     {
-      accessorKey: "studentId",
+      key: "studentId",
       header: t('admissions.studentId'),
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue<string>()}</span>
-      ),
+      cell: (row) => <span className="font-medium">{row.studentId}</span>,
     },
     {
-      accessorKey: "rollNumber",
+      key: "rollNumber",
       header: t('admissions.rollNumber'),
+      cell: (row) => <span className="font-mono text-xs">{row.rollNumber}</span>,
     },
     {
-      accessorKey: "firstName",
+      key: "name",
       header: t('admissions.name'),
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span>{formatStudentName(row.original.firstName, row.original.lastName, row.original.firstNameBn, row.original.lastNameBn)}</span>
-        </div>
-      ),
+      cell: (row) => <span>{formatStudentName(row.firstName, row.lastName, row.firstNameBn, row.lastNameBn)}</span>,
     },
     {
-      accessorKey: "class",
+      key: "class",
       header: t('admissions.class'),
-      cell: ({ row }) => <span>{row.original.class?.name || "-"}</span>,
+      cell: (row) => <span>{row.class?.name || "-"}</span>,
     },
     {
-      accessorKey: "group",
+      key: "group",
       header: t('admissions.group'),
-      cell: ({ row }) => <span>{row.original.group?.name || "-"}</span>,
+      cell: (row) => <span>{row.group?.name || "-"}</span>,
     },
     {
-      accessorKey: "section",
+      key: "section",
       header: t('admissions.section'),
-      cell: ({ row }) => <span>{row.original.section?.name || "-"}</span>,
+      cell: (row) => <span>{row.section?.name || "-"}</span>,
     },
     {
-      accessorKey: "admissionDate",
+      key: "admissionDate",
       header: t('admissions.admissionDate'),
-      cell: ({ getValue }) => {
-        const date = getValue<string>();
-        return <span>{date ? formatDate(date) : "-"}</span>;
-      },
+      cell: (row) => <span>{row.admissionDate ? formatDate(row.admissionDate) : "-"}</span>,
     },
     {
-      accessorKey: "status",
+      key: "status",
       header: t('admissions.status'),
-      cell: ({ getValue }) => (
-        <StudentStatusBadge status={getValue<string>() as any} />
-      ),
+      cell: (row) => <StudentStatusBadge status={row.status as any} />,
     },
     {
-      id: "actions",
+      key: "actions",
       header: t('admissions.actions'),
-      cell: ({ row }) => (
+      cell: (row) => (
         canWrite ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => handleOpenEditModal(row.original)}
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(row)}>
             <Pencil className="h-4 w-4" />
           </Button>
         ) : null
@@ -500,14 +487,20 @@ export default function AdmissionsPage() {
           </div>
         </PageHeader>
 
-        <DataTable
-          columns={columns}
+        <ERPDataTable
           data={students}
-          pagination={pagination || undefined}
+          columns={columns}
+          keyExtractor={(row) => row.id}
+          page={pagination?.currentPage || vmPage || 1}
+          pageSize={pagination?.pageSize || vmPageSize || 20}
+          totalCount={pagination?.totalCount || 0}
           onPageChange={setPage}
-          onSearch={(search) => setFilters({ search })}
-          isLoading={isStudentsLoading}
+          onPageSizeChange={(size) => setPageSize(size)}
+          searchValue={filters.search}
+          onSearchChange={(v) => setFilters({ search: v })}
           searchPlaceholder={t('admissions.searchPlaceholder')}
+          isLoading={isStudentsLoading}
+          emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{t('common.noResults')}</div>}
         />
       </div>
     );
@@ -569,6 +562,8 @@ export default function AdmissionsPage() {
                       value={selectedClass}
                       onChange={(value) => {
                         setSelectedClass(value);
+                        setSelectedGroup("");
+                        setSelectedSection("");
                         if (formErrors.selectedClass) {
                           setFormErrors((prev) => ({ ...prev, selectedClass: undefined }));
                         }
@@ -591,7 +586,10 @@ export default function AdmissionsPage() {
                   ) : (
                     <AppDropdown
                       value={selectedGroup}
-                      onChange={setSelectedGroup}
+                      onChange={(value) => {
+                        setSelectedGroup(value);
+                        setSelectedSection("");
+                      }}
                       options={groupOptions}
                       placeholder={t('admissions.selectGroup')}
                       searchable

@@ -8,6 +8,16 @@ import {
 } from "@/lib/api-response";
 import { createQuestionSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { createHash } from "crypto";
+
+function normalizeForHash(html: string): string {
+  const stripped = html.replace(/<[^>]*>/g, " ").toLowerCase();
+  return stripped.replace(/[^\p{L}\p{N}\s]/gu, "").replace(/\s+/g, " ").trim().slice(0, 500);
+}
+function similarityHash(text: string): string {
+  const norm = normalizeForHash(text);
+  return createHash("sha256").update(norm).digest("hex").slice(0, 16);
+}
 
 /**
  * GET /api/questions
@@ -90,6 +100,12 @@ export async function POST(request: NextRequest) {
     if (!bodyParsed.success) return bodyParsed.errorResponse;
 
     const data = bodyParsed.data;
+    const hash = similarityHash(data.questionText || "");
+    // Dedup check — same class/subject/type with identical normalized text
+    const dup = await (prisma as any).question.findFirst({
+      where: { tenantId, classId: data.classId, subjectId: data.subjectId, similarityHash: hash },
+      select: { id: true, questionText: true },
+    });
 
     const question = await (prisma as any).question.create({
       data: {
@@ -109,6 +125,8 @@ export async function POST(request: NextRequest) {
         explanation: data.explanation || null,
         marks: data.marks,
         isActive: data.isActive !== undefined ? data.isActive : true,
+        similarityHash: hash,
+        usageCount: 0,
       },
       include: {
         class: { select: { id: true, name: true } },
@@ -116,6 +134,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    if (dup) {
+      return successResponse({ ...question, _duplicateWarning: `Similar question already exists (${dup.id.slice(-6)}) — possible duplicate` }, "Question created with duplicate warning", 201);
+    }
     return successResponse(question, "Question created successfully", 201);
   } catch (error) {
     return handleApiError(error);

@@ -404,6 +404,48 @@ export function useCreatePromotionRule() {
   });
 }
 
+export function useUpdatePromotionRule() {
+  const t = useTranslations("exams");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<PromotionRule> }) => {
+      const response = await api.put<PromotionRule>(`/api/promotion-rules/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["promotion-rules"] });
+      toast.success(t("promotionRuleUpdated") || "প্রমোশন রুল সফলভাবে আপডেট হয়েছে");
+    },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to update promotion rule", {
+        description: description !== error?.message ? description : undefined,
+      });
+    },
+  });
+}
+
+export function useDeletePromotionRule() {
+  const t = useTranslations("exams");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/api/promotion-rules/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["promotion-rules"] });
+      toast.success(t("promotionRuleDeleted") || "প্রমোশন রুল সফলভাবে মুছে ফেলা হয়েছে");
+    },
+    onError: (error: any) => {
+      const description = error?.details?.[0]?.message;
+      toast.error(error?.message || "Failed to delete promotion rule", {
+        description: description !== error?.message ? description : undefined,
+      });
+    },
+  });
+}
+
 // Promotion Calculation hooks
 export function usePromotionCalculation(classId?: string, academicYearId?: string) {
   return useQuery({

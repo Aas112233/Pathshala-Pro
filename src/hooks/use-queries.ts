@@ -41,6 +41,14 @@ export function useStudent(id: string) {
   });
 }
 
+export function useStudentPerformance(id: string, academicYearId?: string) {
+  return useQuery({
+    queryKey: ["student-performance", id, academicYearId],
+    queryFn: () => studentsApi.getPerformance(id, academicYearId),
+    enabled: !!id,
+  });
+}
+
 export function useCreateStudent() {
   const queryClient = useQueryClient();
   return useMutation({

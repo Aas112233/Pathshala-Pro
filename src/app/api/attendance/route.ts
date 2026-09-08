@@ -8,7 +8,7 @@ import {
   validationError,
 } from "@/lib/api-response";
 import { createAttendanceSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { triggerAbsenceAlert } from "@/lib/notifications/triggers/absence-alert";
 import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
@@ -71,6 +71,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (academicYearId) where.academicYearId = academicYearId;
+
+    // C1 self-scoping: STUDENT/PARENT see only their own linked students.
+    // Overwrites any client-supplied studentId so a parent cannot enumerate
+    // other students by swapping the query param.
+    const selfScope = await getSelfScopedStudentProfileIds(access.authContext);
+    if (selfScope) {
+      where.studentProfileId = { in: selfScope };
+      delete where.staffProfileId;
+    }
 
     const [totalCount, attendance] = await Promise.all([
       prisma.attendance.count({ where }),

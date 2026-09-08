@@ -69,11 +69,20 @@ export async function POST(request: NextRequest) {
       });
       let seq = 1;
       if (latest) {
+        // Parse only the numeric part before any random verification suffix
+        // (newest format: <seq>-<rand>); legacy numbers are bare <seq>.
         const parts = latest.certificateNumber.split("-");
-        const last = parseInt(parts[parts.length - 1], 10);
+        const last = parseInt(parts[parts.length - 1].split("-")[0], 10);
         if (!isNaN(last)) seq = last + 1;
       }
-      certificateNumber = `${prefix}${String(seq).padStart(5, "0")}`;
+      // Random suffix: certificate numbers are verified through a PUBLIC,
+      // unauthenticated endpoint. Purely sequential numbers were enumerable
+      // (CERT-BONAFIDE-2026-00001..N) and leaked student identities across
+      // every tenant. Legacy sequential certs remain verifiable; new ones are
+      // capability-bearing.
+      const { randomBytes } = await import("crypto");
+      const suffix = randomBytes(4).toString("hex").toUpperCase();
+      certificateNumber = `${prefix}${String(seq).padStart(5, "0")}-${suffix}`;
     } else {
       const dup = await prisma.certificate.findFirst({ where: { tenantId, certificateNumber } });
       if (dup) return badRequest("Certificate number already exists", [{ field: "certificateNumber", code: "duplicate", message: "Already exists" }]);

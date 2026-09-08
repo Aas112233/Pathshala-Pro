@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-response";
 import { createClassFeeStructureSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { addCurrency } from "@/lib/math-utils";
 
 /**
  * GET /api/fees/structures
@@ -116,8 +117,9 @@ export async function POST(request: NextRequest) {
     const sportsFee = data.sportsFee || 0;
     const libraryFee = data.libraryFee || 0;
     const otherFee = data.otherFee || 0;
-    const totalMonthlyFee =
-      tuitionFee + labFee + computerFee + examFee + sportsFee + libraryFee + otherFee;
+    const totalMonthlyFee = addCurrency(
+      tuitionFee, labFee, computerFee, examFee, sportsFee, libraryFee, otherFee,
+    );
 
     const structure = await prisma.classFeeStructure.upsert({
       where: {

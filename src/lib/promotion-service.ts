@@ -509,6 +509,12 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
             return a.studentProfileId.localeCompare(b.studentProfileId);
           });
 
+        const targetClassObj = await tx.class.findUnique({ where: { id: toClassId } });
+        const classNum = targetClassObj?.classNumber && targetClassObj.classNumber > 0
+          ? targetClassObj.classNumber
+          : (targetClassObj?.name ? parseInt(targetClassObj.name.replace(/\D/g, ""), 10) || 1 : 1);
+        const classPrefix = `C${classNum}`;
+
         let rollCounter = 1;
         let sectionIdx = 0;
         const targetSections = sections.length ? sections : [{ id: null, capacity: 9999 } as any];
@@ -518,7 +524,7 @@ export async function executePromotionBatch(params: ExecutePromotionBatchParams)
           await tx.studentProfile.update({ where: { id: p.studentProfileId }, data: { sectionId: sec.id } });
           await tx.studentProfile.update({
             where: { id: p.studentProfileId },
-            data: { rollNumber: String(rollCounter).padStart(4, '0') },
+            data: { rollNumber: `${classPrefix}-R${rollCounter}` },
           });
           rollCounter++;
           sectionIdx++;

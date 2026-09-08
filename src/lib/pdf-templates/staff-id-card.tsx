@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface StaffIDCardData {
   staffId: string;
@@ -18,6 +19,7 @@ export interface StaffIDCardData {
 }
 
 export interface StaffIDCardProps {
+  locale?: string;
   school: PdfSchoolInfo;
   staff: StaffIDCardData[];
   academicYear?: string;
@@ -25,7 +27,14 @@ export interface StaffIDCardProps {
 }
 
 const styles = StyleSheet.create({
-  page: { flexDirection: "row", flexWrap: "wrap", padding: 12, gap: 8, backgroundColor: "#F1F5F9" },
+  page: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 12,
+    gap: 8,
+    backgroundColor: "#F1F5F9",
+    fontFamily: "NotoSans",
+  },
   card: { width: "48.5%", height: 210, borderRadius: 8, overflow: "hidden", border: "1px solid #CBD5E1", backgroundColor: "#FFFFFF", flexDirection: "column" },
   header: { backgroundColor: "#1D4ED8", paddingVertical: 7, paddingHorizontal: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
@@ -49,10 +58,16 @@ const styles = StyleSheet.create({
   validText: { fontSize: 6, color: "#DC2626", fontWeight: 700 },
 });
 
-export function StaffIDCardTemplate({ school, staff, academicYear, verificationBaseUrl }: StaffIDCardProps) {
+export function StaffIDCardTemplate({ locale, school, staff, academicYear, verificationBaseUrl }: StaffIDCardProps) {
   return (
     <Document title="Staff_ID_Cards" author={school.name}>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size="A4"
+        style={[
+          styles.page,
+          { fontFamily: getPdfFontFamily(locale, school?.name, pdfTextSample(staff)) },
+        ]}
+      >
         {staff.map((s, i) => {
           const qrData = verificationBaseUrl ? `${verificationBaseUrl}/verify/staff/${s.staffId}` : s.qrData || s.staffId;
           const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrData)}`;

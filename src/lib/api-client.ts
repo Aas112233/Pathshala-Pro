@@ -172,6 +172,9 @@ export const studentsApi = {
 
   delete: (id: string) =>
     api.delete<any>(`/api/students/${id}`),
+
+  getPerformance: (id: string, academicYearId?: string) =>
+    api.get<any>(`/api/students/${id}/performance${academicYearId ? `?academicYearId=${academicYearId}` : ""}`),
 };
 
 // Academic Years API

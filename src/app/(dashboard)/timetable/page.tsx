@@ -149,9 +149,10 @@ export default function TimetablePage() {
   };
 
   const entriesBySlot = useMemo(() => {
-    const m = new Map<string, any>();
+    const m = new Map<string, any[]>();
     for (const e of entries) {
-      m.set(`${e.dayOfWeek}-${e.periodNumber}`, e);
+      const key = `${e.dayOfWeek}-${e.periodNumber}`;
+      m.set(key, [...(m.get(key) ?? []), e]);
     }
     return m;
   }, [entries]);
@@ -308,7 +309,7 @@ export default function TimetablePage() {
                 value={selectedYear}
                 onChange={setSelectedYear}
                 options={[
-                  { value: "", label: t("allSections") },
+                  { value: "", label: t("allYears") },
                   ...academicYears.map((y: any) => ({ value: y.id, label: y.label })),
                 ]}
                 placeholder={t("selectYear")}
@@ -364,8 +365,8 @@ export default function TimetablePage() {
                       </Badge>
                     </td>
                     {DAYS.map((d) => {
-                      const entry = entriesBySlot.get(`${d}-${p}`);
-                      if (!entry) {
+                      const slotEntries = entriesBySlot.get(`${d}-${p}`) ?? [];
+                      if (slotEntries.length === 0) {
                         return (
                           <td key={d} className="px-2 py-2 text-center">
                             {canWrite ? (
@@ -382,92 +383,103 @@ export default function TimetablePage() {
                           </td>
                         );
                       }
-                      if (entry.isBreak) {
-                        return (
-                          <td key={d} className="px-2 py-2">
-                            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-center group relative">
-                              <Coffee className="h-4 w-4 mx-auto text-amber-600 mb-1" />
-                              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
-                                {entry.breakLabel || t("break")}
-                              </p>
-                              <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                                {entry.startTime} - {entry.endTime}
-                              </p>
-                              {(canWrite || canManage) && (
-                                <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                                  {canWrite && (
-                                    <button
-                                      onClick={() => openEdit(entry)}
-                                      className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-muted"
-                                    >
-                                      <Pencil className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                  {canManage && (
-                                    <button
-                                      onClick={() => handleDelete(entry.id)}
-                                      className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-destructive hover:text-white"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        );
-                      }
+
                       return (
-                        <td key={d} className="px-2 py-2">
-                          <div className="rounded-lg border border-border bg-card p-2.5 shadow-xs hover:shadow-md transition-shadow group relative">
-                            <div className="flex items-start justify-between gap-1">
-                              <p className="text-xs font-semibold truncate flex-1 flex items-center gap-1">
-                                <BookOpen className="h-3 w-3 text-primary shrink-0" />
-                                {entry.subject?.name || "—"}
-                              </p>
-                              {(canWrite || canManage) && (
-                                <div className="hidden group-hover:flex gap-1 shrink-0">
-                                  {canWrite && (
-                                    <button
-                                      onClick={() => openEdit(entry)}
-                                      className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-primary hover:text-white"
-                                    >
-                                      <Pencil className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                  {canManage && (
-                                    <button
-                                      onClick={() => handleDelete(entry.id)}
-                                      className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-destructive hover:text-white"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </button>
+                        <td key={d} className="px-2 py-2 align-top">
+                          <div className="space-y-2">
+                            {slotEntries.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className={entry.isBreak
+                                  ? "rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-center group relative"
+                                  : "rounded-lg border border-border bg-card p-2.5 shadow-xs hover:shadow-md transition-shadow group relative"}
+                              >
+                                {entry.isBreak ? (
+                                  <>
+                                    <Coffee className="h-4 w-4 mx-auto text-amber-600 mb-1" />
+                                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                                      {entry.breakLabel || t("break")}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex items-start justify-between gap-1">
+                                      <p className="text-xs font-semibold truncate flex-1 flex items-center gap-1">
+                                        <BookOpen className="h-3 w-3 text-primary shrink-0" />
+                                        {entry.subject?.name || "—"}
+                                      </p>
+                                      {(canWrite || canManage) && (
+                                        <div className="hidden group-hover:flex gap-1 shrink-0">
+                                          {canWrite && (
+                                            <button
+                                              onClick={() => openEdit(entry)}
+                                              className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-primary hover:text-white"
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </button>
+                                          )}
+                                          {canManage && (
+                                            <button
+                                              onClick={() => handleDelete(entry.id)}
+                                              className="h-6 w-6 rounded bg-muted flex items-center justify-center hover:bg-destructive hover:text-white"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {entry.section?.name && !selectedSection && (
+                                      <p className="text-[10px] font-medium text-primary truncate mt-1">
+                                        {entry.section.name}
+                                      </p>
+                                    )}
+                                    {entry.staffProfile && (
+                                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1 truncate">
+                                        <User className="h-3 w-3 shrink-0" />
+                                        {entry.staffProfile.firstName} {entry.staffProfile.lastName}
+                                      </p>
+                                    )}
+                                  </>
+                                )}
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  <span className="text-[11px] font-mono bg-muted px-1.5 py-0.5 rounded">
+                                    {entry.startTime} - {entry.endTime}
+                                  </span>
+                                  {entry.roomNumber && (
+                                    <span className="text-[11px] flex items-center gap-0.5 text-muted-foreground">
+                                      <MapPin className="h-3 w-3" />
+                                      {entry.roomNumber}
+                                    </span>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                            {entry.staffProfile && (
-                              <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1 truncate">
-                                <User className="h-3 w-3 shrink-0" />
-                                {entry.staffProfile.firstName} {entry.staffProfile.lastName}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <span className="text-[11px] font-mono bg-muted px-1.5 py-0.5 rounded">
-                                {entry.startTime} - {entry.endTime}
-                              </span>
-                              {entry.roomNumber && (
-                                <span className="text-[11px] flex items-center gap-0.5 text-muted-foreground">
-                                  <MapPin className="h-3 w-3" />
-                                  {entry.roomNumber}
-                                </span>
-                              )}
-                            </div>
-                            {entry.subject?.code && (
-                              <Badge variant="secondary" className="mt-1.5 text-[10px] h-4">
-                                {entry.subject.code}
-                              </Badge>
-                            )}
+                                {!entry.isBreak && entry.subject?.code && (
+                                  <Badge variant="secondary" className="mt-1.5 text-[10px] h-4">
+                                    {entry.subject.code}
+                                  </Badge>
+                                )}
+                                {(canWrite || canManage) && entry.isBreak && (
+                                  <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
+                                    {canWrite && (
+                                      <button
+                                        onClick={() => openEdit(entry)}
+                                        className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-muted"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                    {canManage && (
+                                      <button
+                                        onClick={() => handleDelete(entry.id)}
+                                        className="h-6 w-6 rounded bg-white shadow flex items-center justify-center hover:bg-destructive hover:text-white"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         </td>
                       );

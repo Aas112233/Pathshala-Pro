@@ -1,153 +1,374 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
-import { DataTable } from "@/components/shared/data-table";
+import { ERPDataTable, type ColumnDef } from "@/components/ui/erp-data-table";
+import { ERPMetricCard } from "@/components/ui/erp-metric-card";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
-import { ArrowLeftRight, Trash2 } from "lucide-react";
-import { useTransactions, useDeleteTransaction } from "@/hooks/use-queries";
-import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { TopSheet } from "@/components/ui/top-sheet";
+import {
+  ArrowLeftRight,
+  Trash2,
+  Search,
+  RotateCcw,
+  Download,
+  Wallet,
+  Banknote,
+  Smartphone,
+  Calendar,
+  Eye,
+  Layers,
+  FileSpreadsheet,
+  Loader2,
+} from "lucide-react";
+import { downloadBlob } from "@/lib/download-blob";
+import { useTransactionViewModel } from "@/viewmodels/transactions/use-transaction-view-model";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { formatStudentName } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { toast } from "sonner";
 
 export default function TransactionsPage() {
-  const t = useTranslations('transactions');
+  const t = useTranslations("transactions");
   const tCommon = useTranslations("common");
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
   const { formatCurrency, formatDate } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadFees = hasPermission(perms, "fees", "read");
-  const canWriteFees = hasPermission(perms, "fees", "write");
   const canManageFees = hasPermission(perms, "fees", "manage");
 
-  const { data, isLoading } = useTransactions({
+  const {
+    transactions,
+    isLoading,
+    isFetching,
+    pagination,
+    filters,
     page,
-    limit: 20,
-    search: search || undefined,
-    ...(paymentMethod && { filters: { paymentMethod } }),
-  });
+    pageSize,
+    kpis,
+    setFilters,
+    resetFilters,
+    setPage,
+    setPageSize,
+    deleteTransaction,
+  } = useTransactionViewModel();
 
-  const deleteMutation = useDeleteTransaction();
+  const [detail, setDetail] = useState<any | null>(null);
+  const [isExportingDaybook, setIsExportingDaybook] = useState(false);
 
-  const handleDelete = (id: string) => {
-    if (!confirm(t('confirmDelete'))) return;
-    
-    deleteMutation.mutate(id, {
-      onSuccess: () => {
-        toast.success(t('deleteSuccess'));
-      },
-      onError: (err) => {
-        toast.error(err.message || t('deleteError'));
-      },
-    });
+  const handleDelete = async (id: string) => {
+    if (!confirm(t("confirmDelete"))) return;
+    try {
+      await deleteTransaction(id);
+    } catch {}
   };
 
-  const columns: ColumnDef<any>[] = [
-    {
-      accessorKey: "transactionId",
-      header: t('tableColumns.transactionId'),
-      cell: ({ getValue }) => (
-        <span className="font-medium">{getValue<string>()}</span>
-      ),
-    },
-    {
-      accessorKey: "receiptNumber",
-      header: t('tableColumns.receiptNumber'),
-    },
-    {
-      accessorKey: "student",
-      header: t('tableColumns.student'),
-      cell: ({ row }) => {
-        const voucher = row.original.feeVoucher;
-        const student = voucher?.studentProfile;
-        return student ? (
-          <span>{formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn)}</span>
-        ) : (
-          <span>{t("notAvailable")}</span>
-        );
-      },
-    },
-    {
-      accessorKey: "feeType",
-      header: t('tableColumns.feeType'),
-      cell: ({ row }) => row.original.feeVoucher?.feeType || t("notAvailable"),
-    },
-    {
-      accessorKey: "amountPaid",
-      header: t('tableColumns.amount'),
-      cell: ({ getValue }) => (
-        <span className="font-medium">{formatCurrency(getValue<number>())}</span>
-      ),
-    },
-    {
-      accessorKey: "paymentMethod",
-      header: t('tableColumns.paymentMethod'),
-      cell: ({ getValue }) => (
-        <span className="capitalize">{getValue<string>().toLowerCase()}</span>
-      ),
-    },
-    {
-      accessorKey: "collectedBy",
-      header: t('tableColumns.collectedBy'),
-      cell: ({ row }) => row.original.collectedBy?.name || t("notAvailable"),
-    },
-    {
-      accessorKey: "timestamp",
-      header: t('tableColumns.date'),
-      cell: ({ getValue }) => formatDate(getValue<string>()),
-    },
-    {
-      id: "actions",
-      header: t('tableColumns.actions'),
-      cell: ({ row }) => (
-        canManageFees ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        ) : null
-      ),
-    },
+  /**
+   * Full-range Fee Collections Daybook. Built server-side because the CSV
+   * below can only ever hold the page currently in memory — the daybook has to
+   * cover every receipt in the selected range.
+   */
+  const handleExportDaybook = async () => {
+    if (isExportingDaybook) return;
+    setIsExportingDaybook(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.fromDate) params.set("startDate", filters.fromDate);
+      if (filters.toDate) params.set("endDate", filters.toDate);
+      const res = await fetch(`/api/accounting/daybook?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message || t("daybookFailed"));
+      }
+      const blob = await res.blob();
+      downloadBlob(blob, `fee-daybook_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(t("daybookExported"));
+    } catch (error: any) {
+      toast.error(error?.message || t("daybookFailed"));
+    } finally {
+      setIsExportingDaybook(false);
+    }
+  };
+
+  const handleExportCsv = () => {
+    if (transactions.length === 0) {
+      toast.error(t("noData"));
+      return;
+    }
+    const headers = ["transactionId", "receiptNumber", "student", "feeType", "amountPaid", "paymentMethod", "collectedBy", "date"];
+    // RFC-4180 quoting plus a guard on leading =,+,-,@ so Excel cannot execute
+    // a student or fee-type name as a formula on import.
+    const cell = (value: unknown) => {
+      const text = String(value ?? "");
+      const guarded = ["=", "+", "-", "@"].includes(text[0]) ? `'${text}` : text;
+      return `"${guarded.replace(/"/g, '""')}"`;
+    };
+    const rows = transactions.map((r: any) => {
+      const s = r.feeVoucher?.studentProfile;
+      const student = s ? `${s.firstName} ${s.lastName}` : "";
+      return [
+        cell(r.transactionId),
+        cell(r.receiptNumber),
+        cell(student),
+        cell(r.feeVoucher?.feeType || ""),
+        cell(Number(r.amountPaid ?? 0).toFixed(2)),
+        cell(r.paymentMethod),
+        cell(r.collectedBy?.name || ""),
+        cell(r.timestamp ? new Date(r.timestamp).toISOString() : ""),
+      ].join(",");
+    });
+    // BOM so Excel on Windows decodes Bengali/Hindi/Urdu names as UTF-8.
+    const csv = "﻿" + [headers.map(cell).join(","), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    downloadBlob(blob, `transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success(tCommon("export"));
+  };
+
+  const paymentOptions = [
+    { value: "ALL", label: t("allStatuses") || "All Methods" },
+    { value: "CASH", label: t("paymentMethods.CASH") },
+    { value: "DIGITAL", label: t("paymentMethods.DIGITAL") },
+    { value: "BANK_TRANSFER", label: t("paymentMethods.BANK_TRANSFER") },
+    { value: "CARD", label: t("paymentMethods.CARD") },
+    { value: "CHEQUE", label: t("paymentMethods.CHEQUE") },
+    { value: "EASYPAISA", label: t("paymentMethods.EASYPAISA") },
+    { value: "JAZZCASH", label: t("paymentMethods.JAZZCASH") },
   ];
 
-  const pagination = "pagination" in (data || {})
-    ? (data as any).pagination
-    : undefined;
+  const columns: ColumnDef<any>[] = useMemo(
+    () => [
+      {
+        key: "transactionId",
+        header: t("tableColumns.transactionId"),
+        cell: (row) => <span className="font-mono text-xs font-medium">{row.transactionId}</span>,
+      },
+      {
+        key: "receiptNumber",
+        header: t("tableColumns.receiptNumber"),
+        cell: (row) => <span className="font-mono text-xs">{row.receiptNumber}</span>,
+      },
+      {
+        key: "student",
+        header: t("tableColumns.student"),
+        cell: (row) => {
+          const s = row.feeVoucher?.studentProfile;
+          return s ? (
+            <span className="text-sm">{formatStudentName(s.firstName, s.lastName, s.firstNameBn, s.lastNameBn)}</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">{t("notAvailable")}</span>
+          );
+        },
+      },
+      {
+        key: "feeType",
+        header: t("tableColumns.feeType"),
+        cell: (row) => <Badge variant="outline" className="text-xs">{row.feeVoucher?.feeType || t("notAvailable")}</Badge>,
+      },
+      {
+        key: "amountPaid",
+        header: t("tableColumns.amount"),
+        cell: (row) => <span className="font-mono text-sm font-semibold">{formatCurrency(row.amountPaid)}</span>,
+      },
+      {
+        key: "paymentMethod",
+        header: t("tableColumns.paymentMethod"),
+        cell: (row) => {
+          const m = row.paymentMethod as string;
+          const color =
+            m === "CASH" ? "bg-emerald-500/10 text-emerald-700 border-emerald-200" :
+            m === "DIGITAL" || m === "EASYPAISA" || m === "JAZZCASH" ? "bg-sky-500/10 text-sky-700 border-sky-200" :
+            "bg-amber-500/10 text-amber-700 border-amber-200";
+          return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${color}`}>{m.toLowerCase()}</span>;
+        },
+      },
+      {
+        key: "collectedBy",
+        header: t("tableColumns.collectedBy"),
+        cell: (row) => <span className="text-xs">{row.collectedBy?.name || t("notAvailable")}</span>,
+      },
+      {
+        key: "timestamp",
+        header: t("tableColumns.date"),
+        cell: (row) => <span className="text-xs text-muted-foreground">{formatDate(row.timestamp)}</span>,
+      },
+      {
+        key: "actions",
+        header: t("tableColumns.actions"),
+        cell: (row) => (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetail(row)}>
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            {canManageFees ? (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(row.id)}>
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            ) : null}
+          </div>
+        ),
+        className: "w-[90px]",
+      },
+    ],
+    [t, formatCurrency, formatDate, canManageFees]
+  );
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={t('title')}
-        description={t('description')}
-        icon={ArrowLeftRight}
-      />
+  const hasActiveFilters = filters.search || filters.paymentMethod !== "ALL" || filters.fromDate || filters.toDate;
 
-      {!isAuthLoading && !canReadFees ? (
+  if (!isAuthLoading && !canReadFees) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("title")} description={t("description")} icon={ArrowLeftRight} />
         <div className="rounded-lg border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
         </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={("data" in (data || {})) ? (data as any).data : []}
-          pagination={pagination}
-          onPageChange={setPage}
-          onSearch={setSearch}
-          isLoading={isLoading}
-          searchPlaceholder={t('searchPlaceholder')}
-        />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t("title")} description={t("description")} icon={ArrowLeftRight}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportCsv} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            {tCommon("export")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportDaybook}
+            disabled={isExportingDaybook}
+            className="gap-1.5"
+          >
+            {isExportingDaybook ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+            )}
+            {isExportingDaybook ? t("daybookExporting") : t("daybookExport")}
+          </Button>
+        </div>
+      </PageHeader>
+
+      {/* KPI Grid — next-level financial overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ERPMetricCard title={t("kpi.totalTransactions") || "Total Transactions"} value={kpis.count} subtitle={t("kpi.totalTransactionsSubtitle") || "All time"} icon={Layers} />
+        <ERPMetricCard title={t("kpi.totalAmount") || "Total Amount"} value={formatCurrency(kpis.totalAmount)} subtitle={t("kpi.totalAmountSubtitle") || "Filtered period"} icon={Wallet} />
+        <ERPMetricCard title={t("kpi.cashTotal") || "Cash"} value={formatCurrency(kpis.cash)} subtitle="CASH" icon={Banknote} />
+        <ERPMetricCard title={t("kpi.digitalTotal") || "Digital"} value={formatCurrency(kpis.digital)} subtitle="DIGITAL / Wallets" icon={Smartphone} />
+      </div>
+
+      {/* Filters — AppDropdown + date range per AGENTS #4, #8 */}
+      <Card className="shadow-sm border-border/80">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="relative lg:col-span-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("searchPlaceholder")}
+                value={filters.search}
+                onChange={(e) => setFilters({ search: e.target.value })}
+                className="pl-9 bg-background"
+              />
+            </div>
+            <AppDropdown
+              options={paymentOptions}
+              value={filters.paymentMethod}
+              onChange={(v) => setFilters({ paymentMethod: v as any })}
+              placeholder="Payment Method"
+              searchable
+              noOptionsText="No methods"
+            />
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Input type="date" value={filters.fromDate} onChange={(e) => setFilters({ fromDate: e.target.value })} className="bg-background" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Input type="date" value={filters.toDate} onChange={(e) => setFilters({ toDate: e.target.value })} className="bg-background" />
+            </div>
+          </div>
+          {hasActiveFilters && (
+            <div className="mt-3 flex justify-end">
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5">
+                <RotateCcw className="h-3.5 w-3.5" />
+                {tCommon("reset") || "Reset filters"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <ERPDataTable
+        data={transactions}
+        columns={columns}
+        keyExtractor={(r) => r.id}
+        isLoading={isLoading || isFetching}
+        page={page}
+        pageSize={pageSize}
+        totalCount={pagination?.totalCount ?? 0}
+        pageSizeOptions={[10, 20, 50, 100]}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        onRowClick={setDetail}
+        searchValue={filters.search}
+        onSearchChange={(v) => setFilters({ search: v })}
+        searchPlaceholder={t("searchPlaceholder")}
+        emptyState={
+          <div className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">{t("noData") || "No transactions found"}</p>
+          </div>
+        }
+      />
+
+      {/* Detail Drawer — next-level inspection (TopSheet) */}
+      <TopSheet
+        isOpen={!!detail}
+        onClose={() => setDetail(null)}
+        title={detail ? `${detail.receiptNumber} — ${formatCurrency(detail.amountPaid)}` : ""}
+        description={detail ? `${detail.paymentMethod} • ${formatDate(detail.timestamp)}` : ""}
+        maxWidth="lg"
+      >
+        {detail && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Transaction ID</p>
+                <p className="font-mono font-medium">{detail.transactionId}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Receipt</p>
+                <p className="font-mono font-medium">{detail.receiptNumber}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Student</p>
+                <p className="font-medium">{detail.feeVoucher?.studentProfile ? formatStudentName(detail.feeVoucher.studentProfile.firstName, detail.feeVoucher.studentProfile.lastName) : t("notAvailable")}</p>
+                <p className="text-xs text-muted-foreground">{detail.feeVoucher?.voucherId}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Amount</p>
+                <p className="font-mono text-lg font-bold">{formatCurrency(detail.amountPaid)}</p>
+                <Badge variant="outline" className="mt-1 capitalize">{detail.paymentMethod.toLowerCase()}</Badge>
+              </div>
+            </div>
+            <div className="rounded-lg bg-muted/40 p-3 text-xs">
+              <p className="font-semibold mb-1">Collected By</p>
+              <p>{detail.collectedBy?.name} — {detail.collectedBy?.email}</p>
+              <p className="text-muted-foreground">{formatDate(detail.timestamp)}</p>
+              {detail.note && <p className="mt-2 italic">Note: {detail.note}</p>}
+            </div>
+          </div>
+        )}
+      </TopSheet>
     </div>
   );
 }

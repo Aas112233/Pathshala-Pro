@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 import { apiPost, apiPut, apiDelete } from "@/lib/api-fetch";
 
 export function useBooksViewModel(search = "", category = "", page = 1) {

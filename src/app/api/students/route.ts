@@ -195,21 +195,63 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if roll number already exists in the same class/section
-    const existingRoll = await prisma.studentProfile.findFirst({
-      where: {
-        tenantId,
-        rollNumber: data.rollNumber,
-        ...(data.classId ? { classId: data.classId } : {}),
-        ...(data.sectionId ? { sectionId: data.sectionId } : {}),
-        status: "ACTIVE",
-      },
-    });
+    // Auto-determine or validate roll number
+    let rollNumber = data.rollNumber?.trim();
 
-    if (existingRoll) {
-      return badRequest("Student already exists", [
-        { field: "rollNumber", code: "duplicate", message: `Roll number ${data.rollNumber} already assigned in this class/section` },
-      ]);
+    if (!rollNumber) {
+      let classPrefix = "C1";
+      if (data.classId) {
+        // Tenant-scoped: an unscoped findUnique leaks another tenant's
+        // classNumber through the generated roll number (existence oracle).
+        const cls = await prisma.class.findFirst({ where: { id: data.classId, tenantId } });
+        if (cls) {
+          const num = cls.classNumber > 0 ? cls.classNumber : (parseInt(cls.name.replace(/\D/g, ""), 10) || 1);
+          classPrefix = `C${num}`;
+        }
+      }
+
+      // Count students in this class/section to generate next roll
+      const count = await prisma.studentProfile.count({
+        where: {
+          tenantId,
+          ...(data.classId ? { classId: data.classId } : {}),
+          ...(data.sectionId ? { sectionId: data.sectionId } : {}),
+        },
+      });
+
+      let nextRollNum = count + 1;
+      let isRollUnique = false;
+      while (!isRollUnique) {
+        rollNumber = `${classPrefix}-R${nextRollNum}`;
+        const collision = await prisma.studentProfile.findFirst({
+          where: {
+            tenantId,
+            rollNumber,
+            ...(data.classId ? { classId: data.classId } : {}),
+            ...(data.sectionId ? { sectionId: data.sectionId } : {}),
+            status: "ACTIVE",
+          },
+        });
+        if (!collision) isRollUnique = true;
+        else nextRollNum++;
+      }
+    } else {
+      // Check if provided roll number already exists in the same class/section
+      const existingRoll = await prisma.studentProfile.findFirst({
+        where: {
+          tenantId,
+          rollNumber,
+          ...(data.classId ? { classId: data.classId } : {}),
+          ...(data.sectionId ? { sectionId: data.sectionId } : {}),
+          status: "ACTIVE",
+        },
+      });
+
+      if (existingRoll) {
+        return badRequest("Student already exists", [
+          { field: "rollNumber", code: "duplicate", message: `Roll number ${rollNumber} already assigned in this class/section` },
+        ]);
+      }
     }
 
     // If the frontend passed a driveFileId, rename the R2 object to match the newly generated studentId
@@ -253,11 +295,30 @@ export async function POST(request: NextRequest) {
     if (!prismaDataWithDates.groupId) prismaDataWithDates.groupId = null;
     if (!prismaDataWithDates.sectionId) prismaDataWithDates.sectionId = null;
 
+    // FK-confusion guard: relation targets must belong to the caller's
+    // tenant, otherwise tenant A can enroll a student into tenant B's
+    // class/section and read B's roster via later includes.
+    const [classOk, sectionOk, groupOk] = await Promise.all([
+      prismaDataWithDates.classId
+        ? prisma.class.findFirst({ where: { id: prismaDataWithDates.classId, tenantId }, select: { id: true } })
+        : Promise.resolve({ id: "" }),
+      prismaDataWithDates.sectionId
+        ? prisma.section.findFirst({ where: { id: prismaDataWithDates.sectionId, tenantId }, select: { id: true } })
+        : Promise.resolve({ id: "" }),
+      prismaDataWithDates.groupId
+        ? prisma.group.findFirst({ where: { id: prismaDataWithDates.groupId, tenantId }, select: { id: true } })
+        : Promise.resolve({ id: "" }),
+    ]);
+    if (!classOk) return badRequest("Selected class does not exist in your institution.");
+    if (!sectionOk) return badRequest("Selected section does not exist in your institution.");
+    if (!groupOk) return badRequest("Selected group does not exist in your institution.");
+
     const student = await prisma.studentProfile.create({
       data: {
         tenantId,
         ...prismaDataWithDates,
         studentId: studentId as string,
+        rollNumber: rollNumber as string,
         ...(profilePictureUrl && { profilePictureUrl }),
       },
       select: {

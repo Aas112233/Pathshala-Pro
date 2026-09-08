@@ -186,7 +186,7 @@ export function StudentFormModal({
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.rollNumber.trim()) {
+    if (isEditing && !formData.rollNumber.trim()) {
       newErrors.rollNumber = t("form.required", { field: t("rollNumber") });
     }
 
@@ -466,18 +466,29 @@ export function StudentFormModal({
             {/* Basic Information */}
             <ERPFormSection title={t("section.basicInfo")}>
               <ERPFormGrid cols={2}>
-                <ERPFormField label={t("rollNumber")} required error={errors.rollNumber} htmlFor="student-rollNumber">
-                  <Input
-                    id="student-rollNumber"
-                    required
-                    name="rollNumber"
-                    value={formData.rollNumber}
-                    onChange={handleChange}
-                    placeholder={t("form.rollPlaceholder")}
-                    disabled={isLoading || isUploading}
-                    aria-invalid={Boolean(errors.rollNumber)}
-                  />
-                </ERPFormField>
+                {!isEditing ? (
+                  <div className="col-span-full bg-muted/40 border border-border/80 rounded-md p-3 text-xs flex items-center justify-between gap-2 text-muted-foreground shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-primary">স্বয়ংক্রিয় রোল নির্ধারণ (Merit Roll):</span>
+                      <span>রোল নম্বর শিক্ষার্থী ভর্তি ও পরীক্ষার মেধা তালিকা অনুযায়ী স্বয়ংক্রিয়ভাবে নির্ধারিত হবে (যেমন: Class 1 Roll 1 — C1-R1)।</span>
+                    </div>
+                    <span className="font-mono font-semibold px-2 py-0.5 bg-background border border-border rounded text-[11px] text-foreground shrink-0">
+                      C&#123;Class&#125;-R&#123;Rank&#125;
+                    </span>
+                  </div>
+                ) : (
+                  <ERPFormField label={t("rollNumber")} error={errors.rollNumber} htmlFor="student-rollNumber">
+                    <Input
+                      id="student-rollNumber"
+                      name="rollNumber"
+                      value={formData.rollNumber}
+                      onChange={handleChange}
+                      placeholder="e.g. C1-R1"
+                      disabled={isLoading || isUploading}
+                      aria-invalid={Boolean(errors.rollNumber)}
+                    />
+                  </ERPFormField>
+                )}
 
                 <ERPFormField label={t("gender")} htmlFor="student-gender">
                   <AppDropdown

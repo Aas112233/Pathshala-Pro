@@ -1,5 +1,6 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface PdfSchoolInfo {
   name: string;
@@ -28,6 +29,7 @@ export interface PdfColumn {
 }
 
 export interface PdfReportTemplateProps {
+  locale?: string;
   school: PdfSchoolInfo;
   title: string;
   subtitle?: string;
@@ -49,6 +51,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     color: "#0F172A",
     fontSize: 9,
+    fontFamily: "NotoSans",
   },
   header: {
     flexDirection: "row",
@@ -182,7 +185,10 @@ const styles = StyleSheet.create({
   table: {
     border: "1px solid #CBD5E1",
     borderRadius: 8,
-    overflow: "hidden",
+    // NOTE: no `overflow: "hidden"` here. react-pdf refuses to split an
+    // overflow:hidden node across pages, so any report longer than one
+    // landscape page was silently clipped while the summary card still
+    // claimed the full record count.
   },
   tableHeader: {
     flexDirection: "row",
@@ -232,6 +238,7 @@ const metricTones: Record<NonNullable<PdfMetricItem["tone"]>, string> = {
 };
 
 export function ReportBaseTemplate({
+  locale,
   school,
   title,
   subtitle,
@@ -246,7 +253,28 @@ export function ReportBaseTemplate({
 }: PdfReportTemplateProps) {
   return (
     <Document>
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      <Page
+        size="A4"
+        orientation="landscape"
+        style={[
+          styles.page,
+          {
+            // Every report PDF (fee, attendance, exam, salary, P&L …) renders
+            // through this template, so the row payload — not just the locale —
+            // decides the script.
+            fontFamily: getPdfFontFamily(
+              locale,
+              school?.name,
+              school?.address,
+              title,
+              subtitle,
+              pdfTextSample(rows),
+              pdfTextSample(metrics),
+              pdfTextSample(filters),
+            ),
+          },
+        ]}
+      >
         <View style={styles.header}>
           <View style={styles.schoolBlock}>
             {school.logoUrl ? (

@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 interface Mark {
   subject: string;
@@ -11,6 +12,7 @@ interface Mark {
 }
 
 interface MarkSheetProps {
+  locale?: string;
   student: {
     name: string;
     admissionNumber: string;
@@ -40,6 +42,7 @@ const markSheetStyles = StyleSheet.create({
   page: {
     padding: 30,
     backgroundColor: "#FFFFFF",
+    fontFamily: "NotoSans",
   },
   header: {
     borderBottom: "3px solid #1E40AF",
@@ -223,10 +226,11 @@ const markSheetStyles = StyleSheet.create({
 });
 
 export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
+  locale,
   student,
   exam,
   marks,
-  school
+  school,
 }) => {
   const totalMaxMarks = marks.reduce((sum, m) => sum + m.maxMarks, 0);
   const totalObtained = marks.reduce((sum, m) => sum + m.obtainedMarks, 0);
@@ -236,7 +240,13 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
 
   return (
     <Document>
-      <Page size="A4" style={markSheetStyles.page}>
+      <Page
+        size="A4"
+        style={[
+          markSheetStyles.page,
+          { fontFamily: getPdfFontFamily(locale, school?.name, school?.address, student?.name, pdfTextSample(marks)) },
+        ]}
+      >
         {/* Header */}
         <View style={markSheetStyles.header}>
           <View style={markSheetStyles.logoSection}>

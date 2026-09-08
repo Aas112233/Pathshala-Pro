@@ -11,12 +11,19 @@ import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useFeeHeadMappings, useSaveFeeHeadMappings } from "@/hooks/use-queries";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 type FeeHead = { id: string; code: string; name: string; accountCode: string };
 type RevenueAccount = { id: string; code: string; name: string };
 
 export default function FeeHeadsAccountingPage() {
   const t = useTranslations("accounting.feeHeads");
+  const tCommon = useTranslations("common");
+  const { user: authUser } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "accounting", "read");
+  const canManage = hasPermission(perms, "accounting", "manage");
   const { data: response, isLoading } = useFeeHeadMappings();
   const saveMutation = useSaveFeeHeadMappings();
   const [editing, setEditing] = useState<FeeHead | null>(null);
@@ -47,6 +54,18 @@ export default function FeeHeadsAccountingPage() {
       toast.error(error.message || t("saveFailed"));
     }
   };
+
+  if (!canRead) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("title")} description={t("description")} icon={Landmark} />
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold">{tCommon("accessRestricted")}</h2>
+          <p className="text-sm text-muted-foreground mt-2">{tCommon("noPermission")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12">
@@ -80,9 +99,11 @@ export default function FeeHeadsAccountingPage() {
                         {account ? ` — ${account.name}` : ""}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => openEditor(head)} className="gap-1.5 self-start sm:self-auto">
-                      <Pencil className="h-3.5 w-3.5" /> {t("editMapping")}
-                    </Button>
+                    {canManage && (
+                      <Button variant="outline" size="sm" onClick={() => openEditor(head)} className="gap-1.5 self-start sm:self-auto">
+                        <Pencil className="h-3.5 w-3.5" /> {t("editMapping")}
+                      </Button>
+                    )}
                   </div>
                 );
               })}

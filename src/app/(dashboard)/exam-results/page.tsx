@@ -32,6 +32,7 @@ import { useTenantSettings } from "@/components/providers/tenant-settings-provid
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { useUnsavedChanges } from "@/providers/unsaved-changes-provider";
 
 interface StudentMark {
   studentProfileId: string;
@@ -521,6 +522,9 @@ export default function ExamResultsPage() {
     const marks = parseFloat(m.obtainedMarks);
     return !isNaN(marks) && (marks / maxMarks) * 100 < passPercentage;
   }).length;
+  const initialMarksRef = useMemo(() => studentMarks.map((m) => ({ id: m.studentProfileId, marks: m.obtainedMarks })), [isFormReady]);
+  const marksEntryDirty = isFormOpen && isFormReady && JSON.stringify(initialMarksRef) !== JSON.stringify(studentMarks.map((m) => ({ id: m.studentProfileId, marks: m.obtainedMarks })));
+  useUnsavedChanges(marksEntryDirty, "exam-results-marks-form");
 
   // Build options
   const examOptions = [

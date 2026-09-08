@@ -19,6 +19,8 @@ import {
   Trash2,
   Edit2,
   RotateCcw,
+  Save,
+  Loader2,
 } from "lucide-react";
 import {
   CustomPaymentMethod,
@@ -26,6 +28,8 @@ import {
   TenantSettings,
 } from "@/lib/tenant-settings";
 import { ERPFormSection } from "@/components/ui/erp-form-layout";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { toast } from "sonner";
 
 interface PaymentMethodsSettingsSectionProps {
   settings: TenantSettings;
@@ -37,12 +41,14 @@ export function PaymentMethodsSettingsSection({
   onChange,
 }: PaymentMethodsSettingsSectionProps) {
   const t = useTranslations("settings");
+  const { refreshSettings, setSettings: setGlobalSettings } = useTenantSettings();
   const methods = settings.paymentMethods && settings.paymentMethods.length > 0
     ? settings.paymentMethods
     : DEFAULT_PAYMENT_METHODS;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMethod, setEditingMethod] = useState<CustomPaymentMethod | null>(null);
+  const [isSavingDirectly, setIsSavingDirectly] = useState(false);
 
   // Form State
   const [formName, setFormName] = useState("");
@@ -51,6 +57,41 @@ export function PaymentMethodsSettingsSection({
   const [formAccountCode, setFormAccountCode] = useState("1010");
   const [formInstructions, setFormInstructions] = useState("");
   const [formIsActive, setFormIsActive] = useState(true);
+
+  const persistMethods = async (updated: CustomPaymentMethod[]) => {
+    // Serialize: each persist sends the FULL array, so two in-flight PUTs
+    // last-write-win at the JSON column and one action can silently undo
+    // another.
+    if (isSavingDirectly) return;
+    // Snapshot for rollback: the optimistic onChange lands before the fetch,
+    // so a failed write must revert local state or the UI shows phantom
+    // methods that a later whole-settings Save would persist to the DB.
+    const previous = settings.paymentMethods;
+    onChange("paymentMethods", updated);
+    setIsSavingDirectly(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethods: updated }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || "Failed to save payment methods");
+      }
+      const json = await res.json();
+      if (json.data) {
+        setGlobalSettings(json.data);
+      }
+      await refreshSettings();
+      toast.success(t("ui.saved") || "পেমেন্ট মেথড সফলভাবে ডাটাবেজে সংরক্ষিত হয়েছে");
+    } catch (err: any) {
+      console.error("Failed to persist payment methods:", err);
+      toast.error(err.message || t("ui.saveFailed") || "পেমেন্ট মেথড সংরক্ষণ করতে ব্যর্থ হয়েছে");
+    } finally {
+      setIsSavingDirectly(false);
+    }
+  };
 
   const openAddModal = () => {
     setEditingMethod(null);
@@ -74,12 +115,13 @@ export function PaymentMethodsSettingsSection({
     setIsModalOpen(true);
   };
 
-  const handleSaveMethod = () => {
+  const handleSaveMethod = async () => {
     if (!formName.trim()) return;
     const cleanCode = (formCode.trim() || formName.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_")).slice(0, 30);
 
+    let updated: CustomPaymentMethod[];
     if (editingMethod) {
-      const updated = methods.map((m) =>
+      updated = methods.map((m) =>
         m.id === editingMethod.id
           ? {
               ...m,
@@ -92,7 +134,6 @@ export function PaymentMethodsSettingsSection({
             }
           : m
       );
-      onChange("paymentMethods", updated);
     } else {
       const newMethod: CustomPaymentMethod = {
         id: `pm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -103,33 +144,41 @@ export function PaymentMethodsSettingsSection({
         instructions: formInstructions.trim() || undefined,
         isActive: formIsActive,
       };
-      onChange("paymentMethods", [...methods, newMethod]);
+      updated = [...methods, newMethod];
     }
 
     setIsModalOpen(false);
+    await persistMethods(updated);
   };
 
-  const handleToggleActive = (id: string, active: boolean) => {
+  const handleToggleActive = async (id: string, active: boolean) => {
     const updated = methods.map((m) => (m.id === id ? { ...m, isActive: active } : m));
-    onChange("paymentMethods", updated);
+    await persistMethods(updated);
   };
 
-  const handleSetDefault = (id: string) => {
+  const handleSetDefault = async (id: string) => {
     const updated = methods.map((m) => ({
       ...m,
       isDefault: m.id === id,
       isActive: m.id === id ? true : m.isActive,
     }));
-    onChange("paymentMethods", updated);
+    await persistMethods(updated);
   };
 
-  const handleDeleteMethod = (id: string) => {
-    const updated = methods.filter((m) => m.id !== id);
-    onChange("paymentMethods", updated.length > 0 ? updated : DEFAULT_PAYMENT_METHODS);
+  const handleDeleteMethod = async (id: string) => {
+    const removed = methods.find((m) => m.id === id);
+    let updated = methods.filter((m) => m.id !== id);
+    // Deleting the default must not leave the tenant with zero defaults —
+    // promote the first remaining active method.
+    if (removed?.isDefault && updated.length > 0 && !updated.some((m) => m.isDefault)) {
+      const fallback = updated.find((m) => m.isActive) ?? updated[0];
+      updated = updated.map((m) => ({ ...m, isDefault: m.id === fallback.id }));
+    }
+    await persistMethods(updated.length > 0 ? updated : DEFAULT_PAYMENT_METHODS);
   };
 
-  const handleResetDefaults = () => {
-    onChange("paymentMethods", DEFAULT_PAYMENT_METHODS);
+  const handleResetDefaults = async () => {
+    await persistMethods(DEFAULT_PAYMENT_METHODS);
   };
 
   const getTypeIcon = (type: CustomPaymentMethod["type"]) => {
@@ -159,12 +208,13 @@ export function PaymentMethodsSettingsSection({
           <div className="text-xs text-muted-foreground">
             {t("paymentMethods.activeCount", { active: activeCount, total: methods.length })}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleResetDefaults}
+              disabled={isSavingDirectly}
               className="text-xs h-8 gap-1.5"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -172,12 +222,28 @@ export function PaymentMethodsSettingsSection({
             </Button>
             <Button
               type="button"
+              variant="outline"
               size="sm"
               onClick={openAddModal}
-              className="text-xs h-8 gap-1.5 bg-primary text-primary-foreground"
+              disabled={isSavingDirectly}
+              className="text-xs h-8 gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
               {t("paymentMethods.addMethod")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => persistMethods(methods)}
+              disabled={isSavingDirectly}
+              className="text-xs h-8 gap-1.5 bg-primary text-primary-foreground shadow-2xs"
+            >
+              {isSavingDirectly ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {isSavingDirectly ? t("ui.saving") : t("paymentMethods.saveBtn")}
             </Button>
           </div>
         </div>
@@ -232,6 +298,7 @@ export function PaymentMethodsSettingsSection({
                     <Switch
                       checked={method.isActive}
                       onCheckedChange={(checked) => handleToggleActive(method.id, checked)}
+                      disabled={isSavingDirectly}
                       aria-label={`Toggle ${method.name}`}
                     />
                   </div>
@@ -249,7 +316,8 @@ export function PaymentMethodsSettingsSection({
                       <button
                         type="button"
                         onClick={() => handleSetDefault(method.id)}
-                        className="text-[11px] text-primary hover:underline font-medium"
+                        disabled={isSavingDirectly}
+                        className="text-[11px] text-primary hover:underline font-medium disabled:opacity-50"
                       >
                         {t("paymentMethods.setAsDefault")}
                       </button>
@@ -261,6 +329,7 @@ export function PaymentMethodsSettingsSection({
                       variant="ghost"
                       size="sm"
                       onClick={() => openEditModal(method)}
+                      disabled={isSavingDirectly}
                       className="h-7 px-2 text-xs"
                     >
                       <Edit2 className="h-3.5 w-3.5 mr-1" />
@@ -272,6 +341,7 @@ export function PaymentMethodsSettingsSection({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteMethod(method.id)}
+                        disabled={isSavingDirectly}
                         className="h-7 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -390,9 +460,10 @@ export function PaymentMethodsSettingsSection({
               type="button"
               size="sm"
               onClick={handleSaveMethod}
-              disabled={!formName.trim()}
-              className="bg-primary text-primary-foreground"
+              disabled={!formName.trim() || isSavingDirectly}
+              className="bg-primary text-primary-foreground gap-1.5"
             >
+              {isSavingDirectly && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {editingMethod ? t("paymentMethods.modal.saveChanges") : t("paymentMethods.modal.addBtn")}
             </Button>
           </DialogFooter>

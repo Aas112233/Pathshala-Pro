@@ -10,7 +10,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { createFeeVoucherSchema, updateFeeVoucherSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 import { roundCurrency } from "@/lib/math-utils";
@@ -58,6 +58,14 @@ export async function GET(request: NextRequest) {
 
     if (academicYearId) {
       where.academicYearId = academicYearId;
+    }
+
+    // C1 self-scoping: a STUDENT/PARENT token must never read the whole
+    // tenant's vouchers. Restrict to the caller's own (or linked children's)
+    // profiles; an empty link set yields zero rows rather than leaking all.
+    const selfScope = await getSelfScopedStudentProfileIds(access.authContext);
+    if (selfScope) {
+      where.studentProfileId = { in: selfScope };
     }
 
     // Get total count
@@ -112,7 +120,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    const access = await requireApiAccess(request, { permission: "fees:invoice:create" });
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;

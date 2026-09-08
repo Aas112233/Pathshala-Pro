@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 interface SubjectResult {
   subject: string;
@@ -28,6 +29,7 @@ interface AttendanceRecord {
 }
 
 interface ReportCardProps {
+  locale?: string;
   student: {
     name: string;
     admissionNumber: string;
@@ -65,6 +67,7 @@ const reportCardStyles = StyleSheet.create({
   page: {
     padding: 25,
     backgroundColor: "#FFFFFF",
+    fontFamily: "NotoSans",
   },
   // Header Styles
   header: {
@@ -359,6 +362,7 @@ const reportCardStyles = StyleSheet.create({
 });
 
 export const ReportCardTemplate: React.FC<ReportCardProps> = ({
+  locale,
   student,
   academicYear,
   terms,
@@ -375,7 +379,13 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
 
   return (
     <Document>
-      <Page size="A4" style={reportCardStyles.page}>
+      <Page
+        size="A4"
+        style={[
+          reportCardStyles.page,
+          { fontFamily: getPdfFontFamily(locale, school?.name, school?.address, student?.name, student?.className, pdfTextSample(terms)) },
+        ]}
+      >
         {/* Header */}
         <View style={reportCardStyles.header}>
           {school.logoUrl ? (
@@ -559,13 +569,13 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
         <View style={reportCardStyles.remarksSection}>
           {teacherRemarks && (
             <View style={reportCardStyles.remarkBox}>
-              <Text style={reportCardStyles.remarkLabel}>Class Teacher's Remarks</Text>
+              <Text style={reportCardStyles.remarkLabel}>Class Teacher&apos;s Remarks</Text>
               <Text style={reportCardStyles.remarkText}>{teacherRemarks}</Text>
             </View>
           )}
           {principalRemarks && (
             <View style={reportCardStyles.remarkBox}>
-              <Text style={reportCardStyles.remarkLabel}>Principal's Remarks</Text>
+              <Text style={reportCardStyles.remarkLabel}>Principal&apos;s Remarks</Text>
               <Text style={reportCardStyles.remarkText}>{principalRemarks}</Text>
             </View>
           )}

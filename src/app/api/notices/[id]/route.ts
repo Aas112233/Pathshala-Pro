@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireApiAccess } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { requireApiAccess, isTenantOwned } from "@/lib/api-auth";
+import { successResponse, errorResponse, badRequest } from "@/lib/api-response";
 import { handleApiError } from "@/lib/api-error";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
 import { updateNoticeSchema } from "@/lib/schemas";
@@ -72,6 +72,11 @@ export async function PUT(
     const data = parsed.data;
     if (data.attachmentUrl && !(await verifyInternalFileUrl(data.attachmentUrl, tenantId))) {
       return errorResponse("Invalid attachment file", 400);
+    }
+
+    // FK-confusion guard: target class must belong to this tenant.
+    if (data.targetClassId && !(await isTenantOwned(prisma.class, data.targetClassId, tenantId))) {
+      return badRequest("Selected class does not exist in your institution.");
     }
 
     const updated = await prisma.notice.update({

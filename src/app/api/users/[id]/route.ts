@@ -18,6 +18,7 @@ import {
   canAssignAccessLevel,
   canGrantPermissions,
   getEffectivePermissions,
+  hasPermission,
 } from "@/lib/permissions";
 import {
   getUserUsageCounts,
@@ -108,6 +109,16 @@ export async function PUT(
     const requester: any = (access as any).authContext.user;
     const isRequesterPlatformOwner = isPlatformOwnerEmail(requester.email);
     const requesterEffectivePerms = getEffectivePermissions(requester.role, requester.permissions, requester.accessLevel);
+    // Role changes and password resets are account-takeover-capable
+    // operations: they require the `manage` tier, not the plain `write`
+    // tier that a field-only PUT otherwise passes. Without this, a custom
+    // staff role holding users:{read,write} could promote itself to
+    // SCHOOL_ADMIN or reset the principal's password.
+    if (((data as any).role && (data as any).role !== existingUser.role) || (data as any).password) {
+      if (!hasPermission(requesterEffectivePerms, "users", "manage")) {
+        return forbidden("Managing user roles and credentials requires the 'manage' permission");
+      }
+    }
     if ((data as any).role && !canAssignRole(requester.role, isRequesterPlatformOwner, (data as any).role)) {
       return forbidden("You are not allowed to assign this role");
     }

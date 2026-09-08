@@ -798,7 +798,7 @@ async function main() {
   console.log("\n Creating class promotions...\n");
 
   // Promote Rahim Ahmed (Excellent student)
-  const rahimPromotion = await prisma.classPromotion.create({
+  await prisma.classPromotion.create({
     data: {
       tenantId: tenant.tenantId,
       studentProfileId: student1.id,
@@ -815,7 +815,7 @@ async function main() {
   console.log(`Promoted: Rahim Ahmed (Class 6 → Class 7)`);
 
   // Promote Fatima Begum (Average student)
-  const fatimaPromotion = await prisma.classPromotion.create({
+  await prisma.classPromotion.create({
     data: {
       tenantId: tenant.tenantId,
       studentProfileId: student2.id,
@@ -832,7 +832,7 @@ async function main() {
   console.log(`Promoted: Fatima Begum (Class 6 → Class 7)`);
 
   // Arjun Das - RETAINED (Failed in 2 subjects)
-  const arjunPromotion = await prisma.classPromotion.create({
+  await prisma.classPromotion.create({
     data: {
       tenantId: tenant.tenantId,
       studentProfileId: student3.id,
@@ -850,7 +850,7 @@ async function main() {
   console.log(`  RETAINED: Arjun Das (Class 6 → Class 6) - Failed in 2 subjects`);
 
   // Promote Amina Khatun (Good student from Class 7)
-  const aminaPromotion = await prisma.classPromotion.create({
+  await prisma.classPromotion.create({
     data: {
       tenantId: tenant.tenantId,
       studentProfileId: student4.id,

@@ -67,8 +67,9 @@ async function createWalletLedgerIfNeeded(
     // Serialize concurrent wallet credits for this student by locking their
     // StudentProfile row before the read-then-write, since a bare findFirst
     // (no row lock) on the ledger table would let two concurrent calls read
-    // the same stale `prevBal` and race on `balanceAfter`.
-    await tx.$queryRaw`SELECT id FROM "StudentProfile" WHERE id = ${params.studentProfileId} FOR UPDATE`;
+    // the same stale `prevBal` and race on `balanceAfter`. The tenantId
+    // predicate keeps the lock from being acquirable on another tenant's row.
+    await tx.$queryRaw`SELECT id FROM "StudentProfile" WHERE id = ${params.studentProfileId} AND "tenantId" = ${params.tenantId} FOR UPDATE`;
     const last = await (tx as any).studentWalletLedger?.findFirst?.({
       where: { tenantId: params.tenantId, studentProfileId: params.studentProfileId },
       orderBy: { createdAt: "desc" },

@@ -28,9 +28,12 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { RichTextField, renderRichText } from "@/components/ui/rich-text-field";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
@@ -66,7 +69,13 @@ interface SubQuestionItem {
 
 export default function QuestionBankPage() {
   const t = useTranslations();
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
+  const { user: authUser } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canReadExams = hasPermission(perms, "exams", "read");
+  const canWriteExams = hasPermission(perms, "exams", "write");
+  const canManageExams = hasPermission(perms, "exams", "manage");
 
   // Filters state
   const [filterClass, setFilterClass] = useState<string>("ALL");
@@ -304,9 +313,10 @@ export default function QuestionBankPage() {
     }
   };
 
+  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!classId || !subjectId || !questionText.trim()) {
+    if (!classId || !subjectId || !stripHtml(questionText)) {
       toast.error(t("questionBank.validationRequired"));
       return;
     }
@@ -320,10 +330,10 @@ export default function QuestionBankPage() {
       difficulty,
       bloomLevel,
       marks: Number(marks) || 1,
-      questionText: questionText.trim(),
-      stimulus: stimulus.trim() || null,
-      correctAnswer: correctAnswer.trim() || null,
-      explanation: explanation.trim() || null,
+      questionText: questionText,
+      stimulus: stimulus || null,
+      correctAnswer: correctAnswer || null,
+      explanation: explanation || null,
     };
 
     if (questionType === "MCQ") {
@@ -352,16 +362,30 @@ export default function QuestionBankPage() {
     HARD: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
   };
 
+  if (!canReadExams) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("questionBank.title")} description={t("questionBank.description")} />
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold">{tCommon("accessRestricted")}</h2>
+          <p className="text-sm text-muted-foreground mt-2">{tCommon("noPermission")}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("questionBank.title")}
         description={t("questionBank.description")}
       >
-        <Button onClick={handleOpenAdd} className="gap-2 shadow-sm font-semibold">
-          <Plus className="h-4 w-4" />
-          {t("questionBank.addQuestion")}
-        </Button>
+        {canWriteExams && (
+          <Button onClick={handleOpenAdd} className="gap-2 shadow-sm font-semibold">
+            <Plus className="h-4 w-4" />
+            {t("questionBank.addQuestion")}
+          </Button>
+        )}
       </PageHeader>
 
       {/* KPI Cards */}
@@ -516,16 +540,16 @@ export default function QuestionBankPage() {
                       </span>
                     </div>
 
-                    {/* Stimulus Context if present */}
+                    {/* Stimulus Context if present — rich text aware */}
                     {q.stimulus && (
                       <div className="p-3 bg-muted/40 rounded-md border-l-2 border-primary text-xs italic text-muted-foreground line-clamp-2">
-                        {q.stimulus}
+                        {renderRichText(q.stimulus) ? <span dangerouslySetInnerHTML={renderRichText(q.stimulus)!} /> : q.stimulus}
                       </div>
                     )}
 
-                    {/* Question text */}
+                    {/* Question text — rich text aware */}
                     <div className="text-sm font-medium text-foreground whitespace-pre-wrap">
-                      {q.questionText}
+                      {renderRichText(q.questionText) ? <span dangerouslySetInnerHTML={renderRichText(q.questionText)!} /> : q.questionText}
                     </div>
 
                     {/* MCQ preview snippet */}
@@ -575,24 +599,28 @@ export default function QuestionBankPage() {
                     >
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenEdit(q)}
-                      title={t("questionBank.editQuestion")}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(q.id)}
+                    {canWriteExams && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenEdit(q)}
+                        title={t("questionBank.editQuestion")}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                    {canManageExams && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(q.id)}
                       title={t("questionBank.deleteQuestion")}
                       className="h-8 w-8 p-0 hover:text-rose-600"
                     >
                       <Trash2 className="h-4 w-4 text-muted-foreground hover:text-rose-600" />
                     </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -724,33 +752,21 @@ export default function QuestionBankPage() {
             </div>
           </div>
 
-          {/* Stimulus / Passage (Optional or for Creative/Reading questions) */}
+          {/* Stimulus / Passage — rich text (bold/italic/underline) */}
           <div>
             <label className="text-xs font-semibold text-foreground mb-1 flex items-center justify-between">
               <span>{t("questionBank.stimulus")}</span>
               <span className="text-[10px] text-muted-foreground font-normal">{t("questionBank.optionalLabel")}</span>
             </label>
-            <Textarea
-              placeholder={t("questionBank.stimulusPlaceholder")}
-              value={stimulus}
-              onChange={(e) => setStimulus(e.target.value)}
-              rows={2}
-              className="text-xs font-normal"
-            />
+            <RichTextField value={stimulus} onChange={setStimulus} placeholder={t("questionBank.stimulusPlaceholder")} minHeight="64px" />
           </div>
 
-          {/* Main Question Text */}
+          {/* Main Question Text — rich text */}
           <div>
             <label className="text-xs font-semibold text-foreground mb-1 block">
               {t("questionBank.questionText")} *
             </label>
-            <Textarea
-              placeholder={t("questionBank.questionTextPlaceholder")}
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              rows={3}
-              required
-            />
+            <RichTextField value={questionText} onChange={setQuestionText} placeholder={t("questionBank.questionTextPlaceholder")} minHeight="90px" />
           </div>
 
           {/* MCQ Option Builder */}
@@ -846,31 +862,19 @@ export default function QuestionBankPage() {
             </div>
           )}
 
-          {/* Solution & Explanation */}
+          {/* Solution & Explanation — rich text */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-foreground mb-1 block">
                 {t("questionBank.correctAnswer")}
               </label>
-              <Textarea
-                placeholder={t("questionBank.answerPlaceholder")}
-                value={correctAnswer}
-                onChange={(e) => setCorrectAnswer(e.target.value)}
-                rows={2}
-                className="text-xs"
-              />
+              <RichTextField value={correctAnswer} onChange={setCorrectAnswer} placeholder={t("questionBank.answerPlaceholder")} minHeight="64px" />
             </div>
             <div>
               <label className="text-xs font-semibold text-foreground mb-1 block">
                 {t("questionBank.explanation")}
               </label>
-              <Textarea
-                placeholder={t("questionBank.explanationPlaceholder")}
-                value={explanation}
-                onChange={(e) => setExplanation(e.target.value)}
-                rows={2}
-                className="text-xs"
-              />
+              <RichTextField value={explanation} onChange={setExplanation} placeholder={t("questionBank.explanationPlaceholder")} minHeight="64px" />
             </div>
           </div>
 
@@ -913,12 +917,12 @@ export default function QuestionBankPage() {
                   <div className="font-bold uppercase text-[10px] text-muted-foreground not-italic mb-1">
                     {t("questionBank.stimulusLabel")}
                   </div>
-                  {previewQuestion.stimulus}
+                  {renderRichText(previewQuestion.stimulus) ? <span dangerouslySetInnerHTML={renderRichText(previewQuestion.stimulus)!} /> : previewQuestion.stimulus}
                 </div>
               )}
 
               <div className="text-sm font-semibold text-foreground whitespace-pre-wrap">
-                {previewQuestion.questionText}
+                {renderRichText(previewQuestion.questionText) ? <span dangerouslySetInnerHTML={renderRichText(previewQuestion.questionText)!} /> : previewQuestion.questionText}
               </div>
 
               {previewQuestion.type === "MCQ" && Array.isArray(previewQuestion.options) && (
@@ -959,7 +963,7 @@ export default function QuestionBankPage() {
                   <span className="font-bold text-emerald-700 dark:text-emerald-400 block mb-0.5">
                     {t("questionBank.solutionKeyLabel")}
                   </span>
-                  {previewQuestion.correctAnswer}
+                  {renderRichText(previewQuestion.correctAnswer) ? <span dangerouslySetInnerHTML={renderRichText(previewQuestion.correctAnswer)!} /> : previewQuestion.correctAnswer}
                 </div>
               )}
             </div>

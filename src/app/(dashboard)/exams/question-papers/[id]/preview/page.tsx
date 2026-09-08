@@ -8,21 +8,18 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Printer,
   ArrowLeft,
-  FileCheck,
   Eye,
   EyeOff,
-  Clock,
-  Award,
-  BookOpen,
-  School,
   CheckCircle2,
-  HelpCircle,
-  Sparkles,
+  FileDown,
+  Edit3,
+  Lock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { exportElementToHighResPDF, triggerPrintWindow } from "@/lib/question-paper-studio/pdf-export";
+import { toast } from "sonner";
 
 export default function QuestionPaperPreviewPage() {
   const t = useTranslations();
@@ -31,6 +28,7 @@ export default function QuestionPaperPreviewPage() {
 
   // Toggle between Student Exam Sheet and Teacher Solution Key
   const [showSolutions, setShowSolutions] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch paper details with fully hydrated sections
   const { data: paperData, isLoading } = useQuery({
@@ -46,7 +44,29 @@ export default function QuestionPaperPreviewPage() {
   const paper = paperData?.data;
 
   const handlePrint = () => {
-    window.print();
+    triggerPrintWindow("question-paper-print-sheet");
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    const toastId = toast.loading("300 DPI হাই-রেজোলিউশন PDF প্রস্তুত হচ্ছে...");
+    try {
+      const sanitizedName = (paper?.title || "Exam-Paper").replace(/[^a-zA-Z0-9\u0980-\u09FF-]/g, "_");
+      const result = await exportElementToHighResPDF("question-paper-print-sheet", {
+        fileName: `${sanitizedName}.pdf`,
+        scale: 2.5,
+      });
+
+      if (result.success) {
+        toast.success("PDF সফলভাবে ডাউনলোড হয়েছে", { id: toastId });
+      } else {
+        toast.error(result.error || "PDF তৈরিতে সমস্যা হয়েছে", { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "PDF এক্সপোর্টে ত্রুটি হয়েছে", { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (isLoading) {
@@ -92,6 +112,26 @@ export default function QuestionPaperPreviewPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {paper.isLocked && (
+            <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400 text-xs gap-1">
+              <Lock className="h-3 w-3" />
+              লক করা (Results Published)
+            </Badge>
+          )}
+
+          {!paper.isLocked && (
+            <Link href={`/exams/question-papers/${id}/edit`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+                {t("common.edit") || "সম্পাদনা"}
+              </Button>
+            </Link>
+          )}
+
           <Button
             variant={showSolutions ? "secondary" : "outline"}
             size="sm"
@@ -104,13 +144,16 @@ export default function QuestionPaperPreviewPage() {
 
           <Button onClick={handlePrint} size="sm" className="gap-2 font-bold shadow-md">
             <Printer className="h-4 w-4" />
-            {t("questionPapers.print.printButton")}
+            {t("questionPapers.print.printButton") || "প্রিন্ট / PDF"}
           </Button>
         </div>
       </div>
 
       {/* Official Examination Paper Sheet Container */}
-      <div className="bg-white text-black p-8 sm:p-12 rounded-lg border border-border shadow-lg print:border-none print:shadow-none print:p-0 print:m-0 font-serif leading-relaxed">
+      <div
+        id="question-paper-print-sheet"
+        className="bg-white text-black p-8 sm:p-12 rounded-lg border border-border shadow-lg print:border-none print:shadow-none print:p-0 print:m-0 font-serif leading-relaxed"
+      >
         {/* School Header */}
         <div className="text-center border-b-2 border-black pb-4 mb-6 space-y-1">
           <h2 className="text-2xl font-bold uppercase tracking-wide text-black font-sans">
@@ -170,32 +213,34 @@ export default function QuestionPaperPreviewPage() {
 
         {/* Sections */}
         <div className="space-y-8">
-          {sections.map((sec: any, sIdx: number) => {
+          {sections.map((sec: any) => {
             const questions = sec.questions || [];
 
             return (
-              <div key={sec.id} className="space-y-4">
+              <div key={sec.sectionId || sec.id} className="space-y-4">
                 {/* Section Title & Marks */}
                 <div className="border-b border-gray-400 pb-1 flex justify-between items-baseline">
                   <div>
                     <h4 className="font-bold text-sm uppercase tracking-wide font-sans">
                       {sec.title}
                     </h4>
-                    {sec.instructions && (
+                    {(sec.subTitle || sec.instructions) && (
                       <p className="text-xs text-gray-700 font-sans italic pt-0.5">
-                        {sec.instructions}
+                        {sec.subTitle || sec.instructions}
                       </p>
                     )}
                   </div>
-                  <span className="font-mono text-xs font-bold font-sans">
-                    [{sec.totalMarks} {t("questionPapers.print.marks")}]
-                  </span>
+                  {sec.totalMarks !== undefined && (
+                    <span className="font-mono text-xs font-bold font-sans">
+                      [{sec.totalMarks} {t("questionPapers.print.marks")}]
+                    </span>
+                  )}
                 </div>
 
                 {/* Section Questions */}
                 <div className="space-y-5">
                   {questions.map((q: any, qIdx: number) => (
-                    <div key={q.id} className="space-y-2 text-xs leading-relaxed">
+                    <div key={q.id || qIdx} className="space-y-2 text-xs leading-relaxed">
                       {/* Stimulus Passage if present */}
                       {q.stimulus && (
                         <div className="p-3 bg-gray-50 border-l-2 border-black text-xs italic font-serif my-2 text-gray-900">
@@ -209,16 +254,39 @@ export default function QuestionPaperPreviewPage() {
                       {/* Main Question Line */}
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1">
-                          <span className="font-bold font-sans mr-2">Q{qIdx + 1}.</span>
+                          <span className="font-bold font-sans mr-2">{q.qNumber || qIdx + 1}.</span>
                           <span className="font-medium text-black text-sm">{q.questionText}</span>
                         </div>
-                        <span className="font-mono text-xs font-bold shrink-0">
-                          [{q.marks}]
-                        </span>
+                        {q.marks !== undefined && (
+                          <span className="font-mono text-xs font-bold shrink-0">
+                            [{q.marks}]
+                          </span>
+                        )}
                       </div>
 
                       {/* MCQ Options Display */}
-                      {q.type === "MCQ" && Array.isArray(q.options) && (
+                      {Array.isArray(q.mcqOptions) && q.mcqOptions.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pl-6 pt-1 font-sans text-xs">
+                          {q.mcqOptions.map((opt: string, optIdx: number) => (
+                            <div
+                              key={optIdx}
+                              className={`p-1.5 rounded flex items-center gap-1.5 ${
+                                showSolutions && q.mcqCorrectIndex === optIdx
+                                  ? "bg-emerald-100 text-emerald-900 font-bold border border-emerald-400"
+                                  : "text-gray-900"
+                              }`}
+                            >
+                              <span className="font-bold font-mono">
+                                ({['ক', 'খ', 'গ', 'ঘ'][optIdx] || optIdx + 1})
+                              </span>
+                              <span>{opt}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Legacy Options Array */}
+                      {!q.mcqOptions && Array.isArray(q.options) && (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pl-6 pt-1 font-sans text-xs">
                           {q.options.map((opt: any) => (
                             <div
@@ -236,8 +304,73 @@ export default function QuestionPaperPreviewPage() {
                         </div>
                       )}
 
+                      {/* Polynomial Statements */}
+                      {Array.isArray(q.polynomialStatements) && (
+                        <div className="pl-6 space-y-0.5 text-xs text-gray-900">
+                          {q.polynomialStatements.map((stmt: string, sIdx: number) => (
+                            <div key={sIdx} className="flex items-baseline gap-1.5">
+                              <span className="font-serif font-medium">{['i.', 'ii.', 'iii.'][sIdx] || `${sIdx + 1}.`}</span>
+                              <span>{stmt}</span>
+                            </div>
+                          ))}
+                          {q.polynomialQuestionText && (
+                            <div className="font-medium pt-1">{q.polynomialQuestionText}</div>
+                          )}
+                        </div>
+                      )}
+
                       {/* NCTB Creative (CQ) Sub-Questions Display */}
-                      {q.type === "CREATIVE_NCTB" && Array.isArray(q.subQuestions) && (
+                      {q.cqParts && (
+                        <div className="space-y-1.5 pl-6 pt-1">
+                          {q.cqParts.ka?.text && (
+                            <div className="flex justify-between items-baseline text-xs text-gray-900">
+                              <div>
+                                <span className="font-bold mr-2">(ক)</span>
+                                <span>{q.cqParts.ka.text}</span>
+                              </div>
+                              <span className="font-mono font-semibold text-[11px]">
+                                [{q.cqParts.ka.marks || 1}]
+                              </span>
+                            </div>
+                          )}
+                          {q.cqParts.kha?.text && (
+                            <div className="flex justify-between items-baseline text-xs text-gray-900">
+                              <div>
+                                <span className="font-bold mr-2">(খ)</span>
+                                <span>{q.cqParts.kha.text}</span>
+                              </div>
+                              <span className="font-mono font-semibold text-[11px]">
+                                [{q.cqParts.kha.marks || 2}]
+                              </span>
+                            </div>
+                          )}
+                          {q.cqParts.ga?.text && (
+                            <div className="flex justify-between items-baseline text-xs text-gray-900">
+                              <div>
+                                <span className="font-bold mr-2">(গ)</span>
+                                <span>{q.cqParts.ga.text}</span>
+                              </div>
+                              <span className="font-mono font-semibold text-[11px]">
+                                [{q.cqParts.ga.marks || 3}]
+                              </span>
+                            </div>
+                          )}
+                          {q.cqParts.gha?.text && (
+                            <div className="flex justify-between items-baseline text-xs text-gray-900">
+                              <div>
+                                <span className="font-bold mr-2">(ঘ)</span>
+                                <span>{q.cqParts.gha.text}</span>
+                              </div>
+                              <span className="font-mono font-semibold text-[11px]">
+                                [{q.cqParts.gha.marks || 4}]
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Legacy subQuestions */}
+                      {!q.cqParts && Array.isArray(q.subQuestions) && (
                         <div className="space-y-1.5 pl-6 pt-1">
                           {q.subQuestions.map((sq: any) => (
                             <div
@@ -261,7 +394,7 @@ export default function QuestionPaperPreviewPage() {
                         <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-300 rounded text-xs font-sans text-emerald-950 space-y-1">
                           <div className="font-bold flex items-center gap-1.5 text-emerald-800">
                             <CheckCircle2 className="h-3.5 w-3.5" />
-                            {t("questionPapers.solutionKeyAnswer")} {q.correctAnswer || t("questionPapers.referTextbook")}
+                            {t("questionPapers.solutionKeyAnswer")} {q.correctAnswer || q.notesForExaminer || t("questionPapers.referTextbook")}
                           </div>
                           {q.explanation && (
                             <div className="text-[11px] text-emerald-900 italic">

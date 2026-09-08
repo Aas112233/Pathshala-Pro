@@ -29,7 +29,11 @@ const directFeeCollectionSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    // Cash-box gate. The module tier cannot express it: PRINCIPAL legitimately
+    // holds fees:{manage} (waiver approval), which would otherwise let the
+    // academic head take payments. `fees:payment:collect` is the capability
+    // the role matrix actually defines for that.
+    const access = await requireApiAccess(request, { permission: "fees:payment:collect" });
     if ("response" in access) return access.response;
 
     const { user, tenantId } = access.authContext;

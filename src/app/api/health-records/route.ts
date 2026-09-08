@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, paginatedResponse, validationError, handleApiError, badRequest } from "@/lib/api-response";
 import { createHealthRecordSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
@@ -23,6 +23,13 @@ export async function GET(request: NextRequest) {
       ];
     }
     const skip = (page - 1) * limit;
+    // C1 self-scoping: a STUDENT/PARENT token must only reach their own
+    // linked students' medical records — this is the highest-sensitivity PII
+    // surface, so there is no fallthrough to the tenant-wide query.
+    const selfScope = await getSelfScopedStudentProfileIds(access.authContext);
+    if (selfScope) {
+      where.studentProfileId = { in: selfScope };
+    }
     const [totalCount, data] = await Promise.all([
       prisma.healthRecord.count({ where }),
       prisma.healthRecord.findMany({

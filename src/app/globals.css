@@ -221,3 +221,69 @@ html[lang="bn"] .font-mono,
     font-family: var(--font-sans);
   }
 }
+
+@layer utilities {
+  .font-bangla-hind {
+    font-family: 'Hind Siliguri', sans-serif;
+  }
+  .font-bangla-tiro {
+    font-family: 'Tiro Bangla', serif;
+  }
+  .font-bangla-noto {
+    font-family: 'Noto Serif Bengali', serif;
+  }
+  .font-bangla-anek {
+    font-family: 'Anek Bangla', sans-serif;
+  }
+  .font-arabic-amiri {
+    font-family: 'Amiri', serif;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .no-print,
+  nav,
+  aside,
+  header,
+  [data-sidebar],
+  button:not(.print-include) {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-paper-page,
+  #exam-paper-canvas-root,
+  #question-paper-print-sheet {
+    box-shadow: none !important;
+    border-color: #000000 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  [id^="question-card-"],
+  .question-item-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

@@ -14,6 +14,7 @@ import { usePDFExport, type FeeVoucherPDFData } from "@/hooks/use-pdf-export";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { toast } from "sonner";
 import { ACADEMIC_MONTHS } from "@/lib/constants";
+import { addCurrency, roundCurrency } from "@/lib/math-utils";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -125,7 +126,7 @@ export default function FeeCollectionPage() {
   });
   const recentTransactions = (recentTxData as any)?.data ?? [];
   const todayTotalCollected = recentTransactions.reduce(
-    (sum: number, tx: any) => sum + (tx.amountPaid || 0),
+    (sum: number, tx: any) => addCurrency(sum, tx.amountPaid || 0),
     0
   );
 
@@ -188,11 +189,11 @@ export default function FeeCollectionPage() {
   const annualCalculations = useMemo(() => {
     const baseMonthly = standardMonthlyFee > 0 ? standardMonthlyFee : 2500;
     const totalPaid = allStudentVouchers.reduce(
-      (s: number, v: any) => s + (v.amountPaid || 0),
+      (s: number, v: any) => addCurrency(s, v.amountPaid || 0),
       0
     );
-    const annualTotalDue = baseMonthly * 12;
-    const remainingDue = Math.max(0, annualTotalDue - totalPaid);
+    const annualTotalDue = roundCurrency(baseMonthly * 12);
+    const remainingDue = roundCurrency(Math.max(0, annualTotalDue - totalPaid));
     const paidMonthsCount = Math.min(12, Math.floor(totalPaid / baseMonthly));
     const unpaidMonthsCount = Math.max(0, 12 - paidMonthsCount);
 
@@ -211,7 +212,7 @@ export default function FeeCollectionPage() {
     if (unpaidVouchers.length > 0) {
       return unpaidVouchers
         .filter((v: any) => selectedVoucherIds.includes(v.id))
-        .reduce((sum: number, v: any) => sum + (v.balance || 0), 0);
+        .reduce((sum: number, v: any) => addCurrency(sum, v.balance || 0), 0);
     }
     return annualCalculations.baseMonthly;
   }, [unpaidVouchers, selectedVoucherIds, annualCalculations.baseMonthly]);
@@ -265,8 +266,12 @@ export default function FeeCollectionPage() {
 
   const handlePrint3PartChallan = (voucher: any) => {
     const pdfData: FeeVoucherPDFData = {
-      schoolName: "Pathshala Pro Academy",
-      currencySymbol: currencySymbol || "$",
+      // School identity must come from tenant settings — a challan PDF bearing
+      // another institution's name is a data-integrity and branding failure.
+      schoolName: settings.name || "School",
+      schoolCode: settings.schoolCode,
+      schoolAddress: settings.address,
+      currencySymbol: currencySymbol || settings.currencySymbol || "$",
       voucherId: voucher.voucherId || `VOUCH-${voucher.id.slice(0, 8)}`,
       issueDate: formatDate(voucher.createdAt || new Date()),
       dueDate: formatDate(voucher.dueDate || new Date()),
@@ -280,6 +285,7 @@ export default function FeeCollectionPage() {
       baseAmount: voucher.baseAmount || voucher.totalDue || 0,
       discountAmount: voucher.discountAmount || 0,
       arrears: voucher.arrears || 0,
+      lateFine: voucher.lateFine || 0,
       totalDue: voucher.totalDue || voucher.balance || 0,
     };
 
@@ -289,7 +295,10 @@ export default function FeeCollectionPage() {
 
   const payNum = parseFloat(paymentAmount) || 0;
   const cashNum = parseFloat(cashTendered) || 0;
-  const changeDue = Math.max(0, cashNum - payNum);
+  // Cents-precise change: 10.1 - 10 floats to 0.09999999999999964, which a
+  // rupee/paisa display would render as 0.10 anyway but a comparison or
+  // receipt total would not.
+  const changeDue = Math.max(0, roundCurrency(cashNum - payNum));
 
   const { settings } = useTenantSettings();
   const configuredMethods = useMemo(() => {

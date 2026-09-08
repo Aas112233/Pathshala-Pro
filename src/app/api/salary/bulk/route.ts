@@ -17,7 +17,7 @@ import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
  */
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    const access = await requireApiAccess(request, { permission: "payroll:disburse" });
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;

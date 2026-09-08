@@ -9,6 +9,7 @@ import {
 import { updateClassFeeStructureSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { integrityViolation, lockedUpdateMessage, buildLockedFieldsDetails } from "@/lib/data-integrity";
+import { addCurrency } from "@/lib/math-utils";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -82,8 +83,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const sportsFee = data.sportsFee !== undefined ? data.sportsFee : existing.sportsFee;
     const libraryFee = data.libraryFee !== undefined ? data.libraryFee : existing.libraryFee;
     const otherFee = data.otherFee !== undefined ? data.otherFee : existing.otherFee;
-    const totalMonthlyFee =
-      tuitionFee + labFee + computerFee + examFee + sportsFee + libraryFee + otherFee;
+    const totalMonthlyFee = addCurrency(
+      tuitionFee, labFee, computerFee, examFee, sportsFee, libraryFee, otherFee,
+    );
 
     const updated = await prisma.classFeeStructure.update({
       where: { id },

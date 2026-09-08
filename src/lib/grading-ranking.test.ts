@@ -3,9 +3,21 @@ import {
   calculateClassMeritRankings,
   calculateGradeFromPercentage,
   formatRankLabel,
+  formatClassMeritRollNumber,
 } from "@/lib/grading";
 
 describe("Examinations & Class Merit Ranking Suite", () => {
+  describe("Class Merit Roll Number Formatting", () => {
+    it("formats Class 1 Rank 1 as C1-R1 and handles string and number class identifiers", () => {
+      expect(formatClassMeritRollNumber(1, 1)).toBe("C1-R1");
+      expect(formatClassMeritRollNumber(1, 2)).toBe("C1-R2");
+      expect(formatClassMeritRollNumber(2, 1)).toBe("C2-R1");
+      expect(formatClassMeritRollNumber(10, 15)).toBe("C10-R15");
+      expect(formatClassMeritRollNumber("Class 5", 3)).toBe("C5-R3");
+      expect(formatClassMeritRollNumber("Class 9", 1)).toBe("C9-R1");
+    });
+  });
+
   describe("Rank Label Formatting", () => {
     it("formats 1st, 2nd, 3rd, 4th through 13th correctly", () => {
       expect(formatRankLabel(1)).toBe("1st");

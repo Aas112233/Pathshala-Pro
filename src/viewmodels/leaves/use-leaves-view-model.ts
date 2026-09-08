@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 import { apiPost, apiPut, apiDelete } from "@/lib/api-fetch";
 
 export function useLeavesViewModel(filters: { search?: string; status?: string; applicantType?: string; page?: number } = {}) {
@@ -35,7 +35,7 @@ export function useLeavesViewModel(filters: { search?: string; status?: string; 
     mutationFn: (p: any) => apiPost("/api/leaves", p),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leaves"] });
-      toast.success("Leave request submitted");
+      toast.success(t("createSuccess"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });
@@ -44,7 +44,7 @@ export function useLeavesViewModel(filters: { search?: string; status?: string; 
     mutationFn: ({ id, ...p }: any) => apiPut(`/api/leaves/${id}`, p),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leaves"] });
-      toast.success("Leave updated");
+      toast.success(t("updateSuccess"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });
@@ -53,7 +53,7 @@ export function useLeavesViewModel(filters: { search?: string; status?: string; 
     mutationFn: (id: string) => apiDelete(`/api/leaves/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["leaves"] });
-      toast.success("Leave deleted");
+      toast.success(t("deleteSuccess"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });

@@ -1,11 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { smartRateLimitAsync, recordRateLimitFailureAsync } from "@/lib/rate-limit";
+
+/** Client IP for rate-limit keys, behind common proxies. */
+function clientIp(request: NextRequest): string {
+  const fwd = request.headers.get("x-forwarded-for");
+  return (fwd?.split(",")[0]?.trim() || request.headers.get("real-ip") || "unknown").slice(0, 100);
+}
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Public, unauthenticated endpoint returning student identity — the
+    // classic enumeration target. Cap per-IP lookups and escalate the
+    // penalty on misses so scanners self-throttle.
+    const limitKey = `CERT_VERIFY_IP_${clientIp(request)}`;
+    const rl = await smartRateLimitAsync(limitKey, { preset: "public", limit: 20 });
+    if (!rl.success) {
+      return NextResponse.json(
+        { success: false, message: "Too many verification attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+      );
+    }
+
     const { id } = await params;
     if (!id) return NextResponse.json({ success: false, message: "Certificate identifier required" }, { status: 400 });
 
@@ -29,6 +48,7 @@ export async function GET(
     }
 
     if (!cert) {
+      await recordRateLimitFailureAsync(limitKey, 8);
       return NextResponse.json({ success: false, message: "Certificate not found", verified: false }, { status: 404 });
     }
 

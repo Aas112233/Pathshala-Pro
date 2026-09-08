@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { TenantSettingsProvider } from "@/components/providers/tenant-settings-provider";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
+import { UnsavedChangesProvider } from "@/providers/unsaved-changes-provider";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageTitleUpdater } from "@/components/layout/page-title-updater";
@@ -64,7 +65,7 @@ export default async function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Tiro+Bangla:ital@0;1&display=swap"
           rel="stylesheet"
         />
       </head>
@@ -75,9 +76,17 @@ export default async function RootLayout({
               <TenantSettingsProvider>
                 <QueryProvider>
                   <ErrorBoundary>
-                    <PageTitleUpdater />
-                    {children}
-                    <Toaster richColors position="top-right" />
+                    <UnsavedChangesProvider>
+                      <PageTitleUpdater />
+                      {children}
+                      <Toaster
+                        richColors
+                        position="top-right"
+                        closeButton
+                        duration={3500}
+                        visibleToasts={3}
+                      />
+                    </UnsavedChangesProvider>
                   </ErrorBoundary>
                 </QueryProvider>
               </TenantSettingsProvider>

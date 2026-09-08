@@ -74,10 +74,31 @@ export async function GET(request: NextRequest) {
       nextClassMap = new Map(nextClasses.map((c) => [c.id, c]));
     }
 
-    const rulesWithNextClass = rules.map((r) => ({
-      ...r,
-      nextClass: r.nextClassId ? nextClassMap.get(r.nextClassId) || null : null,
-    }));
+    // Check historical promotions count for each rule's class + academicYear
+    const historicalPromotions = await prisma.classPromotion.groupBy({
+      by: ["fromClassId", "fromAcademicYearId"],
+      where: {
+        tenantId,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const promoMap = new Map<string, number>();
+    historicalPromotions.forEach((hp) => {
+      promoMap.set(`${hp.fromClassId}_${hp.fromAcademicYearId}`, hp._count.id);
+    });
+
+    const rulesWithNextClass = rules.map((r) => {
+      const historicalCount = promoMap.get(`${r.classId}_${r.academicYearId}`) || 0;
+      return {
+        ...r,
+        nextClass: r.nextClassId ? nextClassMap.get(r.nextClassId) || null : null,
+        isLocked: historicalCount > 0,
+        historicalPromotionCount: historicalCount,
+      };
+    });
 
     return successResponse(rulesWithNextClass, "Promotion rules retrieved successfully");
   } catch (error) {

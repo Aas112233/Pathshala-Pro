@@ -14,6 +14,7 @@ interface StudentCardProps {
   student: StudentProfile;
   onEdit?: (student: StudentProfile) => void;
   onView?: (student: StudentProfile) => void;
+  onViewPerformance?: (student: StudentProfile) => void;
   onDelete?: (student: StudentProfile) => void;
   className?: string;
 }
@@ -22,6 +23,7 @@ export function StudentCard({
   student,
   onEdit,
   onView,
+  onViewPerformance,
   onDelete,
   className,
 }: StudentCardProps) {
@@ -45,6 +47,7 @@ export function StudentCard({
             student={student}
             onEdit={onEdit}
             onView={onView}
+            onViewPerformance={onViewPerformance}
             onDelete={onDelete}
           />
         </div>

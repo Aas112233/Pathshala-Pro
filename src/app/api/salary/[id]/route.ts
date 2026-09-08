@@ -74,7 +74,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const access = await requireApiAccess(request);
+    const access = await requireApiAccess(request, { permission: "payroll:process" });
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;

@@ -20,7 +20,7 @@ import { computeStackedConcession, prorateMonthlyFee } from "@/lib/fee-service";
  */
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    const access = await requireApiAccess(request, { permission: "fees:invoice:create" });
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLogin } from "@/hooks/use-queries";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -73,7 +72,6 @@ function getBengaliDate(date: Date) {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const t = useTranslations("auth");
   const loginMutation = useLogin();
   const { login } = useAuth();
@@ -130,7 +128,11 @@ export default function LoginPage() {
         if (!result.error) {
           login(result.data.user);
           toast.success(t("welcomeToast"));
-          router.push("/");
+          // The auth token is an HTTP-only cookie set by the completed login
+          // response. Use a full replacement so the dashboard is rendered with
+          // the fresh server session instead of racing the AuthProvider's
+          // client-side redirect.
+          window.location.replace("/");
         }
       } catch (error) {
         const message =

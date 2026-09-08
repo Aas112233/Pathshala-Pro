@@ -70,7 +70,7 @@ describe("Zod Validation Schemas", () => {
       expect(parsed.success).toBe(true);
     });
 
-    it("requires firstName, lastName, guardianName, guardianContact, and rollNumber", () => {
+    it("requires firstName, lastName, guardianName, and guardianContact", () => {
       const empty = {};
       const parsed = createStudentSchema.safeParse(empty);
       expect(parsed.success).toBe(false);
@@ -80,7 +80,6 @@ describe("Zod Validation Schemas", () => {
         expect(fields).toContain("lastName");
         expect(fields).toContain("guardianName");
         expect(fields).toContain("guardianContact");
-        expect(fields).toContain("rollNumber");
       }
     });
   });

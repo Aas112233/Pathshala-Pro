@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 
 export function useCertificatesViewModel(search = "", certificateType = "", status = "", page = 1) {
   const t = useTranslations("certificates");
@@ -42,7 +42,7 @@ export function useCertificatesViewModel(search = "", certificateType = "", stat
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["certificates"] });
-      toast.success("Certificate issued");
+      toast.success(t("createSuccess"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });
@@ -61,7 +61,7 @@ export function useCertificatesViewModel(search = "", certificateType = "", stat
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["certificates"] });
-      toast.success("Certificate updated");
+      toast.success(t("updateSuccess"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });
@@ -75,7 +75,7 @@ export function useCertificatesViewModel(search = "", certificateType = "", stat
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["certificates"] });
-      toast.success("Certificate deleted");
+      toast.success(t("deleteSuccess"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });

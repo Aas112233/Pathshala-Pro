@@ -52,14 +52,15 @@ export class ExcelExporter {
   private workbook: Workbook;
   private worksheet: Worksheet;
 
-  constructor() {
+  constructor(sheetName = "Report") {
     this.workbook = new ExcelJS.Workbook();
     this.workbook.creator = "Pathshala Pro";
     this.workbook.lastModifiedBy = "Pathshala Pro Report System";
     this.workbook.created = new Date();
     this.workbook.modified = new Date();
-    
-    this.worksheet = this.workbook.addWorksheet("Report");
+    // Sanitize sheet name: Excel limits 31 chars, no * ? : / \ [ ]
+    const safe = sheetName.replace(/[*?:\/\\\[\]]/g, "").slice(0, 31) || "Report";
+    this.worksheet = this.workbook.addWorksheet(safe);
   }
 
   async generate(options: ExcelExportOptions): Promise<Uint8Array> {
@@ -75,6 +76,12 @@ export class ExcelExporter {
   }
 
   private setupWorksheet(options: ExcelExportOptions) {
+    // UTF-8 sheet name, sanitize for Excel 31-char + invalid chars
+    const safeName = options.title.replace(/[*?:\/\\\[\]]/g, "").slice(0, 31) || "Report";
+    try {
+      // @ts-ignore — exceljs allows rename
+      if (this.worksheet.name !== safeName) this.worksheet.name = safeName;
+    } catch {}
     // Set page setup for print
     this.worksheet.pageSetup = {
       paperSize: 9, // A4
@@ -287,11 +294,11 @@ export class ExcelExporter {
           right: { style: "thin", color: { argb: `FF${COLORS.border}` } },
         };
 
-        // Apply number formatting
+        // Apply number formatting — currency agnostic (symbol from header, not hardcoded ₹)
         if (col.style === "number") {
           cell.numFmt = "#,##0";
         } else if (col.style === "currency") {
-          cell.numFmt = "₹#,##0.00";
+          cell.numFmt = "#,##0.00";
         } else if (col.style === "percentage") {
           cell.numFmt = "0.00%";
         } else if (col.style === "date") {

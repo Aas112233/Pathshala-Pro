@@ -318,6 +318,14 @@ export function formatRankLabel(rank: number): string {
   return `${rank}th`;
 }
 
+/** Format Class & Merit Rank roll number (e.g. Class 1 Rank 1 -> C1-R1) */
+export function formatClassMeritRollNumber(classNumberOrName: number | string, rank: number): string {
+  const classNum = typeof classNumberOrName === "number" && classNumberOrName > 0
+    ? classNumberOrName
+    : (typeof classNumberOrName === "string" ? parseInt(classNumberOrName.replace(/\D/g, ""), 10) || 1 : 1);
+  return `C${classNum}-R${rank}`;
+}
+
 export function calculateClassMeritRankings(
   studentsData: Array<{
     studentProfileId: string;

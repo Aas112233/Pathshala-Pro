@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { studentsApi } from "@/lib/api-client";
 import type { PaginationParams } from "@/types/api";
 import type { StudentProfile } from "@/types/entities";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 
 export type StudentViewMode = "table" | "grid";
-export type StudentStatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "SUSPENDED";
+// Aligned with Prisma StudentStatus: ACTIVE | INACTIVE | GRADUATED | TRANSFERRED
+export type StudentStatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED" | "SUSPENDED";
 
 export interface StudentFilters {
   search: string;
@@ -24,6 +25,7 @@ export interface StudentViewModel {
   // State
   students: StudentProfile[];
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
   pagination: {
     currentPage: number;
@@ -38,22 +40,34 @@ export interface StudentViewModel {
   filters: StudentFilters;
   viewMode: StudentViewMode;
   selectedStudent: StudentProfile | null;
+  page: number;
+  pageSize: number;
+  sortBy: string;
+  sortOrder: "asc" | "desc";
+  selectedIds: Set<string>;
 
   // Actions
   setFilters: (filters: Partial<StudentFilters>) => void;
+  resetFilters: () => void;
   setViewMode: (mode: StudentViewMode) => void;
   setPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  setSort: (by: string, order?: "asc" | "desc") => void;
   setSelectedStudent: (student: StudentProfile | null) => void;
+  toggleSelect: (id: string) => void;
+  toggleSelectAll: () => void;
+  clearSelection: () => void;
   refresh: () => void;
 
   // CRUD Operations
   createStudent: (data: CreateStudentDTO) => Promise<void>;
   updateStudent: (id: string, data: UpdateStudentDTO) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
+  bulkDelete: (ids: string[]) => Promise<void>;
 }
 
 export interface CreateStudentDTO {
-  rollNumber: string;
+  rollNumber?: string;
   firstName: string;
   lastName: string;
   firstNameBn?: string;
@@ -81,26 +95,82 @@ export interface UpdateStudentDTO extends Partial<CreateStudentDTO> {
   id: string;
 }
 
+const DEFAULT_FILTERS: StudentFilters = {
+  search: "",
+  status: "ALL",
+  gender: "ALL",
+  classId: "",
+  sectionId: "",
+  groupId: "",
+};
+
+function useDebounced<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function useStudentViewModel(): StudentViewModel {
   const t = useTranslations("students");
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(20);
   const [viewMode, setViewMode] = useState<StudentViewMode>("table");
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
-  const [filters, setFiltersState] = useState<StudentFilters>({
-    search: "",
-    status: "ALL",
-    gender: "ALL",
-    classId: "",
-    sectionId: "",
-    groupId: "",
-  });
+  const [filters, setFiltersState] = useState<StudentFilters>({ ...DEFAULT_FILTERS });
+  const [sortBy] = useState("createdAt");
+  const [sortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const debouncedSearch = useDebounced(filters.search, 300);
 
   const setFilters = useCallback((newFilters: Partial<StudentFilters>) => {
-    setFiltersState((prev) => ({ ...prev, ...newFilters }));
-    setPage(1); // Reset to first page when filters change
+    setFiltersState((prev) => {
+      const next = { ...prev, ...newFilters };
+      // Cascading: Class → Section/Group reset
+      if (newFilters.classId !== undefined && newFilters.classId !== prev.classId) {
+        if (!newFilters.sectionId) next.sectionId = "";
+        if (!newFilters.groupId) next.groupId = "";
+      }
+      return next;
+    });
+    setPage(1);
   }, []);
 
+  const resetFilters = useCallback(() => {
+    setFiltersState({ ...DEFAULT_FILTERS });
+    setPage(1);
+    setSelectedIds(new Set());
+  }, []);
+
+  const setPageSize = useCallback((size: number) => {
+    setPageSizeState(size);
+    setPage(1);
+  }, []);
+
+  const setSort = useCallback((_by: string, _order?: "asc" | "desc") => {
+    // ponytail: sort wiring ready, backend sortBy support to be added when API supports it
+  }, []);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    // filled in after students loaded
+  }, []);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // Deterministic queryKey per AGENTS rule 7
   const queryKey = useMemo(() => {
     const filterParams: Record<string, string> = {};
     if (filters.status !== "ALL") filterParams.status = filters.status;
@@ -112,16 +182,19 @@ export function useStudentViewModel(): StudentViewModel {
       "students",
       {
         page,
-        limit: 20,
-        search: filters.search || undefined,
+        limit: pageSize,
+        search: debouncedSearch || undefined,
+        sortBy,
+        sortOrder,
         ...(Object.keys(filterParams).length && { filters: filterParams }),
       },
     ];
-  }, [page, filters.search, filters.status, filters.gender, filters.classId, filters.sectionId, filters.groupId]);
+  }, [page, pageSize, debouncedSearch, filters.status, filters.gender, filters.classId, filters.sectionId, filters.groupId, sortBy, sortOrder]);
 
   const {
     data,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useQuery({
@@ -135,22 +208,32 @@ export function useStudentViewModel(): StudentViewModel {
       if (filters.groupId) filterParams.groupId = filters.groupId;
       return studentsApi.list({
         page,
-        limit: 20,
-        search: filters.search || undefined,
+        limit: pageSize,
+        search: debouncedSearch || undefined,
+        sortBy,
+        sortOrder,
         ...(Object.keys(filterParams).length && { filters: filterParams }),
       } as PaginationParams);
     },
+    placeholderData: (prev) => prev,
   });
 
   const students = useMemo(
-    () => (data && "data" in data ? data.data : []),
+    () => (data && "data" in data ? (data.data as StudentProfile[]) : []),
     [data]
   );
 
   const pagination = useMemo(
-    () => (data && "pagination" in data ? data.pagination : null),
+    () => (data && "pagination" in data ? (data.pagination as any) : null),
     [data]
   );
+
+  const doToggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === students.length && students.length > 0) return new Set();
+      return new Set(students.map((s) => s.id));
+    });
+  }, [students]);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateStudentDTO) => studentsApi.create(data),
@@ -159,7 +242,8 @@ export function useStudentViewModel(): StudentViewModel {
       toast.success(t("createSuccess"));
     },
     onError: (err: any) => {
-      toast.error(err?.message || t("deleteError"));
+      const msg = err?.message || t("createError") || t("deleteError");
+      toast.error(msg);
       throw err;
     },
   });
@@ -169,11 +253,10 @@ export function useStudentViewModel(): StudentViewModel {
       studentsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      queryClient.invalidateQueries({ queryKey: queryKey });
       toast.success(t("updateSuccess"));
     },
     onError: (err: any) => {
-      toast.error(err?.message || t("deleteError"));
+      toast.error(err?.message || t("updateError") || t("deleteError"));
       throw err;
     },
   });
@@ -182,7 +265,21 @@ export function useStudentViewModel(): StudentViewModel {
     mutationFn: (id: string) => studentsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      queryClient.invalidateQueries({ queryKey: queryKey });
+      toast.success(t("deleteSuccess"));
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || t("deleteError"));
+      throw err;
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => studentsApi.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      setSelectedIds(new Set());
       toast.success(t("deleteSuccess"));
     },
     onError: (err: any) => {
@@ -212,29 +309,48 @@ export function useStudentViewModel(): StudentViewModel {
     [deleteMutation]
   );
 
+  const bulkDelete = useCallback(
+    async (ids: string[]) => {
+      await bulkDeleteMutation.mutateAsync(ids);
+    },
+    [bulkDeleteMutation]
+  );
+
   return {
     // State
     students,
     isLoading,
-    error,
+    isFetching: (isFetching as unknown as boolean) ?? false,
+    error: error as Error | null,
     pagination,
 
     // Filters & View
     filters,
     viewMode,
     selectedStudent,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+    selectedIds,
 
     // Actions
     setFilters,
+    resetFilters,
     setViewMode,
     setPage,
+    setPageSize,
+    setSort,
     setSelectedStudent,
+    toggleSelect,
+    toggleSelectAll: doToggleSelectAll,
+    clearSelection,
     refresh: refetch,
 
     // CRUD Operations
     createStudent,
     updateStudent,
     deleteStudent,
-  };
+    bulkDelete,
+  } as StudentViewModel & { bulkDelete: (ids: string[]) => Promise<void> };
 }
-

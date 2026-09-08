@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 
 function qFetch(url: string) {
   return fetch(url, { credentials: "include" }).then(async (r) => {

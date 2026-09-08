@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface TranscriptYear {
   academicYear: string;
@@ -85,7 +86,7 @@ const defaultLabels = {
 };
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 20, paddingBottom: 20, paddingHorizontal: 22, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 8, fontFamily: "Helvetica" },
+  page: { paddingTop: 20, paddingBottom: 20, paddingHorizontal: 22, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 8, fontFamily: "NotoSans" },
   watermark: { position: "absolute", top: 320, left: 50, right: 50, textAlign: "center", fontSize: 64, fontWeight: 700, color: "#DBEAFE", opacity: 0.30, transform: "rotate(-30deg)" },
   borderOuter: { position: "absolute", top: 10, left: 10, right: 10, bottom: 10, border: "1.5px solid #1D4ED8", borderRadius: 6 },
   borderInner: { position: "absolute", top: 13, left: 13, right: 13, bottom: 13, border: "0.5px solid #93C5FD", borderRadius: 4 },
@@ -137,9 +138,31 @@ const styles = StyleSheet.create({
 export function TranscriptTemplate({ school, data, verificationUrl, labels: l }: TranscriptProps) {
   const L = { ...defaultLabels, ...l };
   const qrSrc = verificationUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verificationUrl)}` : undefined;
+  // Locale-aware font + RTL for Urdu — prevents Bengali/Hindi/Urdu glyph boxes.
+  // `locale` here is only the RTL/direction hint; the font family is resolved
+  // from the rendered payload so a Bengali name on an English-locale transcript
+  // still gets a font that has its glyphs.
+  const locale = (data as any).locale || "";
+  const fontFamily = getPdfFontFamily(
+    locale,
+    school.name,
+    school.address,
+    data.studentName,
+    pdfTextSample([data]),
+    pdfTextSample((data as any).records),
+  );
   return (
     <Document title={`Transcript-${data.transcriptNumber}`} author={school.name}>
-      <Page size="A4" style={styles.page}>
+      <Page
+        size="A4"
+        style={[
+          styles.page,
+          {
+            fontFamily,
+            direction: String(locale).toLowerCase().startsWith("ur") ? ("rtl" as any) : ("ltr" as any),
+          },
+        ]}
+      >
         <View style={styles.borderOuter} /><View style={styles.borderInner} />
         <Text style={styles.watermark}>{school.name?.split(" ")[0]?.toUpperCase() || "SCHOOL"}</Text>
 

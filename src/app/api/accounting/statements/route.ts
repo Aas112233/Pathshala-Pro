@@ -36,7 +36,9 @@ export async function GET(req: NextRequest) {
           sectionId: true,
         },
         orderBy: [{ firstName: "asc" }, { rollNumber: "asc" }],
-        take: 200,
+        // No `take` cap: the statement must be reachable for *every* active
+        // student. The old cap of 200 silently hid the 201st student's
+        // statement from the picker entirely.
       }),
       prisma.staffProfile.findMany({
         where: { tenantId, isActive: true },
@@ -51,7 +53,6 @@ export async function GET(req: NextRequest) {
           phone: true,
         },
         orderBy: { firstName: "asc" },
-        take: 100,
       }),
       prisma.bankAccount.findMany({
         where: { tenantId, isActive: true },
@@ -123,6 +124,7 @@ export async function GET(req: NextRequest) {
         prisma.transaction.findMany({
           where: {
             tenantId,
+            isVoided: false,
             feeVoucherId: { in: vouchers.map((voucher) => voucher.id) },
           },
           orderBy: { timestamp: "asc" },
@@ -388,7 +390,7 @@ export async function GET(req: NextRequest) {
 
       // 1. Fee collection deposits (Inflow / Debit to Bank)
       const transactions = await prisma.transaction.findMany({
-        where: { tenantId },
+        where: { tenantId, isVoided: false },
         orderBy: { timestamp: "asc" },
       });
       const feeVouchers = await prisma.feeVoucher.findMany({

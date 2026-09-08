@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { requireApiAccess } from "@/lib/api-auth";
 import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
+import { addCurrency } from "@/lib/math-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
     const fromDate = searchParams.get("fromDate");
     const toDate = searchParams.get("toDate");
     const status = searchParams.get("status");
+    const paymentMethod = searchParams.get("paymentMethod");
 
     // Build filters with a concrete where clause so Prisma keeps full result typing
     const whereClause: Prisma.FeeVoucherWhereInput = {
@@ -28,13 +30,22 @@ export async function GET(request: NextRequest) {
         createdAt.gte = new Date(fromDate);
       }
       if (toDate) {
-        createdAt.lte = new Date(toDate);
+        // End-of-day inclusive, matching the statements route's range
+        // semantics; UTC-midnight lte silently dropped the final day.
+        createdAt.lte = new Date(`${toDate}T23:59:59.999Z`);
       }
       whereClause.createdAt = createdAt;
     }
 
     if (status && status !== "all") {
       whereClause.status = status;
+    }
+
+    // The client has always sent paymentMethod and the exported PDF/Excel
+    // certify "Applied Filters" including it — honour the filter instead of
+    // silently exporting unfiltered totals labelled as method-scoped.
+    if (paymentMethod && paymentMethod !== "all") {
+      whereClause.transactions = { some: { paymentMethod, isVoided: false } };
     }
 
     // Fetch vouchers with related data
@@ -63,7 +74,9 @@ export async function GET(request: NextRequest) {
             amountPaid: true,
             paymentMethod: true,
             timestamp: true,
+            isVoided: true,
           },
+          orderBy: { timestamp: "asc" },
         },
       },
     });
@@ -71,7 +84,8 @@ export async function GET(request: NextRequest) {
     // Sort newest first (kept out of the query so Prisma retains full include typing)
     vouchers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    // Calculate metrics and transform vouchers
+    // Calculate metrics and transform vouchers. All money accumulates through
+    // integer cents (addCurrency) — float += over hundreds of rows drifts.
     let totalCollected = 0;
     let totalPending = 0;
     let totalOverdue = 0;
@@ -83,26 +97,29 @@ export async function GET(request: NextRequest) {
       const dueAmount = voucher.balance;
       const totalAmount = voucher.totalDue;
 
+      // Voided receipts are not money — exclude from every metric.
+      const liveTransactions = voucher.transactions.filter((tx) => !tx.isVoided);
+
       // Calculate payment method breakdown from transactions
-      voucher.transactions.forEach((tx) => {
+      liveTransactions.forEach((tx) => {
         if (tx.paymentMethod === "CASH") {
-          cashCollected += tx.amountPaid;
-        } else if (tx.paymentMethod === "DIGITAL") {
-          digitalCollected += tx.amountPaid;
+          cashCollected = addCurrency(cashCollected, tx.amountPaid);
+        } else {
+          digitalCollected = addCurrency(digitalCollected, tx.amountPaid);
         }
       });
 
       if (voucher.status === "PAID") {
-        totalCollected += paidAmount;
-      } else if (voucher.status === "PENDING" || voucher.status === "PARTIAL") {
-        totalPending += dueAmount;
+        totalCollected = addCurrency(totalCollected, paidAmount);
+      } else if (voucher.status === "PENDING" || voucher.status === "UNPAID" || voucher.status === "PARTIAL") {
+        totalPending = addCurrency(totalPending, dueAmount);
       } else if (voucher.status === "OVERDUE") {
-        totalOverdue += dueAmount;
+        totalOverdue = addCurrency(totalOverdue, dueAmount);
       }
 
       // Get latest payment method
-      const latestPayment = voucher.transactions.length > 0
-        ? voucher.transactions[voucher.transactions.length - 1].paymentMethod
+      const latestPayment = liveTransactions.length > 0
+        ? liveTransactions[liveTransactions.length - 1].paymentMethod
         : "CASH";
 
       return {

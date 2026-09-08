@@ -18,6 +18,9 @@ import {
   formatDateWithSettings,
   type TenantSettings,
 } from "@/lib/tenant-settings";
+import { useAuth } from "@/components/providers/auth-provider";
+import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { useUnsavedChanges } from "@/providers/unsaved-changes-provider";
 
 import { CURRENCY_LIST } from "@/lib/currencies";
 import { NotificationSettingsSection } from "./notification-settings-section";
@@ -71,7 +74,12 @@ function formatTimePreview(timeFormat: string, timezone: string) {
 
 export default function SettingsPage() {
   const t = useTranslations('settings');
+  const tCommon = useTranslations("common");
   const nt = useTranslations('notifications');
+  const { user: authUser } = useAuth();
+  const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
+  const canRead = hasPermission(perms, "settings", "read");
+  const canManage = hasPermission(perms, "settings", "manage");
   const { settings: savedSettings, isLoading, refreshSettings, setSettings: setGlobalSettings } = useTenantSettings();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("school");
@@ -112,6 +120,7 @@ export default function SettingsPage() {
   }
 
   const hasUnsavedChanges = JSON.stringify(settings) !== JSON.stringify(initialSettings);
+  useUnsavedChanges(hasUnsavedChanges, "settings-form");
   const previewDate = formatDatePreview(settings.dateFormat);
   const previewTime = formatTimePreview(settings.timeFormat, settings.timezone);
   const settingsCompletion = [
@@ -124,6 +133,10 @@ export default function SettingsPage() {
   ].filter(Boolean).length;
 
   async function handleSave() {
+    if (!canManage) {
+      toast.error(tCommon("noPermission"));
+      return;
+    }
     const validationErrors = validateSettings(settings);
     setErrors(validationErrors);
 
@@ -201,6 +214,18 @@ export default function SettingsPage() {
     );
   }
 
+  if (!canRead) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t('title')} description={t('description')} icon={Settings} />
+        <div className="rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold">{tCommon("accessRestricted")}</h2>
+          <p className="text-sm text-muted-foreground mt-2">{tCommon("noPermission")}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -209,11 +234,11 @@ export default function SettingsPage() {
         icon={Settings}
       >
         <div className="flex items-center gap-2">
-          <Button variant="outline" type="button" onClick={handleReset} disabled={!hasUnsavedChanges || isSaving}>
+          <Button variant="outline" type="button" onClick={handleReset} disabled={!hasUnsavedChanges || isSaving || !canManage}>
             <RotateCcw className="mr-2 h-4 w-4" />
             {t("ui.reset")}
           </Button>
-          <Button type="submit" form="settings-form" disabled={isSaving || !hasUnsavedChanges}>
+          <Button type="submit" form="settings-form" disabled={isSaving || !hasUnsavedChanges || !canManage}>
             <Save className="mr-2 h-4 w-4" />
             {isSaving ? t("saving") : t("saveChanges")}
           </Button>

@@ -27,7 +27,7 @@ const bulkFeePaymentSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    const access = await requireApiAccess(request, { permission: "fees:payment:collect" });
     if ("response" in access) return access.response;
     const { user, tenantId } = access.authContext;
     const bodyResult = await safeParseBody(request, bulkFeePaymentSchema);

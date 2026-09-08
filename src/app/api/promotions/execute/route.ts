@@ -18,7 +18,9 @@ import { assertAcademicYearsOpen } from "@/lib/academic-year-guards";
  */
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    // Irreversible cohort-wide academic write — gated on the capability the
+    // role matrix defines for it, not merely on the exams module tier.
+    const access = await requireApiAccess(request, { permission: "academic:promote:execute" });
     if ("response" in access) return access.response;
 
     const { tenantId, user } = access.authContext;

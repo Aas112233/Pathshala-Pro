@@ -4,6 +4,7 @@ import { getAuthContext } from "@/lib/auth";
 import { forbidden, unauthorized } from "@/lib/api-response";
 import { hasPermission, hasRolePermission, getEffectivePermissions, type PermissionAction, type Permission } from "@/lib/permissions";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+import { prisma } from "@/lib/prisma";
 
 type AccessResult =
   | { authContext: AuthContext; response?: never }
@@ -208,4 +209,54 @@ export async function verifyAuthAndPermission(
     authorized: true,
     authContext: result.authContext,
   };
+}
+
+/**
+ * Self-scoping for STUDENT / PARENT JWTs on tenant-wide list endpoints.
+ *
+ * ROLE_DEFAULT_PERMISSIONS grants LEVEL_6/7 reads on fees, attendance,
+ * health and transactions, and `hasPermission` has no notion of "own row" —
+ * without this, any logged-in student calling `GET /api/transactions` reads
+ * the whole tenant's financial ledger. Portal surfaces are supposed to use
+ * the self-scoped `/api/portal/*` routes; the dashboard routes must not be a
+ * wider door.
+ *
+ * Returns `null` for staff roles (no restriction) and the *only* student
+ * profile IDs the caller may see otherwise. An empty array means "linked to
+ * no student" and must yield zero rows — never fall back to unscoped.
+ */
+export async function getSelfScopedStudentProfileIds(
+  authContext: AuthContext
+): Promise<string[] | null> {
+  const role = String(authContext.user.role ?? "").toUpperCase();
+  if (role !== "STUDENT" && role !== "PARENT") return null;
+
+  if (role === "STUDENT") {
+    const own = (authContext.user as { studentProfileId?: string | null }).studentProfileId;
+    return own ? [own] : [];
+  }
+
+  const links = await prisma.parentStudentLink.findMany({
+    where: { tenantId: authContext.tenantId, parentUserId: authContext.user.id },
+    select: { studentProfileId: true },
+  });
+  return links.map((link) => link.studentProfileId);
+}
+
+/**
+ * True when `id` is empty/absent (nothing to validate) or names a row of the
+ * given tenant-owned model. Guards relation writes: without it, tenant A can
+ * set `studentProfileId`/`classId`/etc. to tenant B's row id and later read
+ * B's data back through `include`. Pass a model delegate, e.g.
+ * `isTenantOwned(prisma.studentProfile, body.studentProfileId, tenantId)`.
+ */
+export async function isTenantOwned(
+  // Prisma delegates have per-model generic args types; `any` on the args
+  // position is what makes one helper usable with every model.
+  delegate: { findFirst: (args: any) => Promise<unknown> },
+  id: string | null | undefined,
+  tenantId: string,
+): Promise<boolean> {
+  if (!id) return true;
+  return Boolean(await delegate.findFirst({ where: { id, tenantId }, select: { id: true } }));
 }

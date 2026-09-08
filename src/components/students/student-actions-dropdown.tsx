@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { MoreVertical, Pencil, Trash2, Eye, User, Loader2 } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Eye, User, Loader2, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StudentProfile } from "@/types/entities";
 
@@ -10,6 +10,7 @@ interface StudentActionsDropdownProps {
   student: StudentProfile;
   onEdit?: (student: StudentProfile) => void;
   onView?: (student: StudentProfile) => void;
+  onViewPerformance?: (student: StudentProfile) => void;
   onDelete?: (student: StudentProfile) => void;
 }
 
@@ -17,6 +18,7 @@ export function StudentActionsDropdown({
   student,
   onEdit,
   onView,
+  onViewPerformance,
   onDelete,
 }: StudentActionsDropdownProps) {
   const t = useTranslations("students");
@@ -67,6 +69,15 @@ export function StudentActionsDropdown({
               >
                 <Eye className="h-4 w-4" />
                 <span>{t("actions.viewDetails")}</span>
+              </button>
+            )}
+            {onViewPerformance && (
+              <button
+                onClick={() => handleAction(onViewPerformance)}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
+              >
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span>{t("actions.viewPerformance")}</span>
               </button>
             )}
             {onEdit && (

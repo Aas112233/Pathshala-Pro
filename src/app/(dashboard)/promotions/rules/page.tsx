@@ -2,8 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Plus, GraduationCap, TrendingUp } from "lucide-react";
-import { usePromotionRules, useCreatePromotionRule, type PromotionRule } from "@/hooks/use-exams";
+import {
+  Plus,
+  GraduationCap,
+  TrendingUp,
+  Pencil,
+  Trash2,
+  Lock,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
+import {
+  usePromotionRules,
+  useCreatePromotionRule,
+  useUpdatePromotionRule,
+  useDeletePromotionRule,
+  type PromotionRule,
+} from "@/hooks/use-exams";
 import { useAcademicYears, useStudents } from "@/hooks/use-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +33,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
@@ -34,13 +57,18 @@ interface ClassOption {
 export default function PromotionRulesPage() {
   const router = useRouter();
   const t = useTranslations("promotions.ruleManager");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<any | null>(null);
+  const [deletingRule, setDeletingRule] = useState<any | null>(null);
   const [selectedYear, setSelectedYear] = useState<string>("");
 
   const { data: rulesData, isLoading } = usePromotionRules({ academicYearId: selectedYear || undefined });
   const { data: academicYearsData } = useAcademicYears();
   const { data: studentsData } = useStudents();
+
   const createRule = useCreatePromotionRule();
+  const updateRule = useUpdatePromotionRule();
+  const deleteRule = useDeletePromotionRule();
 
   const [classesList, setClassesList] = useState<ClassOption[]>([]);
 
@@ -91,7 +119,8 @@ export default function PromotionRulesPage() {
     nextClassId: "",
   });
 
-  function resetForm() {
+  function openCreateModal() {
+    setEditingRule(null);
     setFormData({
       academicYearId: selectedYear || "",
       classId: "",
@@ -103,6 +132,27 @@ export default function PromotionRulesPage() {
       autoPromote: true,
       nextClassId: "",
     });
+    setSheetOpen(true);
+  }
+
+  function openEditModal(rule: any) {
+    if (rule.isLocked) {
+      toast.error(t("lockedTooltip", { count: rule.historicalPromotionCount || 1 }));
+      return;
+    }
+    setEditingRule(rule);
+    setFormData({
+      academicYearId: rule.academicYearId || "",
+      classId: rule.classId || "",
+      minimumAttendance: rule.minimumAttendance ?? 75,
+      minimumOverallPercentage: rule.minimumOverallPercentage ?? 40,
+      minimumPerSubject: rule.minimumPerSubject ?? 33,
+      maxFailedSubjects: rule.maxFailedSubjects ?? 0,
+      allowConditionalPromotion: Boolean(rule.allowConditionalPromotion),
+      autoPromote: Boolean(rule.autoPromote),
+      nextClassId: rule.nextClassId || "",
+    });
+    setSheetOpen(true);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -113,10 +163,36 @@ export default function PromotionRulesPage() {
       return;
     }
 
-    createRule.mutate(formData as Partial<PromotionRule>, {
+    const payload = {
+      ...formData,
+      nextClassId: formData.nextClassId || null,
+    };
+
+    if (editingRule) {
+      updateRule.mutate(
+        { id: editingRule.id, data: payload as Partial<PromotionRule> },
+        {
+          onSuccess: () => {
+            setSheetOpen(false);
+            setEditingRule(null);
+          },
+        }
+      );
+    } else {
+      createRule.mutate(payload as Partial<PromotionRule>, {
+        onSuccess: () => {
+          setSheetOpen(false);
+          setEditingRule(null);
+        },
+      });
+    }
+  }
+
+  function handleDeleteConfirm() {
+    if (!deletingRule) return;
+    deleteRule.mutate(deletingRule.id, {
       onSuccess: () => {
-        setCreateOpen(false);
-        resetForm();
+        setDeletingRule(null);
       },
     });
   }
@@ -124,6 +200,8 @@ export default function PromotionRulesPage() {
   function handleCalculatePromotions(rule: PromotionRule) {
     router.push(`/promotions/calculate?classId=${rule.classId}&academicYearId=${rule.academicYearId}`);
   }
+
+  const isPending = createRule.isPending || updateRule.isPending;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -135,7 +213,7 @@ export default function PromotionRulesPage() {
             {t("description")}
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setCreateOpen(true); }}>
+        <Button onClick={openCreateModal}>
           <Plus className="h-4 w-4 mr-2" />
           {t("createRule")}
         </Button>
@@ -167,60 +245,105 @@ export default function PromotionRulesPage() {
           <div className="col-span-full text-center py-12">
             <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">{t("noRulesFound")}</p>
-            <Button variant="link" onClick={() => { resetForm(); setCreateOpen(true); }}>
+            <Button variant="link" onClick={openCreateModal}>
               {t("createFirstRule")}
             </Button>
           </div>
         ) : (
           rules?.map((rule: any) => (
-            <Card key={rule.id} className="relative">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{rule.class?.name}</CardTitle>
-                  <Badge variant="outline" className="text-xs border-primary/20 bg-primary/5 text-primary">
-                    {rule.nextClass?.name ? t("nextClassValue", { name: rule.nextClass.name }) : t("finalGrade")}
-                  </Badge>
-                </div>
-                <CardDescription>{rule.academicYear?.label}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">{t("attendance")}</p>
-                    <p className="font-medium">{rule.minimumAttendance}%</p>
+            <Card key={rule.id} className="relative flex flex-col justify-between">
+              <div>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-lg font-bold">{rule.class?.name}</CardTitle>
+                      <CardDescription className="text-xs">{rule.academicYear?.label}</CardDescription>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge variant="outline" className="text-xs border-primary/20 bg-primary/5 text-primary">
+                        {rule.nextClass?.name ? t("nextClassValue", { name: rule.nextClass.name }) : t("finalGrade")}
+                      </Badge>
+                      {rule.isLocked && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1 py-0.5"
+                          title={t("lockedTooltip", { count: rule.historicalPromotionCount })}
+                        >
+                          <Lock className="h-2.5 w-2.5" />
+                          {t("lockedBadge")}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">{t("overall")}</p>
-                    <p className="font-medium">{rule.minimumOverallPercentage}%</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2 rounded-md bg-muted/40 border border-border/50">
+                      <p className="text-muted-foreground">{t("attendance")}</p>
+                      <p className="font-semibold text-foreground">{rule.minimumAttendance}%</p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted/40 border border-border/50">
+                      <p className="text-muted-foreground">{t("overall")}</p>
+                      <p className="font-semibold text-foreground">{rule.minimumOverallPercentage}%</p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted/40 border border-border/50">
+                      <p className="text-muted-foreground">{t("perSubject")}</p>
+                      <p className="font-semibold text-foreground">{rule.minimumPerSubject}%</p>
+                    </div>
+                    <div className="p-2 rounded-md bg-muted/40 border border-border/50">
+                      <p className="text-muted-foreground">{t("maxFails")}</p>
+                      <p className="font-semibold text-foreground">{rule.maxFailedSubjects}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">{t("perSubject")}</p>
-                    <p className="font-medium">{rule.minimumPerSubject}%</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">{t("maxFails")}</p>
-                    <p className="font-medium">{rule.maxFailedSubjects}</p>
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap gap-1 pt-2">
-                  {rule.allowConditionalPromotion && (
-                    <Badge variant="secondary">{t("conditionalOk")}</Badge>
-                  )}
-                  {rule.autoPromote && (
-                    <Badge variant="outline">{t("autoPromote")}</Badge>
-                  )}
-                </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {rule.allowConditionalPromotion && (
+                      <Badge variant="secondary" className="text-[11px]">{t("conditionalOk")}</Badge>
+                    )}
+                    {rule.autoPromote && (
+                      <Badge variant="outline" className="text-[11px]">{t("autoPromote")}</Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </div>
 
-                <div className="flex gap-2 pt-2">
+              <CardContent className="pt-0 border-t border-border/40 mt-3">
+                <div className="flex items-center justify-between gap-2 pt-3">
                   <Button
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 h-8 text-xs gap-1.5"
                     onClick={() => handleCalculatePromotions(rule)}
                   >
-                    <TrendingUp className="h-3 w-3 mr-1" />
+                    <TrendingUp className="h-3.5 w-3.5" />
                     {t("calculate")}
                   </Button>
+
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditModal(rule)}
+                      disabled={rule.isLocked}
+                      className="h-8 px-2.5 text-xs gap-1"
+                      title={rule.isLocked ? t("lockedTooltip", { count: rule.historicalPromotionCount }) : t("editRule")}
+                    >
+                      {rule.isLocked ? <Lock className="h-3.5 w-3.5 text-muted-foreground" /> : <Pencil className="h-3.5 w-3.5" />}
+                      <span className="hidden sm:inline">{t("editRule")}</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeletingRule(rule)}
+                      disabled={rule.isLocked}
+                      className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title={rule.isLocked ? t("lockedTooltip", { count: rule.historicalPromotionCount }) : t("deleteRule")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -228,20 +351,31 @@ export default function PromotionRulesPage() {
         )}
       </div>
 
-      {/* Create Sheet */}
+      {/* Create / Edit TopSheet */}
       <TopSheet
-        isOpen={createOpen}
-        onClose={() => setCreateOpen(false)}
-        title={t("createRuleTitle")}
-        description={t("createRuleDescription")}
+        isOpen={sheetOpen}
+        onClose={() => { setSheetOpen(false); setEditingRule(null); }}
+        title={editingRule ? t("editRuleTitle") : t("createRuleTitle")}
+        description={editingRule ? t("editRuleDescription") : t("createRuleDescription")}
         maxWidth="2xl"
         footer={
           <div className="flex items-center justify-end gap-3 w-full">
-            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setSheetOpen(false); setEditingRule(null); }}
+            >
               {t("cancel")}
             </Button>
-            <Button type="submit" form="promotion-rule-form" disabled={createRule.isPending}>
-              {createRule.isPending ? t("creating") : t("createRule")}
+            <Button type="submit" form="promotion-rule-form" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  {editingRule ? t("updating") : t("creating")}
+                </>
+              ) : (
+                editingRule ? t("saveChanges") : t("createRule")
+              )}
             </Button>
           </div>
         }
@@ -253,6 +387,7 @@ export default function PromotionRulesPage() {
                 <Select
                   value={formData.academicYearId}
                   onValueChange={(value) => setFormData({ ...formData, academicYearId: value })}
+                  disabled={Boolean(editingRule)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t("selectYear")} />
@@ -270,6 +405,7 @@ export default function PromotionRulesPage() {
                 <Select
                   value={formData.classId}
                   onValueChange={(value) => setFormData({ ...formData, classId: value })}
+                  disabled={Boolean(editingRule)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t("selectClass")} />
@@ -290,6 +426,8 @@ export default function PromotionRulesPage() {
                 <Input
                   id="minimumAttendance"
                   type="number"
+                  min={0}
+                  max={100}
                   value={formData.minimumAttendance}
                   onChange={(e) => setFormData({ ...formData, minimumAttendance: Number(e.target.value) })}
                 />
@@ -298,6 +436,8 @@ export default function PromotionRulesPage() {
                 <Input
                   id="minimumOverallPercentage"
                   type="number"
+                  min={0}
+                  max={100}
                   value={formData.minimumOverallPercentage}
                   onChange={(e) => setFormData({ ...formData, minimumOverallPercentage: Number(e.target.value) })}
                 />
@@ -306,6 +446,8 @@ export default function PromotionRulesPage() {
                 <Input
                   id="minimumPerSubject"
                   type="number"
+                  min={0}
+                  max={100}
                   value={formData.minimumPerSubject}
                   onChange={(e) => setFormData({ ...formData, minimumPerSubject: Number(e.target.value) })}
                 />
@@ -317,20 +459,22 @@ export default function PromotionRulesPage() {
                 <Input
                   id="maxFailedSubjects"
                   type="number"
+                  min={0}
+                  max={20}
                   value={formData.maxFailedSubjects}
                   onChange={(e) => setFormData({ ...formData, maxFailedSubjects: Number(e.target.value) })}
                 />
               </ERPFormField>
               <ERPFormField label={t("nextClass")} htmlFor="nextClassId">
                 <Select
-                  value={formData.nextClassId}
-                  onValueChange={(value) => setFormData({ ...formData, nextClassId: value })}
+                  value={formData.nextClassId || "NONE"}
+                  onValueChange={(value) => setFormData({ ...formData, nextClassId: value === "NONE" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={t("selectNextClass")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t("noNextClass")}</SelectItem>
+                    <SelectItem value="NONE">{t("noNextClass")}</SelectItem>
                     {classes.map((cls: any) => (
                       <SelectItem key={cls.id} value={cls.id}>
                         {cls.name}
@@ -371,6 +515,49 @@ export default function PromotionRulesPage() {
           </ERPFormSection>
         </form>
       </TopSheet>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={Boolean(deletingRule)} onOpenChange={(open) => !open && setDeletingRule(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <DialogTitle>{t("deleteRule")}</DialogTitle>
+            </div>
+            <DialogDescription className="pt-2 text-sm text-foreground">
+              {t("deleteConfirm")}
+            </DialogDescription>
+          </DialogHeader>
+
+          {deletingRule && (
+            <div className="p-3 rounded-md bg-muted text-xs space-y-1">
+              <p><strong className="text-foreground">{t("class")}:</strong> {deletingRule.class?.name}</p>
+              <p><strong className="text-foreground">{t("academicYear")}:</strong> {deletingRule.academicYear?.label}</p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeletingRule(null)}
+              disabled={deleteRule.isPending}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleteRule.isPending}
+              className="gap-1.5"
+            >
+              {deleteRule.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {t("deleteRule")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

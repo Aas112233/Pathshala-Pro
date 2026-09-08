@@ -8,7 +8,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { createBookIssueSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, isTenantOwned } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
@@ -98,6 +98,15 @@ export async function POST(request: NextRequest) {
     if (dup) return badRequest("Borrower already has this book issued", [{ field: "bookId", code: "already_issued", message: "Already issued to this borrower" }]);
 
     const dueDate = new Date(d.dueDate);
+
+    // FK-confusion guard: borrower profiles must belong to this tenant
+    // (the book was already tenant-verified above).
+    if (d.studentProfileId && !(await isTenantOwned(prisma.studentProfile, d.studentProfileId, tenantId))) {
+      return badRequest("Selected student does not exist in your institution.");
+    }
+    if (d.staffProfileId && !(await isTenantOwned(prisma.staffProfile, d.staffProfileId, tenantId))) {
+      return badRequest("Selected staff member does not exist in your institution.");
+    }
 
     const [issue] = await prisma.$transaction([
       prisma.bookIssue.create({

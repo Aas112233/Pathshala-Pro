@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface AdmitCardExamSchedule {
   date: string;
@@ -32,6 +33,7 @@ export interface ExamAdmitCardData {
 }
 
 export interface ExamAdmitCardProps {
+  locale?: string;
   school: PdfSchoolInfo;
   data: ExamAdmitCardData;
   verificationUrl?: string;
@@ -81,7 +83,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     color: "#0F172A",
     fontSize: 8,
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
   },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1D4ED8", paddingBottom: 8, marginBottom: 8 },
   schoolBlock: { flexDirection: "row", flex: 1, alignItems: "center" },
@@ -126,13 +128,31 @@ const styles = StyleSheet.create({
   officialFooter: { marginTop: 8, paddingTop: 6, borderTop: "1px solid #E2E8F0", flexDirection: "row", justifyContent: "space-between", color: "#64748B", fontSize: 6.5 },
 });
 
-function AdmitCardPage({ school, data, verificationUrl, L }: { school: PdfSchoolInfo; data: ExamAdmitCardData; verificationUrl?: string; L: typeof defaultLabels }) {
+function AdmitCardPage({
+  locale,
+  school,
+  data,
+  verificationUrl,
+  L,
+}: {
+  locale?: string;
+  school: PdfSchoolInfo;
+  data: ExamAdmitCardData;
+  verificationUrl?: string;
+  L: typeof defaultLabels;
+}) {
   const qrSrc = verificationUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verificationUrl)}`
     : undefined;
   const instructions = data.instructions && data.instructions.length > 0 ? data.instructions : L.defaultInstructions;
   return (
-    <Page size="A4" style={styles.page}>
+    <Page
+      size="A4"
+      style={[
+        styles.page,
+        { fontFamily: getPdfFontFamily(locale, school?.name, data?.studentName, data?.fatherName, data?.className, data?.examName, pdfTextSample(data?.schedule)) },
+      ]}
+    >
         <View style={styles.header}>
           <View style={styles.schoolBlock}>
             {school.logoUrl ? <Image src={school.logoUrl} style={styles.logo} /> : (
@@ -240,29 +260,30 @@ function AdmitCardPage({ school, data, verificationUrl, L }: { school: PdfSchool
   );
 }
 
-export function ExamAdmitCardTemplate({ school, data, verificationUrl, labels: l }: ExamAdmitCardProps) {
+export function ExamAdmitCardTemplate({ locale, school, data, verificationUrl, labels: l }: ExamAdmitCardProps) {
   const L = { ...defaultLabels, ...l };
   return (
     <Document title={`Admit-${data.rollNumber}-${data.examName}`} author={school.name}>
-      <AdmitCardPage school={school} data={data} verificationUrl={verificationUrl} L={L} />
+      <AdmitCardPage locale={locale} school={school} data={data} verificationUrl={verificationUrl} L={L} />
     </Document>
   );
 }
 
 export interface BatchAdmitCardProps {
+  locale?: string;
   school: PdfSchoolInfo;
   cards: ExamAdmitCardData[];
   verificationBaseUrl?: string;
   labels?: Partial<typeof defaultLabels>;
 }
 
-export function BatchAdmitCardDocument({ school, cards, verificationBaseUrl, labels: l }: BatchAdmitCardProps) {
+export function BatchAdmitCardDocument({ locale, school, cards, verificationBaseUrl, labels: l }: BatchAdmitCardProps) {
   const L = { ...defaultLabels, ...l };
   return (
     <Document title={`Batch-Admit-${cards.length}`} author={school.name}>
       {cards.map((data, idx) => {
         const url = verificationBaseUrl ? `${verificationBaseUrl}/verify/certificate/${data.admissionNumber}` : undefined;
-        return <AdmitCardPage key={data.rollNumber + idx} school={school} data={data} verificationUrl={url} L={L} />;
+        return <AdmitCardPage key={data.rollNumber + idx} locale={locale} school={school} data={data} verificationUrl={url} L={L} />;
       })}
     </Document>
   );

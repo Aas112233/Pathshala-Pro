@@ -1,7 +1,9 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface SalaryPayslipPDFData {
+  locale?: string;
   schoolName: string;
   schoolAddress?: string;
   schoolPhone?: string;
@@ -36,7 +38,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 30,
     backgroundColor: "#ffffff",
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
     fontSize: 8.5,
     color: "#0f172a",
   },
@@ -177,7 +179,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#4338ca",
-    fontFamily: "Helvetica-Bold",
+    // Helvetica-Bold lacks Bengali/Hindi/Urdu glyphs — inherit locale NotoSans from Page (bold via weight)
   },
   statusBadge: {
     fontSize: 8,
@@ -206,7 +208,24 @@ const styles = StyleSheet.create({
 export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) {
   return (
     <Document title={`Payslip_${data.staffId}_${data.month}_${data.year}`}>
-      <Page size="A4" orientation="portrait" style={styles.page}>
+      <Page
+        size="A4"
+        orientation="portrait"
+        style={[
+          styles.page,
+          {
+            fontFamily: getPdfFontFamily(
+              data.locale,
+              data.schoolName,
+              data.staffName,
+              data.designation,
+              data.department,
+              pdfTextSample(data.deductions),
+            ),
+            direction: (data.locale || "").toLowerCase().startsWith("ur") ? ("rtl" as any) : ("ltr" as any),
+          },
+        ]}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -372,7 +391,25 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
   return (
     <Document title="Commercial Staff Salary Payslips Booklet">
       {payslips.map((payslip, idx) => (
-        <Page key={idx} size="A4" orientation="portrait" style={styles.page}>
+        <Page
+          key={idx}
+          size="A4"
+          orientation="portrait"
+          style={[
+            styles.page,
+            {
+              fontFamily: getPdfFontFamily(
+                payslip.locale,
+                payslip.schoolName,
+                payslip.staffName,
+                payslip.designation,
+                payslip.department,
+                pdfTextSample(payslip.deductions),
+              ),
+              direction: (payslip.locale || "").toLowerCase().startsWith("ur") ? ("rtl" as any) : ("ltr" as any),
+            },
+          ]}
+        >
           {/* Header */}
           <View style={styles.header}>
             <View>

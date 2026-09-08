@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 import { apiPost, apiPut, apiDelete } from "@/lib/api-fetch";
 
 function qFetch(url: string) {
@@ -88,7 +88,7 @@ export function useInventoryTransactionsViewModel(search = "", page = 1) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventoryItems"] });
       qc.invalidateQueries({ queryKey: ["inventoryTransactions"] });
-      toast.success("Transaction recorded");
+      toast.success(t("transactionRecorded"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });
@@ -97,7 +97,7 @@ export function useInventoryTransactionsViewModel(search = "", page = 1) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventoryItems"] });
       qc.invalidateQueries({ queryKey: ["inventoryTransactions"] });
-      toast.success("Transaction deleted");
+      toast.success(t("transactionDeleted"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });

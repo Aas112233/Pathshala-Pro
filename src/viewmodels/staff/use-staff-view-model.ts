@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { staffApi } from "@/lib/api-client";
 import type { StaffProfile, CreateStaffDTO } from "@/types/entities";
 import type { PaginationParams } from "@/types/api";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 
 export type StaffViewMode = "table" | "grid";
 export type StaffStatusFilter = "ALL" | "ACTIVE" | "INACTIVE";

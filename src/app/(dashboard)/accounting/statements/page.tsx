@@ -134,9 +134,9 @@ export default function AccountingStatementsPage() {
     const headers = [t("csvDate"), t("csvRefId"), t("csvCategory"), t("csvDescription"), t("csvDebit"), t("csvCredit"), t("csvBalance"), t("csvStatus"), t("csvPaymentMethod")];
     const rows = data.statement.entries.map((e: any) => [
       new Date(e.date).toLocaleDateString(),
-      `"${e.refId}"`,
-      `"${e.category}"`,
-      `"${e.description.replace(/"/g, '""')}"`,
+      e.refId,
+      e.category,
+      e.description,
       e.debit || 0,
       e.credit || 0,
       e.runningBalance || 0,
@@ -144,14 +144,36 @@ export default function AccountingStatementsPage() {
       e.paymentMethod,
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
+    // RFC-4180 quoting: wrap every field, doubling embedded quotes. The old
+    // writer left status/paymentMethod/headers unquoted (commas broke rows)
+    // and quoted refId/category without escaping `"`.
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    // Prefix cells that Excel would otherwise execute as formulas.
+    const safeNum = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v).toFixed(2) : "0.00");
+    const csvRows = [
+      headers.map(esc).join(","),
+      ...rows.map((r: any) =>
+        // Guard leading =,+,-,@ in *strings* only — numeric amounts stay
+        // numeric cells, and negative balances must not become text.
+        r.map((cell: any) =>
+          typeof cell === "number"
+            ? esc(safeNum(cell))
+            : esc(["=", "+", "-", "@"].includes(String(cell ?? "")[0]) ? `'${cell}` : cell)
+        ).join(","),
+      ),
+    ];
+    // ﻿ BOM so Excel on Windows decodes Bengali/Hindi/Urdu descriptions as
+    // UTF-8. A data: URI + encodeURI() is also unsafe here: encodeURI does not
+    // escape '#', so any description containing '#' truncated the file at the
+    // fragment boundary. A blob URL has no such limit.
+    const blob = new Blob(["﻿" + csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.href = URL.createObjectURL(blob);
     link.setAttribute("download", `statement_${statementType.toLowerCase()}_${selectedEntityId || "all"}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
     toast.success(t("exportedCsv"));
   };
 

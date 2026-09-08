@@ -8,7 +8,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { updateTimetableSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, isTenantOwned } from "@/lib/api-auth";
 
 export async function PUT(
   request: NextRequest,
@@ -68,6 +68,18 @@ export async function PUT(
     const nextSection = d.sectionId !== undefined ? d.sectionId : existing.sectionId;
     const nextYear = d.academicYearId !== undefined ? d.academicYearId : existing.academicYearId;
 
+    if (nextSection) {
+      const section = await prisma.section.findFirst({
+        where: { id: nextSection, tenantId, classId: nextClass },
+        select: { id: true },
+      });
+      if (!section) {
+        return badRequest("Section does not belong to the selected class", [
+          { field: "sectionId", code: "invalid", message: "Select a section from the selected class" },
+        ]);
+      }
+    }
+
     if (
       d.classId !== undefined ||
       d.sectionId !== undefined ||
@@ -93,6 +105,20 @@ export async function PUT(
       }
     }
 
+    // FK-confusion guard: the relation targets must belong to this tenant,
+    // and the include below returns the staff/subject names back to the caller.
+    if (d.classId && !(await isTenantOwned(prisma.class, d.classId, tenantId))) {
+      return badRequest("Selected class does not exist in your institution.");
+    }
+    if (d.sectionId && !(await isTenantOwned(prisma.section, d.sectionId, tenantId))) {
+      return badRequest("Selected section does not exist in your institution.");
+    }
+    if (d.subjectId && !(await isTenantOwned(prisma.subject, d.subjectId, tenantId))) {
+      return badRequest("Selected subject does not exist in your institution.");
+    }
+    if (d.staffProfileId && !(await isTenantOwned(prisma.staffProfile, d.staffProfileId, tenantId))) {
+      return badRequest("Selected staff member does not exist in your institution.");
+    }
     const updated = await prisma.timetable.update({
       where: { id },
       data: {

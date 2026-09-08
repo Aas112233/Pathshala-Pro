@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 
 import { ACADEMIC_MONTHS, MONTH_NAMES, SHORT_MONTH_NAMES } from "@/lib/constants";
+import { addCurrency, applyPercentage, roundCurrency } from "@/lib/math-utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
@@ -203,14 +204,17 @@ export default function BulkFeeEntryPage() {
 
       if (conc) {
         if (conc.discountType === "PERCENTAGE") {
-          monthlyDiscount = Math.round(((baseMonthlyFee * conc.discountValue) / 100) * 100) / 100;
+          // applyPercentage: half-away-from-zero on the shortest decimal
+          // string — the raw double-round here drifted vs the server's
+          // Decimal(2) result for x.xx5 rates.
+          monthlyDiscount = applyPercentage(baseMonthlyFee, Number(conc.discountValue));
         } else {
           monthlyDiscount = Math.min(conc.discountValue, baseMonthlyFee);
         }
       }
 
-      const netMonthly = Math.max(0, baseMonthlyFee - monthlyDiscount);
-      const annualTotalDue = voucher ? voucher.totalDue : netMonthly * 12;
+      const netMonthly = roundCurrency(Math.max(0, baseMonthlyFee - monthlyDiscount));
+      const annualTotalDue = voucher ? voucher.totalDue : roundCurrency(netMonthly * 12);
       const amountPaidSoFar = voucher ? voucher.amountPaid || 0 : 0;
       const remainingDue = voucher
         ? voucher.balance
@@ -319,7 +323,7 @@ export default function BulkFeeEntryPage() {
   const selectedRows = roster.filter((r) => r.isSelected && r.amountToPay > 0);
   const isAllSelected = roster.length > 0 && roster.every((r) => r.isSelected);
   const totalCollecting = selectedRows.reduce(
-    (sum, r) => sum + (Number(r.amountToPay) || 0),
+    (sum, r) => addCurrency(sum, Number(r.amountToPay) || 0),
     0
   );
 
@@ -332,7 +336,7 @@ export default function BulkFeeEntryPage() {
       nextSelected[r.id] = nextVal;
       if (nextVal) {
         if (!nextAmounts[r.id] || nextAmounts[r.id] === 0) {
-          const netMonthly = r.baseMonthlyFee - r.discountAmount;
+          const netMonthly = roundCurrency(r.baseMonthlyFee - r.discountAmount);
           nextAmounts[r.id] = Math.min(netMonthly, r.remainingDue);
         }
       } else {
@@ -352,7 +356,7 @@ export default function BulkFeeEntryPage() {
     setSelectedIds((prev) => ({ ...prev, [id]: nextSelected }));
 
     if (nextSelected && (!userAmounts[id] || userAmounts[id] === 0) && student) {
-      const netMonthly = student.baseMonthlyFee - student.discountAmount;
+      const netMonthly = roundCurrency(student.baseMonthlyFee - student.discountAmount);
       setUserAmounts((prev) => ({
         ...prev,
         [id]: Math.min(netMonthly, student.remainingDue),
@@ -371,7 +375,7 @@ export default function BulkFeeEntryPage() {
     const newAmounts: Record<string, number> = {};
     const newSelected: Record<string, boolean> = {};
     roster.forEach((r) => {
-      const netMonthly = r.baseMonthlyFee - r.discountAmount;
+      const netMonthly = roundCurrency(r.baseMonthlyFee - r.discountAmount);
       if (r.paidMonthsCount <= selectedMonthIndex) {
         newAmounts[r.id] = Math.min(netMonthly, r.remainingDue);
         newSelected[r.id] = true;
@@ -389,9 +393,9 @@ export default function BulkFeeEntryPage() {
     const newAmounts: Record<string, number> = {};
     const newSelected: Record<string, boolean> = {};
     roster.forEach((r) => {
-      const netMonthly = r.baseMonthlyFee - r.discountAmount;
+      const netMonthly = roundCurrency(r.baseMonthlyFee - r.discountAmount);
       const unpaidMonthsNeeded = Math.max(0, selectedMonthIndex + 1 - r.paidMonthsCount);
-      const duesUpToMonth = Math.min(unpaidMonthsNeeded * netMonthly, r.remainingDue);
+      const duesUpToMonth = Math.min(roundCurrency(unpaidMonthsNeeded * netMonthly), r.remainingDue);
       newAmounts[r.id] = duesUpToMonth;
       newSelected[r.id] = duesUpToMonth > 0;
     });
@@ -588,7 +592,7 @@ export default function BulkFeeEntryPage() {
               {formatCurrency(classStandardMonthlyFee)} {t("perMonth")}
             </p>
             <p className="text-[10px] text-muted-foreground font-mono">
-              {t("total12Month", { amount: formatCurrency(classStandardMonthlyFee * 12) })}
+              {t("total12Month", { amount: formatCurrency(roundCurrency(classStandardMonthlyFee * 12)) })}
             </p>
           </CardContent>
         </Card>
@@ -787,7 +791,7 @@ export default function BulkFeeEntryPage() {
 
                     {/* Monthly Base Fee */}
                     <td className="py-3 px-3 font-mono text-muted-foreground">
-                      {formatCurrency(row.baseMonthlyFee - row.discountAmount)}
+                      {formatCurrency(roundCurrency(row.baseMonthlyFee - row.discountAmount))}
                       {row.discountAmount > 0 && (
                         <span className="text-[10px] text-emerald-600 block">
                           (-{formatCurrency(row.discountAmount)} {t("scholarship")})

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
@@ -92,10 +93,15 @@ export default function StudentsPage() {
     setIsFormOpen(true);
   }, []);
 
+  const router = useRouter();
   const handleView = useCallback((student: StudentRow) => {
     setSelectedStudent(student);
     setIsDetailsOpen(true);
   }, [setSelectedStudent]);
+
+  const handleViewPerformance = useCallback((student: StudentRow) => {
+    router.push(`/students/performance?studentId=${student.id}`);
+  }, [router]);
 
   const handleDelete = useCallback(async (student: StudentRow) => {
     if (!confirm(t('actions.confirmDelete'))) return;
@@ -182,6 +188,7 @@ export default function StudentsPage() {
         <StudentActionsDropdown
           student={row.original}
           onView={() => handleView(row.original)}
+          onViewPerformance={() => handleViewPerformance(row.original)}
           onEdit={canWriteStudents ? () => handleEdit(row.original) : undefined}
           onDelete={canManageStudents ? () => handleDelete(row.original) : undefined}
         />
@@ -323,6 +330,7 @@ export default function StudentsPage() {
               key={student.id}
               student={student}
               onView={() => handleView(student)}
+              onViewPerformance={() => handleViewPerformance(student)}
               onEdit={canWriteStudents ? () => handleEdit(student) : undefined}
               onDelete={canManageStudents ? () => handleDelete(student) : undefined}
             />

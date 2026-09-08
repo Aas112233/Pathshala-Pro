@@ -1,7 +1,9 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface FeeVoucherPDFData {
+  locale?: string;
   schoolName: string;
   schoolCode?: string;
   schoolAddress?: string;
@@ -19,6 +21,9 @@ export interface FeeVoucherPDFData {
   baseAmount: number;
   discountAmount: number;
   arrears: number;
+  /** Prisma FeeVoucher.lateFine. Part of totalDue — must be printed, or the
+   *  line items visibly fail to sum to NET PAYABLE on challans with a fine. */
+  lateFine?: number;
   totalDue: number;
   bankAccountDetails?: string;
 }
@@ -28,7 +33,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#ffffff",
     padding: 15,
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
   },
   column: {
     flex: 1,
@@ -83,7 +88,8 @@ const styles = StyleSheet.create({
     color: "#334155",
   },
   voucherCode: {
-    fontFamily: "Courier-Bold",
+    fontFamily: "NotoSans",
+    fontWeight: "bold",
     fontSize: 7.5,
     color: "#4338ca",
   },
@@ -252,6 +258,13 @@ function VoucherSlip({
               <Text style={[styles.colAmt, { color: "#15803d" }]}>-{data.discountAmount.toFixed(2)}</Text>
             </View>
           )}
+
+          {(data.lateFine ?? 0) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={[styles.colDesc, { color: "#b91c1c" }]}>Late Fine</Text>
+              <Text style={[styles.colAmt, { color: "#b91c1c" }]}>+{data.lateFine!.toFixed(2)}</Text>
+            </View>
+          )}
         </View>
 
         {/* Total Payable Box */}
@@ -288,7 +301,26 @@ export function FeeVoucherPDFDocument({ vouchers }: { vouchers: FeeVoucherPDFDat
   return (
     <Document title="Commercial 3-Part Fee Vouchers">
       {vouchers.map((voucher, idx) => (
-        <Page key={idx} size="A4" orientation="landscape" style={styles.page}>
+        <Page
+          key={idx}
+          size="A4"
+          orientation="landscape"
+          style={[
+            styles.page,
+            {
+              fontFamily: getPdfFontFamily(
+                voucher.locale,
+                voucher.schoolName,
+                voucher.schoolAddress,
+                voucher.studentName,
+                voucher.className,
+                voucher.feeType,
+                voucher.currencySymbol,
+              ),
+              direction: (voucher.locale || "").toLowerCase().startsWith("ur") ? ("rtl" as any) : ("ltr" as any),
+            },
+          ]}
+        >
           <VoucherSlip copyType="BANK COPY" data={voucher} />
           <VoucherSlip copyType="SCHOOL COPY" data={voucher} />
           <VoucherSlip copyType="STUDENT COPY" data={voucher} isLast />

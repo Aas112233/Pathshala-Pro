@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
+import { addCurrency, roundCurrency } from "@/lib/math-utils";
 
 export interface FeeDaybookRow {
   date: string;
@@ -53,12 +54,17 @@ export async function exportFeeDaybookToExcel(
     transactions = await prisma.transaction.findMany({
       where: {
         tenantId,
-        createdAt: {
+        // Voided receipts must not appear in the daybook — the void route
+        // flips isVoided rather than deleting, so every financial consumer
+        // has to filter it. `timestamp` (not `createdAt`) matches the P&L's
+        // business-date basis and is the indexed column (@@index tenantId,timestamp).
+        isVoided: false,
+        timestamp: {
           ...(startDate ? { gte: startDate } : {}),
           ...(endDate ? { lte: endDate } : {}),
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { timestamp: "desc" },
     });
     vouchers = await prisma.feeVoucher.findMany({
       where: {
@@ -124,12 +130,14 @@ export async function exportFeeDaybookToExcel(
   transactions.forEach((tx, index) => {
     const voucher = voucherById.get(tx.feeVoucherId);
     const student = voucher ? studentById.get(voucher.studentProfileId) : undefined;
-    const amount = Number(tx.amountPaid) || 0;
-    totalCollected += amount;
+    const amount = roundCurrency(Number(tx.amountPaid) || 0);
+    // Accumulate through integer cents so the footer cannot drift a paisa off
+    // the sum of the 2dp row displays (SUM(round) vs round(SUM)).
+    totalCollected = addCurrency(totalCollected, amount);
 
     const row = worksheet.addRow({
       sno: index + 1,
-      date: tx.createdAt.toISOString().slice(0, 10),
+      date: tx.timestamp.toISOString().slice(0, 10),
       voucherNumber: voucher?.voucherId || "-",
       studentId: student?.studentId || "-",
       studentName: student ? `${student.firstName} ${student.lastName}`.trim() : "Student",
@@ -183,7 +191,9 @@ export async function exportAcademicTabulationSheetToExcel(
 
   try {
     const results = await Promise.all([
-      prisma.class.findUnique({ where: { id: classId } }),
+      // Tenant-scoped: an unscoped findUnique lets a caller pass another
+      // tenant's classId and render that class's name in the sheet title.
+      prisma.class.findFirst({ where: { id: classId, tenantId } }),
       prisma.subject.findMany({ where: { tenantId } }),
       prisma.examResult.findMany({
         where: {

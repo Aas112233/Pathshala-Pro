@@ -59,7 +59,7 @@ export const createStudentSchema = z.object({
   classId: z.string().optional().nullable(),
   groupId: z.string().optional().nullable(),
   sectionId: z.string().optional().nullable(),
-  rollNumber: z.string().min(1, "Roll number is required"),
+  rollNumber: z.string().optional(),
   bloodGroup: z.string().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "GRADUATED", "TRANSFERRED"]).default("ACTIVE"),
 });
@@ -828,11 +828,16 @@ export const updateQuestionSchema = createQuestionSchema.partial();
 export const QUESTION_PAPER_STATUSES = ["DRAFT", "READY", "PUBLISHED", "ARCHIVED"] as const;
 
 export const questionPaperSectionSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(),
+  sectionId: z.string().optional(),
   title: z.string().min(1, "Section title is required"),
+  subTitle: z.string().optional().nullable(),
+  marksInstruction: z.string().optional().nullable(),
   instructions: z.string().optional().nullable(),
-  totalMarks: z.number().min(0),
-  questionIds: z.array(z.string()).default([]),
+  totalMarks: z.number().min(0).optional(),
+  questionIds: z.array(z.string()).default([]).optional(),
+  questions: z.array(z.any()).default([]).optional(),
+  isRTL: z.boolean().optional(),
 });
 
 export const createQuestionPaperSchema = z.object({
@@ -874,5 +879,30 @@ export const generateBlueprintSchema = z.object({
       medium: z.number().min(0).max(100).default(50),
       hard: z.number().min(0).max(100).default(20),
     }).optional(),
+    bloomRatio: z.object({
+      knowledge: z.number().min(0).max(100).default(25),
+      understanding: z.number().min(0).max(100).default(25),
+      application: z.number().min(0).max(100).default(25),
+      analysis: z.number().min(0).max(100).default(25),
+    }).optional(),
+    chapterDistribution: z.enum(["balanced", "sequential"]).default("balanced").optional(),
+  }).superRefine((bp, ctx) => {
+    if ((bp.mcqCount + bp.shortCount + bp.descriptiveCount + bp.creativeCount) === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "At least one question type must have count > 0", path: ["mcqCount"] });
+    }
+    if (bp.difficultyRatio) {
+      const sum = bp.difficultyRatio.easy + bp.difficultyRatio.medium + bp.difficultyRatio.hard;
+      if (sum !== 100) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Difficulty ratio must sum to 100%", path: ["difficultyRatio", "easy"] });
+    }
+    if (bp.bloomRatio) {
+      const sum = bp.bloomRatio.knowledge + bp.bloomRatio.understanding + bp.bloomRatio.application + bp.bloomRatio.analysis;
+      if (sum !== 100) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Bloom ratio must sum to 100%", path: ["bloomRatio", "knowledge"] });
+    }
   }),
+}).superRefine((data, ctx) => {
+  const bp = data.blueprint;
+  const computed = bp.mcqCount * bp.mcqMarksEach + bp.shortCount * bp.shortMarksEach + bp.descriptiveCount * bp.descriptiveMarksEach + bp.creativeCount * bp.creativeMarksEach;
+  if (Math.abs(computed - data.totalMarks) > 0.01) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Blueprint marks (${computed}) must equal totalMarks (${data.totalMarks})`, path: ["totalMarks"] });
+  }
 });

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, notFound, validationError, handleApiError, badRequest } from "@/lib/api-response";
 import { updateCertificateSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, isTenantOwned } from "@/lib/api-auth";
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,6 +22,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (d.certificateNumber && d.certificateNumber !== existing.certificateNumber) {
       const dup = await prisma.certificate.findFirst({ where: { tenantId, certificateNumber: d.certificateNumber, id: { not: id } } });
       if (dup) return badRequest("Certificate number already exists");
+    }
+    // FK-confusion guard: the certificate may only reference this tenant's
+    // student; the GET includes that student's PII.
+    if (d.studentProfileId && !(await isTenantOwned(prisma.studentProfile, d.studentProfileId, tenantId))) {
+      return badRequest("Selected student does not exist in your institution.");
     }
     const updated = await prisma.certificate.update({
       where: { id },

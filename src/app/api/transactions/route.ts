@@ -9,7 +9,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { createTransactionSchema } from "@/lib/schemas";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
@@ -52,6 +52,21 @@ export async function GET(request: NextRequest) {
       where.timestamp = {};
       if (startDate) where.timestamp.gte = new Date(startDate);
       if (endDate) where.timestamp.lte = new Date(endDate);
+    }
+
+    // Voided receipts reverse their journal and are not live money; the day
+    // book must not show them as collections. `?voided=only` is the audit view.
+    const voidedParam = searchParams.get("voided");
+    if (voidedParam === "only") {
+      where.isVoided = true;
+    } else if (voidedParam !== "all") {
+      where.isVoided = false;
+    }
+
+    // C1 self-scoping: transactions reach students through their voucher.
+    const selfScope = await getSelfScopedStudentProfileIds(access.authContext);
+    if (selfScope) {
+      where.feeVoucher = { studentProfileId: { in: selfScope } };
     }
 
     // Get total count
@@ -109,7 +124,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    // Recording a receipt IS collecting cash, whichever endpoint it arrives
+    // through. `/api/transactions` maps to the `fees` module, which PRINCIPAL
+    // holds at manage tier for waiver approval — so the module tier alone
+    // would leave this door open.
+    const access = await requireApiAccess(request, { permission: "fees:payment:collect" });
     if ("response" in access) return access.response;
 
     const { user, tenantId } = access.authContext;

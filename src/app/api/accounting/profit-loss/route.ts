@@ -5,6 +5,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
+import { addCurrency, roundCurrency } from "@/lib/math-utils";
 
 /**
  * GET /api/accounting/profit-loss
@@ -25,9 +26,13 @@ export async function GET(request: NextRequest) {
     const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59);
 
     // 1. Fetch all payment receipts in this year
+    // Voided receipts are excluded — a voided ₹5,000 payment must not inflate
+    // totalIncome. The void route flips isVoided instead of deleting so the
+    // audit trail survives; every financial consumer must filter it.
     const transactions = await prisma.transaction.findMany({
       where: {
         tenantId,
+        isVoided: false,
         timestamp: { gte: startOfYear, lte: endOfYear },
       },
       include: {
@@ -59,31 +64,36 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Income breakdown by Fee Type
+    // Income breakdown by Fee Type. All money accumulates through integer
+    // cents — a float `+=` over a year of receipts drifts, and this statement
+    // is what the trustees read.
     let totalFeeRevenue = 0;
     const incomeByType: Record<string, number> = {};
 
     transactions.forEach((tx) => {
-      totalFeeRevenue += tx.amountPaid;
+      totalFeeRevenue = addCurrency(totalFeeRevenue, tx.amountPaid);
       const type = tx.feeVoucher?.feeType || "TUITION";
-      incomeByType[type] = (incomeByType[type] || 0) + tx.amountPaid;
+      incomeByType[type] = addCurrency(incomeByType[type] || 0, tx.amountPaid);
     });
 
     // Payroll expenses
-    const totalPayrollPaid = salaryLedgers.reduce((acc, s) => acc + (s.paidAmount || s.baseSalary || 0), 0);
+    const totalPayrollPaid = salaryLedgers.reduce(
+      (acc, s) => addCurrency(acc, s.paidAmount || s.baseSalary || 0),
+      0,
+    );
 
     // Operational expenses breakdown by Category
     let totalOperationalExpenses = 0;
     const expenseByCategory: Record<string, number> = {};
 
     expenses.forEach((exp) => {
-      totalOperationalExpenses += exp.amount;
+      totalOperationalExpenses = addCurrency(totalOperationalExpenses, exp.amount);
       const catName = exp.category?.name || "General Expenses";
-      expenseByCategory[catName] = (expenseByCategory[catName] || 0) + exp.amount;
+      expenseByCategory[catName] = addCurrency(expenseByCategory[catName] || 0, exp.amount);
     });
 
-    const totalExpenses = totalPayrollPaid + totalOperationalExpenses;
-    const netSurplus = totalFeeRevenue - totalExpenses;
+    const totalExpenses = addCurrency(totalPayrollPaid, totalOperationalExpenses);
+    const netSurplus = roundCurrency(totalFeeRevenue - totalExpenses);
     const profitMargin = totalFeeRevenue > 0 ? Number(((netSurplus / totalFeeRevenue) * 100).toFixed(1)) : 0;
 
     // Monthly Trend Map (Jan - Dec)
@@ -94,20 +104,20 @@ export async function GET(request: NextRequest) {
       // Incomes in this month
       const monthIncome = transactions
         .filter((tx) => new Date(tx.timestamp).getMonth() === i)
-        .reduce((sum, tx) => sum + tx.amountPaid, 0);
+        .reduce((sum, tx) => addCurrency(sum, tx.amountPaid), 0);
 
       // Salaries in this month
       const monthSalary = salaryLedgers
         .filter((s) => s.month === monthNum)
-        .reduce((sum, s) => sum + (s.paidAmount || s.baseSalary || 0), 0);
+        .reduce((sum, s) => addCurrency(sum, s.paidAmount || s.baseSalary || 0), 0);
 
       // Expenses in this month
       const monthExp = expenses
         .filter((e) => new Date(e.expenseDate).getMonth() === i)
-        .reduce((sum, e) => sum + e.amount, 0);
+        .reduce((sum, e) => addCurrency(sum, e.amount), 0);
 
-      const monthTotalExp = monthSalary + monthExp;
-      const monthNet = monthIncome - monthTotalExp;
+      const monthTotalExp = addCurrency(monthSalary, monthExp);
+      const monthNet = roundCurrency(monthIncome - monthTotalExp);
 
       return {
         month: monthName,

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 
 export function useHealthViewModel(search = "", page = 1) {
   const t = useTranslations("health");
@@ -40,7 +40,7 @@ export function useHealthViewModel(search = "", page = 1) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["healthRecords"] });
-      toast.success("Health record added");
+      toast.success(t("createSuccess"));
     },
     onError: (e: any) => toast.error(e?.message || t("error")),
   });

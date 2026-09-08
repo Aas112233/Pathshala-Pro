@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    const access = await requireApiAccess(request, { permission: "fees:waiver:approve" });
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;

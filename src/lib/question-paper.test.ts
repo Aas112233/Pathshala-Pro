@@ -146,4 +146,43 @@ describe("Question Bank & Question Paper Engine", () => {
       expect(parsed.success).toBe(true);
     });
   });
+
+  describe("Bangladesh Exam Paper Studio Utilities", () => {
+    it("converts numerals to authentic Bengali digits", async () => {
+      const { toBengaliNumber, formatNumeral } = await import("@/lib/question-paper-studio/bengali-numerals");
+      expect(toBengaliNumber(12345)).toBe("১২৩৪৫");
+      expect(formatNumeral(100, "bengali")).toBe("১০০");
+      expect(formatNumeral(100, "english")).toBe("100");
+    });
+
+    it("verifies all pre-built Bangladesh and international exam templates are valid", async () => {
+      const { EXAM_TEMPLATES } = await import("@/lib/question-paper-studio/templates");
+      expect(EXAM_TEMPLATES.length).toBeGreaterThanOrEqual(8);
+
+      EXAM_TEMPLATES.forEach((tmpl) => {
+        expect(tmpl.id).toBeDefined();
+        expect(tmpl.header.instituteName).toBeDefined();
+        expect(tmpl.header.subjectName).toBeDefined();
+        expect(tmpl.sections.length).toBeGreaterThan(0);
+        tmpl.sections.forEach((sec) => {
+          expect(sec.sectionId).toBeDefined();
+          expect(sec.title).toBeDefined();
+          expect(Array.isArray(sec.questions)).toBe(true);
+        });
+      });
+    });
+
+    it("verifies mathematical and scientific equation symbol groups", async () => {
+      const { MATH_SYMBOL_GROUPS } = await import("@/lib/question-paper-studio/math-symbols");
+      expect(MATH_SYMBOL_GROUPS.length).toBeGreaterThanOrEqual(4);
+      MATH_SYMBOL_GROUPS.forEach((grp) => {
+        expect(grp.category).toBeDefined();
+        expect(grp.symbols.length).toBeGreaterThan(0);
+        grp.symbols.forEach((sym) => {
+          expect(sym.label).toBeDefined();
+          expect(sym.value).toBeDefined();
+        });
+      });
+    });
+  });
 });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
-import { DataTable } from "@/components/shared/data-table";
+import { ERPDataTable, type ColumnDef as ERPColumnDef } from "@/components/ui/erp-data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,7 +29,7 @@ import {
   Download
 } from "lucide-react";
 import { useAttendance, useDeleteAttendance } from "@/hooks/use-queries";
-import type { ColumnDef } from "@tanstack/react-table";
+
 import { toast } from "sonner";
 import { cn, formatStudentName } from "@/lib/utils";
 import { MarkAttendanceModal } from "@/components/attendance/mark-attendance-modal";
@@ -42,6 +42,7 @@ export default function AttendancePage() {
   const t = useTranslations('attendance');
   const common = useTranslations("common");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -59,7 +60,7 @@ export default function AttendancePage() {
 
   const { data, isLoading } = useAttendance({
     page,
-    limit: 20,
+    limit: pageSize,
     search: search || undefined,
     ...(date && { filters: { date } }),
     ...(startDate && { startDate }),
@@ -92,27 +93,27 @@ export default function AttendancePage() {
     }
   };
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ERPColumnDef<any>[] = [
     {
-      accessorKey: "date",
+      key: "date",
       header: t('tableColumns.date'),
-      cell: ({ getValue }) => formatDate(getValue<string>()),
+      cell: (row) => formatDate(row.date),
     },
     {
-      accessorKey: "type",
+      key: "type",
       header: t('tableColumns.type'),
-      cell: ({ row }) => (
+      cell: (row) => (
         <Badge variant="outline">
-          {row.original.studentProfile ? t('type.student') : t('type.staff')}
+          {row.studentProfile ? t('type.student') : t('type.staff')}
         </Badge>
       ),
     },
     {
-      accessorKey: "name",
+      key: "name",
       header: t('tableColumns.name'),
-      cell: ({ row }) => {
-        const student = row.original.studentProfile;
-        const staff = row.original.staffProfile;
+      cell: (row) => {
+        const student = row.studentProfile;
+        const staff = row.staffProfile;
         const name = student
           ? formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn)
           : staff
@@ -122,45 +123,45 @@ export default function AttendancePage() {
       },
     },
     {
-      accessorKey: "id",
+      key: "id",
       header: t('tableColumns.id'),
-      cell: ({ row }) => (
+      cell: (row) => (
         <span className="text-sm text-muted-foreground">
-          {row.original.studentProfile?.studentId || row.original.staffProfile?.staffId || "-"}
+          {row.studentProfile?.studentId || row.staffProfile?.staffId || "-"}
         </span>
       ),
     },
     {
-      accessorKey: "status",
+      key: "status",
       header: t('tableColumns.status'),
-      cell: ({ getValue }) => (
-        <Badge variant={getStatusBadgeVariant(getValue<string>())}>
-          {getValue<string>()}
+      cell: (row) => (
+        <Badge variant={getStatusBadgeVariant(row.status)}>
+          {row.status}
         </Badge>
       ),
     },
     {
-      accessorKey: "note",
+      key: "note",
       header: t('tableColumns.note'),
-      cell: ({ getValue }) => (
+      cell: (row) => (
         <span className="text-sm text-muted-foreground max-w-[200px] truncate">
-          {getValue<string>() || "-"}
+          {row.note || "-"}
         </span>
       ),
     },
     {
-      accessorKey: "markedBy",
+      key: "markedBy",
       header: t('tableColumns.markedBy'),
-      cell: ({ row }) => (
+      cell: (row) => (
         <span className="text-sm">
-          {row.original.markedBy?.name || "-"}
+          {row.markedBy?.name || "-"}
         </span>
       ),
     },
     {
-      id: "actions",
+      key: "actions",
       header: t('tableColumns.actions'),
-      cell: ({ row }) => (
+      cell: (row) => (
         <div className="flex items-center gap-1">
           {canWrite && (
             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -172,7 +173,7 @@ export default function AttendancePage() {
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => handleDelete(row.original.id)}
+              onClick={() => handleDelete(row.id)}
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
@@ -417,14 +418,21 @@ export default function AttendancePage() {
             </CardContent>
           </Card>
 
-          {/* Data Table */}
-          <DataTable
-            columns={columns}
+          {/* Data Table — ERPDataTable (rule 2) */}
+          <ERPDataTable
             data={attendanceData}
-            pagination={pagination}
+            columns={columns}
+            keyExtractor={(row) => row.id}
+            page={pagination?.currentPage || page}
+            pageSize={pagination?.pageSize || pageSize}
+            totalCount={pagination?.totalCount || 0}
             onPageChange={setPage}
+            onPageSizeChange={(size) => setPageSize(size)}
             isLoading={isLoading}
+            searchValue={search}
+            onSearchChange={setSearch}
             searchPlaceholder={t('searchPlaceholder')}
+            emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{t('common.noResults') || 'No records'}</div>}
           />
         </>
       )}

@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { reportCardStyles } from "./report-card";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface BatchStudentResult {
   student: {
@@ -44,6 +45,7 @@ export interface BatchStudentResult {
 }
 
 export interface BatchReportCardProps {
+  locale?: string;
   school: {
     name: string;
     address: string;
@@ -247,13 +249,21 @@ const styles = StyleSheet.create({
 });
 
 export const BatchReportCardDocument: React.FC<BatchReportCardProps> = ({
+  locale,
   school,
   students,
 }) => {
   return (
     <Document title="Class Batch Report Cards" author="Pathshala Pro ERP">
       {students.map((data, index) => (
-        <Page key={data.student.id || index} size="A4" style={styles.pageContainer}>
+        <Page
+          key={data.student.id || index}
+          size="A4"
+          style={[
+            styles.pageContainer,
+            { fontFamily: getPdfFontFamily(locale, school?.name, pdfTextSample([data.student]), pdfTextSample(data.subjects)) },
+          ]}
+        >
           {/* Header */}
           <View style={styles.headerBox}>
             <View>

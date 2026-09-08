@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { appToast as toast } from "@/lib/notifications/toast";
 
 interface TimetableEntry {
   id: string;
@@ -18,6 +18,7 @@ interface TimetableEntry {
   breakLabel: string | null;
   subject?: { id: string; name: string; code: string } | null;
   staffProfile?: { id: string; firstName: string; lastName: string; staffId: string } | null;
+  section?: { id: string; name: string; shortName: string | null } | null;
 }
 
 async function fetchTimetable(params: Record<string, string>) {

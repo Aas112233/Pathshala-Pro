@@ -151,6 +151,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: GraduationCap,
       },
       {
+        titleKey: "nav.studentPerformance",
+        href: "/students/performance",
+        icon: TrendingUp,
+      },
+      {
         titleKey: "nav.attendance",
         href: "/attendance",
         icon: CalendarCheck,
@@ -169,6 +174,16 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.classes",
         href: "/academic/classes",
         icon: School,
+      },
+      {
+        titleKey: "nav.sections",
+        href: "/academic/sections",
+        icon: Layers,
+      },
+      {
+        titleKey: "nav.groups",
+        href: "/academic/groups",
+        icon: Users,
       },
       {
         titleKey: "nav.subjects",
