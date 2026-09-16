@@ -1,6 +1,7 @@
 import {
   PdfFilterItem,
   PdfSchoolInfo,
+  PdfCommonLabels,
   ReportBaseTemplate,
 } from "./report-base";
 
@@ -19,6 +20,7 @@ interface StudentRecord {
 }
 
 interface StudentReportTemplateProps {
+  locale?: string;
   school: PdfSchoolInfo;
   dateRangeLabel: string;
   generatedAt: string;
@@ -31,18 +33,22 @@ interface StudentReportTemplateProps {
     graduated: number;
   };
   records: StudentRecord[];
+  labels?: PdfCommonLabels;
 }
 
 export function StudentReportTemplate({
+  locale,
   school,
   dateRangeLabel,
   generatedAt,
   filters,
   metrics,
   records,
+  labels,
 }: StudentReportTemplateProps) {
   return (
     <ReportBaseTemplate
+      locale={locale}
       school={school}
       title="Student Enrollment Report"
       subtitle="Student enrollment and demographic overview"
@@ -73,6 +79,7 @@ export function StudentReportTemplate({
         { key: "contactNumber", label: "Contact", flex: 1.2 },
       ]}
       rows={records}
+      labels={labels}
       notes={[
         "Status values reflect the current enrollment state at report generation time.",
         "This report contains confidential student information.",

@@ -17,10 +17,14 @@ import {
   lockedDeleteMessage,
   getLockedStudentPlacementFields,
 } from "@/lib/data-integrity";
+import {
+  resolveRequestAcademicYearId,
+  ensureStudentAcademicSession,
+} from "@/lib/academic-year-guards";
 
 /**
  * GET /api/students/[id]
- * Get a single student by ID
+ * Get a single student by ID with full multi-year academic progression
  */
 export async function GET(
   request: NextRequest,
@@ -36,6 +40,31 @@ export async function GET(
     const student = await prisma.studentProfile.findUnique({
       where: { id, tenantId },
       include: {
+        academicSessions: {
+          orderBy: { academicYear: { startDate: "desc" } },
+          select: {
+            id: true,
+            academicYearId: true,
+            academicYear: {
+              select: {
+                id: true,
+                yearId: true,
+                label: true,
+                isClosed: true,
+              },
+            },
+            classId: true,
+            sectionId: true,
+            groupId: true,
+            rollNumber: true,
+            promotionStatus: true,
+            finalGpa: true,
+            finalPercentage: true,
+            class: { select: { id: true, name: true } },
+            section: { select: { id: true, name: true } },
+            group: { select: { id: true, name: true } },
+          },
+        },
         feeVouchers: {
           take: 5,
           orderBy: { createdAt: "desc" },
@@ -224,6 +253,7 @@ export async function PUT(
           select: {
             id: true,
             name: true,
+            classNumber: true,
           },
         },
         group: {
@@ -241,6 +271,25 @@ export async function PUT(
         updatedAt: true,
       },
     });
+
+    // Synchronize active session if academic year and class are present
+    const targetAcademicYearId = (data as any).academicYearId || await resolveRequestAcademicYearId(request, tenantId);
+    if (targetAcademicYearId && updatedStudent.classId) {
+      const cls = await prisma.class.findFirst({
+        where: { id: updatedStudent.classId, tenantId },
+        select: { classNumber: true },
+      });
+      await ensureStudentAcademicSession(prisma, {
+        tenantId,
+        studentProfileId: id,
+        academicYearId: targetAcademicYearId,
+        classId: updatedStudent.classId,
+        sectionId: updatedStudent.sectionId,
+        groupId: updatedStudent.groupId,
+        rollNumber: updatedStudent.rollNumber,
+        classNumber: cls?.classNumber ?? 0,
+      });
+    }
 
     return successResponse(updatedStudent, "Student updated successfully");
   } catch (error) {

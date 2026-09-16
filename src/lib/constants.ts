@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   BookOpen,
   CalendarRange,
+  CalendarDays,
   Settings,
   School,
   Layers,
@@ -194,6 +195,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.timetable",
         href: "/timetable",
         icon: CalendarRange,
+      },
+      {
+        titleKey: "nav.calendar",
+        href: "/calendar",
+        icon: CalendarDays,
       },
       {
         titleKey: "nav.homework",

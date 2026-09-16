@@ -234,17 +234,19 @@ export default function SystemAdminAuditLogsPage() {
 
             <div className="flex items-center gap-2">
               <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-              <select
+              <AppDropdown
                 value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value)}
-                className="h-9 px-3 rounded-md border border-input bg-background text-xs"
-              >
-                <option value="">{t("allActions")}</option>
-                <option value="CREATE">CREATE</option>
-                <option value="UPDATE">UPDATE</option>
-                <option value="DELETE">DELETE</option>
-                <option value="LOGIN">LOGIN</option>
-              </select>
+                onChange={setActionFilter}
+                options={[
+                  { value: "", label: t("allActions") },
+                  { value: "CREATE", label: "CREATE" },
+                  { value: "UPDATE", label: "UPDATE" },
+                  { value: "DELETE", label: "DELETE" },
+                  { value: "LOGIN", label: "LOGIN" },
+                ]}
+                placeholder={t("allActions")}
+                triggerClassName="h-9 text-xs"
+              />
 
               {(search || actionFilter) && (
                 <Button

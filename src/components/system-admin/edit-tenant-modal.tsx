@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { School, Save, Loader2 } from "lucide-react";
 import { CURRENCY_LIST } from "@/lib/currencies";
 
@@ -23,6 +24,7 @@ export function EditTenantModal({
   tenant,
   onSuccess,
 }: EditTenantModalProps) {
+  const t = useTranslations("systemAdmin");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -69,7 +71,7 @@ export function EditTenantModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast.error("School name is required");
+      toast.error(t("tenantNameRequired"));
       return;
     }
 
@@ -87,11 +89,11 @@ export function EditTenantModal({
         return;
       }
 
-      toast.success("School configuration updated successfully!");
+      toast.success(t("tenantConfigUpdated"));
       onClose();
       if (onSuccess) onSuccess();
     } catch {
-      toast.error("Network error updating tenant");
+      toast.error(t("tenantNetworkError"));
     } finally {
       setIsSubmitting(false);
     }

@@ -13,9 +13,18 @@ export function registerPdfFonts() {
   // CDN fallbacks
   const cdnBase = "https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf";
 
-  // Helper to determine font source (local file in Node.js, CDN in browser/fallback)
+  // Helper to determine font source. Real browsers use the same-origin /fonts/
+  // bundle shipped in public/fonts (no extra DNS/TLS, no CDN outage can turn
+  // Bangla into tofu). Node, SSR and jsdom test envs (all expose
+  // process.versions.node) use the repo file when present, else the CDN.
+  const isNode =
+    typeof process !== "undefined" &&
+    !!(process as any).versions?.node;
   const getFontSrc = (fileName: string, subPath: string) => {
-    if (typeof window === "undefined" && typeof process !== "undefined" && typeof process.cwd === "function") {
+    if (!isNode && typeof window !== "undefined") {
+      return `/fonts/${fileName}`;
+    }
+    if (typeof process !== "undefined" && typeof process.cwd === "function") {
       try {
         const fs = require("fs");
         const localPath = path.join(fontDir, fileName);
@@ -89,7 +98,9 @@ registerPdfFonts();
  */
 const PDF_SCRIPTS = [
   { family: "NotoSansBengali", content: /[\u0980-\u09FF]/, locale: /^bn(-|$)/ },
-  { family: "NotoSansDevanagari", content: /[\u0900-\u097F]/, locale: /^hi(-|$)/ },
+  // U+20B9 RUPEE SIGN lives outside the Devanagari block but salary/fee
+  // templates pass bare currency symbols -- without it a bare rupee picks NotoSans.
+  { family: "NotoSansDevanagari", content: /[\u0900-\u097F\u20B9]/, locale: /^hi(-|$)/ },
   { family: "NotoSansArabic", content: /[\u0600-\u06FF\u0750-\u077F]/, locale: /^ur(-|$)/ },
 ] as const;
 

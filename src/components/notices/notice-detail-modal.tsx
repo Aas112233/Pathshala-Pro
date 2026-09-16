@@ -2,6 +2,7 @@
 
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { 
   Calendar, 
@@ -28,6 +29,7 @@ export function NoticeDetailModal({
   onClose,
   notice,
 }: NoticeDetailModalProps) {
+  const t = useTranslations("notices");
   if (!notice) return null;
 
   const isGlobal = notice.scope === "GLOBAL";
@@ -63,7 +65,7 @@ export function NoticeDetailModal({
     navigator.clipboard.writeText(
       `Notice: ${notice.title}\nDate: ${new Date(notice.publishDate).toLocaleDateString()}\n\n${notice.content}`
     );
-    toast.success("Copied");
+    toast.success(t("copied"));
   };
 
   return (

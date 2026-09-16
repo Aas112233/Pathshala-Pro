@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
-import { Search, UserCheck, X } from "lucide-react";
+import { Search, UserCheck, X, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn, formatStudentName } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ interface Student {
   gender?: string;
   status: string;
   profilePictureUrl?: string;
+  classId?: string;
   class?: {
     id: string;
     name: string;
@@ -49,21 +51,30 @@ export function StudentSelectorModal({
   onClose,
   onAdd,
   selectedStudents = [],
-  confirmLabel = "Add Student",
+  confirmLabel,
   allowMultiple = true,
 }: StudentSelectorModalProps) {
+  const t = useTranslations("academicSelector");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [tempSelected, setTempSelected] = useState<Student[]>(selectedStudents);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data: studentsData, isLoading } = useQuery({
-    queryKey: ["students-all", { search, selectedClass, selectedGroup, selectedSection }],
+    queryKey: ["students", "all", { search: debouncedSearch, selectedClass, selectedGroup, selectedSection }],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: "100",
-        ...(search && { search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(selectedClass && { classId: selectedClass }),
         ...(selectedGroup && { groupId: selectedGroup }),
         ...(selectedSection && { sectionId: selectedSection }),
@@ -75,7 +86,7 @@ export function StudentSelectorModal({
   });
 
   const { data: classesData } = useQuery({
-    queryKey: ["classes-all"],
+    queryKey: ["classes", "all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100");
       if (!res.ok) throw new Error("Failed to fetch classes");
@@ -84,7 +95,7 @@ export function StudentSelectorModal({
   });
 
   const { data: groupsData } = useQuery({
-    queryKey: ["groups-all", { classId: selectedClass }],
+    queryKey: ["groups", "all", { classId: selectedClass }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
       const res = await fetch(`/api/groups?limit=100&classId=${selectedClass}`);
@@ -95,7 +106,7 @@ export function StudentSelectorModal({
   });
 
   const { data: sectionsData } = useQuery({
-    queryKey: ["sections-all", { classId: selectedClass, groupId: selectedGroup }],
+    queryKey: ["sections", "all", { classId: selectedClass, groupId: selectedGroup }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
       const params = new URLSearchParams({
@@ -131,22 +142,32 @@ export function StudentSelectorModal({
   );
 
   const classOptions = [
-    { value: "", label: "All Classes" },
+    { value: "", label: t("allClasses") },
     ...classes.map((c: any) => ({ value: c.id, label: c.name })),
   ];
 
   const groupOptions = [
-    { value: "", label: "All Groups" },
+    { value: "", label: t("allGroups") },
     ...groups.map((g: any) => ({ value: g.id, label: g.name })),
   ];
 
   const sectionOptions = [
-    { value: "", label: "All Sections" },
+    { value: "", label: t("allSections") },
     ...sections.map((s: any) => ({ value: s.id, label: s.name })),
   ];
 
   const isSelected = (student: Student) => {
     return tempSelected.some((s) => s.id === student.id);
+  };
+
+  // Only students already assigned to a class cannot be admitted through this flow.
+  // Students without an assigned class (even if created with ACTIVE status) can be admitted/assigned to a class.
+  const getUnavailableReason = (student: Student): string | null => {
+    const assignedClass = student.class?.name;
+    if (student.classId || assignedClass) {
+      return t("assignedToClass", { className: assignedClass || student.classId || "" });
+    }
+    return null;
   };
 
   const toggleSelect = (student: Student) => {
@@ -175,22 +196,22 @@ export function StudentSelectorModal({
     <TopSheet
       isOpen={isOpen}
       onClose={handleReset}
-      title="Select Students"
-      description="Search and select existing students for admission. Their current class information is shown below their name."
+      title={t("selectStudentsModalTitle")}
+      description={t("selectStudentsModalDesc")}
       maxWidth="4xl"
       footer={
         <div className="flex items-center justify-between w-full">
           <Button variant="outline" type="button" onClick={handleReset}>
-            Cancel
+            {t("cancel")}
           </Button>
           <div className="flex items-center gap-3">
             {tempSelected.length > 0 && (
               <span className="text-sm text-muted-foreground">
-                {tempSelected.length} selected
+                {t("studentsSelected", { count: tempSelected.length })}
               </span>
             )}
             <Button type="button" onClick={handleConfirm} disabled={tempSelected.length === 0}>
-              {confirmLabel}
+              {confirmLabel || t("addSelectedStudents")}
             </Button>
           </div>
         </div>
@@ -204,20 +225,34 @@ export function StudentSelectorModal({
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search by name, roll number, or student ID..."
+                placeholder={t("searchStudentPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-10"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
           <div>
             <AppDropdown
               value={selectedClass}
-              onChange={setSelectedClass}
+              onChange={(val) => {
+                setSelectedClass(val);
+                setSelectedGroup("");
+                setSelectedSection("");
+              }}
               options={classOptions}
-              placeholder="Filter by Class"
+              placeholder={t("filterByClass")}
               searchable
+              searchPlaceholder={t("searchClassPlaceholder")}
             />
           </div>
           <div>
@@ -225,8 +260,9 @@ export function StudentSelectorModal({
               value={selectedGroup}
               onChange={setSelectedGroup}
               options={groupOptions}
-              placeholder="Filter by Group"
+              placeholder={!selectedClass ? t("selectClassFirst") : t("filterByGroup")}
               searchable
+              searchPlaceholder={t("searchGroupPlaceholder")}
               disabled={!selectedClass}
             />
           </div>
@@ -235,8 +271,9 @@ export function StudentSelectorModal({
               value={selectedSection}
               onChange={setSelectedSection}
               options={sectionOptions}
-              placeholder="Filter by Section"
+              placeholder={!selectedClass ? t("selectClassFirst") : t("filterBySection")}
               searchable
+              searchPlaceholder={t("searchSectionPlaceholder")}
               disabled={!selectedClass}
             />
           </div>
@@ -247,7 +284,7 @@ export function StudentSelectorModal({
           <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
             <UserCheck className="h-5 w-5 text-primary" />
             <span className="text-sm font-medium text-primary">
-              {tempSelected.length} student(s) selected
+              {t("studentsSelected", { count: tempSelected.length })}
             </span>
           </div>
         )}
@@ -256,16 +293,18 @@ export function StudentSelectorModal({
         <div className="max-h-[50vh] overflow-y-auto rounded-lg border border-border">
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
-              <p className="text-sm text-muted-foreground">Loading students...</p>
+              <p className="text-sm text-muted-foreground">{t("loading")}</p>
             </div>
           ) : students.length === 0 ? (
             <div className="flex items-center justify-center p-8">
-              <p className="text-sm text-muted-foreground">No students found</p>
+              <p className="text-sm text-muted-foreground">{t("noStudentsFound")}</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
               {students.map((student: Student) => {
                 const selected = isSelected(student);
+                // Already-picked rows stay interactive so they can be deselected.
+                const unavailableReason = selected ? null : getUnavailableReason(student);
                 const fullName = formatStudentName(student.firstName, student.lastName, student.firstNameBn, student.lastNameBn);
                 const initials = `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`;
 
@@ -274,7 +313,8 @@ export function StudentSelectorModal({
                     key={student.id}
                     className={cn(
                       "flex items-center gap-3 p-3 transition-colors hover:bg-muted/50",
-                      selected && "bg-primary/5"
+                      selected && "bg-primary/5",
+                      unavailableReason && "opacity-60"
                     )}
                   >
                     {/* Avatar */}
@@ -323,21 +363,33 @@ export function StudentSelectorModal({
                     </span>
 
                     {/* Select Button */}
-                    <button
-                      onClick={() => toggleSelect(student)}
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
-                        selected
-                          ? "bg-primary text-primary-foreground"
-                          : "border border-input text-muted-foreground hover:bg-muted"
+                    <span className="group/tip relative shrink-0">
+                      <button
+                        onClick={() => toggleSelect(student)}
+                        disabled={!!unavailableReason}
+                        aria-disabled={!!unavailableReason}
+                        title={unavailableReason || undefined}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : unavailableReason
+                              ? "cursor-not-allowed border border-input text-muted-foreground/40"
+                              : "border border-input text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {selected ? (
+                          <UserCheck className="h-4 w-4" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </button>
+                      {unavailableReason && (
+                        <span className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 hidden w-max max-w-56 -translate-y-1/2 rounded-lg border border-border/80 bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-xl group-hover/tip:block">
+                          {unavailableReason}
+                        </span>
                       )}
-                    >
-                      {selected ? (
-                        <UserCheck className="h-4 w-4" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
-                    </button>
+                    </span>
                   </div>
                 );
               })}
@@ -346,26 +398,5 @@ export function StudentSelectorModal({
         </div>
       </div>
     </TopSheet>
-  );
-}
-
-// Simple Plus icon component
-function Plus({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
   );
 }

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Checkbox } from "./checkbox";
+import { AppDropdown } from "./app-dropdown";
 import { TableSkeleton } from "./skeleton";
 
 export interface ColumnDef<T> {
@@ -55,6 +56,7 @@ export interface ERPDataTableProps<T> {
   onPageSizeChange?: (size: number) => void;
   // Row Click
   onRowClick?: (row: T) => void;
+  rowClassName?: (row: T, index: number) => string;
   isLoading?: boolean;
   emptyState?: ReactNode;
   className?: string;
@@ -85,6 +87,7 @@ export function ERPDataTable<T>({
   onPageChange,
   onPageSizeChange,
   onRowClick,
+  rowClassName,
   isLoading = false,
   emptyState,
   className,
@@ -259,7 +262,8 @@ export function ERPDataTable<T>({
                     className={cn(
                       "transition-colors hover:bg-muted/35",
                       isSelected && "bg-primary/5",
-                      onRowClick && "cursor-pointer"
+                      onRowClick && "cursor-pointer",
+                      rowClassName?.(row, idx)
                     )}
                   >
                     {onSelectionChange && (
@@ -296,17 +300,12 @@ export function ERPDataTable<T>({
         {onPageSizeChange && (
           <div className="flex items-center gap-2">
             <span>Rows per page:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="h-7 rounded-lg border border-border/80 bg-background px-2 py-0.5 text-xs text-foreground focus:border-primary focus:outline-none"
-            >
-              {pageSizeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <AppDropdown
+              value={String(pageSize)}
+              onChange={(v) => onPageSizeChange(Number(v))}
+              options={pageSizeOptions.map((opt) => ({ value: String(opt), label: String(opt) }))}
+              triggerClassName="h-7 px-2 py-0.5 text-xs"
+            />
           </div>
         )}
 

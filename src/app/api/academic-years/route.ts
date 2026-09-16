@@ -107,6 +107,27 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+
+    if (isNaN(startDate.getTime())) {
+      return badRequest("Invalid start date", [
+        { field: "startDate", code: "invalid", message: "Start date must be a valid date" },
+      ]);
+    }
+
+    if (isNaN(endDate.getTime())) {
+      return badRequest("Invalid end date", [
+        { field: "endDate", code: "invalid", message: "End date must be a valid date" },
+      ]);
+    }
+
+    if (startDate >= endDate) {
+      return badRequest("Invalid dates", [
+        { field: "startDate", code: "invalid", message: "Start date must be before end date" },
+      ]);
+    }
+
     // Check if year ID already exists
     const existingYear = await prisma.academicYear.findFirst({
       where: { tenantId, yearId: data.yearId },
@@ -121,7 +142,10 @@ export async function POST(request: NextRequest) {
     const academicYear = await prisma.academicYear.create({
       data: {
         tenantId,
-        ...data,
+        yearId: data.yearId,
+        label: data.label,
+        startDate,
+        endDate,
       },
       select: {
         id: true,

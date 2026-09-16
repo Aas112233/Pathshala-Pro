@@ -87,7 +87,7 @@ export default function EnquiriesPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const { data: classesData } = useQuery({
-    queryKey: ["classes-enquiries"],
+    queryKey: ["classes", "enquiries"],
     queryFn: async () => {
       const r = await fetch("/api/classes?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
@@ -402,7 +402,7 @@ export default function EnquiriesPage() {
                 <Input value={formData.guardianName} onChange={(e) => setFormData((p) => ({ ...p, guardianName: e.target.value }))} placeholder={t("guardianName")} />
               </ERPFormField>
               <ERPFormField label={t("phone")} required error={formErrors.phone}>
-                <Input value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} placeholder={t("phonePlaceholder")} />
+                <Input type="tel" value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} placeholder={t("phonePlaceholder")} />
               </ERPFormField>
               <ERPFormField label={t("email")}>
                 <Input value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} placeholder={t("emailPlaceholder")} />

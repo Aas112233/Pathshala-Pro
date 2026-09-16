@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily } from "./pdf-fonts";
 
 export interface CharacterCertificateData {
   certificateNumber: string;
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     color: "#0F172A",
     fontSize: 9,
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
   },
   watermark: {
     position: "absolute",
@@ -118,12 +119,16 @@ const styles = StyleSheet.create({
 
 export function CharacterCertificateTemplate({ school, data, verificationUrl, labels: l }: CharacterCertificateProps) {
   const L = { ...defaultLabels, ...l };
+  const fontFamily = getPdfFontFamily(
+    school?.name, school?.address, data.studentName, data.fatherName,
+    data.className, data.section, data.conduct, data.achievements, data.remarks
+  );
   const qrSrc = verificationUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verificationUrl)}`
     : undefined;
   return (
     <Document title={`CC-${data.certificateNumber}`} author={school.name}>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { fontFamily }]}>
         <View style={styles.borderOuter} /><View style={styles.borderInner} />
         <Text style={styles.watermark}>{school.name?.split(" ")[0]?.toUpperCase() || "SCHOOL"}</Text>
 
@@ -176,7 +181,7 @@ export function CharacterCertificateTemplate({ school, data, verificationUrl, la
           {data.achievements || data.remarks ? (
             <View style={styles.remarksBox}>
               {data.achievements ? <><Text style={{ fontSize: 7, color: "#64748B", fontWeight: 700 }}>{L.achievements}:</Text><Text style={{ fontSize: 8, color: "#1E293B", marginBottom: 4 }}>{data.achievements}</Text></> : null}
-              {data.remarks ? <Text style={{ fontSize: 7.5, color: "#475569", fontStyle: "italic" }}>{data.remarks}</Text> : null}
+              {data.remarks ? <Text style={{ fontSize: 7.5, color: "#475569" }}>{data.remarks}</Text> : null}
             </View>
           ) : null}
         </View>

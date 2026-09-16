@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Megaphone,
   Save,
@@ -44,6 +45,7 @@ export function CreateBroadcastModal({
   onSuccess,
   initialData,
 }: CreateBroadcastModalProps) {
+  const t = useTranslations("systemAdmin");
   const isEditing = !!initialData?.id;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tenantsList, setTenantsList] = useState<any[]>([]);
@@ -118,12 +120,12 @@ export function CreateBroadcastModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) {
-      toast.error("Please provide broadcast title and body");
+      toast.error(t("broadcastRequired"));
       return;
     }
 
     if (formData.audience === "SPECIFIC_TENANTS" && formData.targetTenants.length === 0) {
-      toast.error("Please select at least one school tenant to target");
+      toast.error(t("selectTenant"));
       return;
     }
 
@@ -151,7 +153,7 @@ export function CreateBroadcastModal({
         toast.error(json.error?.message || "Failed to transmit broadcast");
       }
     } catch {
-      toast.error("Network error sending broadcast");
+      toast.error(t("broadcastNetworkError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -187,18 +189,12 @@ export function CreateBroadcastModal({
             <Label htmlFor="broadcast-category" className="text-xs font-semibold">
               Broadcast Type
             </Label>
-            <select
+            <AppDropdown
               id="broadcast-category"
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {BROADCAST_CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setFormData({ ...formData, category: v })}
+              options={BROADCAST_CATEGORIES.map((cat) => ({ value: cat.value, label: cat.label }))}
+            />
           </div>
         </div>
 

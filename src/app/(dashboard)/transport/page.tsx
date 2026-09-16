@@ -122,7 +122,7 @@ export default function TransportPage() {
   } = useAllocationsViewModel(allocSearch, "", allocPage);
 
   const { data: studentsData } = useQuery({
-    queryKey: ["students-transport"],
+    queryKey: ["students", "transport"],
     queryFn: async () => {
       const r = await fetch("/api/students?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");

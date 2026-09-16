@@ -27,4 +27,12 @@ describe("student enrollment immutability", () => {
       { classId: "class-1" },
     )).toEqual([]);
   });
+
+  it("allows initial placement assignment for students without a current classId even with usage", () => {
+    expect(getLockedStudentPlacementFields(
+      { ...emptyUsage, attendances: 1 },
+      { classId: "class-2", sectionId: "section-2", rollNumber: "0002" },
+      { classId: null, sectionId: null, rollNumber: "0001" },
+    )).toEqual([]);
+  });
 });

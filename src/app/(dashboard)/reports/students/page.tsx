@@ -326,7 +326,6 @@ export default function StudentReportPage() {
                 data={data}
                 isLoading={isLoading}
                 showExport={false}
-                onExportCSV={handleExportExcel}
               />
             ) : (
               <ReportEmptyState

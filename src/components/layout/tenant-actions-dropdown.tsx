@@ -11,6 +11,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 interface TenantActionsDropdownProps {
   tenant: any;
@@ -23,6 +24,7 @@ export function TenantActionsDropdown({
   onEdit,
   onSuspend,
 }: TenantActionsDropdownProps) {
+  const t = useTranslations("systemAdmin");
   const [isOpen, setIsOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isSuspending, setIsSuspending] = useState(false);
@@ -55,11 +57,11 @@ export function TenantActionsDropdown({
         localStorage.removeItem(`tenant_settings_${tenant.tenantId}`);
         window.location.href = "/";
       } else {
-        toast.error(json.error?.message || "Failed to login as school admin");
+        toast.error(json.error?.message || t("impersonateError"));
         setIsImpersonating(false);
       }
     } catch {
-      toast.error("Network error during impersonation");
+      toast.error(t("networkError"));
       setIsImpersonating(false);
     }
   };

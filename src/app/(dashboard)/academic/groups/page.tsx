@@ -10,7 +10,7 @@ import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Layers, Plus, Pencil, Trash2, CheckCircle, XCircle, X, Search } from "lucide-react";
+import { Layers, Plus, Pencil, Trash2, CheckCircle, XCircle, X, Search, Eye } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -55,12 +55,13 @@ export default function GroupsPage() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupData | null>(null);
+  const [viewingGroup, setViewingGroup] = useState<GroupData | null>(null);
   const [subjectSearch, setSubjectSearch] = useState("");
 
   const queryClient = useQueryClient();
 
   const { data: classesData } = useQuery({
-    queryKey: ["classes-all"],
+    queryKey: ["classes", "all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100");
       if (!res.ok) throw new Error(t("fetchClassesFailed"));
@@ -70,7 +71,7 @@ export default function GroupsPage() {
 
   // Fetch all subjects from API
   const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
-    queryKey: ["subjects-all"],
+    queryKey: ["subjects", "all"],
     queryFn: async () => {
       const res = await fetch("/api/subjects?isActive=true");
       if (!res.ok) throw new Error(t("fetchSubjectsFailed"));
@@ -332,6 +333,15 @@ export default function GroupsPage() {
       header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            title={t('viewDetails')}
+            aria-label={t('viewDetails')}
+            onClick={() => setViewingGroup(row.original)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           {canWrite && (
             <Button
               variant="ghost"
@@ -548,6 +558,81 @@ export default function GroupsPage() {
             </ERPFormField>
           </ERPFormSection>
         </form>
+      </TopSheet>
+
+      {/* Read-only detail view */}
+      <TopSheet
+        isOpen={!!viewingGroup}
+        onClose={() => setViewingGroup(null)}
+        title={t('viewDetails')}
+        description={viewingGroup ? `${viewingGroup.name} (${viewingGroup.groupId})` : ""}
+        maxWidth="lg"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setViewingGroup(null)}>
+              {common('cancel')}
+            </Button>
+            {canWrite && viewingGroup && (
+              <Button
+                type="button"
+                onClick={() => {
+                  handleEdit(viewingGroup);
+                  setViewingGroup(null);
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                {t('editGroup')}
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {viewingGroup && (
+          <ERPFormSection>
+            <ERPFormGrid cols={2}>
+              <ERPFormField label={t('groupName')}>
+                <p className="text-sm font-medium">{viewingGroup.name}</p>
+              </ERPFormField>
+              <ERPFormField label={t('shortName')}>
+                <p className="text-sm font-medium">{viewingGroup.shortName}</p>
+              </ERPFormField>
+              <ERPFormField label={t('class')}>
+                <p className="text-sm">{viewingGroup.class?.name || t("classUnavailable")}</p>
+              </ERPFormField>
+              <ERPFormField label={t('tableColumns.status')}>
+                <StatusBadge
+                  status={viewingGroup.isActive}
+                  domain="active"
+                  label={viewingGroup.isActive ? t('active') : t('inactive')}
+                  icon={viewingGroup.isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                />
+              </ERPFormField>
+            </ERPFormGrid>
+            <ERPFormField
+              label={t('subjects')}
+              action={
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({t("selectedCount", { count: (viewingGroup.subjects || []).length })})
+                </span>
+              }
+            >
+              {(viewingGroup.subjects || []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t("noSubjectsFound")}</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {viewingGroup.subjects.map((name) => (
+                    <span
+                      key={name}
+                      className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </ERPFormField>
+          </ERPFormSection>
+        )}
       </TopSheet>
     </div>
   );

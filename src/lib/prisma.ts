@@ -49,8 +49,10 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma = globalForPrisma.prisma ?? createClient();
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Reuse one client per server instance in every env. On Vercel serverless the
+// module cache survives warm invocations, so this avoids a fresh TLS +
+// connection-pool handshake on every cold API call (direct Neon URL, no
+// Accelerate/pgbouncer in this deployment).
+globalForPrisma.prisma = prisma;
 
 export default prisma;

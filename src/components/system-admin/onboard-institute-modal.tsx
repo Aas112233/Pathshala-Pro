@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CURRENCY_LIST } from "@/lib/currencies";
 import { CLASS_TEMPLATE_PRESETS, type ClassTemplatePreset } from "@/lib/schemas";
 import { generateTenantSlug } from "@/lib/onboarding-templates";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Building2,
   Globe2,
@@ -119,6 +121,7 @@ export function OnboardInstituteModal({
   onClose,
   onSuccess,
 }: OnboardInstituteModalProps) {
+  const t = useTranslations("systemAdmin");
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [provisionedData, setProvisionedData] = useState<any>(null);
@@ -183,39 +186,39 @@ export function OnboardInstituteModal({
       pwd += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     updateField("adminPassword", pwd);
-    toast.success("Generated secure temporary password");
+    toast.success(t("passwordGenerated"));
   };
 
   const validateStep = (currentStep: number): boolean => {
     if (currentStep === 1) {
       if (!formData.name.trim()) {
-        toast.error("Please enter the institute name");
+        toast.error(t("instituteNameRequired"));
         return false;
       }
       if (!formData.address.trim()) {
-        toast.error("Please enter the school address");
+        toast.error(t("addressRequired"));
         return false;
       }
     } else if (currentStep === 3) {
       if (!formData.academicYearLabel.trim()) {
-        toast.error("Please provide an academic year label");
+        toast.error(t("academicYearRequired"));
         return false;
       }
       if (!formData.academicStartDate || !formData.academicEndDate) {
-        toast.error("Please select session start and end dates");
+        toast.error(t("sessionDatesRequired"));
         return false;
       }
     } else if (currentStep === 4) {
       if (!formData.adminName.trim()) {
-        toast.error("Please enter the administrator's name");
+        toast.error(t("adminNameRequired"));
         return false;
       }
       if (!formData.adminEmail.trim() || !formData.adminEmail.includes("@")) {
-        toast.error("Please enter a valid administrator email");
+        toast.error(t("adminEmailInvalid"));
         return false;
       }
       if (!formData.adminPassword || formData.adminPassword.length < 6) {
-        toast.error("Password must be at least 6 characters");
+        toast.error(t("passwordMin"));
         return false;
       }
     }
@@ -272,7 +275,7 @@ export function OnboardInstituteModal({
 
       setProvisionedData(result.data);
       setStep(6); // Success Step
-      toast.success("Institute successfully onboarded!");
+      toast.success(t("onboardSuccess"));
       if (onSuccess) onSuccess();
     } catch (err: any) {
       toast.error(err.message || "Network error during onboarding");
@@ -407,6 +410,7 @@ export function OnboardInstituteModal({
               </Label>
               <Input
                 id="inst-phone"
+                type="tel"
                 placeholder="e.g. +92 51 1234567"
                 value={formData.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
@@ -465,18 +469,13 @@ export function OnboardInstituteModal({
               <Label htmlFor="currency-select" className="text-xs font-semibold">
                 Default Currency <span className="text-destructive">*</span>
               </Label>
-              <select
+              <AppDropdown
                 id="currency-select"
                 value={formData.currency}
-                onChange={(e) => updateField("currency", e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {CURRENCY_LIST.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} ({c.symbol}) — {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => updateField("currency", v)}
+                options={CURRENCY_LIST.map((c) => ({ value: c.code, label: `${c.code} (${c.symbol}) — ${c.name}` }))}
+                searchable
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -495,69 +494,70 @@ export function OnboardInstituteModal({
               <Label htmlFor="timezone-select" className="text-xs font-semibold">
                 Timezone <span className="text-destructive">*</span>
               </Label>
-              <select
+              <AppDropdown
                 id="timezone-select"
                 value={formData.timezone}
-                onChange={(e) => updateField("timezone", e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="Asia/Karachi">Asia/Karachi (Pakistan Standard Time UTC+5)</option>
-                <option value="Asia/Dhaka">Asia/Dhaka (Bangladesh Standard Time UTC+6)</option>
-                <option value="Asia/Kolkata">Asia/Kolkata (Indian Standard Time UTC+5:30)</option>
-                <option value="Asia/Dubai">Asia/Dubai (Gulf Standard Time UTC+4)</option>
-                <option value="Asia/Riyadh">Asia/Riyadh (Arabia Standard Time UTC+3)</option>
-                <option value="Europe/London">Europe/London (GMT / BST)</option>
-                <option value="America/New_York">America/New_York (EST / EDT)</option>
-                <option value="UTC">UTC (Universal Time Coordinated)</option>
-              </select>
+                onChange={(v) => updateField("timezone", v)}
+                searchable
+                options={[
+                  { value: "Asia/Karachi", label: "Asia/Karachi (Pakistan Standard Time UTC+5)" },
+                  { value: "Asia/Dhaka", label: "Asia/Dhaka (Bangladesh Standard Time UTC+6)" },
+                  { value: "Asia/Kolkata", label: "Asia/Kolkata (Indian Standard Time UTC+5:30)" },
+                  { value: "Asia/Dubai", label: "Asia/Dubai (Gulf Standard Time UTC+4)" },
+                  { value: "Asia/Riyadh", label: "Asia/Riyadh (Arabia Standard Time UTC+3)" },
+                  { value: "Europe/London", label: "Europe/London (GMT / BST)" },
+                  { value: "America/New_York", label: "America/New_York (EST / EDT)" },
+                  { value: "UTC", label: "UTC (Universal Time Coordinated)" },
+                ]}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="date-fmt" className="text-xs font-semibold">
                 Date Format
               </Label>
-              <select
+              <AppDropdown
                 id="date-fmt"
                 value={formData.dateFormat}
-                onChange={(e) => updateField("dateFormat", e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 25/08/2026)</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 08/25/2026)</option>
-                <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-08-25)</option>
-                <option value="DD-MMM-YYYY">DD-MMM-YYYY (e.g. 25-Aug-2026)</option>
-              </select>
+                onChange={(v) => updateField("dateFormat", v)}
+                options={[
+                  { value: "DD/MM/YYYY", label: "DD/MM/YYYY (e.g. 25/08/2026)" },
+                  { value: "MM/DD/YYYY", label: "MM/DD/YYYY (e.g. 08/25/2026)" },
+                  { value: "YYYY-MM-DD", label: "YYYY-MM-DD (e.g. 2026-08-25)" },
+                  { value: "DD-MMM-YYYY", label: "DD-MMM-YYYY (e.g. 25-Aug-2026)" },
+                ]}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="time-fmt" className="text-xs font-semibold">
                 Time Format
               </Label>
-              <select
+              <AppDropdown
                 id="time-fmt"
                 value={formData.timeFormat}
-                onChange={(e) => updateField("timeFormat", e.target.value as any)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="12h">12-hour format (e.g. 02:30 PM)</option>
-                <option value="24h">24-hour military format (e.g. 14:30)</option>
-              </select>
+                onChange={(v) => updateField("timeFormat", v as any)}
+                options={[
+                  { value: "12h", label: "12-hour format (e.g. 02:30 PM)" },
+                  { value: "24h", label: "24-hour military format (e.g. 14:30)" },
+                ]}
+              />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="grading-sys" className="text-xs font-semibold">
                 Grading System
               </Label>
-              <select
+              <AppDropdown
                 id="grading-sys"
                 value={formData.gradingSystem}
-                onChange={(e) => updateField("gradingSystem", e.target.value as any)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="GPA">GPA 4.0 / 5.0 System</option>
-                <option value="PERCENTAGE">Percentage (%) Scale</option>
-                <option value="LETTER">Letter Grade (A+, A, B, C, D, F)</option>
-              </select>
+                onChange={(v) => updateField("gradingSystem", v as any)}
+                options={[
+                  { value: "GPA", label: "GPA 4.0 / 5.0 System" },
+                  { value: "PERCENTAGE", label: "Percentage (%) Scale" },
+                  { value: "LETTER", label: "Letter Grade (A+, A, B, C, D, F)" },
+                ]}
+              />
             </div>
           </div>
         </div>
@@ -720,15 +720,15 @@ export function OnboardInstituteModal({
               <Label htmlFor="sub-status" className="text-xs font-semibold">
                 Subscription Status
               </Label>
-              <select
+              <AppDropdown
                 id="sub-status"
                 value={formData.subscriptionStatus}
-                onChange={(e) => updateField("subscriptionStatus", e.target.value as any)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="TRIAL">30-Day Free Trial</option>
-                <option value="ACTIVE">Active (Paid Enterprise SaaS)</option>
-              </select>
+                onChange={(v) => updateField("subscriptionStatus", v as any)}
+                options={[
+                  { value: "TRIAL", label: "30-Day Free Trial" },
+                  { value: "ACTIVE", label: "Active (Paid Enterprise SaaS)" },
+                ]}
+              />
             </div>
           </div>
         </div>
@@ -846,7 +846,7 @@ export function OnboardInstituteModal({
                 navigator.clipboard.writeText(
                   `School: ${provisionedData.name}\nTenant: ${provisionedData.tenantId}\nEmail: ${provisionedData.adminEmail}`
                 );
-                toast.success("Credentials copied to clipboard");
+                toast.success(t("credentialsCopied"));
               }}
               className="gap-2"
             >

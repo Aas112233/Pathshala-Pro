@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { useTranslations } from "next-intl";
 import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface FeeVoucherPDFData {
@@ -187,6 +188,7 @@ function VoucherSlip({
   data: FeeVoucherPDFData;
   isLast?: boolean;
 }) {
+  const t = useTranslations("pdfDocs.feeVoucher");
   return (
     <View style={isLast ? styles.lastColumn : styles.column}>
       <View>
@@ -200,11 +202,11 @@ function VoucherSlip({
         {/* Voucher Meta */}
         <View style={styles.voucherMeta}>
           <View>
-            <Text style={styles.infoLabel}>Voucher #</Text>
+            <Text style={styles.infoLabel}>{t("voucherNumber")}</Text>
             <Text style={styles.voucherCode}>{data.voucherId}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={styles.infoLabel}>Due Date</Text>
+            <Text style={styles.infoLabel}>{t("dueDate")}</Text>
             <Text style={{ color: "#dc2626", fontWeight: "bold" }}>{data.dueDate}</Text>
           </View>
         </View>
@@ -212,23 +214,23 @@ function VoucherSlip({
         {/* Student Particulars */}
         <View style={styles.studentInfoBox}>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Student Name:</Text>
+            <Text style={styles.infoLabel}>{t("studentName")}</Text>
             <Text style={styles.infoVal}>{data.studentName}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Student ID / Roll:</Text>
+            <Text style={styles.infoLabel}>{t("studentIdRoll")}</Text>
             <Text style={styles.infoVal}>
               {data.studentId} (Roll #{data.rollNumber})
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Class & Section:</Text>
+            <Text style={styles.infoLabel}>{t("classSection")}</Text>
             <Text style={styles.infoVal}>
               {data.className} {data.sectionName ? `(${data.sectionName})` : ""}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Session / Period:</Text>
+            <Text style={styles.infoLabel}>{t("sessionPeriod")}</Text>
             <Text style={styles.infoVal}>{data.academicYear}</Text>
           </View>
         </View>
@@ -236,32 +238,32 @@ function VoucherSlip({
         {/* Particulars Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.colDesc}>Fee Particulars</Text>
-            <Text style={styles.colAmt}>Amount ({data.currencySymbol})</Text>
+            <Text style={styles.colDesc}>{t("particulars")}</Text>
+            <Text style={styles.colAmt}>{t("amount")} ({data.currencySymbol})</Text>
           </View>
 
           <View style={styles.tableRow}>
-            <Text style={styles.colDesc}>{data.feeType} Fee</Text>
+            <Text style={styles.colDesc}>{data.feeType} {t("fee")}</Text>
             <Text style={styles.colAmt}>{data.baseAmount.toFixed(2)}</Text>
           </View>
 
           {data.arrears > 0 && (
             <View style={styles.tableRow}>
-              <Text style={[styles.colDesc, { color: "#b91c1c" }]}>Previous Unpaid Arrears</Text>
+              <Text style={[styles.colDesc, { color: "#b91c1c" }]}>{t("arrears")}</Text>
               <Text style={[styles.colAmt, { color: "#b91c1c" }]}>+{data.arrears.toFixed(2)}</Text>
             </View>
           )}
 
           {data.discountAmount > 0 && (
             <View style={styles.tableRow}>
-              <Text style={[styles.colDesc, { color: "#15803d" }]}>Concession / Scholarship</Text>
+              <Text style={[styles.colDesc, { color: "#15803d" }]}>{t("concession")}</Text>
               <Text style={[styles.colAmt, { color: "#15803d" }]}>-{data.discountAmount.toFixed(2)}</Text>
             </View>
           )}
 
           {(data.lateFine ?? 0) > 0 && (
             <View style={styles.tableRow}>
-              <Text style={[styles.colDesc, { color: "#b91c1c" }]}>Late Fine</Text>
+              <Text style={[styles.colDesc, { color: "#b91c1c" }]}>{t("lateFine")}</Text>
               <Text style={[styles.colAmt, { color: "#b91c1c" }]}>+{data.lateFine!.toFixed(2)}</Text>
             </View>
           )}
@@ -269,7 +271,7 @@ function VoucherSlip({
 
         {/* Total Payable Box */}
         <View style={styles.totalBox}>
-          <Text>NET PAYABLE:</Text>
+          <Text>{t("netPayable")}</Text>
           <Text>
             {data.currencySymbol} {data.totalDue.toFixed(2)}
           </Text>
@@ -277,8 +279,8 @@ function VoucherSlip({
 
         {/* Bank Instructions */}
         <Text style={styles.instructions}>
-          * Payable at any authorized bank branch or digital payment portal before the due date.
-          {"\n"}* Surcharge applies after the due date. Fee once paid is non-refundable.
+          {t("instructions1")}
+          {"\n"}{t("instructions2")}
         </Text>
       </View>
 
@@ -286,11 +288,11 @@ function VoucherSlip({
       <View style={styles.signatures}>
         <View style={styles.sigBlock}>
           <Text>___________________</Text>
-          <Text style={{ marginTop: 2 }}>Cashier / Bank Stamp</Text>
+          <Text style={{ marginTop: 2 }}>{t("cashier")}</Text>
         </View>
         <View style={styles.sigBlock}>
           <Text>___________________</Text>
-          <Text style={{ marginTop: 2 }}>Accounts Officer</Text>
+          <Text style={{ marginTop: 2 }}>{t("accountsOfficer")}</Text>
         </View>
       </View>
     </View>
@@ -298,6 +300,7 @@ function VoucherSlip({
 }
 
 export function FeeVoucherPDFDocument({ vouchers }: { vouchers: FeeVoucherPDFData[] }) {
+  const t = useTranslations("pdfDocs.feeVoucher");
   return (
     <Document title="Commercial 3-Part Fee Vouchers">
       {vouchers.map((voucher, idx) => (
@@ -321,9 +324,9 @@ export function FeeVoucherPDFDocument({ vouchers }: { vouchers: FeeVoucherPDFDat
             },
           ]}
         >
-          <VoucherSlip copyType="BANK COPY" data={voucher} />
-          <VoucherSlip copyType="SCHOOL COPY" data={voucher} />
-          <VoucherSlip copyType="STUDENT COPY" data={voucher} isLast />
+          <VoucherSlip copyType={t("bankCopy")} data={voucher} />
+          <VoucherSlip copyType={t("schoolCopy")} data={voucher} />
+          <VoucherSlip copyType={t("studentCopy")} data={voucher} isLast />
         </Page>
       ))}
     </Document>

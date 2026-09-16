@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { clsx } from "clsx";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { ImagePreviewModal } from "@/components/shared/image-preview-modal";
 import { ZoomIn, UserCircle } from "lucide-react";
 import type { CreateStaffDTO } from "@/types/entities";
@@ -42,6 +43,7 @@ export function StaffFormModal({
   initialData,
   isEditing = false,
 }: StaffFormModalProps) {
+  const t = useTranslations("staff");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -201,7 +203,7 @@ export function StaffFormModal({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File is too large. Max size is 5MB.");
+        toast.error(t("fileTooLarge"));
         e.target.value = "";
         return;
       }
@@ -234,7 +236,7 @@ export function StaffFormModal({
             driveFileId: response.data.fileId
           }));
           setTempFileId(response.data.fileId);
-          toast.success("Image uploaded successfully!");
+          toast.success(t("imageUploadSuccess"));
         } else {
           let errMsg = "Failed to upload image. Please try again.";
           try {
@@ -248,7 +250,7 @@ export function StaffFormModal({
 
       xhr.onerror = () => {
         setIsUploading(false);
-        toast.error("Network error during upload.");
+        toast.error(t("uploadNetworkError"));
         setSelectedFile(null);
       };
 
@@ -281,7 +283,7 @@ export function StaffFormModal({
     }
 
     if (isUploading) {
-      toast.error("Please wait for the image upload to complete.");
+      toast.error(t("waitForUpload"));
       return;
     }
 
@@ -641,6 +643,7 @@ export function StaffFormModal({
                   <Input
                     id="phone"
                     name="phone"
+                    type="tel"
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder="+880-XXX-XXXXXX"

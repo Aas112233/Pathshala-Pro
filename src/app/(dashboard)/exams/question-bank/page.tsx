@@ -121,7 +121,7 @@ export default function QuestionBankPage() {
 
   // Fetch classes
   const { data: classesData } = useQuery({
-    queryKey: ["classes-all"],
+    queryKey: ["classes", "all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) throw new Error("Failed to fetch classes");
@@ -132,7 +132,7 @@ export default function QuestionBankPage() {
 
   // Fetch subjects
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects-all"],
+    queryKey: ["subjects", "all"],
     queryFn: async () => {
       const res = await fetch("/api/subjects");
       if (!res.ok) throw new Error("Failed to fetch subjects");
@@ -143,7 +143,7 @@ export default function QuestionBankPage() {
 
   // Fetch class subjects for selected class (dependency)
   const { data: classSubjectsData = [] } = useQuery({
-    queryKey: ["question-class-subjects", classId],
+    queryKey: ["class-subjects", "question-bank", classId],
     queryFn: async () => {
       const res = await fetch(`/api/class-subjects?classId=${classId}`);
       if (!res.ok) throw new Error("Failed to fetch class subjects");

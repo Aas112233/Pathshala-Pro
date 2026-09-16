@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { usePDFExport } from "@/hooks/use-pdf-export";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import type { ExcelColumn } from "@/lib/excel-exporter";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { toast } from "sonner";
 import type { BatchStudentResult } from "@/lib/pdf-templates";
@@ -62,6 +64,14 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
   const statistics = batchData?.statistics;
   const examInfo = batchData?.exam;
   const classInfo = batchData?.class;
+
+  const { exportData } = useExcelExport({
+    fileName: `${(classInfo?.name || "Class").replace(/\s+/g, "_")}_Gradebook_Matrix`,
+    schoolName: settings.name || "Pathshala Pro School",
+    schoolAddress: settings.address,
+    schoolPhone: settings.phone,
+    schoolEmail: settings.email,
+  });
 
   // Extract all distinct subject names for column headers
   const subjectHeaders: Array<{ name: string; code: string; maxMarks: number }> = [];
@@ -116,52 +126,58 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportExcel = async () => {
     if (!students || students.length === 0) {
       toast.error(t("noDataExport"));
       return;
     }
 
-    const headers = [
-      t("rank"),
-      t("rollNo"),
-      t("studentName"),
-      t("admissionNo"),
-      ...subjectHeaders.map((s) => `${s.name} (${s.maxMarks})`),
-      t("totalObtained"),
-      t("totalMax"),
-      t("percentage"),
-      t("gpa"),
-      t("grade"),
-      t("status"),
+    const columns: ExcelColumn[] = [
+      { header: t("rank"), key: "rank" },
+      { header: t("rollNo"), key: "rollNo" },
+      { header: t("studentName"), key: "studentName" },
+      { header: t("admissionNo"), key: "admissionNo" },
+      ...subjectHeaders.map((s, sIdx) => ({
+        header: `${s.name} (${s.maxMarks})`,
+        key: `subject_${sIdx}`,
+        style: "number" as const,
+      })),
+      { header: t("totalObtained"), key: "totalObtained", style: "number" },
+      { header: t("totalMax"), key: "totalMax", style: "number" },
+      { header: t("percentage"), key: "percentage", style: "percentage" },
+      { header: t("gpa"), key: "gpa" },
+      { header: t("grade"), key: "grade" },
+      { header: t("status"), key: "status" },
     ];
 
-    const rows = students.map((st) => [
-      st.rankLabel,
-      st.student.rollNumber,
-      `"${st.student.name}"`,
-      st.student.admissionNumber,
-      ...st.subjects.map((sub) => sub.obtainedMarks),
-      st.totalObtainedMarks,
-      st.totalMaxMarks,
-      st.percentage,
-      st.gpa.toFixed(2),
-      st.letterGrade,
-      st.passed ? t("passedStatus") : t("failedStatus"),
-    ]);
+    const rows = students.map((st) => ({
+      rank: st.rankLabel,
+      rollNo: st.student.rollNumber,
+      studentName: st.student.name,
+      admissionNo: st.student.admissionNumber,
+      ...Object.fromEntries(
+        st.subjects.map((sub, sIdx) => [`subject_${sIdx}`, sub.obtainedMarks])
+      ),
+      totalObtained: st.totalObtainedMarks,
+      totalMax: st.totalMaxMarks,
+      percentage: st.percentage,
+      gpa: st.gpa.toFixed(2),
+      grade: st.letterGrade,
+      status: st.passed ? t("passedStatus") : t("failedStatus"),
+    }));
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute(
-      "download",
-      `${(classInfo?.name || "Class").replace(/\s+/g, "_")}_Gradebook_Matrix.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(t("csvExported"));
+    const result = await exportData({
+      title: `${classInfo?.name || "Class"} — ${examInfo?.name || ""} ${t("gradebook")}`,
+      columns,
+      data: rows,
+    });
+    if (result.success) {
+      toast.success(t("excelExported"));
+    } else {
+      toast.error(
+        result.error instanceof Error ? result.error.message : String(result.error)
+      );
+    }
   };
 
   return (
@@ -247,11 +263,11 @@ export function ClassGradebookMatrix({ exams, classes }: ClassGradebookMatrixPro
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleExportCSV}
+                onClick={handleExportExcel}
                 className="h-9 gap-1.5 text-xs font-semibold"
               >
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                {t("exportCsv")}
+                {t("exportExcel")}
               </Button>
               <Button
                 size="sm"

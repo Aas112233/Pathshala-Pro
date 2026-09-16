@@ -18,6 +18,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
+import { usePDFExport } from "@/hooks/use-pdf-export";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
@@ -71,6 +72,7 @@ export default function SalaryReportPage() {
     schoolPhone: settings.phone,
     schoolEmail: settings.email,
   });
+  const { exportSalaryReportPDF } = usePDFExport();
 
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
@@ -130,6 +132,51 @@ export default function SalaryReportPage() {
     });
     if (result.success) {
       toast.success(t("exportedExcel"));
+      return;
+    }
+    toast.error(t("exportFailed"));
+  };
+
+  const handleExportPDF = async () => {
+    const result = await exportSalaryReportPDF({
+      school: {
+        name: settings.name || "Pathshala Pro School",
+        address: settings.address || "",
+        phone: settings.phone || "",
+        email: settings.email || "",
+        logoUrl: settings.logoUrl,
+      },
+      title: t("title"),
+      subtitle: t("description"),
+      generatedAt,
+      dateRangeLabel: `${selectedYear} / ${selectedMonth === "all" ? t("allMonths") : selectedMonth}`,
+      filters: [
+        { label: t("year"), value: selectedYear },
+        { label: t("department"), value: selectedDept === "all" ? t("allDepartments") : selectedDept },
+        { label: t("payoutStatus"), value: selectedStatus === "all" ? t("allStatuses") : selectedStatus },
+      ],
+      metrics: metrics
+        ? [
+            { label: t("totalGrossPayroll"), value: formatCurrency(metrics.totalGross) },
+            { label: t("netDisbursed"), value: formatCurrency(metrics.totalPaid), tone: "success" },
+            { label: t("pendingPayouts"), value: formatCurrency(metrics.totalPending), tone: "warning" },
+            { label: t("totalDeductions"), value: formatCurrency(metrics.totalDeductions) },
+          ]
+        : [],
+      records: data.map((row) => ({
+        staffId: row.staffId,
+        staffName: row.staffName,
+        department: row.department,
+        period: row.period,
+        baseSalary: formatCurrency(row.baseSalary),
+        deductions: formatCurrency(row.deductions),
+        netPayable: formatCurrency(row.netPayable),
+        paidAmount: formatCurrency(row.paidAmount),
+        status: row.status,
+      })),
+    });
+    if (result.success) {
+      toast.success(t("exportedPDF"));
       return;
     }
     toast.error(t("exportFailed"));
@@ -239,6 +286,7 @@ export default function SalaryReportPage() {
           <ExportDropdown
             onExport={(type) => {
               if (type === "excel") void handleExportExcel();
+              if (type === "pdf") void handleExportPDF();
             }}
           />
         ) : undefined}
@@ -383,7 +431,7 @@ export default function SalaryReportPage() {
           {/* Table */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-foreground">Staff Payout Ledger</h3>
-            <ReportTable columns={columns} data={data} />
+            <ReportTable columns={columns} data={data} exportFileName="salary_report" />
           </div>
         </>
       )}

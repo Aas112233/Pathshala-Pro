@@ -432,7 +432,7 @@ export default function AttendancePage() {
             searchValue={search}
             onSearchChange={setSearch}
             searchPlaceholder={t('searchPlaceholder')}
-            emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{t('common.noResults') || 'No records'}</div>}
+            emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{common('noResults')}</div>}
           />
         </>
       )}

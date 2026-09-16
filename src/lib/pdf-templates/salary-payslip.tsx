@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { useTranslations } from "next-intl";
 import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface SalaryPayslipPDFData {
@@ -206,6 +207,7 @@ const styles = StyleSheet.create({
 });
 
 export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) {
+  const t = useTranslations("pdfDocs.salaryPayslip");
   return (
     <Document title={`Payslip_${data.staffId}_${data.month}_${data.year}`}>
       <Page
@@ -235,7 +237,7 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
             )}
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={styles.docTitle}>Monthly Salary Payslip</Text>
+            <Text style={styles.docTitle}>{t("title")}</Text>
             <Text style={styles.payslipBadge}>
               {data.month} {data.year}
             </Text>
@@ -247,40 +249,40 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
           <View style={styles.empGrid}>
             <View style={styles.empCol}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Employee Name:</Text>
+                <Text style={styles.infoLabel}>{t("employeeName")}</Text>
                 <Text style={styles.infoVal}>{data.staffName}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Staff ID:</Text>
+                <Text style={styles.infoLabel}>{t("staffId")}</Text>
                 <Text style={styles.infoVal}>{data.staffId}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Designation:</Text>
+                <Text style={styles.infoLabel}>{t("designation")}</Text>
                 <Text style={styles.infoVal}>{data.designation}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Department:</Text>
+                <Text style={styles.infoLabel}>{t("department")}</Text>
                 <Text style={styles.infoVal}>{data.department}</Text>
               </View>
             </View>
 
             <View style={styles.empCol}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Payslip No:</Text>
+                <Text style={styles.infoLabel}>{t("payslipNo")}</Text>
                 <Text style={styles.infoVal}>{data.payslipId}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Disbursement Date:</Text>
-                <Text style={styles.infoVal}>{data.paymentDate || "Pending"}</Text>
+                <Text style={styles.infoLabel}>{t("disbursementDate")}</Text>
+                <Text style={styles.infoVal}>{data.paymentDate || t("pending")}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Payment Mode:</Text>
-                <Text style={styles.infoVal}>{data.paymentMethod || "Bank Transfer"}</Text>
+                <Text style={styles.infoLabel}>{t("paymentMode")}</Text>
+                <Text style={styles.infoVal}>{data.paymentMethod || t("bankTransfer")}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Bank Account:</Text>
+                <Text style={styles.infoLabel}>{t("bankAccount")}</Text>
                 <Text style={styles.infoVal}>
-                  {data.bankAccountNo ? `${data.bankName ? `${data.bankName} - ` : ""}${data.bankAccountNo}` : "Direct Payment"}
+                  {data.bankAccountNo ? `${data.bankName ? `${data.bankName} - ` : ""}${data.bankAccountNo}` : t("directPayment")}
                 </Text>
               </View>
             </View>
@@ -292,12 +294,12 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
           {/* Earnings Column */}
           <View style={styles.ledgerCol}>
             <View style={styles.tableHeader}>
-              <Text>EARNINGS & ALLOWANCES</Text>
-              <Text>AMOUNT ({data.currencySymbol})</Text>
+              <Text>{t("earnings")}</Text>
+              <Text>{t("amount")} ({data.currencySymbol})</Text>
             </View>
 
             <View style={styles.tableRow}>
-              <Text>Base Basic Salary</Text>
+              <Text>{t("baseSalary")}</Text>
               <Text>{data.baseSalary.toFixed(2)}</Text>
             </View>
 
@@ -309,7 +311,7 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
             ))}
 
             <View style={styles.tableTotalRow}>
-              <Text>GROSS EARNINGS</Text>
+              <Text>{t("grossEarnings")}</Text>
               <Text>{data.totalEarnings.toFixed(2)}</Text>
             </View>
           </View>
@@ -317,13 +319,13 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
           {/* Deductions Column */}
           <View style={styles.ledgerColRight}>
             <View style={styles.tableHeader}>
-              <Text>DEDUCTIONS & ADVANCES</Text>
-              <Text>AMOUNT ({data.currencySymbol})</Text>
+              <Text>{t("deductions")}</Text>
+              <Text>{t("amount")} ({data.currencySymbol})</Text>
             </View>
 
             {data.advances > 0 && (
               <View style={styles.tableRow}>
-                <Text>Salary Advance Recovery</Text>
+                <Text>{t("advanceRecovery")}</Text>
                 <Text>{data.advances.toFixed(2)}</Text>
               </View>
             )}
@@ -337,13 +339,13 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
 
             {data.deductions.length === 0 && data.advances === 0 && (
               <View style={styles.tableRow}>
-                <Text style={{ color: "#64748b" }}>No Deductions</Text>
+                <Text style={{ color: "#64748b" }}>{t("noDeductions")}</Text>
                 <Text>0.00</Text>
               </View>
             )}
 
             <View style={styles.tableTotalRow}>
-              <Text>TOTAL DEDUCTIONS</Text>
+              <Text>{t("totalDeductions")}</Text>
               <Text>{data.totalDeductions.toFixed(2)}</Text>
             </View>
           </View>
@@ -352,8 +354,8 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
         {/* Net Salary Payable Box */}
         <View style={styles.netSalaryBox}>
           <View>
-            <Text style={styles.netLabel}>NET DISBURSED SALARY</Text>
-            <Text style={styles.subText}>Status: {data.status === "PAID" ? "DISBURSED / SETTLED" : "PAYMENT PENDING"}</Text>
+            <Text style={styles.netLabel}>{t("netSalary")}</Text>
+            <Text style={styles.subText}>Status: {data.status === "PAID" ? t("disbursed") : t("paymentPending")}</Text>
           </View>
           <Text style={styles.netAmount}>
             {data.currencySymbol} {data.netSalary.toFixed(2)}
@@ -363,7 +365,7 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
         {/* Remarks / Confidentiality */}
         <View style={{ marginBottom: 12 }}>
           <Text style={{ fontSize: 7, color: "#64748b" }}>
-            * This is a system-generated confidential payroll document. Any discrepancy should be reported to the Accounts Department within 7 days.
+            {t("confidentiality")}
           </Text>
         </View>
 
@@ -371,15 +373,15 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
         <View style={styles.footer}>
           <View style={styles.sigBlock}>
             <Text>___________________________</Text>
-            <Text style={{ marginTop: 4 }}>Employee Signature</Text>
+            <Text style={{ marginTop: 4 }}>{t("employeeSignature")}</Text>
           </View>
           <View style={styles.sigBlock}>
             <Text>___________________________</Text>
-            <Text style={{ marginTop: 4 }}>Accounts Officer</Text>
+            <Text style={{ marginTop: 4 }}>{t("accountsOfficer")}</Text>
           </View>
           <View style={styles.sigBlock}>
             <Text>___________________________</Text>
-            <Text style={{ marginTop: 4 }}>Principal / Director Stamp</Text>
+            <Text style={{ marginTop: 4 }}>{t("principalStamp")}</Text>
           </View>
         </View>
       </Page>
@@ -388,6 +390,7 @@ export function SalaryPayslipDocument({ data }: { data: SalaryPayslipPDFData }) 
 }
 
 export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPayslipPDFData[] }) {
+  const t = useTranslations("pdfDocs.salaryPayslip");
   return (
     <Document title="Commercial Staff Salary Payslips Booklet">
       {payslips.map((payslip, idx) => (
@@ -419,7 +422,7 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
               )}
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={styles.docTitle}>Monthly Salary Payslip</Text>
+              <Text style={styles.docTitle}>{t("title")}</Text>
               <Text style={styles.payslipBadge}>
                 {payslip.month} {payslip.year}
               </Text>
@@ -431,40 +434,40 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
             <View style={styles.empGrid}>
               <View style={styles.empCol}>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Employee Name:</Text>
+                  <Text style={styles.infoLabel}>{t("employeeName")}</Text>
                   <Text style={styles.infoVal}>{payslip.staffName}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Staff ID:</Text>
+                  <Text style={styles.infoLabel}>{t("staffId")}</Text>
                   <Text style={styles.infoVal}>{payslip.staffId}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Designation:</Text>
+                  <Text style={styles.infoLabel}>{t("designation")}</Text>
                   <Text style={styles.infoVal}>{payslip.designation}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Department:</Text>
+                  <Text style={styles.infoLabel}>{t("department")}</Text>
                   <Text style={styles.infoVal}>{payslip.department}</Text>
                 </View>
               </View>
 
               <View style={styles.empCol}>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Payslip No:</Text>
+                  <Text style={styles.infoLabel}>{t("payslipNo")}</Text>
                   <Text style={styles.infoVal}>{payslip.payslipId}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Disbursement Date:</Text>
-                  <Text style={styles.infoVal}>{payslip.paymentDate || "Pending"}</Text>
+                  <Text style={styles.infoLabel}>{t("disbursementDate")}</Text>
+                  <Text style={styles.infoVal}>{payslip.paymentDate || t("pending")}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Payment Mode:</Text>
-                  <Text style={styles.infoVal}>{payslip.paymentMethod || "Bank Transfer"}</Text>
+                  <Text style={styles.infoLabel}>{t("paymentMode")}</Text>
+                  <Text style={styles.infoVal}>{payslip.paymentMethod || t("bankTransfer")}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Bank Account:</Text>
+                  <Text style={styles.infoLabel}>{t("bankAccount")}</Text>
                   <Text style={styles.infoVal}>
-                    {payslip.bankAccountNo ? `${payslip.bankName ? `${payslip.bankName} - ` : ""}${payslip.bankAccountNo}` : "Direct Payment"}
+                    {payslip.bankAccountNo ? `${payslip.bankName ? `${payslip.bankName} - ` : ""}${payslip.bankAccountNo}` : t("directPayment")}
                   </Text>
                 </View>
               </View>
@@ -475,12 +478,12 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
           <View style={styles.ledgerContainer}>
             <View style={styles.ledgerCol}>
               <View style={styles.tableHeader}>
-                <Text>EARNINGS & ALLOWANCES</Text>
-                <Text>AMOUNT ({payslip.currencySymbol})</Text>
+                <Text>{t("earnings")}</Text>
+                <Text>{t("amount")} ({payslip.currencySymbol})</Text>
               </View>
 
               <View style={styles.tableRow}>
-                <Text>Base Basic Salary</Text>
+                <Text>{t("baseSalary")}</Text>
                 <Text>{payslip.baseSalary.toFixed(2)}</Text>
               </View>
 
@@ -492,20 +495,20 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
               ))}
 
               <View style={styles.tableTotalRow}>
-                <Text>GROSS EARNINGS</Text>
+                <Text>{t("grossEarnings")}</Text>
                 <Text>{payslip.totalEarnings.toFixed(2)}</Text>
               </View>
             </View>
 
             <View style={styles.ledgerColRight}>
               <View style={styles.tableHeader}>
-                <Text>DEDUCTIONS & ADVANCES</Text>
-                <Text>AMOUNT ({payslip.currencySymbol})</Text>
+                <Text>{t("deductions")}</Text>
+                <Text>{t("amount")} ({payslip.currencySymbol})</Text>
               </View>
 
               {payslip.advances > 0 && (
                 <View style={styles.tableRow}>
-                  <Text>Salary Advance Recovery</Text>
+                  <Text>{t("advanceRecovery")}</Text>
                   <Text>{payslip.advances.toFixed(2)}</Text>
                 </View>
               )}
@@ -519,13 +522,13 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
 
               {payslip.deductions.length === 0 && payslip.advances === 0 && (
                 <View style={styles.tableRow}>
-                  <Text style={{ color: "#64748b" }}>No Deductions</Text>
+                  <Text style={{ color: "#64748b" }}>{t("noDeductions")}</Text>
                   <Text>0.00</Text>
                 </View>
               )}
 
               <View style={styles.tableTotalRow}>
-                <Text>TOTAL DEDUCTIONS</Text>
+                <Text>{t("totalDeductions")}</Text>
                 <Text>{payslip.totalDeductions.toFixed(2)}</Text>
               </View>
             </View>
@@ -534,8 +537,8 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
           {/* Net Salary Box */}
           <View style={styles.netSalaryBox}>
             <View>
-              <Text style={styles.netLabel}>NET DISBURSED SALARY</Text>
-              <Text style={styles.subText}>Status: {payslip.status === "PAID" ? "DISBURSED / SETTLED" : "PAYMENT PENDING"}</Text>
+              <Text style={styles.netLabel}>{t("netSalary")}</Text>
+              <Text style={styles.subText}>Status: {payslip.status === "PAID" ? t("disbursed") : t("paymentPending")}</Text>
             </View>
             <Text style={styles.netAmount}>
               {payslip.currencySymbol} {payslip.netSalary.toFixed(2)}
@@ -546,15 +549,15 @@ export function BatchSalaryPayslipPDFDocument({ payslips }: { payslips: SalaryPa
           <View style={styles.footer}>
             <View style={styles.sigBlock}>
               <Text>___________________________</Text>
-              <Text style={{ marginTop: 4 }}>Employee Signature</Text>
+              <Text style={{ marginTop: 4 }}>{t("employeeSignature")}</Text>
             </View>
             <View style={styles.sigBlock}>
               <Text>___________________________</Text>
-              <Text style={{ marginTop: 4 }}>Accounts Officer</Text>
+              <Text style={{ marginTop: 4 }}>{t("accountsOfficer")}</Text>
             </View>
             <View style={styles.sigBlock}>
               <Text>___________________________</Text>
-              <Text style={{ marginTop: 4 }}>Principal / Director Stamp</Text>
+              <Text style={{ marginTop: 4 }}>{t("principalStamp")}</Text>
             </View>
           </View>
         </Page>

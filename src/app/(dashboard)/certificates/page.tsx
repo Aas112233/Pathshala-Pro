@@ -48,7 +48,7 @@ export default function CertificatesPage() {
   const { exportTransferCertificatePDF, exportCharacterCertificatePDF, exportBonafideCertificatePDF } = usePDFExport();
 
   const { data: studentsData } = useQuery({
-    queryKey: ["students-certificates"],
+    queryKey: ["students", "certificates"],
     queryFn: async () => {
       const r = await fetch("/api/students?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
@@ -221,15 +221,15 @@ export default function CertificatesPage() {
       header: t("actions"),
       cell: (row) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrint(row.original)} title={t("print")} disabled={printingId === row.original.id}><Printer className="h-3.5 w-3.5" /></Button>
-          {canManage && row.original.status === "ISSUED" && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600" onClick={() => handleRevoke(row.original.id)} title={t("revoke")}><Ban className="h-3.5 w-3.5" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrint(row)} title={t("print")} disabled={printingId === row.id}><Printer className="h-3.5 w-3.5" /></Button>
+          {canManage && row.status === "ISSUED" && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600" onClick={() => handleRevoke(row.id)} title={t("revoke")}><Ban className="h-3.5 w-3.5" /></Button>
           )}
           {canWrite && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row.original)}><Pencil className="h-3.5 w-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row)}><Pencil className="h-3.5 w-3.5" /></Button>
           )}
           {canManage && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
           )}
         </div>
       ),
@@ -286,7 +286,7 @@ export default function CertificatesPage() {
         searchValue={search}
         onSearchChange={(v) => { setSearch(v); setPage(1); }}
         searchPlaceholder={t("searchPlaceholder")}
-        emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{t("common.noResults") || "No certificates"}</div>}
+        emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{tCommon("noResults")}</div>}
       />
         </>
       )}

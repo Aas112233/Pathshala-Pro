@@ -9,7 +9,7 @@ import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { Input } from "@/components/ui/input";
-import { ClipboardList, Plus, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { ClipboardList, Plus, Pencil, Trash2, CheckCircle, XCircle, Eye } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -48,11 +48,12 @@ export default function SectionsPage() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<SectionData | null>(null);
+  const [viewingSection, setViewingSection] = useState<SectionData | null>(null);
 
   const queryClient = useQueryClient();
 
   const { data: classesData } = useQuery({
-    queryKey: ["classes-all"],
+    queryKey: ["classes", "all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100");
       if (!res.ok) throw new Error(t("fetchClassesFailed"));
@@ -61,7 +62,7 @@ export default function SectionsPage() {
   });
 
   const { data: groupsData } = useQuery({
-    queryKey: ["groups-all"],
+    queryKey: ["groups", "all"],
     queryFn: async () => {
       const res = await fetch("/api/groups?limit=100");
       if (!res.ok) throw new Error(t("fetchGroupsFailed"));
@@ -294,6 +295,15 @@ export default function SectionsPage() {
       header: t('tableColumns.actions'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            title={t('viewDetails')}
+            aria-label={t('viewDetails')}
+            onClick={() => setViewingSection(row.original)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           {canWrite && (
             <Button
               variant="ghost"
@@ -458,6 +468,67 @@ export default function SectionsPage() {
             </ERPFormGrid>
           </ERPFormSection>
         </form>
+      </TopSheet>
+
+      {/* Read-only detail view */}
+      <TopSheet
+        isOpen={!!viewingSection}
+        onClose={() => setViewingSection(null)}
+        title={t('viewDetails')}
+        description={viewingSection ? `${viewingSection.name} (${viewingSection.sectionId})` : ""}
+        maxWidth="lg"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <Button variant="outline" type="button" onClick={() => setViewingSection(null)}>
+              {common('cancel')}
+            </Button>
+            {canWrite && viewingSection && (
+              <Button
+                type="button"
+                onClick={() => {
+                  handleEdit(viewingSection);
+                  setViewingSection(null);
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                {t('editSection')}
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {viewingSection && (
+          <ERPFormSection>
+            <ERPFormGrid cols={2}>
+              <ERPFormField label={t('sectionName')}>
+                <p className="text-sm font-medium">{viewingSection.name}</p>
+              </ERPFormField>
+              <ERPFormField label={t('shortName')}>
+                <p className="text-sm font-medium">{viewingSection.shortName}</p>
+              </ERPFormField>
+              <ERPFormField label={t('class')}>
+                <p className="text-sm">{viewingSection.class?.name || t("classUnavailable")}</p>
+              </ERPFormField>
+              <ERPFormField label={t('group')}>
+                <p className="text-sm">{viewingSection.group?.name || t('noGroupGeneral')}</p>
+              </ERPFormField>
+              <ERPFormField label={t('capacity')}>
+                <p className="text-sm">{viewingSection.capacity ?? t('infinite')}</p>
+              </ERPFormField>
+              <ERPFormField label={t('roomNumber')}>
+                <p className="text-sm">{viewingSection.roomNumber || "—"}</p>
+              </ERPFormField>
+              <ERPFormField label={t('tableColumns.status')}>
+                <StatusBadge
+                  status={viewingSection.isActive}
+                  domain="active"
+                  label={viewingSection.isActive ? t('active') : t('inactive')}
+                  icon={viewingSection.isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                />
+              </ERPFormField>
+            </ERPFormGrid>
+          </ERPFormSection>
+        )}
       </TopSheet>
     </div>
   );

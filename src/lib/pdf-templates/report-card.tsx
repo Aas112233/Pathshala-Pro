@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { useTranslations } from "next-intl";
 import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 interface SubjectResult {
@@ -376,6 +377,7 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
   const overallObtained = terms.reduce((sum, t) => sum + t.obtainedMarks, 0);
   const overallPercentage = overallTotal > 0 ? ((overallObtained / overallTotal) * 100).toFixed(1) : "0";
   const allPassed = terms.every(t => t.grade !== "F");
+  const tPdf = useTranslations("pdfDocs.reportCard");
 
   return (
     <Document>
@@ -400,14 +402,14 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
           <View style={reportCardStyles.schoolInfo}>
             <Text style={reportCardStyles.schoolName}>{school.name.toUpperCase()}</Text>
             <Text style={reportCardStyles.schoolAddress}>{school.address}</Text>
-            <Text style={reportCardStyles.contact}>
-              Tel: {school.phone}  |  Email: {school.email}
-            </Text>
+              <Text style={reportCardStyles.contact}>
+                {tPdf("tel")}: {school.phone}  |  {tPdf("email")}: {school.email}
+              </Text>
           </View>
         </View>
 
-        <Text style={reportCardStyles.reportTitle}>Progress Report Card</Text>
-        <Text style={reportCardStyles.academicYear}>Academic Year: {academicYear}</Text>
+        <Text style={reportCardStyles.reportTitle}>{tPdf("title")}</Text>
+        <Text style={reportCardStyles.academicYear}>{tPdf("academicYear")}: {academicYear}</Text>
 
         {/* Student Profile */}
         <View style={reportCardStyles.studentProfile}>
@@ -415,44 +417,44 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
             <Image src={student.photoUrl} style={reportCardStyles.studentPhoto} />
           ) : (
             <View style={reportCardStyles.photoPlaceholder}>
-              <Text style={reportCardStyles.photoPlaceholderText}>Student Photo</Text>
+              <Text style={reportCardStyles.photoPlaceholderText}>{tPdf("studentPhoto")}</Text>
             </View>
           )}
           <View style={reportCardStyles.studentDetails}>
             <Text style={reportCardStyles.studentName}>{student.name}</Text>
             <View style={reportCardStyles.detailsGrid}>
               <View style={reportCardStyles.detailItem}>
-                <Text style={reportCardStyles.detailLabel}>Admission No.</Text>
+                <Text style={reportCardStyles.detailLabel}>{tPdf("admissionNo")}</Text>
                 <Text style={reportCardStyles.detailValue}>{student.admissionNumber}</Text>
               </View>
               <View style={reportCardStyles.detailItem}>
-                <Text style={reportCardStyles.detailLabel}>Roll Number</Text>
+                <Text style={reportCardStyles.detailLabel}>{tPdf("rollNumber")}</Text>
                 <Text style={reportCardStyles.detailValue}>{student.rollNumber}</Text>
               </View>
               <View style={reportCardStyles.detailItem}>
-                <Text style={reportCardStyles.detailLabel}>Class & Section</Text>
+                <Text style={reportCardStyles.detailLabel}>{tPdf("classSection")}</Text>
                 <Text style={reportCardStyles.detailValue}>{student.className} - {student.section}</Text>
               </View>
               <View style={reportCardStyles.detailItem}>
-                <Text style={reportCardStyles.detailLabel}>Date of Birth</Text>
+                <Text style={reportCardStyles.detailLabel}>{tPdf("dateOfBirth")}</Text>
                 <Text style={reportCardStyles.detailValue}>{student.dateOfBirth}</Text>
               </View>
               <View style={reportCardStyles.detailItem}>
-                <Text style={reportCardStyles.detailLabel}>Gender</Text>
+                <Text style={reportCardStyles.detailLabel}>{tPdf("gender")}</Text>
                 <Text style={reportCardStyles.detailValue}>{student.gender}</Text>
               </View>
               {student.bloodGroup && (
                 <View style={reportCardStyles.detailItem}>
-                  <Text style={reportCardStyles.detailLabel}>Blood Group</Text>
+                  <Text style={reportCardStyles.detailLabel}>{tPdf("bloodGroup")}</Text>
                   <Text style={reportCardStyles.detailValue}>{student.bloodGroup}</Text>
                 </View>
               )}
               <View style={reportCardStyles.detailItem}>
-                <Text style={reportCardStyles.detailLabel}>Guardian</Text>
+                <Text style={reportCardStyles.detailLabel}>{tPdf("guardian")}</Text>
                 <Text style={reportCardStyles.detailValue}>{student.guardianName}</Text>
               </View>
               <View style={reportCardStyles.detailItem}>
-                <Text style={reportCardStyles.detailLabel}>Contact</Text>
+                <Text style={reportCardStyles.detailLabel}>{tPdf("contact")}</Text>
                 <Text style={reportCardStyles.detailValue}>{student.guardianContact}</Text>
               </View>
             </View>
@@ -472,7 +474,7 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
                   reportCardStyles.resultBadge,
                   term.grade === "F" ? reportCardStyles.failBadge : reportCardStyles.passBadge
                 ]}>
-                  Grade: {term.grade}
+                  {tPdf("gradePrefix")} {term.grade}
                 </View>
                 {term.rank && (
                   <Text style={reportCardStyles.termResult}>
@@ -484,13 +486,13 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
             <View style={reportCardStyles.marksTable}>
               {/* Table Header */}
               <View style={reportCardStyles.tableHeader}>
-                <Text style={[reportCardStyles.headerCell, { width: 40 }]} fixed>Code</Text>
-                <Text style={[reportCardStyles.headerCell, { flex: 2 }]} fixed>Subject</Text>
-                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>Max</Text>
-                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>Obt</Text>
-                <Text style={[reportCardStyles.headerCell, { width: 30 }]} fixed>Grade</Text>
-                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>GP</Text>
-                <Text style={[reportCardStyles.headerCell, { flex: 1 }]} fixed>Remarks</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 40 }]} fixed>{tPdf("code")}</Text>
+                <Text style={[reportCardStyles.headerCell, { flex: 2 }]} fixed>{tPdf("subject")}</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>{tPdf("max")}</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>{tPdf("obtained")}</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 30 }]} fixed>{tPdf("grade")}</Text>
+                <Text style={[reportCardStyles.headerCell, { width: 35 }]} fixed>{tPdf("gp")}</Text>
+                <Text style={[reportCardStyles.headerCell, { flex: 1 }]} fixed>{tPdf("remarks")}</Text>
               </View>
               {/* Table Rows */}
               {term.subjects.map((subject, subjIndex) => (

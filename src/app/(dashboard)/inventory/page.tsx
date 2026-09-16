@@ -117,7 +117,7 @@ export default function InventoryPage() {
     const school = { name: settings.name||"Pathshala Pro School", address: settings.address||"", phone: settings.phone||"", email: settings.email||"", logoUrl: settings.logoUrl };
     const stockItems = items.map((it:any)=>({ code: it.code, name: it.name, category: it.category, unit: it.unit, quantity: it.quantity, minStockLevel: it.minStockLevel, location: it.location, costPrice: it.costPrice||0 }));
     const res = await exportInventoryStockPDF(school, stockItems, new Date().toLocaleDateString());
-    if(res.success) toast.success("Stock statement PDF downloaded"); else toast.error("Failed");
+    if(res.success) toast.success(t("stockPdfSuccess")); else toast.error(tCommon("downloadFailed"));
   };
 
   const itemColumns: ColumnDef<any>[] = [

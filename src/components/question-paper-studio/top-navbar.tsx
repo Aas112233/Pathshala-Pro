@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ExamPaperStudioModel as ExamPaper } from '@/types/exam-studio';
 import { EXAM_TEMPLATES } from '@/lib/question-paper-studio/templates';
+import { AppDropdown } from '@/components/ui/app-dropdown';
 import {
   ArrowLeft,
   FileDown,
@@ -101,24 +102,16 @@ export function TopNavbar({
 
           {/* Preset Exam Styles Selector (8 styles) */}
           <div className="relative">
-            <select
-              aria-label="Preset Examination Templates"
-              onChange={(e) => {
-                const found = EXAM_TEMPLATES.find((t) => t.id === e.target.value);
+            <AppDropdown
+              onChange={(v) => {
+                const found = EXAM_TEMPLATES.find((t) => t.id === v);
                 if (found) onSelectTemplate(found);
               }}
               value={paper.id}
-              className="text-xs bg-muted/60 hover:bg-muted text-foreground border border-border rounded-md px-2.5 py-1.5 pr-6 cursor-pointer font-medium focus:ring-1 focus:ring-primary focus:outline-none max-w-[260px] truncate"
-            >
-              <option value="" disabled>
-                প্রশ্নপত্র স্টাইল সিলেক্ট করুন (Styles)...
-              </option>
-              {EXAM_TEMPLATES.map((tmpl) => (
-                <option key={tmpl.id} value={tmpl.id}>
-                  {tmpl.title}
-                </option>
-              ))}
-            </select>
+              options={EXAM_TEMPLATES.map((tmpl) => ({ value: tmpl.id, label: tmpl.title }))}
+              placeholder="প্রশ্নপত্র স্টাইল সিলেক্ট করুন (Styles)..."
+              triggerClassName="text-xs bg-muted/60 hover:bg-muted font-medium max-w-[260px]"
+            />
           </div>
 
           {/* Metrics summary */}

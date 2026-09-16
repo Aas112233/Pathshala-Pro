@@ -11,9 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import type { ExcelColumn } from "@/lib/excel-exporter";
 import { cn } from "@/lib/utils";
-import { Download, FileSpreadsheet, FileText, Printer } from "lucide-react";
+import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 
@@ -26,8 +30,8 @@ interface ReportTableProps<TData> {
   showExport?: boolean;
   onExportPDF?: () => void;
   onExportExcel?: () => void;
-  onExportCSV?: () => void;
   onPrint?: () => void;
+  exportFileName?: string;
   className?: string;
 }
 
@@ -40,58 +44,69 @@ export function ReportTable<TData>({
   showExport = true,
   onExportPDF,
   onExportExcel,
-  onExportCSV,
   onPrint,
+  exportFileName,
   className,
 }: ReportTableProps<TData>) {
   const t = useTranslations("reports");
+  const { settings } = useTenantSettings();
 
-  const handleExportCSV = () => {
+  const { exportData } = useExcelExport({
+    fileName: exportFileName ?? "report",
+    schoolName: settings.name || "Pathshala Pro School",
+    schoolAddress: settings.address,
+    schoolPhone: settings.phone,
+    schoolEmail: settings.email,
+  });
+
+  const handleExportExcel = async () => {
     if (!data || data.length === 0) return;
 
-    const headers = columns
-      .filter((col: any) => col.accessorKey || col.accessorFn)
-      .map((col: any) => (col.header as string) || col.accessorKey || "");
+    const accessorColumns = columns.filter(
+      (col: any) => col.accessorKey || col.accessorFn
+    ) as any[];
 
-    const rows = data.map((row: any) =>
-      columns
-        .filter((col: any) => col.accessorKey || col.accessorFn)
-        .map((col: any) => {
-          if (col.accessorFn) {
-            return col.accessorFn(row);
-          }
-          if (col.accessorKey) {
-            const key = col.accessorKey as string;
-            return row[key];
-          }
-          return "";
-        })
-    );
+    const keyOf = (col: any, index: number) =>
+      String(col.accessorKey ?? col.id ?? `column_${index}`);
 
-    const csvContent = [
-      headers.map((h) => `"${String(h).replace(/"/g, '""')}"`).join(","),
-      ...rows.map((row) =>
-        row
-          // Quote-escape every cell, and prefix-guard cells Excel would
-          // execute as formulas (=, +, -, @).
-          .map((cell) => {
-            // Only strings are formula-injection vectors; numbers (including
-            // negatives) must stay numeric cells.
-            const s = typeof cell === "number" ? String(cell) : String(cell ?? "");
-            const guarded = typeof cell === "string" && ["=", "+", "-", "@"].includes(s[0]) ? `'${s}` : s;
-            return `"${guarded.replace(/"/g, '""')}"`;
-          })
-          .join(",")
-      ),
-    ].join("\r\n");
+    const valueOf = (col: any, row: any) =>
+      col.accessorFn ? col.accessorFn(row) : row[col.accessorKey as string];
 
-    // UTF-8 BOM: Excel on Windows otherwise renders Bengali/Hindi/Urdu text
-    // as mojibake despite the charset header.
-    const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `report_${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
+    const excelColumns: ExcelColumn[] = accessorColumns.map((col, index) => {
+      const key = keyOf(col, index);
+      const firstValue = data
+        .map((row: any) => valueOf(col, row))
+        .find((value) => value !== null && value !== undefined);
+      return {
+        header:
+          typeof col.header === "string" ? col.header : (col.id ?? key),
+        key,
+        style: typeof firstValue === "number" ? "number" : "text",
+      };
+    });
+
+    const rows = data.map((row: any) => {
+      const mapped: Record<string, unknown> = {};
+      accessorColumns.forEach((col, index) => {
+        mapped[keyOf(col, index)] = valueOf(col, row);
+      });
+      return mapped;
+    });
+
+    const result = await exportData({
+      title: title ?? exportFileName ?? "Report",
+      columns: excelColumns,
+      data: rows,
+    });
+    if (result.success) {
+      toast.success(t("common.exportedExcel"));
+    } else {
+      toast.error(
+        result.error instanceof Error
+          ? result.error.message
+          : String(result.error)
+      );
+    }
   };
 
   return (
@@ -115,15 +130,13 @@ export function ReportTable<TData>({
                     {t("actions.exportPDF")}
                   </Button>
                 )}
-                {onExportExcel && (
-                  <Button variant="outline" size="sm" onClick={onExportExcel}>
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    {t("actions.exportExcel")}
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={onExportCSV || handleExportCSV}>
-                  <Download className="mr-2 h-4 w-4" />
-                  {t("actions.exportCSV")}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onExportExcel ?? handleExportExcel}
+                >
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  {t("actions.exportExcel")}
                 </Button>
                 {onPrint && (
                   <Button variant="outline" size="sm" onClick={onPrint}>

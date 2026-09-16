@@ -63,7 +63,7 @@ export async function GET(
     const studentWhere = {
       tenantId,
       classId,
-      status: "ACTIVE",
+      status: "ACTIVE" as const,
       ...(sectionId && sectionId !== "all" ? { sectionId } : {}),
     };
 

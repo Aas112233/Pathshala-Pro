@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionItem, ExamSection } from '@/types/exam-studio';
+import { AppDropdown } from '@/components/ui/app-dropdown';
 import {
   Search,
   BookOpen,
@@ -179,33 +180,33 @@ export function QuestionBankImportModal({
 
             {/* Type Filter */}
             <div>
-              <select
-                aria-label="Filter by Question Type"
+              <AppDropdown
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              >
-                <option value="ALL">সকল ধরন (All Types)</option>
-                <option value="CREATIVE_NCTB">সৃজনশীল (CQ)</option>
-                <option value="MCQ">বহুনির্বাচনী (MCQ)</option>
-                <option value="SHORT">সংক্ষিপ্ত প্রশ্ন</option>
-                <option value="DESCRIPTIVE">বর্ণনামূলক প্রশ্ন</option>
-              </select>
+                onChange={setFilterType}
+                options={[
+                  { value: "ALL", label: "সকল ধরন (All Types)" },
+                  { value: "CREATIVE_NCTB", label: "সৃজনশীল (CQ)" },
+                  { value: "MCQ", label: "বহুনির্বাচনী (MCQ)" },
+                  { value: "SHORT", label: "সংক্ষিপ্ত প্রশ্ন" },
+                  { value: "DESCRIPTIVE", label: "বর্ণনামূলক প্রশ্ন" },
+                ]}
+                triggerClassName="text-xs"
+              />
             </div>
 
             {/* Difficulty Filter */}
             <div>
-              <select
-                aria-label="Filter by Difficulty Level"
+              <AppDropdown
                 value={filterDifficulty}
-                onChange={(e) => setFilterDifficulty(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              >
-                <option value="ALL">সকল কাঠিন্য (Difficulty)</option>
-                <option value="EASY">সহজ (Easy)</option>
-                <option value="MEDIUM">পরিমিত (Medium)</option>
-                <option value="HARD">কঠিন (Hard)</option>
-              </select>
+                onChange={setFilterDifficulty}
+                options={[
+                  { value: "ALL", label: "সকল কাঠিন্য (Difficulty)" },
+                  { value: "EASY", label: "সহজ (Easy)" },
+                  { value: "MEDIUM", label: "পরিমিত (Medium)" },
+                  { value: "HARD", label: "কঠিন (Hard)" },
+                ]}
+                triggerClassName="text-xs"
+              />
             </div>
           </div>
 
@@ -215,18 +216,12 @@ export function QuestionBankImportModal({
               <span className="text-[11px] font-semibold text-muted-foreground">
                 টার্গেট বিভাগ (Target Section):
               </span>
-              <select
-                aria-label="Target Examination Section"
+              <AppDropdown
                 value={selectedSectionId}
-                onChange={(e) => setSelectedSectionId(e.target.value)}
-                className="px-2.5 py-1 bg-background border border-input rounded text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
-              >
-                {sections.map((sec) => (
-                  <option key={sec.sectionId} value={sec.sectionId}>
-                    {sec.title}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedSectionId}
+                options={sections.map((sec) => ({ value: sec.sectionId, label: sec.title }))}
+                triggerClassName="text-xs font-semibold"
+              />
             </div>
 
             <div className="flex items-center gap-2">

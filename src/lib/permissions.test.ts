@@ -225,8 +225,8 @@ describe("Matrix coherence: module tiers are derived from ROLE_PERMISSIONS", () 
 
   it("admin-tier roles keep full tenant access", () => {
     for (const role of ["ADMIN", "SCHOOL_ADMIN", "INSTITUTE_ADMIN", "SUPER_ADMIN", "SYSTEM_ADMIN", "PLATFORM_OWNER"]) {
-      for (const module of ALL_PERMISSION_MODULES) {
-        expect(hasPermission(ROLE_DEFAULT_PERMISSIONS[role], module, "manage"), `${role} ${module}`).toBe(true);
+      for (const mod of ALL_PERMISSION_MODULES) {
+        expect(hasPermission(ROLE_DEFAULT_PERMISSIONS[role], mod, "manage"), `${role} ${mod}`).toBe(true);
       }
     }
   });

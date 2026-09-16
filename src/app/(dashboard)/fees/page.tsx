@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { Button } from "@/components/ui/button";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,8 @@ import {
   HelpCircle,
   Users,
 } from "lucide-react";
-import { useFees, useDeleteFee, useAcademicYears } from "@/hooks/use-queries";
+import { useFees, useDeleteFee } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { useQuery } from "@tanstack/react-query";
 import {
   useClassFeeStructures,
@@ -65,23 +67,21 @@ export default function FeesPage() {
 
   const { formatCurrency, formatDate, currencySymbol } = useTenantFormatting();
   const { exportFeeVouchersPDF } = usePDFExport();
+  const { selectedAcademicYearId: activeYearId } = useAcademicYearContext();
 
   // Queries
   const { data: feesResponse, isLoading: isLoadingFees } = useFees({
     page,
     limit: 20,
     search: search || undefined,
+    academicYearId: activeYearId || undefined,
     ...(status && { filters: { status } }),
-  });
+  } as any);
   const rawFees = feesResponse?.data || [];
   const totalCount =
     (feesResponse as any)?.pagination?.total ||
     (feesResponse as any)?.meta?.total ||
     rawFees.length;
-
-  const { data: ayResponse } = useAcademicYears();
-  const academicYears = ayResponse?.data || [];
-  const activeYearId = academicYears[0]?.id || "";
 
   const { data: structuresResponse, isLoading: isLoadingStructures } =
     useClassFeeStructures(activeYearId);
@@ -92,7 +92,7 @@ export default function FeesPage() {
   const concessions = concessionsResponse?.data || [];
 
   const { data: classesResponse } = useQuery({
-    queryKey: ["classes-fees-hub"],
+    queryKey: ["classes", "fees-hub"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100", { credentials: "include" });
       if (!res.ok) return { data: [] };
@@ -447,17 +447,19 @@ export default function FeesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <select
+                  <AppDropdown
                     value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="h-9 px-3 text-xs rounded-md border border-input bg-background"
-                  >
-                    <option value="">{t("allStatuses")}</option>
-                    <option value="PENDING">{t("pending")}</option>
-                    <option value="PARTIAL">{t("partial")}</option>
-                    <option value="PAID">{t("paid")}</option>
-                    <option value="OVERDUE">{t("overdue")}</option>
-                  </select>
+                    onChange={setStatus}
+                    options={[
+                      { value: "", label: t("allStatuses") },
+                      { value: "PENDING", label: t("pending") },
+                      { value: "PARTIAL", label: t("partial") },
+                      { value: "PAID", label: t("paid") },
+                      { value: "OVERDUE", label: t("overdue") },
+                    ]}
+                    placeholder={t("allStatuses")}
+                    triggerClassName="h-9 text-xs"
+                  />
 
                   {canWriteFees && (
                     <Button

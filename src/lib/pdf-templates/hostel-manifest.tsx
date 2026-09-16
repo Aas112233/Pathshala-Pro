@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface HostelResident {
   rollNumber: string;
@@ -32,7 +33,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 30,
     fontSize: 8.5,
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
     backgroundColor: "#ffffff",
     color: "#0f172a",
   },
@@ -47,12 +48,12 @@ const styles = StyleSheet.create({
   },
   schoolName: {
     fontSize: 16,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#0f766e",
   },
   docTitle: {
     fontSize: 11,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#334155",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -75,11 +76,11 @@ const styles = StyleSheet.create({
     fontSize: 7,
     color: "#0f766e",
     textTransform: "uppercase",
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
   },
   kpiValue: {
     fontSize: 10,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#134e4a",
     marginTop: 1,
   },
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
   },
   metaValue: {
     fontSize: 8.5,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#1e293b",
     marginTop: 1,
   },
@@ -116,7 +117,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#0f766e",
     color: "#ffffff",
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     paddingVertical: 5,
     paddingHorizontal: 4,
     fontSize: 7.5,
@@ -172,10 +173,13 @@ export function HostelManifestPDFDocument({ data }: { data: HostelManifestPDFDat
     data.totalCapacity > 0
       ? Math.round((data.totalOccupied / data.totalCapacity) * 100)
       : 0;
+  const fontFamily = getPdfFontFamily(
+    data.schoolName, data.hostelName, data.wardenName, pdfTextSample(data.residents)
+  );
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { fontFamily }]}>
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -183,7 +187,7 @@ export function HostelManifestPDFDocument({ data }: { data: HostelManifestPDFDat
             <Text style={styles.docTitle}>Hostel Resident & Evacuation Manifest</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#0f766e" }}>
+            <Text style={{ fontSize: 9, fontWeight: 700, color: "#0f766e" }}>
               {data.hostelName} ({data.hostelType})
             </Text>
             <Text style={{ fontSize: 7.5, color: "#64748b", marginTop: 2 }}>
@@ -253,11 +257,11 @@ export function HostelManifestPDFDocument({ data }: { data: HostelManifestPDFDat
                 style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}
               >
                 <Text style={styles.colNo}>{i + 1}</Text>
-                <Text style={[styles.colRoom, { fontFamily: "Helvetica-Bold" }]}>
+                <Text style={[styles.colRoom, { fontWeight: 700 }]}>
                   {r.roomNumber} {r.bedNumber ? `(${r.bedNumber})` : ""}
                 </Text>
                 <Text style={styles.colRoll}>{r.rollNumber}</Text>
-                <Text style={[styles.colName, { fontFamily: "Helvetica-Bold" }]}>
+                <Text style={[styles.colName, { fontWeight: 700 }]}>
                   {r.studentName}
                 </Text>
                 <Text style={styles.colClass}>

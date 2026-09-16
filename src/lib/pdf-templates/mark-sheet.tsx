@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { useTranslations } from "next-intl";
 import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 interface Mark {
@@ -215,7 +216,6 @@ const markSheetStyles = StyleSheet.create({
     color: "#94A3B8",
     textAlign: "center" as const,
     marginTop: 15,
-    fontStyle: "italic",
   },
   gradeLegend: {
     fontSize: 6,
@@ -232,11 +232,12 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
   marks,
   school,
 }) => {
+  const t = useTranslations("pdfDocs.markSheet");
   const totalMaxMarks = marks.reduce((sum, m) => sum + m.maxMarks, 0);
   const totalObtained = marks.reduce((sum, m) => sum + m.obtainedMarks, 0);
   const percentage = totalMaxMarks > 0 ? ((totalObtained / totalMaxMarks) * 100).toFixed(2) : "0";
   const allPassed = marks.every(m => m.obtainedMarks >= m.passMarks);
-  const result = allPassed ? "PASS" : "FAIL";
+  const result = allPassed ? t("passResult") : t("failResult");
 
   return (
     <Document>
@@ -263,11 +264,11 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
               <Text style={markSheetStyles.schoolName}>{school.name.toUpperCase()}</Text>
               <Text style={markSheetStyles.schoolAddress}>{school.address}</Text>
               <Text style={markSheetStyles.contact}>
-                Tel: {school.phone}  |  Email: {school.email}
+                {t("tel")}: {school.phone}  |  {t("email")}: {school.email}
               </Text>
             </View>
           </View>
-          <Text style={markSheetStyles.title}>Mark Sheet</Text>
+          <Text style={markSheetStyles.title}>{t("title")}</Text>
           <Text style={markSheetStyles.subtitle}>
             {exam.academicYear} • {exam.type}
           </Text>
@@ -277,27 +278,27 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
         <View style={markSheetStyles.studentInfo}>
           <View style={markSheetStyles.infoGrid}>
             <View style={markSheetStyles.infoItem}>
-              <Text style={markSheetStyles.infoLabel}>Student Name</Text>
+              <Text style={markSheetStyles.infoLabel}>{t("studentName")}</Text>
               <Text style={markSheetStyles.infoValue}>{student.name}</Text>
             </View>
             <View style={markSheetStyles.infoItem}>
-              <Text style={markSheetStyles.infoLabel}>Admission Number</Text>
+              <Text style={markSheetStyles.infoLabel}>{t("admissionNumber")}</Text>
               <Text style={markSheetStyles.infoValue}>{student.admissionNumber}</Text>
             </View>
             <View style={markSheetStyles.infoItem}>
-              <Text style={markSheetStyles.infoLabel}>Roll Number</Text>
+              <Text style={markSheetStyles.infoLabel}>{t("rollNumber")}</Text>
               <Text style={markSheetStyles.infoValue}>{student.rollNumber}</Text>
             </View>
             <View style={markSheetStyles.infoItem}>
-              <Text style={markSheetStyles.infoLabel}>Class</Text>
+              <Text style={markSheetStyles.infoLabel}>{t("class")}</Text>
               <Text style={markSheetStyles.infoValue}>{student.className} - {student.section}</Text>
             </View>
             <View style={markSheetStyles.infoItem}>
-              <Text style={markSheetStyles.infoLabel}>Date of Birth</Text>
+              <Text style={markSheetStyles.infoLabel}>{t("dateOfBirth")}</Text>
               <Text style={markSheetStyles.infoValue}>{student.dateOfBirth}</Text>
             </View>
             <View style={markSheetStyles.infoItem}>
-              <Text style={markSheetStyles.infoLabel}>Guardian</Text>
+              <Text style={markSheetStyles.infoLabel}>{t("guardian")}</Text>
               <Text style={markSheetStyles.infoValue}>{student.guardianName}</Text>
             </View>
           </View>
@@ -307,13 +308,13 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
         <View style={markSheetStyles.table}>
           {/* Table Header */}
           <View style={markSheetStyles.tableHeader}>
-            <Text style={[markSheetStyles.headerCell, { width: 60 }]} fixed>Code</Text>
-            <Text style={[markSheetStyles.headerCell, { flex: 2 }]} fixed>Subject</Text>
-            <Text style={[markSheetStyles.headerCell, { width: 50 }]} fixed>Max</Text>
-            <Text style={[markSheetStyles.headerCell, { width: 50 }]} fixed>Obt</Text>
-            <Text style={[markSheetStyles.headerCell, { width: 40 }]} fixed>Pass</Text>
-            <Text style={[markSheetStyles.headerCell, { width: 40 }]} fixed>Grade</Text>
-            <Text style={[markSheetStyles.headerCell, { flex: 1 }]} fixed>Remarks</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 60 }]} fixed>{t("code")}</Text>
+            <Text style={[markSheetStyles.headerCell, { flex: 2 }]} fixed>{t("subject")}</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 50 }]} fixed>{t("max")}</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 50 }]} fixed>{t("obtained")}</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 40 }]} fixed>{t("pass")}</Text>
+            <Text style={[markSheetStyles.headerCell, { width: 40 }]} fixed>{t("grade")}</Text>
+            <Text style={[markSheetStyles.headerCell, { flex: 1 }]} fixed>{t("remarks")}</Text>
           </View>
 
           {/* Table Rows */}
@@ -335,7 +336,7 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
           {/* Table Footer - Totals */}
           <View style={markSheetStyles.tableFooter}>
             <Text style={[markSheetStyles.tableCell, { width: 60 }]} fixed></Text>
-            <Text style={[markSheetStyles.tableCell, { flex: 2, fontWeight: 700 }]} fixed>TOTAL</Text>
+            <Text style={[markSheetStyles.tableCell, { flex: 2, fontWeight: 700 }]} fixed>{t("total")}</Text>
             <Text style={[markSheetStyles.tableCell, { width: 50, fontWeight: 700 }]} fixed>{totalMaxMarks}</Text>
             <Text style={[markSheetStyles.tableCell, { width: 50, fontWeight: 700 }]} fixed>{totalObtained}</Text>
             <Text style={[markSheetStyles.tableCell, { width: 40 }]} fixed></Text>
@@ -348,17 +349,17 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
         <View style={markSheetStyles.resultSection}>
           <View style={markSheetStyles.resultGrid}>
             <View style={markSheetStyles.resultItem}>
-              <Text style={markSheetStyles.resultLabel}>Total Marks</Text>
+              <Text style={markSheetStyles.resultLabel}>{t("totalMarks")}</Text>
               <Text style={markSheetStyles.resultValue}>{totalObtained} / {totalMaxMarks}</Text>
             </View>
             <View style={markSheetStyles.resultItem}>
-              <Text style={markSheetStyles.resultLabel}>Percentage</Text>
+              <Text style={markSheetStyles.resultLabel}>{t("percentage")}</Text>
               <Text style={markSheetStyles.resultValue}>{percentage}%</Text>
             </View>
             <View style={markSheetStyles.resultItem}>
-              <Text style={markSheetStyles.resultLabel}>Result</Text>
+              <Text style={markSheetStyles.resultLabel}>{t("result")}</Text>
               <Text style={[markSheetStyles.resultValue, {
-                color: result === "PASS" ? "#15803D" : "#DC2626"
+                color: result === t("passResult") ? "#15803D" : "#DC2626"
               }]}>
                 {result}
               </Text>
@@ -370,26 +371,26 @@ export const MarkSheetTemplate: React.FC<MarkSheetProps> = ({
         <View style={markSheetStyles.footer}>
           <View style={markSheetStyles.signature}>
             <View style={markSheetStyles.signatureLine} />
-            <Text style={markSheetStyles.signatureText}>Class Teacher</Text>
+            <Text style={markSheetStyles.signatureText}>{t("classTeacher")}</Text>
           </View>
           <View style={markSheetStyles.signature}>
             <View style={markSheetStyles.signatureLine} />
-            <Text style={markSheetStyles.signatureText}>Examination Controller</Text>
+            <Text style={markSheetStyles.signatureText}>{t("examController")}</Text>
           </View>
           <View style={markSheetStyles.signature}>
             <View style={markSheetStyles.signatureLine} />
-            <Text style={markSheetStyles.signatureText}>Principal</Text>
+            <Text style={markSheetStyles.signatureText}>{t("principal")}</Text>
           </View>
         </View>
 
         {/* Disclaimer */}
         <Text style={markSheetStyles.disclaimer}>
-          This is a computer-generated document. No signature is required for validation.
+          {t("disclaimer")}
         </Text>
 
         {/* Grade Legend */}
         <View style={markSheetStyles.gradeLegend}>
-          <Text>Grade Scale: A+ (90%+), A (80-89%), B (70-79%), C (60-69%), D (40-59%), F (Below 40%)</Text>
+          <Text>{t("gradeLegend")}</Text>
         </View>
       </Page>
     </Document>

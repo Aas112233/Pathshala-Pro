@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(node -e \"const en=require('./src/messages/en.json'),bn=require('./src/messages/bn.json'),hi=require('./src/messages/hi.json'),ur=require('./src/messages/ur.json');const keys=o=>Object.keys(o);const enK=keys(en.studentPerformance);for(const[l,m]of[['bn',bn],['hi',hi],['ur',ur]]){const missing=enK.filter(k=>!(k in m.studentPerformance));const extra=keys(m.studentPerformance).filter(k=>!enK.includes(k));console.log(l,'missing:',JSON.stringify(missing),'extra:',JSON.stringify(extra));}console.log('en.noResults =',JSON.stringify(en.studentPerformance.noResults));\")",
+      "Shell(npx vitest run src/__tests__/i18n-parity-and-interpolation.test.ts 2>&1)",
+      "Shell(npm:*)",
+      "Shell(npx tsc --noEmit)",
+      "Shell(mv:*)",
+      "Shell(ren:*)",
+      "Shell(dir:*)",
+      "Shell(node -e \"console.log('NODE_ENV=', process.env.NODE_ENV); console.log('react', require('react/package.json').version); console.log('react-dom', require('react-dom/package.json').version); console.log('rtl', require('@testing-library/react/package.json').version)\")",
+      "powershell",
+      "Shell(findstr:*)",
+      "Shell(tasklist:*)",
+      "Shell(netstat:*)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

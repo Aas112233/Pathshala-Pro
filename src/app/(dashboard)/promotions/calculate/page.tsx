@@ -17,7 +17,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { usePromotionCalculation, useExecutePromotions } from "@/hooks/use-exams";
-import { useAcademicYears, useStudents } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
+import { useStudents } from "@/hooks/use-queries";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -54,18 +57,23 @@ export default function PromotionsCalculatePage() {
   const classId = searchParams.get("classId");
   const academicYearId = searchParams.get("academicYearId");
 
-  const { data: academicYearsData } = useAcademicYears();
+  const { academicYears, selectedAcademicYearId } = useAcademicYearContext();
   const { data: studentsData } = useStudents();
   const { data: calculation, isLoading, refetch } = usePromotionCalculation(
     classId || undefined,
     academicYearId || undefined
   );
   const executePromotions = useExecutePromotions();
+  const { settings } = useTenantSettings();
+  const { exportData } = useExcelExport({
+    fileName: "promotion_roster",
+    schoolName: settings.name || "Pathshala Pro School",
+    schoolAddress: settings.address,
+    schoolPhone: settings.phone,
+    schoolEmail: settings.email,
+  });
 
   // Extract data from API response
-  const academicYears = Array.isArray(academicYearsData)
-    ? academicYearsData
-    : (academicYearsData as any)?.data;
   const students = Array.isArray(studentsData)
     ? studentsData
     : (studentsData as any)?.data;
@@ -73,6 +81,13 @@ export default function PromotionsCalculatePage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClass, setSelectedClass] = useState(classId || "");
   const [selectedYear, setSelectedYear] = useState(academicYearId || "");
+
+  // Default to the global academic year when no URL param is present
+  useEffect(() => {
+    if (!academicYearId && !selectedYear && selectedAcademicYearId) {
+      setSelectedYear(selectedAcademicYearId);
+    }
+  }, [academicYearId, selectedYear, selectedAcademicYearId]);
 
   // Load all active classes directly
   useEffect(() => {
@@ -214,6 +229,43 @@ export default function PromotionsCalculatePage() {
     calcData?.students[0]?.suggestedNextClassName ||
     availableClasses.find((c: ClassOption) => c.id === calcData?.students[0]?.suggestedNextClassId)?.name ||
     (calcData?.students[0]?.suggestedNextClassId ? t("classAssigned") : t("graduatedFinalClass"));
+
+  async function handleExportRoster() {
+    if (!calcData?.students?.length) return;
+    const rows = calcData.students.map((student: any) => ({
+      studentName: student.studentName,
+      studentId: student.studentId,
+      rollNumber: student.rollNumber || "-",
+      overallPercentage: student.metrics?.overallPercentage ?? "",
+      failedSubjects: student.metrics?.failedSubjects?.join(", ") || t("none"),
+      status: getStatusLabel(student.action),
+      targetClass:
+        student.action === "RETAINED"
+          ? student.currentClass || t("currentClass")
+          : student.suggestedNextClassName || nextClassName,
+      reason: (student.reasons || []).join("; "),
+    }));
+
+    const result = await exportData({
+      title: t("title"),
+      columns: [
+        { header: t("student"), key: "studentName", width: 26 },
+        { header: t("rollNo"), key: "rollNumber", width: 12 },
+        { header: t("average"), key: "overallPercentage", width: 12 },
+        { header: t("failedSubjects"), key: "failedSubjects", width: 26 },
+        { header: t("statusLabel"), key: "status", width: 18 },
+        { header: t("targetClass"), key: "targetClass", width: 20 },
+        { header: t("evaluationReason"), key: "reason", width: 40 },
+      ],
+      data: rows,
+    });
+
+    if (result.success) {
+      toast.success(t("exportedExcel"));
+      return;
+    }
+    toast.error(t("exportFailed"));
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-7xl">
@@ -496,7 +548,13 @@ export default function PromotionsCalculatePage() {
                     {t("eligibilityDescription")}
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" className="gap-1.5 self-start sm:self-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 self-start sm:self-auto"
+                  onClick={handleExportRoster}
+                  disabled={!calcData?.students?.length}
+                >
                   <Download className="h-4 w-4" />
                   {t("exportRoster")}
                 </Button>

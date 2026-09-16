@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiAccess } from "@/lib/api-auth";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { paginatedResponse, successResponse, errorResponse } from "@/lib/api-response";
 import { handleApiError } from "@/lib/api-error";
 import { createNoticeSchema } from "@/lib/schemas";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
+import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +15,12 @@ export async function GET(req: NextRequest) {
     const { tenantId } = access.authContext;
     const { searchParams } = new URL(req.url);
 
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(
+      Math.max(1, parseInt(searchParams.get("limit") || "50", 10) || 50),
+      MAX_PAGE_SIZE
+    );
+    const skip = (page - 1) * limit;
     const search = searchParams.get("search") || "";
     const category = searchParams.get("category") || "";
     const priority = searchParams.get("priority") || "";
@@ -37,14 +44,11 @@ export async function GET(req: NextRequest) {
 
     if (activeOnly) {
       where.isPublished = true;
-      where.OR = [
-        ...where.OR,
-        {
-          expiresAt: null,
-        },
-        {
-          expiresAt: { gte: new Date() },
-        },
+      // Expiry must AND with the tenant/global scope. OR-ing it at the top
+      // level matches any unexpired row from any tenant (over-fetch + leak).
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        { OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] },
       ];
     }
 
@@ -76,16 +80,30 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const notices = await prisma.notice.findMany({
-      where,
-      orderBy: [
-        { isPinned: "desc" },
-        { publishDate: "desc" },
-        { createdAt: "desc" },
-      ],
-    });
+    const [totalCount, notices] = await Promise.all([
+      prisma.notice.count({ where }),
+      prisma.notice.findMany({
+        where,
+        orderBy: [
+          { isPinned: "desc" },
+          { publishDate: "desc" },
+          { createdAt: "desc" },
+        ],
+        skip,
+        take: limit,
+      }),
+    ]);
 
-    return successResponse(notices);
+    const totalPages = Math.ceil(totalCount / limit) || 1;
+
+    return paginatedResponse(notices, {
+      totalCount,
+      currentPage: page,
+      pageSize: limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    });
   } catch (error) {
     return handleApiError(error, "GET /api/notices");
   }

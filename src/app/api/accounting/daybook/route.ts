@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAccess } from "@/lib/api-auth";
-import { badRequest, handleApiError } from "@/lib/api-response";
+import { badRequest, handleApiError, successResponse } from "@/lib/api-response";
 import { smartRateLimitAsync } from "@/lib/rate-limit";
-import { exportFeeDaybookToExcel } from "@/lib/excel/export-service";
+import { exportFeeDaybookToExcel, fetchFeeDaybookRows } from "@/lib/excel/export-service";
 
 /** Inclusive end-of-day, so `?to=2026-08-31` includes that day's collections. */
 function parseRange(value: string | null, endOfDay = false): Date | undefined {
@@ -41,6 +41,13 @@ export async function GET(request: NextRequest) {
 
     if (startDate && endDate && startDate > endDate) {
       return badRequest("Start date must be on or before the end date.");
+    }
+
+    // JSON mode feeds the in-browser PDF exporter. Same full-range query as the
+    // workbook below, so a daybook PDF never truncates at the table page cap.
+    if (searchParams.get("format") === "json") {
+      const rows = await fetchFeeDaybookRows(tenantId, startDate, endDate);
+      return successResponse(rows);
     }
 
     const buffer = await exportFeeDaybookToExcel(tenantId, startDate, endDate);

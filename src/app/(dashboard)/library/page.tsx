@@ -137,7 +137,7 @@ export default function LibraryPage() {
     void runLibrarySubmit(async () => {
       try {
         await returnBook(id);
-        toast.success("Book returned and inventory updated");
+        toast.success(t("returnSuccess"));
       } catch {}
     });
   };
@@ -320,7 +320,7 @@ export default function LibraryPage() {
     const school = { name: settings.name||"Pathshala Pro School", address: settings.address||"", phone: settings.phone||"", email: settings.email||"", logoUrl: settings.logoUrl };
     const url = typeof window!=="undefined" ? `${window.location.origin}/verify/certificate/${clearanceData.certificateNumber}` : undefined;
     const res = await exportLibraryClearancePDF(school, clearanceData, url);
-    if(res.success) toast.success("Library clearance PDF downloaded"); else toast.error("Failed");
+    if(res.success) toast.success(t("clearancePdfSuccess")); else toast.error(tCommon("downloadFailed"));
   };
 
   return (

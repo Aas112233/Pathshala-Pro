@@ -1,6 +1,7 @@
 import {
   PdfFilterItem,
   PdfSchoolInfo,
+  PdfCommonLabels,
   ReportBaseTemplate,
 } from "./report-base";
 
@@ -19,6 +20,7 @@ interface FeeVoucher {
 }
 
 interface FeeReportTemplateProps {
+  locale?: string;
   school: PdfSchoolInfo;
   dateRangeLabel: string;
   generatedAt: string;
@@ -30,18 +32,22 @@ interface FeeReportTemplateProps {
     collectionRate: string;
   };
   records: FeeVoucher[];
+  labels?: PdfCommonLabels;
 }
 
 export function FeeReportTemplate({
+  locale,
   school,
   dateRangeLabel,
   generatedAt,
   filters,
   metrics,
   records,
+  labels,
 }: FeeReportTemplateProps) {
   return (
     <ReportBaseTemplate
+      locale={locale}
       school={school}
       title="Fee Collection Report"
       subtitle="Collection, pending balance, and overdue analysis"
@@ -68,6 +74,7 @@ export function FeeReportTemplate({
         { key: "date", label: "Date", flex: 1.1, align: "center" },
       ]}
       rows={records}
+      labels={labels}
       notes={[
         "Amounts are shown using the active tenant currency settings.",
         "Overdue vouchers require follow-up from the accounts team.",

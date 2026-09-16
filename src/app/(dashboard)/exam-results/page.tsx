@@ -23,9 +23,11 @@ import {
   Pencil,
   Trophy,
   Lock,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { downloadBlob } from "@/lib/download-blob";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ClassGradebookMatrix } from "@/components/exams/class-gradebook-matrix";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
@@ -98,11 +100,12 @@ export default function ExamResultsPage() {
 
   // Student marks state
   const [studentMarks, setStudentMarks] = useState<StudentMark[]>([]);
+  const [isExportingTabulation, setIsExportingTabulation] = useState(false);
   const [isFormReady, setIsFormReady] = useState(false);
 
   // Fetch exams
   const { data: examsData } = useQuery({
-    queryKey: ["exams-all"],
+    queryKey: ["exams", "all"],
     queryFn: async () => {
       const res = await fetch("/api/exams");
       if (!res.ok) throw new Error("Failed to fetch exams");
@@ -112,7 +115,7 @@ export default function ExamResultsPage() {
 
   // Fetch classes
   const { data: classesData } = useQuery({
-    queryKey: ["classes-all"],
+    queryKey: ["classes", "all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) throw new Error("Failed to fetch classes");
@@ -238,7 +241,7 @@ export default function ExamResultsPage() {
 
   // Fetch students by class
   const { data: studentsData, isLoading: studentsLoading } = useQuery({
-    queryKey: ["students-by-class", selectedClass],
+    queryKey: ["students", "by-class", selectedClass],
     queryFn: async () => {
       const res = await fetch(
         `/api/students?limit=200&classId=${selectedClass}&status=ACTIVE&sortBy=rollNumber&sortOrder=asc`,
@@ -719,6 +722,32 @@ export default function ExamResultsPage() {
     } catch{ toast.error(t("pdfFailed")); }
   };
 
+  const handleTabulationSheet = async () => {
+    if (!filterClass) {
+      toast.error(t("selectClassFirst"));
+      return;
+    }
+    setIsExportingTabulation(true);
+    try {
+      const params = new URLSearchParams({ classId: filterClass });
+      if (filterExam) params.set("examId", filterExam);
+      const res = await fetch(`/api/exams/tabulation-sheet?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message || t("tabulationFailed"));
+      }
+      const blob = await res.blob();
+      downloadBlob(blob, `tabulation-sheet_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(t("tabulationExported"));
+    } catch (error: any) {
+      toast.error(error?.message || t("tabulationFailed"));
+    } finally {
+      setIsExportingTabulation(false);
+    }
+  };
+
   if (!isFormOpen) {
     return (
       <div className="space-y-6">
@@ -730,6 +759,19 @@ export default function ExamResultsPage() {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleTranscript} title={t("transcriptPDF")}>
               {t("transcriptPDF")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTabulationSheet}
+              disabled={isExportingTabulation}
+            >
+              {isExportingTabulation ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+              )}
+              {t("tabulationSheet")}
             </Button>
           {canWriteResults && (
             <Button onClick={() => setIsFormOpen(true)}>

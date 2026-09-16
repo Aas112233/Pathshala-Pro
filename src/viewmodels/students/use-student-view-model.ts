@@ -7,10 +7,11 @@ import { studentsApi } from "@/lib/api-client";
 import type { PaginationParams } from "@/types/api";
 import type { StudentProfile } from "@/types/entities";
 import { appToast as toast } from "@/lib/notifications/toast";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 
 export type StudentViewMode = "table" | "grid";
 // Aligned with Prisma StudentStatus: ACTIVE | INACTIVE | GRADUATED | TRANSFERRED
-export type StudentStatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED" | "SUSPENDED";
+export type StudentStatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "GRADUATED" | "TRANSFERRED";
 
 export interface StudentFilters {
   search: string;
@@ -116,13 +117,14 @@ function useDebounced<T>(value: T, delay = 300): T {
 export function useStudentViewModel(): StudentViewModel {
   const t = useTranslations("students");
   const queryClient = useQueryClient();
+  const { selectedAcademicYearId } = useAcademicYearContext();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(20);
   const [viewMode, setViewMode] = useState<StudentViewMode>("table");
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [filters, setFiltersState] = useState<StudentFilters>({ ...DEFAULT_FILTERS });
-  const [sortBy] = useState("createdAt");
-  const [sortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const debouncedSearch = useDebounced(filters.search, 300);
@@ -151,9 +153,11 @@ export function useStudentViewModel(): StudentViewModel {
     setPage(1);
   }, []);
 
-  const setSort = useCallback((_by: string, _order?: "asc" | "desc") => {
-    // ponytail: sort wiring ready, backend sortBy support to be added when API supports it
-  }, []);
+  const setSort = useCallback((by: string, order?: "asc" | "desc") => {
+    setSortBy(by);
+    setSortOrder((prev) => order ?? (sortBy === by && prev === "asc" ? "desc" : "asc"));
+    setPage(1);
+  }, [sortBy]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -168,11 +172,14 @@ export function useStudentViewModel(): StudentViewModel {
     // filled in after students loaded
   }, []);
 
-  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   // Deterministic queryKey per AGENTS rule 7
   const queryKey = useMemo(() => {
     const filterParams: Record<string, string> = {};
+    if (selectedAcademicYearId) filterParams.academicYearId = selectedAcademicYearId;
     if (filters.status !== "ALL") filterParams.status = filters.status;
     if (filters.gender !== "ALL") filterParams.gender = filters.gender;
     if (filters.classId) filterParams.classId = filters.classId;
@@ -181,6 +188,7 @@ export function useStudentViewModel(): StudentViewModel {
     return [
       "students",
       {
+        academicYearId: selectedAcademicYearId || undefined,
         page,
         limit: pageSize,
         search: debouncedSearch || undefined,
@@ -189,7 +197,7 @@ export function useStudentViewModel(): StudentViewModel {
         ...(Object.keys(filterParams).length && { filters: filterParams }),
       },
     ];
-  }, [page, pageSize, debouncedSearch, filters.status, filters.gender, filters.classId, filters.sectionId, filters.groupId, sortBy, sortOrder]);
+  }, [page, pageSize, debouncedSearch, filters.status, filters.gender, filters.classId, filters.sectionId, filters.groupId, sortBy, sortOrder, selectedAcademicYearId]);
 
   const {
     data,
@@ -201,6 +209,7 @@ export function useStudentViewModel(): StudentViewModel {
     queryKey,
     queryFn: () => {
       const filterParams: Record<string, string> = {};
+      if (selectedAcademicYearId) filterParams.academicYearId = selectedAcademicYearId;
       if (filters.status !== "ALL") filterParams.status = filters.status;
       if (filters.gender !== "ALL") filterParams.gender = filters.gender;
       if (filters.classId) filterParams.classId = filters.classId;
@@ -236,7 +245,11 @@ export function useStudentViewModel(): StudentViewModel {
   }, [students]);
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateStudentDTO) => studentsApi.create(data),
+    mutationFn: (data: CreateStudentDTO) =>
+      studentsApi.create({
+        ...(selectedAcademicYearId ? { academicYearId: selectedAcademicYearId } : {}),
+        ...data,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       toast.success(t("createSuccess"));
@@ -250,7 +263,10 @@ export function useStudentViewModel(): StudentViewModel {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, ...data }: UpdateStudentDTO) =>
-      studentsApi.update(id, data),
+      studentsApi.update(id, {
+        ...(selectedAcademicYearId ? { academicYearId: selectedAcademicYearId } : {}),
+        ...data,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       toast.success(t("updateSuccess"));

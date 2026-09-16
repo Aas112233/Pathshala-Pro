@@ -28,6 +28,24 @@ export interface PdfColumn {
   align?: "left" | "center" | "right";
 }
 
+export interface PdfCommonLabels {
+  schoolReport: string;
+  reportSummary: string;
+  reportPeriod: string;
+  generatedAt: string;
+  records: string;
+  appliedFilters: string;
+  filters: string;
+  noExtraFilters: string;
+  keyMetrics: string;
+  detailedRecords: string;
+  noDataForFilters: string;
+  notes: string;
+  computerGenerated: string;
+  periodPrefix: string;
+  generatedPrefix: string;
+}
+
 export interface PdfReportTemplateProps {
   locale?: string;
   school: PdfSchoolInfo;
@@ -41,6 +59,7 @@ export interface PdfReportTemplateProps {
   columns: PdfColumn[];
   rows: Array<Record<string, string | number>>;
   notes?: string[];
+  labels?: PdfCommonLabels;
 }
 
 const styles = StyleSheet.create({
@@ -250,6 +269,7 @@ export function ReportBaseTemplate({
   columns,
   rows,
   notes,
+  labels,
 }: PdfReportTemplateProps) {
   return (
     <Document>
@@ -285,7 +305,7 @@ export function ReportBaseTemplate({
               </View>
             )}
             <View>
-              <Text style={styles.schoolName}>{school.name || "School Report"}</Text>
+              <Text style={styles.schoolName}>{school.name || labels?.schoolReport || "School Report"}</Text>
               {school.address ? <Text style={styles.schoolMeta}>{school.address}</Text> : null}
               <Text style={styles.schoolMeta}>
                 {[school.phone, school.email].filter(Boolean).join(" | ")}
@@ -296,33 +316,44 @@ export function ReportBaseTemplate({
           <View style={styles.titleBlock}>
             <Text style={styles.title}>{title}</Text>
             {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-            <Text style={styles.metaText}>Period: {dateRangeLabel}</Text>
-            <Text style={styles.metaText}>Generated: {generatedAt}</Text>
+            <Text style={styles.metaText}>
+              {labels?.periodPrefix ?? "Period:"} {dateRangeLabel}
+            </Text>
+            <Text style={styles.metaText}>
+              {labels?.generatedPrefix ?? "Generated:"} {generatedAt}
+            </Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Report Summary</Text>
+          <Text style={styles.sectionTitle}>{labels?.reportSummary ?? "Report Summary"}</Text>
           <View style={styles.summaryGrid}>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Report period</Text>
+              <Text style={styles.summaryLabel}>{labels?.reportPeriod ?? "Report period"}</Text>
               <Text style={styles.summaryValue}>{dateRangeLabel}</Text>
             </View>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Generated at</Text>
+              <Text style={styles.summaryLabel}>{labels?.generatedAt ?? "Generated at"}</Text>
               <Text style={styles.summaryValue}>{generatedAt}</Text>
             </View>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Records</Text>
+              <Text style={styles.summaryLabel}>{labels?.records ?? "Records"}</Text>
               <Text style={styles.summaryValue}>{recordCount.toLocaleString()}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Applied Filters</Text>
+          <Text style={styles.sectionTitle}>{labels?.appliedFilters ?? "Applied Filters"}</Text>
           <View style={styles.filtersWrap}>
-            {(filters.length > 0 ? filters : [{ label: "Filters", value: "No extra filters" }]).map(
+            {(filters.length > 0
+              ? filters
+              : [
+                  {
+                    label: labels?.filters ?? "Filters",
+                    value: labels?.noExtraFilters ?? "No extra filters",
+                  },
+                ]).map(
               (filter) => (
                 <View key={`${filter.label}-${filter.value}`} style={styles.filterChip}>
                   <Text style={styles.filterText}>
@@ -335,7 +366,7 @@ export function ReportBaseTemplate({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Metrics</Text>
+          <Text style={styles.sectionTitle}>{labels?.keyMetrics ?? "Key Metrics"}</Text>
           <View style={styles.metricsGrid}>
             {metrics.map((metric) => (
               <View key={metric.label} style={styles.metricCard}>
@@ -354,7 +385,7 @@ export function ReportBaseTemplate({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Detailed Records</Text>
+          <Text style={styles.sectionTitle}>{labels?.detailedRecords ?? "Detailed Records"}</Text>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
               {columns.map((column) => (
@@ -393,7 +424,9 @@ export function ReportBaseTemplate({
               ))
             ) : (
               <View style={styles.tableRow}>
-                <Text style={styles.tableCell}>No data available for the selected filters.</Text>
+                <Text style={styles.tableCell}>
+                  {labels?.noDataForFilters ?? "No data available for the selected filters."}
+                </Text>
               </View>
             )}
           </View>
@@ -401,7 +434,7 @@ export function ReportBaseTemplate({
 
         {notes && notes.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notes</Text>
+            <Text style={styles.sectionTitle}>{labels?.notes ?? "Notes"}</Text>
             {notes.map((note) => (
               <Text key={note} style={styles.note}>
                 • {note}
@@ -411,8 +444,8 @@ export function ReportBaseTemplate({
         ) : null}
 
         <View style={styles.footer} fixed>
-          <Text>{school.name || "School Report"}</Text>
-          <Text>Computer-generated report</Text>
+          <Text>{school.name || labels?.schoolReport || "School Report"}</Text>
+          <Text>{labels?.computerGenerated ?? "Computer-generated report"}</Text>
         </View>
       </Page>
     </Document>

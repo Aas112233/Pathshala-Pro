@@ -124,7 +124,7 @@ export default function QuestionPapersLibraryPage() {
 
   // Fetch academic years
   const { data: yearsData } = useQuery({
-    queryKey: ["academic-years-all"],
+    queryKey: ["academic-years", "all"],
     queryFn: async () => {
       const res = await fetch("/api/academic-years?limit=100");
       if (!res.ok) throw new Error("Failed to fetch academic years");
@@ -135,7 +135,7 @@ export default function QuestionPapersLibraryPage() {
 
   // Fetch classes
   const { data: classesData } = useQuery({
-    queryKey: ["classes-all"],
+    queryKey: ["classes", "all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) throw new Error("Failed to fetch classes");
@@ -146,7 +146,7 @@ export default function QuestionPapersLibraryPage() {
 
   // Fetch subjects
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects-all"],
+    queryKey: ["subjects", "all"],
     queryFn: async () => {
       const res = await fetch("/api/subjects");
       if (!res.ok) throw new Error("Failed to fetch subjects");

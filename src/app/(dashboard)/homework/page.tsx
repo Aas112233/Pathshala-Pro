@@ -91,7 +91,7 @@ export default function HomeworkPage() {
   } = useHomeworkViewModel({ classId: classFilter, search, page });
 
   const { data: classesData } = useQuery({
-    queryKey: ["classes-homework"],
+    queryKey: ["classes", "homework"],
     queryFn: async () => {
       const r = await fetch("/api/classes?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
@@ -100,7 +100,7 @@ export default function HomeworkPage() {
   });
 
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects-homework"],
+    queryKey: ["subjects", "homework"],
     queryFn: async () => {
       const r = await fetch("/api/subjects", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
@@ -186,10 +186,10 @@ export default function HomeworkPage() {
       const fileUrl = json.data?.webViewLink || json.data?.fileId;
       setFormData((prev) => ({ ...prev, attachmentUrl: fileUrl }));
       setUploadedFileName(file.name);
-      toast.success("Worksheet uploaded successfully!", { id: toastId });
+      toast.success(t("uploadSuccess"), { id: toastId });
     } catch (err: any) {
       console.error("Upload error:", err);
-      toast.error(err.message || "Failed to upload worksheet", { id: toastId });
+      toast.error(err.message || t("uploadFailed"), { id: toastId });
     } finally {
       setIsUploading(false);
     }
@@ -197,10 +197,10 @@ export default function HomeworkPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!formData.classId) e.classId = "Class is required";
-    if (!formData.title.trim()) e.title = "Title is required";
-    if (!formData.description.trim()) e.description = "Instructions are required";
-    if (!formData.dueDate) e.dueDate = "Due date is required";
+    if (!formData.classId) e.classId = t("classRequired");
+    if (!formData.title.trim()) e.title = t("titleRequired");
+    if (!formData.description.trim()) e.description = t("descriptionRequired");
+    if (!formData.dueDate) e.dueDate = t("dueDateRequired");
     setFormErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -271,7 +271,7 @@ export default function HomeworkPage() {
     const finalRemarks = customRemarks || gradeData.remarks;
 
     if (!finalGrade.trim()) {
-      toast.error("Please enter or select a grade");
+      toast.error(t("gradeRequired"));
       return;
     }
 
@@ -291,12 +291,12 @@ export default function HomeworkPage() {
         const j = await r.json();
         if (!r.ok) throw new Error(j.message);
 
-        toast.success("Submission graded!");
+        toast.success(t("gradeSuccess"));
         setGradeData({ grade: "", remarks: "" });
         setGradingId(null);
         refetchSubs();
       } catch (err: any) {
-        toast.error(err.message || "Failed to grade submission");
+        toast.error(err.message || t("gradeFailed"));
         setGradingId(null);
       }
     });

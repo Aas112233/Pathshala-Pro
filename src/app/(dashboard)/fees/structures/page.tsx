@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
-import { useAcademicYears } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
+import { formatStudentName } from "@/lib/utils";
 import {
   useClassFeeStructures,
   useCreateClassFeeStructure,
@@ -41,13 +42,13 @@ import {
   Award,
   BookOpen,
   CheckCircle2,
-  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function FeeStructuresPage() {
   const t = useTranslations("feeStructures");
   const tCommon = useTranslations("common");
+  const tAcademic = useTranslations("academicSelector");
   const { currencySymbol, formatCurrency } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
@@ -55,15 +56,14 @@ export default function FeeStructuresPage() {
   const canWriteFees = hasPermission(perms, "fees", "write");
   const canManageFees = hasPermission(perms, "fees", "manage");
 
-  // Academic Years & Classes queries
-  const { data: ayResponse } = useAcademicYears();
-  const academicYears = ayResponse?.data || [];
-  const [selectedYearId, setSelectedYearId] = useState<string>("");
-
-  const activeYearId = selectedYearId || academicYears[0]?.id || "";
+  // Academic Years & Classes queries (global academic year selection)
+  const {
+    academicYears,
+    selectedAcademicYearId: activeYearId,
+  } = useAcademicYearContext();
 
   const { data: classesResponse } = useQuery({
-    queryKey: ["classes-fee-structures"],
+    queryKey: ["classes", "fee-structures"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load classes");
@@ -71,6 +71,33 @@ export default function FeeStructuresPage() {
     },
   });
   const activeClasses = (classesResponse as any)?.data || [];
+
+  // Students query for concession selection
+  const { data: studentsResponse } = useQuery({
+    queryKey: ["students", "fee-structures"],
+    queryFn: async () => {
+      const res = await fetch("/api/students?limit=200", { credentials: "include" });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data?.items || json.data || []) as any[];
+    },
+  });
+  const studentsList: any[] = useMemo(() => {
+    const raw = (studentsResponse as any)?.data?.items || (studentsResponse as any)?.data || studentsResponse || [];
+    return Array.isArray(raw) ? raw : [];
+  }, [studentsResponse]);
+
+  const studentOptions = useMemo(() => {
+    return studentsList.map((s: any) => {
+      const name = formatStudentName(s.firstName, s.lastName, s.firstNameBn, s.lastNameBn);
+      const roll = s.rollNumber ? ` (${s.rollNumber})` : "";
+      const idTag = s.studentId && s.studentId !== s.rollNumber ? ` • ${s.studentId}` : "";
+      return {
+        value: s.id,
+        label: `${name}${roll}${idTag}`,
+      };
+    });
+  }, [studentsList]);
 
   // Fee Structures query & mutations
   const { data: structuresResponse, isLoading } = useClassFeeStructures(activeYearId);
@@ -243,21 +270,6 @@ export default function FeeStructuresPage() {
         icon={Layers}
       >
         <div className="flex items-center gap-2.5">
-          {/* Academic Year Filter */}
-          <div className="flex items-center gap-1.5 bg-background border border-input rounded-xl px-3 py-1.5 shadow-2xs">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <AppDropdown
-              value={activeYearId}
-              onChange={(v) => setSelectedYearId(v)}
-              options={academicYears.map((ay: any) => ({
-                value: ay.id,
-                label: `${ay.label} ${ay.isClosed ? "(Closed)" : ""}`.trim()
-              }))}
-              searchable
-              triggerClassName="h-7 text-xs border-0 shadow-none px-1"
-            />
-          </div>
-
           {canWriteFees && (
             <Button
               variant="outline"
@@ -618,12 +630,14 @@ export default function FeeStructuresPage() {
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div>
-                <Label className="text-xs">{t("selectStudent")} (ID / Roll)</Label>
-                <Input
-                  placeholder="e.g. Student CUID or roll"
+                <Label className="text-xs">{t("selectStudent")}</Label>
+                <AppDropdown
                   value={concessionForm.studentProfileId}
-                  onChange={(e) => setConcessionForm({ ...concessionForm, studentProfileId: e.target.value })}
-                  className="h-9 text-xs"
+                  onChange={(v) => setConcessionForm({ ...concessionForm, studentProfileId: v })}
+                  options={studentOptions}
+                  placeholder={t("selectStudent")}
+                  searchable
+                  searchPlaceholder={tAcademic("searchStudentPlaceholder")}
                 />
               </div>
 

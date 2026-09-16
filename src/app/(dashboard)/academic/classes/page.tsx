@@ -92,7 +92,7 @@ export default function ClassesPage() {
   });
 
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects-all"],
+    queryKey: ["subjects", "all"],
     queryFn: async () => {
       const res = await fetch("/api/subjects", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(t("fetchSubjectsError"));

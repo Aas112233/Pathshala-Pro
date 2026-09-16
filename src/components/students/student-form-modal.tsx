@@ -70,7 +70,7 @@ export function StudentFormModal({
 
   // Query classes for student assignment
   const { data: classesData } = useQuery({
-    queryKey: ["classes-dropdown"],
+    queryKey: ["classes", "dropdown"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) return { data: [] };
@@ -81,7 +81,7 @@ export function StudentFormModal({
 
   // Query groups filtered by selected class
   const { data: groupsData } = useQuery({
-    queryKey: ["groups-dropdown", { classId: formData.classId }],
+    queryKey: ["groups", "dropdown", { classId: formData.classId }],
     queryFn: async () => {
       if (!formData.classId) return { data: [] };
       const res = await fetch(`/api/groups?limit=100&classId=${formData.classId}`);
@@ -93,7 +93,7 @@ export function StudentFormModal({
 
   // Query sections filtered by selected class and group
   const { data: sectionsData } = useQuery({
-    queryKey: ["sections-dropdown", { classId: formData.classId, groupId: formData.groupId }],
+    queryKey: ["sections", "dropdown", { classId: formData.classId, groupId: formData.groupId }],
     queryFn: async () => {
       if (!formData.classId) return { data: [] };
       const params = new URLSearchParams({
@@ -592,6 +592,7 @@ export function StudentFormModal({
                   <Input
                     id="student-guardianContact"
                     required
+                    type="tel"
                     name="guardianContact"
                     value={formData.guardianContact}
                     onChange={handleChange}
@@ -622,7 +623,8 @@ export function StudentFormModal({
                     options={[
                       { value: "ACTIVE", label: t("active") },
                       { value: "INACTIVE", label: t("inactive") },
-                      { value: "SUSPENDED", label: t("filters.status.suspended") },
+                      { value: "GRADUATED", label: t("filters.status.graduated") },
+                      { value: "TRANSFERRED", label: t("filters.status.transferred") },
                     ]}
                   />
                 </ERPFormField>

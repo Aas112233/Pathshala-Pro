@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -30,14 +30,13 @@ import {
   formatNoticeRelativeTime,
 } from "@/lib/notices-helpers";
 import { NoticeDetailModal } from "@/components/notices/notice-detail-modal";
+import { useNotices } from "@/hooks/use-queries";
 
 export function HeaderNotificationCenter() {
   const t = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NotificationCategoryGroup>("ALL");
-  const [notices, setNotices] = useState<NoticeItem[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
-  const [isLoading, setIsLoading] = useState(true);
   const [viewingNotice, setViewingNotice] = useState<NoticeItem | null>(null);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -47,26 +46,13 @@ export function HeaderNotificationCenter() {
     setReadIds(getReadNoticeIds());
   }, []);
 
-  const fetchNotices = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notices?activeOnly=true");
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setNotices(json.data);
-      }
-    } catch {
-      // Silent catch for header notification polling
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchNotices();
-    // Optional refresh interval every 60s
-    const interval = setInterval(fetchNotices, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNotices]);
+  // Shared ["notices"] cache with the banner/dialog/dashboard feed; 60s poll
+  // preserved via refetchInterval instead of a bespoke setInterval.
+  const { data, isLoading } = useNotices(
+    { activeOnly: true, limit: 50 },
+    { refetchInterval: 60000 }
+  );
+  const notices = useMemo(() => (data ?? []) as NoticeItem[], [data]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

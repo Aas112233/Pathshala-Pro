@@ -304,14 +304,10 @@ export default function StudentsPage() {
         onClearFilters={handleClearFilters}
       />
 
-      {/* Content */}
-      {!isLoading && students.length === 0 ? (
-        <StudentsEmptyState
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={handleClearFilters}
-          onAddNew={() => setIsFormOpen(true)}
-        />
-      ) : viewMode === "table" ? (
+      {/* Content — table mode stays mounted so search + pagination never
+          unmount (and the layout never jumps) when a search yields zero rows;
+          DataTable renders its own empty row in that case. */}
+      {viewMode === "table" ? (
         <DataTable
           columns={columns}
           data={students}
@@ -320,6 +316,12 @@ export default function StudentsPage() {
           onSearch={(search) => setFilters({ search })}
           isLoading={isLoading}
           searchPlaceholder={t('searchPlaceholder')}
+        />
+      ) : !isLoading && students.length === 0 ? (
+        <StudentsEmptyState
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={handleClearFilters}
+          onAddNew={() => setIsFormOpen(true)}
         />
       ) : isLoading ? (
         <CardGridSkeleton count={6} />

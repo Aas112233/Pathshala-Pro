@@ -38,6 +38,12 @@ export async function GET(request: NextRequest) {
             classNumber: true,
             _count: {
               select: {
+                academicSessions: {
+                  where: {
+                    tenantId,
+                    ...(academicYearId ? { academicYearId } : {}),
+                  },
+                },
                 studentProfiles: {
                   where: { status: "ACTIVE", tenantId },
                 },
@@ -61,7 +67,8 @@ export async function GET(request: NextRequest) {
 
     const enriched = structures.map((item) => {
       const cls = (item as any).class;
-      const studentCount = cls?._count?.studentProfiles ?? 0;
+      const sessionCount = cls?._count?.academicSessions;
+      const studentCount = typeof sessionCount === "number" && sessionCount > 0 ? sessionCount : (cls?._count?.studentProfiles ?? 0);
       const projectedRevenue = (item.totalMonthlyFee || 0) * studentCount;
       return {
         ...item,

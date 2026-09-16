@@ -292,8 +292,7 @@ export default function CreateQuestionPaperStudioPage() {
         .replace(/[^a-zA-Z0-9\u0980-\u09FF-]/g, '_');
       const result = await exportElementToHighResPDF('exam-paper-canvas-root', {
         fileName: `${sanitizedName}_${currentPaper.header.examSet || 'Main'}.pdf`,
-        format: currentPaper.layout.pageFormat.toLowerCase() as any,
-        scale: 2.5,
+        paper: currentPaper,
       });
 
       if (result.success) {
@@ -583,11 +582,12 @@ export default function CreateQuestionPaperStudioPage() {
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={currentPaper.header.totalMarks}
                     onChange={(e) =>
                       setCurrentPaper((prev) => ({
                         ...prev,
-                        header: { ...prev.header, totalMarks: e.target.value },
+                        header: { ...prev.header, totalMarks: e.target.value.replace(/[^0-9]/g, "") },
                       }))
                     }
                     className="w-full px-2 py-1 bg-background border border-input rounded text-xs font-mono font-bold"

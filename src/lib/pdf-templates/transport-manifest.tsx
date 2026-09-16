@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface ManifestStudent {
   rollNumber: string;
@@ -31,7 +32,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 24,
     backgroundColor: "#ffffff",
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
     fontSize: 8,
     color: "#0f172a",
   },
@@ -187,9 +188,14 @@ const styles = StyleSheet.create({
 });
 
 export function TransportManifestPDFDocument({ manifest }: { manifest: TransportManifestPDFData }) {
+  const fontFamily = getPdfFontFamily(
+    manifest.schoolName, manifest.schoolAddress, manifest.routeName,
+    manifest.driverName, pdfTextSample(manifest.stops.map((s) => ({ stop: s }))),
+    pdfTextSample(manifest.students)
+  );
   return (
     <Document title={`Transport_Manifest_${manifest.routeName.replace(/\s+/g, "_")}`}>
-      <Page size="A4" orientation="portrait" style={styles.page}>
+      <Page size="A4" orientation="portrait" style={[styles.page, { fontFamily }]}>
         {/* Header */}
         <View style={styles.header}>
           <View>

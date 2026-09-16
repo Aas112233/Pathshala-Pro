@@ -42,7 +42,7 @@ export function StudentFiltersBar({
   const hasActiveFilters = status !== "ALL" || gender !== "ALL" || !!classId || !!sectionId || !!groupId;
 
   const { data: classesData } = useQuery({
-    queryKey: ["classes-filter"],
+    queryKey: ["classes", "filter"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) return { data: [] };
@@ -51,7 +51,7 @@ export function StudentFiltersBar({
   });
 
   const { data: groupsData } = useQuery({
-    queryKey: ["groups-filter", classId],
+    queryKey: ["groups", "filter", classId],
     queryFn: async () => {
       if (!classId) return { data: [] };
       const res = await fetch(`/api/groups?limit=100&classId=${classId}`);
@@ -62,7 +62,7 @@ export function StudentFiltersBar({
   });
 
   const { data: sectionsData } = useQuery({
-    queryKey: ["sections-filter", classId, groupId],
+    queryKey: ["sections", "filter", classId, groupId],
     queryFn: async () => {
       if (!classId) return { data: [] };
       const params = new URLSearchParams({ limit: "100", classId, ...(groupId && { groupId }) });
@@ -130,7 +130,8 @@ export function StudentFiltersBar({
               { value: "ALL", label: t("filters.status.all") },
               { value: "ACTIVE", label: t("filters.status.active") },
               { value: "INACTIVE", label: t("filters.status.inactive") },
-              { value: "SUSPENDED", label: t("filters.status.suspended") },
+              { value: "GRADUATED", label: t("filters.status.graduated") },
+              { value: "TRANSFERRED", label: t("filters.status.transferred") },
             ]}
           />
         </div>

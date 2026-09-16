@@ -1,34 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Megaphone, X, AlertTriangle } from "lucide-react";
+import { useNotices } from "@/hooks/use-queries";
 
 export function GlobalBroadcastBanner() {
-  const [broadcast, setBroadcast] = useState<any>(null);
   const [isDismissed, setIsDismissed] = useState(false);
-
-  useEffect(() => {
-    async function checkBroadcasts() {
-      try {
-        const res = await fetch("/api/notices?priority=URGENT&activeOnly=true");
-        const json = await res.json();
-        if (json.success && json.data && json.data.length > 0) {
-          const urgentGlobal = json.data.find((n: any) => n.scope === "GLOBAL" || n.priority === "URGENT");
-          if (urgentGlobal) {
-            const dismissedKey = `dismissed_broadcast_${urgentGlobal.id}`;
-            if (!sessionStorage.getItem(dismissedKey)) {
-              setBroadcast(urgentGlobal);
-            }
-          }
-        }
-      } catch {
-        // Silent catch for banner
-      }
-    }
-    checkBroadcasts();
-  }, []);
+  const { data } = useNotices({ activeOnly: true, priority: "URGENT", limit: 5 });
+  const broadcast = (data ?? []).find((n: any) => n.scope === "GLOBAL" || n.priority === "URGENT") ?? null;
 
   if (!broadcast || isDismissed) return null;
+  if (typeof window !== "undefined" && sessionStorage.getItem(`dismissed_broadcast_${broadcast.id}`)) {
+    return null;
+  }
 
   const handleDismiss = () => {
     setIsDismissed(true);

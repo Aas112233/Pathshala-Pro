@@ -11,7 +11,7 @@ import { createAttendanceSchema } from "@/lib/schemas";
 import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { triggerAbsenceAlert } from "@/lib/notifications/triggers/absence-alert";
-import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 
 /**
  * GET /api/attendance
@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
     const staffId = searchParams.get("staffId") || "";
     const status = searchParams.get("status") || "";
     const classId = searchParams.get("classId") || "";
-    const academicYearId = searchParams.get("academicYearId") || "";
+    const academicYearIdParam = searchParams.get("academicYearId");
+    const resolvedAcademicYearId = academicYearIdParam
+      ? academicYearIdParam.trim()
+      : await resolveRequestAcademicYearId(request, tenantId);
 
     const skip = (page - 1) * limit;
 
@@ -67,10 +70,23 @@ export async function GET(request: NextRequest) {
     }
 
     if (classId) {
-      where.studentProfile = { classId };
+      if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
+        where.studentProfile = {
+          academicSessions: {
+            some: {
+              academicYearId: resolvedAcademicYearId,
+              classId,
+            },
+          },
+        };
+      } else {
+        where.studentProfile = { classId };
+      }
     }
 
-    if (academicYearId) where.academicYearId = academicYearId;
+    if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
+      where.academicYearId = resolvedAcademicYearId;
+    }
 
     // C1 self-scoping: STUDENT/PARENT see only their own linked students.
     // Overwrites any client-supplied studentId so a parent cannot enumerate

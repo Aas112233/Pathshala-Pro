@@ -11,6 +11,7 @@ import {
   bulkTimetableSchema,
 } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 
 /**
  * GET /api/timetables
@@ -25,7 +26,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
     const sectionId = searchParams.get("sectionId");
-    const academicYearId = searchParams.get("academicYearId");
+    const academicYearIdParam = searchParams.get("academicYearId");
+    const resolvedAcademicYearId = academicYearIdParam
+      ? academicYearIdParam.trim()
+      : await resolveRequestAcademicYearId(request, tenantId);
     const dayOfWeek = searchParams.get("dayOfWeek");
 
     if (!classId) {
@@ -50,7 +54,9 @@ export async function GET(request: NextRequest) {
       // explicitly request class-level (no section)
       where.sectionId = null;
     }
-    if (academicYearId) where.academicYearId = academicYearId;
+    if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
+      where.academicYearId = resolvedAcademicYearId;
+    }
     if (dayOfWeek) where.dayOfWeek = dayOfWeek;
 
     const entries = await prisma.timetable.findMany({
@@ -106,6 +112,7 @@ export async function POST(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;
+    const defaultAcademicYearId = await resolveRequestAcademicYearId(request, tenantId);
     const body = await request.json();
 
     // Bulk path
@@ -122,6 +129,7 @@ export async function POST(request: NextRequest) {
 
       // Validate section ownership and clashes before writing
       for (const e of parsed.data.entries) {
+        const targetYearId = e.academicYearId || defaultAcademicYearId || null;
         if (e.sectionId) {
           const section = await prisma.section.findFirst({
             where: { id: e.sectionId, tenantId, classId: e.classId },
@@ -135,7 +143,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (e.staffProfileId) {
-          const clash = await checkTeacherClash(tenantId, e.staffProfileId, e.dayOfWeek, e.periodNumber, e.academicYearId);
+          const clash = await checkTeacherClash(tenantId, e.staffProfileId, e.dayOfWeek, e.periodNumber, targetYearId);
           if (clash) {
             return badRequest(
               `Teacher clash: already assigned to ${clash.class.name}${clash.section ? ` - ${clash.section.name}` : ""} on ${e.dayOfWeek} period ${e.periodNumber}`,
@@ -150,7 +158,7 @@ export async function POST(request: NextRequest) {
           prisma.timetable.create({
             data: {
               tenantId,
-              academicYearId: e.academicYearId || null,
+              academicYearId: e.academicYearId || defaultAcademicYearId || null,
               classId: e.classId,
               sectionId: e.sectionId || null,
               dayOfWeek: e.dayOfWeek,
@@ -194,8 +202,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const targetYearId = d.academicYearId || defaultAcademicYearId || null;
+
     if (d.staffProfileId) {
-          const clash = await checkTeacherClash(tenantId, d.staffProfileId, d.dayOfWeek, d.periodNumber, d.academicYearId);
+      const clash = await checkTeacherClash(tenantId, d.staffProfileId, d.dayOfWeek, d.periodNumber, targetYearId);
       if (clash) {
         return badRequest(
           `Teacher clash: already assigned to ${clash.class.name}${clash.section ? ` - ${clash.section.name}` : ""} on ${d.dayOfWeek} period ${d.periodNumber}`,
@@ -208,7 +218,7 @@ export async function POST(request: NextRequest) {
     const slotTaken = await prisma.timetable.findFirst({
       where: {
         tenantId,
-        academicYearId: d.academicYearId || null,
+        academicYearId: targetYearId,
         classId: d.classId,
         sectionId: d.sectionId || null,
         dayOfWeek: d.dayOfWeek,
@@ -224,7 +234,7 @@ export async function POST(request: NextRequest) {
     const entry = await prisma.timetable.create({
       data: {
         tenantId,
-        academicYearId: d.academicYearId || null,
+        academicYearId: targetYearId,
         classId: d.classId,
         sectionId: d.sectionId || null,
         dayOfWeek: d.dayOfWeek,

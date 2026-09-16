@@ -7,6 +7,7 @@ export {
   type PdfSchoolInfo,
   type PdfMetricItem,
   type PdfColumn,
+  type PdfCommonLabels,
 } from "./report-base";
 export { StudentReportTemplate } from "./student-report";
 export { FeeReportTemplate } from "./fee-report";
@@ -88,5 +89,29 @@ export {
   type InventoryStockItem,
   type InventoryStockReportProps,
 } from "./inventory-stock-report";
+export {
+  ProfitLossReportTemplate,
+  type ProfitLossReportTemplateProps,
+} from "./profit-loss-report";
+export {
+  SalaryReportTemplate,
+  type SalaryReportTemplateProps,
+} from "./salary-report";
+export {
+  FinancialReportTemplate,
+  type FinancialReportTemplateProps,
+} from "./financial-report";
+export {
+  AdmissionsReportTemplate,
+  type AdmissionsReportTemplateProps,
+} from "./admissions-report";
+export {
+  StatementReportTemplate,
+  type StatementReportTemplateProps,
+} from "./statement-report";
+export {
+  FeeDaybookTemplate,
+  type FeeDaybookTemplateProps,
+} from "./fee-daybook";
 export * from "./pdf-fonts";
 

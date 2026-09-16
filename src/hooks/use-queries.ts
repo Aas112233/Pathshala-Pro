@@ -16,15 +16,181 @@ import {
   feeHeadsApi,
   profitLossApi,
 } from "@/lib/api-client";
-import type { PaginationParams } from "@/types/api";
+import type { PaginationParams, SearchParams } from "@/types/api";
 import type { CreateUserPayload, UpdateUserPayload } from "@/types/users";
 
 interface QueryHookOptions {
   enabled?: boolean;
+  refetchInterval?: number;
+}
+
+// Notices hook — shared key so the banner, header bell, login dialog and
+// dashboard feed dedupe to one cached request instead of 4 raw fetches.
+export function useNotices(
+  params?: { activeOnly?: boolean; priority?: string; limit?: number },
+  options?: QueryHookOptions
+) {
+  const keyParams = {
+    ...(params?.activeOnly ? { activeOnly: true as const } : {}),
+    ...(params?.priority ? { priority: params.priority } : {}),
+    ...(params?.limit ? { limit: params.limit } : {}),
+  };
+  const qs = new URLSearchParams();
+  if (params?.activeOnly) qs.set("activeOnly", "true");
+  if (params?.priority) qs.set("priority", params.priority);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const queryString = qs.toString();
+  return useQuery({
+    queryKey: ["notices", keyParams],
+    queryFn: async () => {
+      const res = await fetch(`/api/notices${queryString ? `?${queryString}` : ""}`, {
+        credentials: "include",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        throw new Error(json.message || "Failed to load notices");
+      }
+      return (json.data ?? []) as any[];
+    },
+    enabled: options?.enabled ?? true,
+    refetchInterval: options?.refetchInterval,
+    placeholderData: keepPreviousData,
+  });
+}
+
+// ──────────────── Academic Structure Hooks (Standardized Hierarchical Keys) ────
+export function useClasses(
+  params?: { limit?: number; isActive?: boolean; page?: number; search?: string },
+  options?: QueryHookOptions
+) {
+  const keyParams = {
+    ...(params?.limit ? { limit: params.limit } : {}),
+    ...(params?.isActive !== undefined ? { isActive: params.isActive } : {}),
+    ...(params?.page ? { page: params.page } : {}),
+    ...(params?.search ? { search: params.search } : {}),
+  };
+  return useQuery({
+    queryKey: ["classes", keyParams],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (params?.limit) qs.set("limit", String(params.limit));
+      if (params?.isActive !== undefined) qs.set("isActive", String(params.isActive));
+      if (params?.page) qs.set("page", String(params.page));
+      if (params?.search) qs.set("search", params.search);
+      const res = await fetch(`/api/classes${qs.toString() ? `?${qs.toString()}` : ""}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data?.items || json.data || []) as any[];
+    },
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useSections(
+  params?: { classId?: string; groupId?: string; limit?: number; page?: number; search?: string },
+  options?: QueryHookOptions
+) {
+  const keyParams = {
+    ...(params?.classId ? { classId: params.classId } : {}),
+    ...(params?.groupId ? { groupId: params.groupId } : {}),
+    ...(params?.limit ? { limit: params.limit } : {}),
+    ...(params?.page ? { page: params.page } : {}),
+    ...(params?.search ? { search: params.search } : {}),
+  };
+  return useQuery({
+    queryKey: ["sections", keyParams],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (params?.classId) qs.set("classId", params.classId);
+      if (params?.groupId) qs.set("groupId", params.groupId);
+      if (params?.limit) qs.set("limit", String(params.limit));
+      if (params?.page) qs.set("page", String(params.page));
+      if (params?.search) qs.set("search", params.search);
+      const res = await fetch(`/api/sections${qs.toString() ? `?${qs.toString()}` : ""}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data?.items || json.data || []) as any[];
+    },
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useGroups(
+  params?: { classId?: string; limit?: number; page?: number; search?: string },
+  options?: QueryHookOptions
+) {
+  const keyParams = {
+    ...(params?.classId ? { classId: params.classId } : {}),
+    ...(params?.limit ? { limit: params.limit } : {}),
+    ...(params?.page ? { page: params.page } : {}),
+    ...(params?.search ? { search: params.search } : {}),
+  };
+  return useQuery({
+    queryKey: ["groups", keyParams],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (params?.classId) qs.set("classId", params.classId);
+      if (params?.limit) qs.set("limit", String(params.limit));
+      if (params?.page) qs.set("page", String(params.page));
+      if (params?.search) qs.set("search", params.search);
+      const res = await fetch(`/api/groups${qs.toString() ? `?${qs.toString()}` : ""}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data?.items || json.data || []) as any[];
+    },
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useSubjects(
+  params?: { classId?: string; limit?: number; page?: number; search?: string },
+  options?: QueryHookOptions
+) {
+  const keyParams = {
+    ...(params?.classId ? { classId: params.classId } : {}),
+    ...(params?.limit ? { limit: params.limit } : {}),
+    ...(params?.page ? { page: params.page } : {}),
+    ...(params?.search ? { search: params.search } : {}),
+  };
+  return useQuery({
+    queryKey: ["subjects", keyParams],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (params?.classId) qs.set("classId", params.classId);
+      if (params?.limit) qs.set("limit", String(params.limit));
+      if (params?.page) qs.set("page", String(params.page));
+      if (params?.search) qs.set("search", params.search);
+      const res = await fetch(`/api/subjects${qs.toString() ? `?${qs.toString()}` : ""}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data?.items || json.data || []) as any[];
+    },
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+  });
 }
 
 // Students hooks
-export function useStudents(params?: PaginationParams, options?: QueryHookOptions) {
+export function useStudents(
+  params?: SearchParams & {
+    classId?: string;
+    sectionId?: string;
+    groupId?: string;
+    status?: string;
+  },
+  options?: QueryHookOptions
+) {
   return useQuery({
     queryKey: ["students", params],
     queryFn: () => studentsApi.list(params),
@@ -43,7 +209,7 @@ export function useStudent(id: string) {
 
 export function useStudentPerformance(id: string, academicYearId?: string) {
   return useQuery({
-    queryKey: ["student-performance", id, academicYearId],
+    queryKey: ["students", "performance", id, academicYearId],
     queryFn: () => studentsApi.getPerformance(id, academicYearId),
     enabled: !!id,
   });
@@ -132,7 +298,7 @@ export function useDeleteUser() {
 // Academic Years hooks
 export function useAcademicYears(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
-    queryKey: ["academicYears", params],
+    queryKey: ["academic-years", params],
     queryFn: () => academicYearsApi.list(params),
     enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
@@ -141,7 +307,7 @@ export function useAcademicYears(params?: PaginationParams, options?: QueryHookO
 
 export function useAcademicYear(id: string) {
   return useQuery({
-    queryKey: ["academicYear", id],
+    queryKey: ["academic-years", id],
     queryFn: () => academicYearsApi.get(id),
     enabled: !!id,
   });
@@ -152,6 +318,7 @@ export function useCreateAcademicYear() {
   return useMutation({
     mutationFn: (data: any) => academicYearsApi.create(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
       queryClient.invalidateQueries({ queryKey: ["academicYears"] });
     },
   });
@@ -162,8 +329,8 @@ export function useUpdateAcademicYear(id: string) {
   return useMutation({
     mutationFn: (data: any) => academicYearsApi.update(id, data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
       queryClient.invalidateQueries({ queryKey: ["academicYears"] });
-      queryClient.invalidateQueries({ queryKey: ["academicYear", id] });
     },
   });
 }
@@ -173,6 +340,7 @@ export function useDeleteAcademicYear() {
   return useMutation({
     mutationFn: (id: string) => academicYearsApi.delete(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
       queryClient.invalidateQueries({ queryKey: ["academicYears"] });
     },
   });
@@ -458,6 +626,32 @@ export function useDeleteExamResult() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exams"] });
     },
+  });
+}
+
+// Dashboard summary hook — one aggregate request for the KPI cards,
+// replacing the fees-limit-100 + attendance-limit-100 client-side sums.
+export function useDashboardSummary(params?: { academicYearId?: string }, options?: QueryHookOptions) {
+  return useQuery({
+    queryKey: ["dashboard", "summary", params?.academicYearId],
+    queryFn: async () => {
+      const url = params?.academicYearId
+        ? `/api/dashboard/summary?academicYearId=${encodeURIComponent(params.academicYearId)}`
+        : "/api/dashboard/summary";
+      const res = await fetch(url, { credentials: "include" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        throw new Error(json.message || "Failed to load dashboard summary");
+      }
+      return json.data as {
+        totalStudents: number;
+        totalStaff: number;
+        fees: { totalCount: number; totalDue: number; amountPaid: number; balance: number };
+        attendance: { present: number; absent: number; total: number; rate: number };
+      };
+    },
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -89,8 +89,38 @@ describe("AppDropdown Smart Search Contracts", () => {
         searchable={true}
       />
     );
-
     fireEvent.click(screen.getByRole("button"));
     expect(screen.getByPlaceholderText("Search...")).toBeDefined();
   });
+
+  it("handles undefined, null, or sparse options array gracefully without crashing", () => {
+    const handleChange = vi.fn();
+
+    // Passing undefined options or options array containing null/undefined elements
+    const { rerender } = render(
+      <AppDropdown
+        value="test"
+        onChange={handleChange}
+        // @ts-expect-error testing runtime robustness
+        options={undefined}
+        placeholder="Select Test"
+      />
+    );
+
+    expect(screen.getByRole("button").textContent).toContain("Select Test");
+
+    // Sparse or array with undefined items
+    rerender(
+      <AppDropdown
+        value="opt1"
+        onChange={handleChange}
+        // @ts-expect-error testing runtime robustness with undefined item
+        options={[undefined, null, { value: "opt1", label: "Option 1" }]}
+        placeholder="Select Test"
+      />
+    );
+
+    expect(screen.getByRole("button").textContent).toContain("Option 1");
+  });
 });
+

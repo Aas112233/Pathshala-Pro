@@ -358,7 +358,6 @@ export default function AttendanceReportPage() {
                 data={data}
                 isLoading={isLoading}
                 showExport={false}
-                onExportCSV={handleExportExcel}
               />
             ) : (
               <ReportEmptyState

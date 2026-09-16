@@ -130,20 +130,14 @@ export default function FeeHeadsAccountingPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="revenue-account">{t("revenueAccountLabel")}</Label>
-            <select
+            <AppDropdown
               id="revenue-account"
               value={accountCode}
-              onChange={(event) => setAccountCode(event.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              required
-            >
-              <option value="">{t("selectRevenueAccount")}</option>
-              {revenueAccounts.map((account) => (
-                <option key={account.id} value={account.code}>
-                  {account.code} — {account.name}
-                </option>
-              ))}
-            </select>
+              onChange={setAccountCode}
+              options={revenueAccounts.map((account) => ({ value: account.code, label: `${account.code} — ${account.name}` }))}
+              placeholder={t("selectRevenueAccount")}
+              searchable
+            />
           </div>
           <div className="flex justify-end gap-3 border-t border-border pt-3">
             <Button type="button" variant="ghost" onClick={() => setEditing(null)} disabled={saveMutation.isPending}>

@@ -53,7 +53,7 @@ export default function HealthPage() {
   const { records, pagination, isLoading, createRecord, updateRecord, deleteRecord, isMutating } = useHealthViewModel(search, page);
 
   const { data: studentsData } = useQuery({
-    queryKey: ["students-health"],
+    queryKey: ["students", "health"],
     queryFn: async () => {
       const r = await fetch("/api/students?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");

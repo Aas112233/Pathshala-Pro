@@ -217,7 +217,6 @@ const styles = StyleSheet.create({
   remarkText: {
     fontSize: 8,
     color: "#1e293b",
-    fontStyle: "italic",
   },
   footerSignatures: {
     flexDirection: "row",

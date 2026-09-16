@@ -78,10 +78,13 @@ npm run prisma:seed  # seed data
 ### 5. Cascading & Dependent Selectors (Parent $\rightarrow$ Child Filtering)
 - When a parent filter changes, dependent child filters **MUST** automatically re-filter and reset their child selection:
   - **Class $\rightarrow$ Section:** Selecting a Class filters the Section dropdown to only show sections belonging to that class.
+  - **Class $\rightarrow$ Section $\rightarrow$ Group $\rightarrow$ Student:** Student selection must almost never be standalone; it must be scoped by the academic hierarchy (Class, Section, Group).
   - **Class $\rightarrow$ Subject:** Selecting a Class fetches/filters subjects assigned to that class curriculum.
   - **Class $\rightarrow$ Fee Structure:** Selecting a Class updates the fee heads and default dues.
   - **Hostel $\rightarrow$ Room $\rightarrow$ Bed:** Selecting a Hostel loads its rooms; selecting a room loads available beds.
-- Whenever the parent filter changes, reset the child state (`setSectionId("")`, `setSubjectId("")`) to prevent invalid cross-entity selections.
+- **Disabled-Until-Selected Invariant:** Downstream child selectors MUST be disabled with an informative placeholder (e.g. *"Select class first..."*, *"Select section first..."*) until their parent selector is chosen.
+- **Immediate Reset on Change:** Whenever the parent filter changes, immediately reset the child state (`setSectionId("")`, `setSubjectId("")`, `setStudentId("")`) to prevent invalid cross-entity selections.
+- **Unified Standard Component:** Always use `<AcademicStudentSelector />` (from `@/components/shared/academic-student-selector`) for academic hierarchy and student selection.
 
 ---
 
@@ -96,10 +99,16 @@ npm run prisma:seed  # seed data
 ---
 
 ### 7. Proper Data Fetching & Cache Management (TanStack Query v5)
-- **Deterministic Query Keys:** Include all active filters and pagination states in query keys:
-  `queryKey: ["students", { tenantId, page, pageSize, search, classId, sectionId, status }]`
-- **Cache Invalidation:** Every mutation (`useMutation`) must automatically invalidate relevant query keys on success:
-  `onSuccess: () => qc.invalidateQueries({ queryKey: ["students"] })`
+- **Hierarchical Query Keys (STRICT INVARIANT):**
+  - All query keys MUST start with a standardized base entity noun as index 0 (e.g. `["classes", ...]`, `["sections", ...]`, `["groups", ...]`, `["students", ...]`, `["subjects", ...]`, `["staff", ...]`, `["academic-years", ...]`, `["vouchers", ...]`).
+  - **NO FLAT HYPHENATED KEYS:** NEVER write `queryKey: ["classes-all"]`, `["classes-dropdown"]`, `["classes-filter"]`, `["sections-dropdown"]`, `["students-hostel"]`, or similar. Flat hyphenated keys break TanStack Query's prefix matching algorithms.
+  - Include all active filters and pagination states in query keys:
+    `queryKey: ["students", { tenantId, page, pageSize, search, classId, sectionId, status }]`
+- **Centralized Query Hooks:** Whenever fetching academic hierarchy data, prefer the standardized hooks in `src/hooks/use-queries.ts` (`useClasses`, `useSections`, `useGroups`, `useSubjects`).
+- **Cache Invalidation & Zero Extra API Load:**
+  - Every mutation (`useMutation`) must invalidate the base entity prefix:
+    `onSuccess: () => qc.invalidateQueries({ queryKey: ["classes"] })`
+  - TanStack Query automatically marks matching dependent queries across the app stale without issuing premature unmounted network requests, guaranteeing instant real-time data sync with zero extra API load.
 
 ---
 

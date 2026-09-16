@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily } from "./pdf-fonts";
 
 export interface BonafideCertificateData {
   certificateNumber: string;
@@ -61,7 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     color: "#0F172A",
     fontSize: 9,
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
   },
   watermark: {
     position: "absolute",
@@ -111,12 +112,18 @@ const styles = StyleSheet.create({
 
 export function BonafideCertificateTemplate({ school, data, verificationUrl, labels: l }: BonafideCertificateProps) {
   const L = { ...defaultLabels, ...l };
+  // One family per document: detect from every name the certificate prints so
+  // Bangla/Hindi/Urdu student or school names never hit glyph-less Helvetica.
+  const fontFamily = getPdfFontFamily(
+    school?.name, school?.address, data.studentName, data.fatherName,
+    data.guardianName, data.className, data.section, data.purpose, data.remarks
+  );
   const qrSrc = verificationUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verificationUrl)}`
     : undefined;
   return (
     <Document title={`BC-${data.certificateNumber}`} author={school.name}>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { fontFamily }]}>
         <View style={styles.borderOuter} /><View style={styles.borderInner} />
         <Text style={styles.watermark}>{school.name?.split(" ")[0]?.toUpperCase() || "SCHOOL"}</Text>
 
@@ -168,7 +175,7 @@ export function BonafideCertificateTemplate({ school, data, verificationUrl, lab
           </View>
 
           <Text style={{ fontSize: 8, color: "#334155", lineHeight: 1.6, marginTop: 10, textAlign: "justify" }}>{L.declaration}</Text>
-          {data.remarks ? <Text style={{ fontSize: 7.5, color: "#475569", fontStyle: "italic", marginTop: 6 }}>{data.remarks}</Text> : null}
+          {data.remarks ? <Text style={{ fontSize: 7.5, color: "#475569", marginTop: 6 }}>{data.remarks}</Text> : null}
         </View>
 
         <View style={styles.footerRow}>

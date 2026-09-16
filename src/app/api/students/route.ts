@@ -11,10 +11,14 @@ import { createStudentSchema } from "@/lib/schemas";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import {
+  resolveRequestAcademicYearId,
+  ensureStudentAcademicSession,
+} from "@/lib/academic-year-guards";
 
 /**
  * GET /api/students
- * Get all students with pagination
+ * Get all students with pagination and academic-year-scoped roster lookups
  */
 export async function GET(request: NextRequest) {
   try {
@@ -32,8 +36,15 @@ export async function GET(request: NextRequest) {
     const classId = searchParams.get("classId") || "";
     const sectionId = searchParams.get("sectionId") || "";
     const groupId = searchParams.get("groupId") || "";
-    const sortBy = searchParams.get("sortBy") || "createdAt";
-    const sortOrder = searchParams.get("sortOrder") || "desc";
+    const academicYearIdParam = searchParams.get("academicYearId");
+    const resolvedAcademicYearId = academicYearIdParam
+      ? academicYearIdParam.trim()
+      : await resolveRequestAcademicYearId(request, tenantId);
+
+    const SORTABLE_FIELDS = new Set(["createdAt", "firstName", "lastName", "rollNumber", "studentId", "status", "gender"]);
+    const rawSortBy = searchParams.get("sortBy") || "createdAt";
+    const sortBy = SORTABLE_FIELDS.has(rawSortBy) ? rawSortBy : "createdAt";
+    const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
 
     const skip = (page - 1) * limit;
 
@@ -60,16 +71,38 @@ export async function GET(request: NextRequest) {
       where.gender = gender;
     }
 
-    if (classId) {
-      where.classId = classId;
-    }
-
-    if (sectionId) {
-      where.sectionId = sectionId;
-    }
-
-    if (groupId) {
-      where.groupId = groupId;
+    // If an academic year is active and class hierarchy filters are present,
+    // filter students whose academic session for that year matches the class/section/group.
+    // Fall back to student profile fields if no session filter matches.
+    if (resolvedAcademicYearId && (classId || sectionId || groupId)) {
+      where.OR = [
+        {
+          academicSessions: {
+            some: {
+              academicYearId: resolvedAcademicYearId,
+              ...(classId ? { classId } : {}),
+              ...(sectionId ? { sectionId } : {}),
+              ...(groupId ? { groupId } : {}),
+            },
+          },
+        },
+        // Fallback for newly created or legacy rows where session wasn't written yet
+        {
+          ...(classId ? { classId } : {}),
+          ...(sectionId ? { sectionId } : {}),
+          ...(groupId ? { groupId } : {}),
+        },
+      ];
+    } else {
+      if (classId) {
+        where.classId = classId;
+      }
+      if (sectionId) {
+        where.sectionId = sectionId;
+      }
+      if (groupId) {
+        where.groupId = groupId;
+      }
     }
 
     // Get total count and students
@@ -103,6 +136,7 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               name: true,
+              classNumber: true,
             },
           },
           group: {
@@ -117,13 +151,49 @@ export async function GET(request: NextRequest) {
               name: true,
             },
           },
+          academicSessions: resolvedAcademicYearId
+            ? {
+                where: { academicYearId: resolvedAcademicYearId },
+                take: 1,
+                select: {
+                  id: true,
+                  academicYearId: true,
+                  rollNumber: true,
+                  classId: true,
+                  sectionId: true,
+                  groupId: true,
+                  classNumber: true,
+                  promotionStatus: true,
+                  class: { select: { id: true, name: true, classNumber: true } },
+                  section: { select: { id: true, name: true } },
+                  group: { select: { id: true, name: true } },
+                },
+              }
+            : false,
         },
       }),
     ]);
 
+    // Map year-scoped session roster fields onto returned student rows
+    const mappedStudents = students.map((s: any) => {
+      const session = s.academicSessions?.[0];
+      if (!session) return s;
+      return {
+        ...s,
+        rollNumber: session.rollNumber || s.rollNumber,
+        classId: session.classId || s.classId,
+        sectionId: session.sectionId ?? s.sectionId,
+        groupId: session.groupId ?? s.groupId,
+        class: session.class || s.class,
+        section: session.section || s.section,
+        group: session.group || s.group,
+        promotionStatus: session.promotionStatus,
+      };
+    });
+
     const totalPages = Math.ceil(totalCount / limit);
 
-    return paginatedResponse(students, {
+    return paginatedResponse(mappedStudents, {
       totalCount,
       currentPage: page,
       pageSize: limit,
@@ -135,6 +205,7 @@ export async function GET(request: NextRequest) {
     return handleApiError(error, "Failed to retrieve students");
   }
 }
+
 
 /**
  * POST /api/students
@@ -313,49 +384,70 @@ export async function POST(request: NextRequest) {
     if (!sectionOk) return badRequest("Selected section does not exist in your institution.");
     if (!groupOk) return badRequest("Selected group does not exist in your institution.");
 
-    const student = await prisma.studentProfile.create({
-      data: {
-        tenantId,
-        ...prismaDataWithDates,
-        studentId: studentId as string,
-        rollNumber: rollNumber as string,
-        ...(profilePictureUrl && { profilePictureUrl }),
-      },
-      select: {
-        id: true,
-        studentId: true,
-        rollNumber: true,
-        firstName: true,
-        lastName: true,
-        firstNameBn: true,
-        lastNameBn: true,
-        guardianName: true,
-        guardianContact: true,
-        status: true,
-        admissionDate: true,
-        classId: true,
-        groupId: true,
-        sectionId: true,
-        class: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const targetAcademicYearId = (data as any).academicYearId || await resolveRequestAcademicYearId(request, tenantId);
+
+    const student = await prisma.$transaction(async (tx) => {
+      const createdStudent = await tx.studentProfile.create({
+        data: {
+          tenantId,
+          ...prismaDataWithDates,
+          studentId: studentId as string,
+          rollNumber: rollNumber as string,
+          ...(profilePictureUrl && { profilePictureUrl }),
         },
-        group: {
-          select: {
-            id: true,
-            name: true,
+        select: {
+          id: true,
+          studentId: true,
+          rollNumber: true,
+          firstName: true,
+          lastName: true,
+          firstNameBn: true,
+          lastNameBn: true,
+          guardianName: true,
+          guardianContact: true,
+          status: true,
+          admissionDate: true,
+          classId: true,
+          groupId: true,
+          sectionId: true,
+          class: {
+            select: {
+              id: true,
+              name: true,
+              classNumber: true,
+            },
           },
-        },
-        section: {
-          select: {
-            id: true,
-            name: true,
+          group: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
+          section: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          createdAt: true,
         },
-        createdAt: true,
-      },
+      });
+
+      if (targetAcademicYearId && prismaDataWithDates.classId) {
+        const classNumber = createdStudent.class?.classNumber ?? 0;
+        await ensureStudentAcademicSession(tx, {
+          tenantId,
+          studentProfileId: createdStudent.id,
+          academicYearId: targetAcademicYearId,
+          classId: prismaDataWithDates.classId,
+          sectionId: prismaDataWithDates.sectionId ?? null,
+          groupId: prismaDataWithDates.groupId ?? null,
+          rollNumber: rollNumber as string,
+          classNumber,
+        });
+      }
+
+      return createdStudent;
     });
 
     return successResponse(student, "Student created successfully", 201);
@@ -363,3 +455,4 @@ export async function POST(request: NextRequest) {
     return handleApiError(error, "Failed to create student");
   }
 }
+

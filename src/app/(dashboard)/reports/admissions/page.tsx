@@ -26,6 +26,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
+import { usePDFExport } from "@/hooks/use-pdf-export";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
@@ -79,6 +80,7 @@ export default function AdmissionsReportPage() {
     schoolPhone: settings.phone,
     schoolEmail: settings.email,
   });
+  const { exportAdmissionsReportPDF } = usePDFExport();
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -164,6 +166,48 @@ export default function AdmissionsReportPage() {
     });
     if (result.success) {
       toast.success(t("exportedExcel"));
+      return;
+    }
+    toast.error(t("exportFailed"));
+  };
+
+  const handleExportPDF = async () => {
+    const result = await exportAdmissionsReportPDF({
+      school: {
+        name: settings.name || "Pathshala Pro School",
+        address: settings.address || "",
+        phone: settings.phone || "",
+        email: settings.email || "",
+        logoUrl: settings.logoUrl,
+      },
+      title: t("title"),
+      subtitle: t("description"),
+      generatedAt,
+      dateRangeLabel: `${fromDate || t("start")} to ${toDate || t("present")}`,
+      filters: [
+        { label: t("range"), value: `${fromDate || t("start")} to ${toDate || t("present")}` },
+      ],
+      metrics: metrics
+        ? [
+            { label: t("totalEnquiries"), value: String(metrics.totalEnquiries) },
+            { label: t("admittedStudents"), value: String(metrics.admittedCount), tone: "success" },
+            { label: t("conversionRate"), value: `${metrics.conversionRate}%` },
+            { label: t("pendingFollowups"), value: String(metrics.pendingFollowups), tone: "warning" },
+          ]
+        : [],
+      records: data.map((row) => ({
+        studentName: row.studentName,
+        guardianName: row.guardianName,
+        phone: row.phone,
+        className: row.className,
+        source: row.source,
+        status: row.status,
+        assignedToName: row.assignedToName,
+        createdAt: formatDate(row.createdAt),
+      })),
+    });
+    if (result.success) {
+      toast.success(t("exportedPDF"));
       return;
     }
     toast.error(t("exportFailed"));
@@ -262,6 +306,7 @@ export default function AdmissionsReportPage() {
           <ExportDropdown
             onExport={(type) => {
               if (type === "excel") void handleExportExcel();
+              if (type === "pdf") void handleExportPDF();
             }}
           />
         ) : undefined}
@@ -376,6 +421,7 @@ export default function AdmissionsReportPage() {
             <ReportTable
               columns={columns}
               data={data}
+              exportFileName="admissions_report"
             />
           </div>
         </>

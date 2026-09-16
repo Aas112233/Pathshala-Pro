@@ -13,6 +13,7 @@ import {
   MarksPosition,
   NumberingStyle,
 } from '@/types/exam-studio';
+import { AppDropdown } from '@/components/ui/app-dropdown';
 import {
   X,
   Sliders,
@@ -289,30 +290,32 @@ export function LayoutSettingsDrawer({
                   <label className="block text-[10px] font-semibold text-muted-foreground mb-1">
                     সংখ্যা পদ্ধতি (Numerals)
                   </label>
-                  <select
+                  <AppDropdown
                     value={layout.numeralSystem}
-                    onChange={(e) => updateLayout({ numeralSystem: e.target.value as NumeralSystem })}
-                    className="w-full px-2 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                  >
-                    <option value="bengali">বাংলা (১, ২, ৩...)</option>
-                    <option value="english">ইংরেজি (1, 2, 3...)</option>
-                    <option value="arabic">আরবি (١, ٢, ٣...)</option>
-                  </select>
+                    onChange={(v) => updateLayout({ numeralSystem: v as NumeralSystem })}
+                    options={[
+                      { value: "bengali", label: "বাংলা (১, ২, ৩...)" },
+                      { value: "english", label: "ইংরেজি (1, 2, 3...)" },
+                      { value: "arabic", label: "আরবি (١, ٢, ٣...)" },
+                    ]}
+                    triggerClassName="text-xs"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-semibold text-muted-foreground mb-1">
                     নম্বর প্রদর্শন (Marks Display)
                   </label>
-                  <select
+                  <AppDropdown
                     value={layout.marksPosition || 'right-bracket'}
-                    onChange={(e) => updateLayout({ marksPosition: e.target.value as MarksPosition })}
-                    className="w-full px-2 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                  >
-                    <option value="right-bracket">ডান পাশে [১০]</option>
-                    <option value="inline-parentheses">লাইনের শেষে (১০)</option>
-                    <option value="hidden">লুকিয়ে রাখুন (Hidden)</option>
-                  </select>
+                    onChange={(v) => updateLayout({ marksPosition: v as MarksPosition })}
+                    options={[
+                      { value: "right-bracket", label: "ডান পাশে [১০]" },
+                      { value: "inline-parentheses", label: "লাইনের শেষে (১০)" },
+                      { value: "hidden", label: "লুকিয়ে রাখুন (Hidden)" },
+                    ]}
+                    triggerClassName="text-xs"
+                  />
                 </div>
               </div>
             </div>
@@ -328,48 +331,51 @@ export function LayoutSettingsDrawer({
                   <label className="block text-[10px] font-semibold text-muted-foreground mb-1">
                     ফন্ট সাইজ
                   </label>
-                  <select
+                  <AppDropdown
                     value={layout.fontSize}
-                    onChange={(e) => updateLayout({ fontSize: e.target.value as any })}
-                    className="w-full px-2 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                  >
-                    <option value="compact">কম্প্যাক্ট (ছোট)</option>
-                    <option value="sm">পরিমিত (Small)</option>
-                    <option value="md">স্ট্যান্ডার্ড (Medium)</option>
-                    <option value="lg">বড় (Large)</option>
-                    <option value="xl">খুব বড় (Primary)</option>
-                  </select>
+                    onChange={(v) => updateLayout({ fontSize: v as any })}
+                    options={[
+                      { value: "compact", label: "কম্প্যাক্ট (ছোট)" },
+                      { value: "sm", label: "পরিমিত (Small)" },
+                      { value: "md", label: "স্ট্যান্ডার্ড (Medium)" },
+                      { value: "lg", label: "বড় (Large)" },
+                      { value: "xl", label: "খুব বড় (Primary)" },
+                    ]}
+                    triggerClassName="text-xs"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-semibold text-muted-foreground mb-1">
                     লাইন ব্যবধান
                   </label>
-                  <select
+                  <AppDropdown
                     value={layout.lineSpacing}
-                    onChange={(e) => updateLayout({ lineSpacing: e.target.value as any })}
-                    className="w-full px-2 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                  >
-                    <option value="tight">ঘন (Tight)</option>
-                    <option value="normal">সাধারণ (Normal)</option>
-                    <option value="relaxed">স্বস্তিকর (Relaxed)</option>
-                    <option value="spacious">প্রশস্ত (Spacious)</option>
-                  </select>
+                    onChange={(v) => updateLayout({ lineSpacing: v as any })}
+                    options={[
+                      { value: "tight", label: "ঘন (Tight)" },
+                      { value: "normal", label: "সাধারণ (Normal)" },
+                      { value: "relaxed", label: "স্বস্তিকর (Relaxed)" },
+                      { value: "spacious", label: "প্রশস্ত (Spacious)" },
+                    ]}
+                    triggerClassName="text-xs"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-semibold text-muted-foreground mb-1">
                     মার্জিন সাইজ
                   </label>
-                  <select
+                  <AppDropdown
                     value={layout.marginSize || 'standard'}
-                    onChange={(e) => updateLayout({ marginSize: e.target.value as any })}
-                    className="w-full px-2 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                  >
-                    <option value="compact">কম্প্যাক্ট (১০ মিমি)</option>
-                    <option value="standard">স্ট্যান্ডার্ড (১৫ মিমি)</option>
-                    <option value="wide">প্রশস্ত (২০ মিমি)</option>
-                  </select>
+                    onChange={(v) => updateLayout({ marginSize: v as any })}
+                    options={[
+                      { value: "compact", label: "কম্প্যাক্ট (১০ মিমি)" },
+                      { value: "standard", label: "স্ট্যান্ডার্ড (১৫ মিমি)" },
+                      { value: "wide", label: "প্রশস্ত (২০ মিমি)" },
+                    ]}
+                    triggerClassName="text-xs"
+                  />
                 </div>
               </div>
             </div>

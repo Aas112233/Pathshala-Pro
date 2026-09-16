@@ -6,7 +6,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Save, Upload, Download, CheckCircle2, XCircle, AlertCircle, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCreateExamResults, useExams, useExam, type ExamResult } from "@/hooks/use-exams";
-import { useAcademicYears } from "@/hooks/use-queries";
 import { useStudents } from "@/hooks/use-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +67,6 @@ export default function ExamResultsPage() {
   const { data: examsData, isLoading: isExamsLoading } = useExams();
   const { data: examData } = useExam(selectedExam);
   const { data: studentsData } = useStudents();
-  const { data: academicYearsData } = useAcademicYears();
   const createResults = useCreateExamResults();
 
   // Fetch existing results for exam+subject to rehydrate marks after refresh (fixes empty form)
@@ -93,7 +91,6 @@ export default function ExamResultsPage() {
   const exams = Array.isArray(examsData) ? examsData : (examsData as any)?.data;
   const exam = examData as any;
   const students = Array.isArray(studentsData) ? studentsData : (studentsData as any)?.data;
-  const academicYears = Array.isArray(academicYearsData) ? academicYearsData : (academicYearsData as any)?.data;
 
   const subjects = exam?.subjects || [];
 

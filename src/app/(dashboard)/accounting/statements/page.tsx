@@ -12,13 +12,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   FileSpreadsheet,
+  FileText,
   GraduationCap,
   Users,
   Landmark,
   Calendar,
   Search,
   Printer,
-  Download,
   ArrowDownLeft,
   ArrowUpRight,
   Wallet,
@@ -32,6 +32,10 @@ import {
 } from "lucide-react";
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import { usePDFExport } from "@/hooks/use-pdf-export";
+import type { ExcelColumn } from "@/lib/excel-exporter";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
 type StatementType = "STUDENT" | "STAFF" | "ACCOUNT";
@@ -39,12 +43,21 @@ type StatementType = "STUDENT" | "STAFF" | "ACCOUNT";
 export default function AccountingStatementsPage() {
   const t = useTranslations("accounting.statements");
   const common = useTranslations("common");
+  const { settings } = useTenantSettings();
+  const [statementType, setStatementType] = useState<StatementType>("STUDENT");
+  const { exportData } = useExcelExport({
+    fileName: `statement_${statementType.toLowerCase()}`,
+    schoolName: settings.name || "Pathshala Pro School",
+    schoolAddress: settings.address,
+    schoolPhone: settings.phone,
+    schoolEmail: settings.email,
+  });
+  const { exportStatementPDF } = usePDFExport();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadAccounting = hasPermission(perms, "accounting", "read");
   const canWriteAccounting = hasPermission(perms, "accounting", "write");
   const canManageAccounting = hasPermission(perms, "accounting", "manage");
-  const [statementType, setStatementType] = useState<StatementType>("STUDENT");
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -79,8 +92,12 @@ export default function AccountingStatementsPage() {
   };
 
   useEffect(() => {
+    // Don't fire a doomed request: the API returns 403 without accounting:read,
+    // and the page renders the access-restricted gate instead.
+    if (isAuthLoading || !canReadAccounting) return;
     fetchStatement(statementType);
-  }, [statementType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statementType, isAuthLoading, canReadAccounting]);
 
   const handleTypeChange = (type: StatementType) => {
     setStatementType(type);
@@ -125,56 +142,105 @@ export default function AccountingStatementsPage() {
     window.print();
   };
 
-  const handleExportCSV = () => {
+  const handleExportExcel = async () => {
     if (!data?.statement?.entries || data.statement.entries.length === 0) {
       toast.error(t("noEntriesToExport"));
       return;
     }
 
-    const headers = [t("csvDate"), t("csvRefId"), t("csvCategory"), t("csvDescription"), t("csvDebit"), t("csvCredit"), t("csvBalance"), t("csvStatus"), t("csvPaymentMethod")];
-    const rows = data.statement.entries.map((e: any) => [
-      new Date(e.date).toLocaleDateString(),
-      e.refId,
-      e.category,
-      e.description,
-      e.debit || 0,
-      e.credit || 0,
-      e.runningBalance || 0,
-      e.status,
-      e.paymentMethod,
-    ]);
-
-    // RFC-4180 quoting: wrap every field, doubling embedded quotes. The old
-    // writer left status/paymentMethod/headers unquoted (commas broke rows)
-    // and quoted refId/category without escaping `"`.
-    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    // Prefix cells that Excel would otherwise execute as formulas.
-    const safeNum = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v).toFixed(2) : "0.00");
-    const csvRows = [
-      headers.map(esc).join(","),
-      ...rows.map((r: any) =>
-        // Guard leading =,+,-,@ in *strings* only — numeric amounts stay
-        // numeric cells, and negative balances must not become text.
-        r.map((cell: any) =>
-          typeof cell === "number"
-            ? esc(safeNum(cell))
-            : esc(["=", "+", "-", "@"].includes(String(cell ?? "")[0]) ? `'${cell}` : cell)
-        ).join(","),
-      ),
+    const columns: ExcelColumn[] = [
+      { header: t("csvDate"), key: "date", style: "date" },
+      { header: t("csvRefId"), key: "refId" },
+      { header: t("csvCategory"), key: "category" },
+      { header: t("csvDescription"), key: "description" },
+      { header: t("csvDebit"), key: "debit", style: "currency" },
+      { header: t("csvCredit"), key: "credit", style: "currency" },
+      { header: t("csvBalance"), key: "runningBalance", style: "currency" },
+      { header: t("csvStatus"), key: "status" },
+      { header: t("csvPaymentMethod"), key: "paymentMethod" },
     ];
-    // ﻿ BOM so Excel on Windows decodes Bengali/Hindi/Urdu descriptions as
-    // UTF-8. A data: URI + encodeURI() is also unsafe here: encodeURI does not
-    // escape '#', so any description containing '#' truncated the file at the
-    // fragment boundary. A blob URL has no such limit.
-    const blob = new Blob(["﻿" + csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `statement_${statementType.toLowerCase()}_${selectedEntityId || "all"}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    toast.success(t("exportedCsv"));
+    const rows = data.statement.entries.map((e: any) => ({
+      date: new Date(e.date),
+      refId: e.refId,
+      category: e.category,
+      description: e.description,
+      debit: e.debit || 0,
+      credit: e.credit || 0,
+      runningBalance: e.runningBalance || 0,
+      status: e.status,
+      paymentMethod: e.paymentMethod,
+    }));
+
+    const result = await exportData({ title: t("title"), columns, data: rows });
+    if (result.success) {
+      toast.success(t("exportedExcel"));
+    } else {
+      toast.error(
+        result.error instanceof Error ? result.error.message : String(result.error)
+      );
+    }
+  };
+
+  const handleExportPDF = async () => {
+    const entries = data?.statement?.entries || [];
+    if (entries.length === 0) {
+      toast.error(t("noEntriesToExport"));
+      return;
+    }
+
+    const entityInfo = data?.entity;
+    const stmt = data?.statement || {
+      openingBalance: 0,
+      totalDebit: 0,
+      totalCredit: 0,
+      closingBalance: 0,
+    };
+    const entityLabel =
+      statementType === "ACCOUNT"
+        ? entityInfo?.accountName || t("accountLedger")
+        : entityInfo
+        ? `${entityInfo.firstName} ${entityInfo.lastName}`
+        : "";
+    const fmt = (value: number) => Number(value || 0).toLocaleString();
+
+    const result = await exportStatementPDF({
+      school: {
+        name: settings.name || "Pathshala Pro School",
+        address: settings.address || "",
+        phone: settings.phone || "",
+        email: settings.email || "",
+        logoUrl: settings.logoUrl,
+      },
+      title: t("title"),
+      subtitle: entityLabel,
+      generatedAt: new Date().toLocaleString(),
+      dateRangeLabel: `${startDate || "—"} → ${endDate || "—"}`,
+      filters: [
+        { label: t("title"), value: entityLabel },
+        { label: t("fromDate"), value: startDate || "—" },
+        { label: t("toDate"), value: endDate || "—" },
+      ],
+      metrics: [
+        { label: t("openingBalance"), value: fmt(stmt.openingBalance) },
+        { label: t("debitHeader"), value: fmt(stmt.totalDebit), tone: "danger" },
+        { label: t("creditHeader"), value: fmt(stmt.totalCredit), tone: "success" },
+        { label: t("closingBalance"), value: fmt(stmt.closingBalance) },
+      ],
+      records: entries.map((entry: any) => ({
+        date: new Date(entry.date).toLocaleDateString(),
+        refId: entry.refId,
+        description: entry.description,
+        debit: fmt(entry.debit),
+        credit: fmt(entry.credit),
+        balance: fmt(entry.runningBalance),
+      })),
+    });
+
+    if (result.success) {
+      toast.success(t("exportedPDF"));
+      return;
+    }
+    toast.error(t("exportFailed"));
   };
 
   const entity = data?.entity;
@@ -280,11 +346,20 @@ export default function AccountingStatementsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleExportCSV}
+            onClick={handleExportExcel}
             className="text-xs h-9 gap-1.5 cursor-pointer"
           >
-            <Download className="h-3.5 w-3.5" />
-            {t("exportCsv")}
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            {t("exportExcel")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPDF}
+            className="text-xs h-9 gap-1.5 cursor-pointer"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            {t("exportPdf")}
           </Button>
           <Button
             onClick={handlePrint}
@@ -363,45 +438,30 @@ export default function AccountingStatementsPage() {
                 </Label>
 
                 {statementType === "STUDENT" && (
-                  <select
+                  <AppDropdown
                     value={selectedEntityId}
-                    onChange={(e) => handleEntityChange(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {options.students?.map((s: any) => (
-                      <option key={s.id} value={s.id}>
-                        {s.firstName} {s.lastName} (Roll #{s.rollNumber} • ID: {s.studentId})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={handleEntityChange}
+                    options={(options.students || []).map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName} (Roll #${s.rollNumber} • ID: ${s.studentId})` }))}
+                    searchable
+                  />
                 )}
 
                 {statementType === "STAFF" && (
-                  <select
+                  <AppDropdown
                     value={selectedEntityId}
-                    onChange={(e) => handleEntityChange(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {options.staffList?.map((s: any) => (
-                      <option key={s.id} value={s.id}>
-                        {s.firstName} {s.lastName} ({s.designation} • {s.department})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={handleEntityChange}
+                    options={(options.staffList || []).map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName} (${s.designation} • ${s.department})` }))}
+                    searchable
+                  />
                 )}
 
                 {statementType === "ACCOUNT" && (
-                  <select
+                  <AppDropdown
                     value={selectedEntityId}
-                    onChange={(e) => handleEntityChange(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {options.bankAccounts?.map((b: any) => (
-                      <option key={b.id} value={b.id}>
-                        {b.accountName} ({b.bankName} • Acc #{b.accountNumber})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={handleEntityChange}
+                    options={(options.bankAccounts || []).map((b: any) => ({ value: b.id, label: `${b.accountName} (${b.bankName} • Acc #${b.accountNumber})` }))}
+                    searchable
+                  />
                 )}
               </div>
 

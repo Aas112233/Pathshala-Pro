@@ -1,3 +1,5 @@
+import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 
@@ -52,3 +54,123 @@ export async function assertAcademicYearsOpen(
 
   return years;
 }
+
+/**
+ * Resolve the applicable academic year for a request.
+ * Hierarchy:
+ * 1. Explicit query parameter `academicYearId`
+ * 2. Request header `x-academic-year-id`
+ * 3. Cookie `pathshala_academic_year`
+ * 4. Current active open academic year (by date range or latest non-closed)
+ * 5. Latest academic year by start date
+ */
+export async function resolveRequestAcademicYearId(
+  request: NextRequest,
+  tenantId: string
+): Promise<string> {
+  const paramYear = request.nextUrl.searchParams.get("academicYearId")?.trim();
+  if (paramYear) return paramYear;
+
+  const headerYear = request.headers.get("x-academic-year-id")?.trim();
+  if (headerYear) return headerYear;
+
+  const cookieYear = request.cookies.get("pathshala_academic_year")?.value?.trim();
+  if (cookieYear) return cookieYear;
+
+  const now = new Date();
+  const currentByDate = await prisma.academicYear.findFirst({
+    where: {
+      tenantId,
+      isClosed: false,
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+    select: { id: true },
+  });
+  if (currentByDate) return currentByDate.id;
+
+  const latestOpen = await prisma.academicYear.findFirst({
+    where: { tenantId, isClosed: false },
+    orderBy: { startDate: "desc" },
+    select: { id: true },
+  });
+  if (latestOpen) return latestOpen.id;
+
+  const latestAny = await prisma.academicYear.findFirst({
+    where: { tenantId },
+    orderBy: { startDate: "desc" },
+    select: { id: true },
+  });
+  return latestAny?.id || "";
+}
+
+/**
+ * Atomically ensure that a StudentAcademicSession exists for a student in the given academic year.
+ * If already present, updates the active enrollment fields (class, section, group, rollNumber).
+ */
+export async function ensureStudentAcademicSession(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    studentProfileId: string;
+    academicYearId: string;
+    classId: string;
+    sectionId?: string | null;
+    groupId?: string | null;
+    rollNumber: string;
+    classNumber?: number;
+  }
+) {
+  const {
+    tenantId,
+    studentProfileId,
+    academicYearId,
+    classId,
+    sectionId,
+    groupId,
+    rollNumber,
+    classNumber = 0,
+  } = params;
+
+  if (!academicYearId || !classId) return null;
+
+  const existing = await tx.studentAcademicSession.findUnique({
+    where: {
+      tenantId_studentProfileId_academicYearId: {
+        tenantId,
+        studentProfileId,
+        academicYearId,
+      },
+    },
+  });
+
+  if (existing) {
+    return tx.studentAcademicSession.update({
+      where: { id: existing.id },
+      data: {
+        classId,
+        sectionId: sectionId ?? null,
+        groupId: groupId ?? null,
+        rollNumber,
+        classNumber,
+      },
+    });
+  }
+
+  return tx.studentAcademicSession.create({
+    data: {
+      tenantId,
+      studentProfileId,
+      academicYearId,
+      classId,
+      sectionId: sectionId ?? null,
+      groupId: groupId ?? null,
+      rollNumber,
+      classNumber,
+      totalMarks: 0,
+      obtainedMarks: 0,
+      promotionStatus: "ENROLLED",
+    },
+  });
+}
+

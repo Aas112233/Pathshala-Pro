@@ -47,15 +47,17 @@ export function AppDropdown({
     const [search, setSearch] = useState('');
     const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
-    // Auto-enable search if searchable is true OR if options.length > 5 (unless explicitly set to false)
-    const isSearchable = searchable === true || (searchable !== false && options.length > 5);
+    const safeOptions = useMemo(() => (Array.isArray(options) ? options.filter(Boolean) : []), [options]);
 
-    const selected = options.find((option) => option.value === value);
+    // Auto-enable search if searchable is true OR if safeOptions.length > 5 (unless explicitly set to false)
+    const isSearchable = searchable === true || (searchable !== false && safeOptions.length > 5);
+
+    const selected = safeOptions.find((option) => option?.value === value);
     const filtered = useMemo(() => {
-        if (!isSearchable || !search.trim()) return options;
+        if (!isSearchable || !search.trim()) return safeOptions;
         const key = search.trim().toLowerCase();
-        return options.filter((option) => option.label.toLowerCase().includes(key));
-    }, [options, search, isSearchable]);
+        return safeOptions.filter((option) => (option?.label ?? '').toLowerCase().includes(key));
+    }, [safeOptions, search, isSearchable]);
 
     useEffect(() => {
         const handleClick = (event: MouseEvent) => {

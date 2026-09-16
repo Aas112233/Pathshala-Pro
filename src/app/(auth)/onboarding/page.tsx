@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CURRENCY_LIST } from "@/lib/currencies";
@@ -349,6 +350,7 @@ export default function PublicOnboardingPage() {
                     </Label>
                     <Input
                       id="inst-phone"
+                      type="tel"
                       placeholder={t("phonePh")}
                       value={formData.phone}
                       onChange={(e) => updateField("phone", e.target.value)}
@@ -384,17 +386,12 @@ export default function PublicOnboardingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">{t("labels.billingCurrency")}</Label>
-                    <select
+                    <AppDropdown
                       value={formData.currency}
-                      onChange={(e) => updateField("currency", e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      {CURRENCY_LIST.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {tc(c.code)} ({c.symbol})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => updateField("currency", v)}
+                      options={CURRENCY_LIST.map((c) => ({ value: c.code, label: `${tc(c.code)} (${c.symbol})` }))}
+                      searchable
+                    />
                   </div>
 
                   <div className="space-y-1.5">
@@ -414,33 +411,33 @@ export default function PublicOnboardingPage() {
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">{t("labels.systemTimezone")}</Label>
-                    <select
+                    <AppDropdown
                       value={formData.timezone}
-                      onChange={(e) => updateField("timezone", e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="Asia/Karachi">{t("timezones.pakistan")}</option>
-                      <option value="Asia/Dhaka">{t("timezones.bangladesh")}</option>
-                      <option value="Asia/Kolkata">{t("timezones.india")}</option>
-                      <option value="Asia/Dubai">{t("timezones.uae")}</option>
-                      <option value="Asia/Riyadh">{t("timezones.saudi")}</option>
-                      <option value="Europe/London">{t("timezones.london")}</option>
-                      <option value="America/New_York">{t("timezones.eastern")}</option>
-                    </select>
+                      onChange={(v) => updateField("timezone", v)}
+                      options={[
+                        { value: "Asia/Karachi", label: t("timezones.pakistan") },
+                        { value: "Asia/Dhaka", label: t("timezones.bangladesh") },
+                        { value: "Asia/Kolkata", label: t("timezones.india") },
+                        { value: "Asia/Dubai", label: t("timezones.uae") },
+                        { value: "Asia/Riyadh", label: t("timezones.saudi") },
+                        { value: "Europe/London", label: t("timezones.london") },
+                        { value: "America/New_York", label: t("timezones.eastern") },
+                      ]}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">{t("labels.dateFormat")}</Label>
-                    <select
+                    <AppDropdown
                       value={formData.dateFormat}
-                      onChange={(e) => updateField("dateFormat", e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="DD/MM/YYYY">{t("dateFormats.dmySlash")}</option>
-                      <option value="MM/DD/YYYY">{t("dateFormats.mdySlash")}</option>
-                      <option value="YYYY-MM-DD">{t("dateFormats.ymdDash")}</option>
-                      <option value="DD-MM-YYYY">{t("dateFormats.dmyDash")}</option>
-                    </select>
+                      onChange={(v) => updateField("dateFormat", v)}
+                      options={[
+                        { value: "DD/MM/YYYY", label: t("dateFormats.dmySlash") },
+                        { value: "MM/DD/YYYY", label: t("dateFormats.mdySlash") },
+                        { value: "YYYY-MM-DD", label: t("dateFormats.ymdDash") },
+                        { value: "DD-MM-YYYY", label: t("dateFormats.dmyDash") },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

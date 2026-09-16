@@ -21,12 +21,15 @@ import {
   Clock,
   ArrowUpRight,
   Loader2,
-  Filter,
+  FileSpreadsheet,
 } from "lucide-react";
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import type { ExcelColumn } from "@/lib/excel-exporter";
 
 export default function SystemAdminBillingPage() {
   const t = useTranslations();
+  const { exportData } = useExcelExport({ fileName: "billing" });
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -94,22 +97,11 @@ export default function SystemAdminBillingPage() {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        toast.success("Billing updated");
+        toast.success(t("systemAdmin.billingUpdated"));
         setIsEditOpen(false);
         fetchBillingData();
-      } else toast.error(json.error?.message || "Update failed");
-    } catch { toast.error("Network error"); }
-  };
-
-  const handleExport = () => {
-    const rows = filteredSubscriptions;
-    const header = ["School", "TenantId", "Plan", "Status", "Students", "MonthlyPrice"];
-    const csv = [header.join(","), ...rows.map((r: any) => [r.name, r.tenantId, r.plan, r.status, r.studentsCount, r.estimatedMonthlyPrice].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `billing-${new Date().toISOString().slice(0,10)}.csv`; a.click();
-    URL.revokeObjectURL(url);
+      } else toast.error(json.error?.message || t("saasAdmin.billing.statusUpdateFailed"));
+    } catch { toast.error(t("saasAdmin.billing.networkError")); }
   };
 
   const metrics = data?.metrics || {
@@ -132,6 +124,33 @@ export default function SystemAdminBillingPage() {
     const matchStatus = !statusFilter || sub.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const handleExportExcel = async () => {
+    if (filteredSubscriptions.length === 0) {
+      toast.error(t("saasAdmin.billing.noDataExport"));
+      return;
+    }
+    const columns: ExcelColumn[] = [
+      { header: t("saasAdmin.billing.colSchoolName"), key: "name" },
+      { header: t("saasAdmin.billing.colTenantId"), key: "tenantId" },
+      { header: t("saasAdmin.billing.colPlan"), key: "plan" },
+      { header: t("saasAdmin.billing.colStatus"), key: "status" },
+      { header: t("saasAdmin.billing.colPupils"), key: "studentsCount", style: "number" },
+      { header: t("saasAdmin.billing.colRevenue"), key: "estimatedMonthlyPrice", style: "number" },
+    ];
+    const result = await exportData({
+      title: t("saasAdmin.billing.title"),
+      columns,
+      data: filteredSubscriptions,
+    });
+    if (result.success) {
+      toast.success(t("saasAdmin.billing.exportedExcel"));
+    } else {
+      toast.error(
+        result.error instanceof Error ? result.error.message : String(result.error)
+      );
+    }
+  };
 
   const columns: ColumnDef<any>[] = [
     {
@@ -310,8 +329,9 @@ export default function SystemAdminBillingPage() {
       </div>
 
       <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={handleExport} className="h-8 text-xs gap-1.5">
-          <Filter className="h-3.5 w-3.5" /> Export CSV
+        <Button variant="outline" size="sm" onClick={handleExportExcel} className="h-8 text-xs gap-1.5">
+          <FileSpreadsheet className="h-3.5 w-3.5" />
+          {t("saasAdmin.billing.exportExcel")}
         </Button>
       </div>
 

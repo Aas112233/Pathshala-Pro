@@ -1,53 +1,61 @@
 "use client";
 
 import { useCallback } from "react";
-import { pdf } from "@react-pdf/renderer";
+import { NextIntlClientProvider, useLocale, useMessages } from "next-intl";
 import { downloadBlob } from "@/lib/download-blob";
-import {
-  StudentIDCardTemplate,
-  MarkSheetTemplate,
-  ReportCardTemplate,
-  BatchReportCardDocument,
-  FeeVoucherPDFDocument,
-  TransportManifestPDFDocument,
-  SalaryPayslipDocument,
-  BatchSalaryPayslipPDFDocument,
-  LibraryIssueSlipDocument,
-  HostelManifestPDFDocument,
-  StudentReportTemplate,
-  FeeReportTemplate,
-  AttendanceReportTemplate,
-  ExamReportTemplate,
-  TransferCertificateTemplate,
-  CharacterCertificateTemplate,
-  BonafideCertificateTemplate,
-  ExamAdmitCardTemplate,
-  BatchAdmitCardDocument,
-  TranscriptTemplate,
-  StaffIDCardTemplate,
-  LibraryClearanceTemplate,
-  AdmissionFormTemplate,
-  TimetableReportTemplate,
-  InventoryStockReportTemplate,
-  type PdfFilterItem,
-  type BatchStudentResult,
-  type FeeVoucherPDFData,
-  type TransportManifestPDFData,
-  type ManifestStudent,
-  type SalaryPayslipPDFData,
-  type LibraryIssueSlipData,
-  type HostelManifestPDFData,
-  type HostelResident,
-  type TransferCertificateData,
-  type CharacterCertificateData,
-  type BonafideCertificateData,
-  type ExamAdmitCardData,
-  type TranscriptData,
-  type StaffIDCardData,
-  type LibraryClearanceData,
-  type TimetableReportData,
-  type InventoryStockItem,
+// Type-only: erased at build, costs zero bundle bytes. The template
+// *components* are NOT imported here — they load on click via loadPdfTemplates.
+import type {
+  PdfFilterItem,
+  PdfMetricItem,
+  PdfCommonLabels,
+  BatchStudentResult,
+  FeeVoucherPDFData,
+  TransportManifestPDFData,
+  ManifestStudent,
+  SalaryPayslipPDFData,
+  LibraryIssueSlipData,
+  HostelManifestPDFData,
+  HostelResident,
+  TransferCertificateData,
+  CharacterCertificateData,
+  BonafideCertificateData,
+  ExamAdmitCardData,
+  TranscriptData,
+  StaffIDCardData,
+  LibraryClearanceData,
+  TimetableReportData,
+  InventoryStockItem,
+  ProfitLossReportTemplateProps,
 } from "@/lib/pdf-templates";
+
+// @react-pdf/renderer + all templates + Urdu/Hindi/Bengali font packs are
+// ~1MB of client JS. They used to ship with all 22 pages importing this hook;
+// now they split into a chunk that loads on the first export click only.
+type PdfRendererModule = typeof import("@react-pdf/renderer");
+type PdfTemplatesModule = typeof import("@/lib/pdf-templates");
+
+let rendererPromise: Promise<PdfRendererModule> | null = null;
+let templatesPromise: Promise<PdfTemplatesModule> | null = null;
+
+const loadPdfRenderer = () => (rendererPromise ??= import("@react-pdf/renderer"));
+const loadPdfTemplates = () => (templatesPromise ??= import("@/lib/pdf-templates"));
+
+// Batch ceiling: one giant in-browser document freezes low-end phones and can
+// OOM the tab. Files split into Part 1..N instead (same convention as the
+// bulk-collect API's max-100 rule).
+export const MAX_BATCH_PDF_RECORDS = 100;
+
+function chunkRecords<T>(items: T[], size: number): T[][] {
+  const parts: T[][] = [];
+  for (let i = 0; i < items.length; i += size) parts.push(items.slice(i, i + size));
+  return parts;
+}
+
+function partFileName(baseName: string, index: number, total: number): string {
+  if (total <= 1) return baseName;
+  return baseName.replace(/\.pdf$/i, "") + `_Part${index + 1}of${total}.pdf`;
+}
 
 export type {
   FeeVoucherPDFData,
@@ -181,22 +189,38 @@ interface ExamReportRecord {
 }
 
 export function usePDFExport() {
+  const locale = useLocale();
+  const messages = useMessages();
+  const pdfLabels = (messages as Record<string, unknown> | undefined)?.pdf as
+    | { common?: PdfCommonLabels }
+    | undefined;
+  const commonLabels = pdfLabels?.common;
   const generatePDF = useCallback(async (document: React.ReactElement, fileName: string) => {
     try {
-      const blob = await pdf(document).toBlob();
+      const { pdf } = await loadPdfRenderer();
+      // Render inside the app's locale provider so every template's
+      // useTranslations("pdfDocs.*") follows the current app language.
+      // (Verified: next-intl context resolves inside react-pdf's reconciler.)
+      const localized = (
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {document}
+        </NextIntlClientProvider>
+      );
+      const blob = await pdf(localized).toBlob();
       downloadBlob(blob, fileName);
       return { success: true };
     } catch (error) {
       console.error("PDF generation error:", error);
       return { success: false, error };
     }
-  }, []);
+  }, [locale, messages]);
 
   const exportStudentIDCard = useCallback(async (
     student: StudentInfo,
     school: SchoolInfo,
     academicYear: string
   ) => {
+    const { StudentIDCardTemplate } = await loadPdfTemplates();
     const document = (
       <StudentIDCardTemplate
         student={{
@@ -221,6 +245,7 @@ export function usePDFExport() {
     marks: Mark[],
     school: SchoolInfo
   ) => {
+    const { MarkSheetTemplate } = await loadPdfTemplates();
     const document = (
       <MarkSheetTemplate
         student={student}
@@ -250,6 +275,7 @@ export function usePDFExport() {
       email: "info@school.com",
     };
 
+    const { ReportCardTemplate } = await loadPdfTemplates();
     const document = (
       <ReportCardTemplate
         student={student}
@@ -271,6 +297,11 @@ export function usePDFExport() {
     school: SchoolInfo,
     academicYear: string
   ) => {
+    // One save-dialog per student: beyond MAX the browser blocks downloads and
+    // the tab sits in a render loop. Fail fast with a clear message instead.
+    if (students.length > MAX_BATCH_PDF_RECORDS) {
+      throw new Error(`Bulk ID cards are limited to ${MAX_BATCH_PDF_RECORDS} students per run. Split the selection and retry.`);
+    }
     const results = [];
     for (const student of students) {
       const result = await exportStudentIDCard(student, school, academicYear);
@@ -293,7 +324,8 @@ export function usePDFExport() {
     };
     records: StudentReportRecord[];
   }) => {
-    const document = <StudentReportTemplate {...params} />;
+    const { StudentReportTemplate } = await loadPdfTemplates();
+    const document = <StudentReportTemplate {...params} locale={locale} labels={commonLabels} />;
     return generatePDF(document, "Student_Report.pdf");
   }, [generatePDF]);
 
@@ -310,7 +342,8 @@ export function usePDFExport() {
     };
     records: FeeReportRecord[];
   }) => {
-    const document = <FeeReportTemplate {...params} />;
+    const { FeeReportTemplate } = await loadPdfTemplates();
+    const document = <FeeReportTemplate {...params} locale={locale} labels={commonLabels} />;
     return generatePDF(document, "Fee_Report.pdf");
   }, [generatePDF]);
 
@@ -327,7 +360,8 @@ export function usePDFExport() {
     };
     records: AttendanceReportRecord[];
   }) => {
-    const document = <AttendanceReportTemplate {...params} />;
+    const { AttendanceReportTemplate } = await loadPdfTemplates();
+    const document = <AttendanceReportTemplate {...params} locale={locale} labels={commonLabels} />;
     return generatePDF(document, "Attendance_Report.pdf");
   }, [generatePDF]);
 
@@ -344,7 +378,8 @@ export function usePDFExport() {
     };
     records: ExamReportRecord[];
   }) => {
-    const document = <ExamReportTemplate {...params} />;
+    const { ExamReportTemplate } = await loadPdfTemplates();
+    const document = <ExamReportTemplate {...params} locale={locale} labels={commonLabels} />;
     return generatePDF(document, "Exam_Report.pdf");
   }, [generatePDF]);
 
@@ -353,24 +388,50 @@ export function usePDFExport() {
     students: BatchStudentResult[];
     fileName?: string;
   }) => {
-    const document = <BatchReportCardDocument school={params.school} students={params.students} />;
-    const fileName = params.fileName || `Class_Report_Cards_${Date.now()}.pdf`;
-    return generatePDF(document, fileName);
+    try {
+      const { BatchReportCardDocument } = await loadPdfTemplates();
+      const base = params.fileName || `Class_Report_Cards_${Date.now()}.pdf`;
+      const parts = chunkRecords(params.students, MAX_BATCH_PDF_RECORDS);
+      if (parts.length === 0) parts.push([]);
+      let ok = true;
+      for (let i = 0; i < parts.length; i++) {
+        const document = <BatchReportCardDocument school={params.school} students={parts[i]} />;
+        const r = await generatePDF(document, partFileName(base, i, parts.length));
+        ok = ok && r.success;
+      }
+      return { success: ok, parts: parts.length };
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      return { success: false, error, parts: 0 };
+    }
   }, [generatePDF]);
 
   const exportFeeVouchersPDF = useCallback(async (
     vouchers: FeeVoucherPDFData[],
     fileName?: string
   ) => {
-    const document = <FeeVoucherPDFDocument vouchers={vouchers} />;
-    const name = fileName || `Fee_Vouchers_${Date.now()}.pdf`;
-    return generatePDF(document, name);
+    try {
+      const { FeeVoucherPDFDocument } = await loadPdfTemplates();
+      const base = fileName || `Fee_Vouchers_${Date.now()}.pdf`;
+      const parts = chunkRecords(vouchers, MAX_BATCH_PDF_RECORDS);
+      if (parts.length === 0) parts.push([]);
+      let ok = true;
+      for (let i = 0; i < parts.length; i++) {
+        const r = await generatePDF(<FeeVoucherPDFDocument vouchers={parts[i]} />, partFileName(base, i, parts.length));
+        ok = ok && r.success;
+      }
+      return { success: ok, parts: parts.length };
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      return { success: false, error, parts: 0 };
+    }
   }, [generatePDF]);
 
   const exportTransportManifestPDF = useCallback(async (
     manifest: TransportManifestPDFData,
     fileName?: string
   ) => {
+    const { TransportManifestPDFDocument } = await loadPdfTemplates();
     const document = <TransportManifestPDFDocument manifest={manifest} />;
     const name = fileName || `Transport_Manifest_${manifest.routeName.replace(/\s+/g, "_")}.pdf`;
     return generatePDF(document, name);
@@ -380,6 +441,7 @@ export function usePDFExport() {
     data: SalaryPayslipPDFData,
     fileName?: string
   ) => {
+    const { SalaryPayslipDocument } = await loadPdfTemplates();
     const document = <SalaryPayslipDocument data={data} />;
     const name = fileName || `Payslip_${data.staffId}_${data.month}_${data.year}.pdf`;
     return generatePDF(document, name);
@@ -389,15 +451,28 @@ export function usePDFExport() {
     payslips: SalaryPayslipPDFData[],
     fileName?: string
   ) => {
-    const document = <BatchSalaryPayslipPDFDocument payslips={payslips} />;
-    const name = fileName || `Batch_Payslips_${Date.now()}.pdf`;
-    return generatePDF(document, name);
+    try {
+      const { BatchSalaryPayslipPDFDocument } = await loadPdfTemplates();
+      const base = fileName || `Batch_Payslips_${Date.now()}.pdf`;
+      const parts = chunkRecords(payslips, MAX_BATCH_PDF_RECORDS);
+      if (parts.length === 0) parts.push([]);
+      let ok = true;
+      for (let i = 0; i < parts.length; i++) {
+        const r = await generatePDF(<BatchSalaryPayslipPDFDocument payslips={parts[i]} />, partFileName(base, i, parts.length));
+        ok = ok && r.success;
+      }
+      return { success: ok, parts: parts.length };
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      return { success: false, error, parts: 0 };
+    }
   }, [generatePDF]);
 
   const exportLibrarySlipPDF = useCallback(async (
     data: LibraryIssueSlipData,
     fileName?: string
   ) => {
+    const { LibraryIssueSlipDocument } = await loadPdfTemplates();
     const document = <LibraryIssueSlipDocument data={data} />;
     const name = fileName || `Library_Slip_${data.slipNumber || Date.now()}.pdf`;
     return generatePDF(document, name);
@@ -407,6 +482,7 @@ export function usePDFExport() {
     data: HostelManifestPDFData,
     fileName?: string
   ) => {
+    const { HostelManifestPDFDocument } = await loadPdfTemplates();
     const document = <HostelManifestPDFDocument data={data} />;
     const name = fileName || `Hostel_Manifest_${data.hostelName.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
     return generatePDF(document, name);
@@ -417,6 +493,7 @@ export function usePDFExport() {
     data: TransferCertificateData,
     verificationUrl?: string
   ) => {
+    const { TransferCertificateTemplate } = await loadPdfTemplates();
     const document = <TransferCertificateTemplate school={school} data={data} verificationUrl={verificationUrl} />;
     return generatePDF(document, `TC_${data.certificateNumber}.pdf`);
   }, [generatePDF]);
@@ -426,6 +503,7 @@ export function usePDFExport() {
     data: CharacterCertificateData,
     verificationUrl?: string
   ) => {
+    const { CharacterCertificateTemplate } = await loadPdfTemplates();
     const document = <CharacterCertificateTemplate school={school} data={data} verificationUrl={verificationUrl} />;
     return generatePDF(document, `CC_${data.certificateNumber}.pdf`);
   }, [generatePDF]);
@@ -435,6 +513,7 @@ export function usePDFExport() {
     data: BonafideCertificateData,
     verificationUrl?: string
   ) => {
+    const { BonafideCertificateTemplate } = await loadPdfTemplates();
     const document = <BonafideCertificateTemplate school={school} data={data} verificationUrl={verificationUrl} />;
     return generatePDF(document, `Bonafide_${data.certificateNumber}.pdf`);
   }, [generatePDF]);
@@ -444,6 +523,7 @@ export function usePDFExport() {
     data: ExamAdmitCardData,
     verificationUrl?: string
   ) => {
+    const { ExamAdmitCardTemplate } = await loadPdfTemplates();
     const document = <ExamAdmitCardTemplate school={school} data={data} verificationUrl={verificationUrl} />;
     return generatePDF(document, `AdmitCard_${data.rollNumber}_${data.examName.replace(/\s+/g, "_")}.pdf`);
   }, [generatePDF]);
@@ -453,8 +533,22 @@ export function usePDFExport() {
     cards: ExamAdmitCardData[],
     verificationBaseUrl?: string
   ) => {
-    const document = <BatchAdmitCardDocument school={school} cards={cards} verificationBaseUrl={verificationBaseUrl} />;
-    return generatePDF(document, `Batch_AdmitCards_${Date.now()}.pdf`);
+    try {
+      const { BatchAdmitCardDocument } = await loadPdfTemplates();
+      const base = `Batch_AdmitCards_${Date.now()}.pdf`;
+      const parts = chunkRecords(cards, MAX_BATCH_PDF_RECORDS);
+      if (parts.length === 0) parts.push([]);
+      let ok = true;
+      for (let i = 0; i < parts.length; i++) {
+        const document = <BatchAdmitCardDocument school={school} cards={parts[i]} verificationBaseUrl={verificationBaseUrl} />;
+        const r = await generatePDF(document, partFileName(base, i, parts.length));
+        ok = ok && r.success;
+      }
+      return { success: ok, parts: parts.length };
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      return { success: false, error, parts: 0 };
+    }
   }, [generatePDF]);
 
   const exportTranscriptPDF = useCallback(async (
@@ -462,6 +556,7 @@ export function usePDFExport() {
     data: TranscriptData,
     verificationUrl?: string
   ) => {
+    const { TranscriptTemplate } = await loadPdfTemplates();
     const document = <TranscriptTemplate school={school} data={data} verificationUrl={verificationUrl} />;
     return generatePDF(document, `Transcript_${data.admissionNumber}.pdf`);
   }, [generatePDF]);
@@ -472,8 +567,22 @@ export function usePDFExport() {
     academicYear?: string,
     verificationBaseUrl?: string
   ) => {
-    const document = <StaffIDCardTemplate school={school} staff={staff} academicYear={academicYear} verificationBaseUrl={verificationBaseUrl} />;
-    return generatePDF(document, `Staff_ID_Cards_${Date.now()}.pdf`);
+    try {
+      const { StaffIDCardTemplate } = await loadPdfTemplates();
+      const base = `Staff_ID_Cards_${Date.now()}.pdf`;
+      const parts = chunkRecords(staff, MAX_BATCH_PDF_RECORDS);
+      if (parts.length === 0) parts.push([]);
+      let ok = true;
+      for (let i = 0; i < parts.length; i++) {
+        const document = <StaffIDCardTemplate school={school} staff={parts[i]} academicYear={academicYear} verificationBaseUrl={verificationBaseUrl} />;
+        const r = await generatePDF(document, partFileName(base, i, parts.length));
+        ok = ok && r.success;
+      }
+      return { success: ok, parts: parts.length };
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      return { success: false, error, parts: 0 };
+    }
   }, [generatePDF]);
 
   const exportLibraryClearancePDF = useCallback(async (
@@ -481,6 +590,7 @@ export function usePDFExport() {
     data: LibraryClearanceData,
     verificationUrl?: string
   ) => {
+    const { LibraryClearanceTemplate } = await loadPdfTemplates();
     const document = <LibraryClearanceTemplate school={school} data={data} verificationUrl={verificationUrl} />;
     return generatePDF(document, `Clearance_${data.certificateNumber}.pdf`);
   }, [generatePDF]);
@@ -490,6 +600,7 @@ export function usePDFExport() {
     academicYear?: string,
     formNumber?: string
   ) => {
+    const { AdmissionFormTemplate } = await loadPdfTemplates();
     const document = <AdmissionFormTemplate school={school} academicYear={academicYear} formNumber={formNumber} />;
     return generatePDF(document, `Admission_Form_${academicYear || "2026"}.pdf`);
   }, [generatePDF]);
@@ -499,6 +610,7 @@ export function usePDFExport() {
     data: TimetableReportData,
     generatedAt?: string
   ) => {
+    const { TimetableReportTemplate } = await loadPdfTemplates();
     const document = <TimetableReportTemplate school={school} data={data} generatedAt={generatedAt} />;
     return generatePDF(document, `Timetable_${data.className.replace(/\s+/g, "_")}_${Date.now()}.pdf`);
   }, [generatePDF]);
@@ -508,8 +620,106 @@ export function usePDFExport() {
     items: InventoryStockItem[],
     generatedAt?: string
   ) => {
+    const { InventoryStockReportTemplate } = await loadPdfTemplates();
     const document = <InventoryStockReportTemplate school={school} items={items} generatedAt={generatedAt || new Date().toLocaleDateString()} />;
     return generatePDF(document, `Inventory_Stock_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportProfitLossPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    title: string;
+    subtitle?: string;
+    generatedAt: string;
+    dateRangeLabel: string;
+    filters: PdfFilterItem[];
+    metrics: ProfitLossReportTemplateProps["metrics"];
+    columns: ProfitLossReportTemplateProps["columns"];
+    rows: ProfitLossReportTemplateProps["rows"];
+    notes?: string[];
+  }) => {
+    const { ProfitLossReportTemplate } = await loadPdfTemplates();
+    const document = <ProfitLossReportTemplate {...params} labels={commonLabels} />;
+    return generatePDF(document, `Profit_Loss_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportSalaryReportPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    title: string;
+    subtitle?: string;
+    generatedAt: string;
+    dateRangeLabel: string;
+    filters: PdfFilterItem[];
+    metrics: PdfMetricItem[];
+    records: Array<Record<string, string | number>>;
+    notes?: string[];
+  }) => {
+    const { SalaryReportTemplate } = await loadPdfTemplates();
+    const document = <SalaryReportTemplate {...params} labels={commonLabels} />;
+    return generatePDF(document, `Salary_Report_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportFinancialReportPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    title: string;
+    subtitle?: string;
+    generatedAt: string;
+    dateRangeLabel: string;
+    filters: PdfFilterItem[];
+    metrics: PdfMetricItem[];
+    records: Array<Record<string, string | number>>;
+    notes?: string[];
+  }) => {
+    const { FinancialReportTemplate } = await loadPdfTemplates();
+    const document = <FinancialReportTemplate {...params} labels={commonLabels} />;
+    return generatePDF(document, `Financial_Report_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportAdmissionsReportPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    title: string;
+    subtitle?: string;
+    generatedAt: string;
+    dateRangeLabel: string;
+    filters: PdfFilterItem[];
+    metrics: PdfMetricItem[];
+    records: Array<Record<string, string | number>>;
+    notes?: string[];
+  }) => {
+    const { AdmissionsReportTemplate } = await loadPdfTemplates();
+    const document = <AdmissionsReportTemplate {...params} labels={commonLabels} />;
+    return generatePDF(document, `Admissions_Report_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportStatementPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    title: string;
+    subtitle?: string;
+    generatedAt: string;
+    dateRangeLabel: string;
+    filters: PdfFilterItem[];
+    metrics: PdfMetricItem[];
+    records: Array<Record<string, string | number>>;
+    notes?: string[];
+  }) => {
+    const { StatementReportTemplate } = await loadPdfTemplates();
+    const document = <StatementReportTemplate {...params} labels={commonLabels} />;
+    return generatePDF(document, `Statement_${Date.now()}.pdf`);
+  }, [generatePDF]);
+
+  const exportFeeDaybookPDF = useCallback(async (params: {
+    school: SchoolInfo;
+    title: string;
+    subtitle?: string;
+    generatedAt: string;
+    dateRangeLabel: string;
+    filters: PdfFilterItem[];
+    metrics: PdfMetricItem[];
+    records: Array<Record<string, string | number>>;
+    notes?: string[];
+  }) => {
+    const { FeeDaybookTemplate } = await loadPdfTemplates();
+    const document = <FeeDaybookTemplate {...params} labels={commonLabels} />;
+    return generatePDF(document, `Fee_Daybook_${Date.now()}.pdf`);
   }, [generatePDF]);
 
   return {
@@ -539,19 +749,32 @@ export function usePDFExport() {
     exportAdmissionFormPDF,
     exportTimetablePDF,
     exportInventoryStockPDF,
+    exportProfitLossPDF,
+    exportSalaryReportPDF,
+    exportFinancialReportPDF,
+    exportAdmissionsReportPDF,
+    exportStatementPDF,
+    exportFeeDaybookPDF,
   };
 }
 
 export function usePDFPreview() {
+  const locale = useLocale();
+  const messages = useMessages();
   const getPreviewURL = useCallback(async (document: React.ReactElement) => {
     try {
-      const blob = await pdf(document).toBlob();
+      const { pdf } = await loadPdfRenderer();
+      const blob = await pdf(
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {document}
+        </NextIntlClientProvider>
+      ).toBlob();
       return URL.createObjectURL(blob);
     } catch (error) {
       console.error("PDF preview error:", error);
       return null;
     }
-  }, []);
+  }, [locale, messages]);
 
   return { getPreviewURL };
 }

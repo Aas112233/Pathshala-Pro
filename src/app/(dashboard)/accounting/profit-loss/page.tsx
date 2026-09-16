@@ -15,16 +15,25 @@ import {
   Receipt,
   Users,
   Wallet,
-  Download,
+  FileSpreadsheet,
+  FileText,
   Calendar,
   Layers,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 import { useProfitLoss } from "@/hooks/use-queries";
-import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { usePDFExport } from "@/hooks/use-pdf-export";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import {
+  buildProfitLossStatement,
+  assertProfitLossReconciles,
+  type ProfitLossExportInput,
+} from "@/lib/profit-loss-export";
+import { toast } from "sonner";
 
 export default function ProfitLossPage() {
   const t = useTranslations("accounting.profitLoss");
@@ -35,6 +44,15 @@ export default function ProfitLossPage() {
   const canReadAccounting = hasPermission(perms, "accounting", "read");
   const canWriteAccounting = hasPermission(perms, "accounting", "write");
   const canManageAccounting = hasPermission(perms, "accounting", "manage");
+  const { settings } = useTenantSettings();
+  const { exportProfitLossPDF } = usePDFExport();
+  const { exportData } = useExcelExport({
+    fileName: "profit_loss_statement",
+    schoolName: settings.name || "Pathshala Pro School",
+    schoolAddress: settings.address,
+    schoolPhone: settings.phone,
+    schoolEmail: settings.email,
+  });
   const currentYear = new Date().getFullYear();
   const fiscalYears = Array.from({ length: 5 }, (_, index) => currentYear - 2 + index);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
@@ -55,6 +73,106 @@ export default function ProfitLossPage() {
   const incomeBreakdown = pnl?.incomeBreakdown || [];
   const expenseBreakdown = pnl?.expenseBreakdown || [];
   const monthlyTrends = pnl?.monthlyTrends || [];
+
+  const school = {
+    name: settings.name || "Pathshala Pro School",
+    address: settings.address || "",
+    phone: settings.phone || "",
+    email: settings.email || "",
+    logoUrl: settings.logoUrl,
+  };
+
+  const buildStatement = () => {
+    const input: ProfitLossExportInput = {
+      summary: {
+        totalIncome: summary.totalIncome,
+        totalExpenses: summary.totalExpenses,
+        payrollExpenses: summary.payrollExpenses,
+        operationalExpenses: summary.operationalExpenses,
+        netSurplus: summary.netSurplus,
+        profitMargin: summary.profitMargin,
+      },
+      incomeBreakdown,
+      expenseBreakdown,
+      labels: {
+        revenue: t("export.revenue"),
+        expenses: t("export.expenses"),
+        payroll: t("export.payroll"),
+        totalRevenue: t("export.totalRevenue"),
+        totalExpenses: t("export.totalExpenses"),
+        netSurplus: t("export.netSurplus"),
+        netDeficit: t("export.netDeficit"),
+        section: t("export.section"),
+        lineItem: t("export.lineItem"),
+        amount: t("export.amount"),
+        share: t("export.share"),
+      },
+    };
+    assertProfitLossReconciles(input);
+    return buildProfitLossStatement(input);
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const rows = buildStatement();
+      const result = await exportProfitLossPDF({
+        school,
+        title: t("title"),
+        subtitle: t("description"),
+        generatedAt: new Date().toLocaleString(),
+        dateRangeLabel: t("fiscalYear", { year: selectedYear }),
+        filters: [{ label: t("fiscalYear", { year: selectedYear }), value: String(selectedYear) }],
+        metrics: [
+          { label: t("revenue"), value: formatCurrency(summary.totalIncome), tone: "success" },
+          { label: t("salaries"), value: formatCurrency(summary.payrollExpenses), tone: "default" },
+          { label: t("operations"), value: formatCurrency(summary.operationalExpenses), tone: "warning" },
+          {
+            label: t("netSurplus"),
+            value: formatCurrency(summary.netSurplus),
+            tone: summary.isProfit ? "success" : "danger",
+          },
+        ],
+        columns: {
+          section: t("export.section"),
+          lineItem: t("export.lineItem"),
+          amount: t("export.amount"),
+          share: t("export.share"),
+        },
+        rows,
+      });
+      if (result.success) {
+        toast.success(t("export.pdfExported"));
+        return;
+      }
+      toast.error(t("export.exportFailed"));
+    } catch (error: any) {
+      toast.error(error?.message || t("export.exportFailed"));
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const rows = buildStatement();
+      const result = await exportData({
+        title: t("title"),
+        subtitle: t("description"),
+        columns: [
+          { header: t("export.section"), key: "section", width: 18 },
+          { header: t("export.lineItem"), key: "lineItem", width: 34 },
+          { header: t("export.amount"), key: "amount", width: 16, alignment: "right", style: "currency" },
+          { header: t("export.share"), key: "share", width: 12, alignment: "right" },
+        ],
+        data: rows,
+      });
+      if (result.success) {
+        toast.success(t("export.excelExported"));
+        return;
+      }
+      toast.error(t("export.exportFailed"));
+    } catch (error: any) {
+      toast.error(error?.message || t("export.exportFailed"));
+    }
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -77,10 +195,19 @@ export default function ProfitLossPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.print()}
+            onClick={handleExportExcel}
             className="text-xs gap-1.5 h-9"
           >
-            <Download className="h-3.5 w-3.5" /> {t("printStatement")}
+            <FileSpreadsheet className="h-3.5 w-3.5" /> {t("export.excel")}
+          </Button>
+
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleExportPDF}
+            className="text-xs gap-1.5 h-9"
+          >
+            <FileText className="h-3.5 w-3.5" /> {t("export.pdf")}
           </Button>
         </div>
       </PageHeader>

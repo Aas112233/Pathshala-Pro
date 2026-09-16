@@ -9,6 +9,8 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       props.inputMode === "numeric" ||
       props.inputMode === "decimal";
 
+    const isPhoneType = type === "tel" || props.inputMode === "tel";
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (isNumberType) {
         // Allow navigation, modifier shortcuts, functional control keys
@@ -64,6 +66,14 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         }
       }
 
+      if (isPhoneType && e.key.length === 1 && !(e.ctrlKey || e.metaKey || e.altKey)) {
+        // Digits plus standard phone punctuation only — letters blocked
+        if (!/^[0-9+\-() ]$/.test(e.key)) {
+          e.preventDefault();
+          return;
+        }
+      }
+
       onKeyDown?.(e);
     };
 
@@ -79,6 +89,22 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
               document.execCommand("insertText", false, clean);
             } catch {
               // fallback if execCommand is unsupported
+            }
+          }
+          onPaste?.(e);
+          return;
+        }
+      }
+      if (isPhoneType) {
+        const text = e.clipboardData?.getData("text") || "";
+        if (/[^0-9+\-() ]/.test(text)) {
+          e.preventDefault();
+          const clean = text.replace(/[^0-9+\-() ]/g, "");
+          if (clean) {
+            try {
+              document.execCommand("insertText", false, clean);
+            } catch {
+              // fallback
             }
           }
           onPaste?.(e);

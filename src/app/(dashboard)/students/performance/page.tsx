@@ -25,21 +25,18 @@ import {
   Layers,
   Search,
 } from "lucide-react";
-import { useStudents, useAcademicYears, useStudentPerformance } from "@/hooks/use-queries";
+import { FileDown } from "lucide-react";
+import { useStudents, useStudentPerformance } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { exportStudentPerformancePDF, triggerPerformancePrintWindow } from "@/lib/question-paper-studio/performance-export";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AppDropdown, type DropdownOption } from "@/components/ui/app-dropdown";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { cn, formatStudentName } from "@/lib/utils";
 
 interface ClassItem {
   id: string;
@@ -55,6 +52,7 @@ interface SectionItem {
 
 export default function StudentPerformancePage() {
   const t = useTranslations("studentPerformance");
+  const tAcademic = useTranslations("academicSelector");
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -64,8 +62,8 @@ export default function StudentPerformancePage() {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudentId);
-  const [selectedYearId, setSelectedYearId] = useState<string>(initialAcademicYearId);
-  const [studentSearchText, setStudentSearchText] = useState<string>("");
+  const { selectedAcademicYearId } = useAcademicYearContext();
+  const selectedYearId = initialAcademicYearId || selectedAcademicYearId;
 
   const [classesList, setClassesList] = useState<ClassItem[]>([]);
   const [sectionsList, setSectionsList] = useState<SectionItem[]>([]);
@@ -95,9 +93,13 @@ export default function StudentPerformancePage() {
     loadAcademicStructure();
   }, []);
 
-  // 2. Fetch Students List for Selection
+  // 2. Fetch Students List for Selection (Strictly scoped by Class & Section)
   const { data: studentsData, isLoading: isStudentsLoading } = useStudents({
     limit: 200,
+    filters: {
+      ...(selectedClassId && { classId: selectedClassId }),
+      ...(selectedSectionId && { sectionId: selectedSectionId }),
+    },
   });
 
   const studentsList: any[] = useMemo(() => {
@@ -105,20 +107,7 @@ export default function StudentPerformancePage() {
     return Array.isArray(raw) ? raw : [];
   }, [studentsData]);
 
-  // 3. Fetch Academic Years
-  const { data: academicYearsData } = useAcademicYears();
-  const academicYears: any[] = useMemo(() => {
-    const raw = (academicYearsData as any)?.data || academicYearsData || [];
-    return Array.isArray(raw) ? raw : [];
-  }, [academicYearsData]);
-
-  // Auto-select academic year if not set
-  useEffect(() => {
-    if (!selectedYearId && academicYears.length > 0) {
-      const active = academicYears.find((y) => !y.isClosed) || academicYears[0];
-      if (active?.id) setSelectedYearId(active.id);
-    }
-  }, [academicYears, selectedYearId]);
+  // 3. Academic session comes from the global academic year provider
 
   // If initialStudentId provided, pre-select student's class and section
   useEffect(() => {
@@ -146,17 +135,28 @@ export default function StudentPerformancePage() {
     return sectionsList.filter((s) => s.classId === selectedClassId);
   }, [sectionsList, selectedClassId]);
 
-  // Filter students for searchable dropdown
-  const filteredStudents = useMemo(() => {
-    if (!studentSearchText.trim()) return studentsList;
-    const q = studentSearchText.toLowerCase();
-    return studentsList.filter((s) => {
-      const fullName = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
-      const roll = (s.rollNumber || "").toLowerCase();
-      const id = (s.studentId || "").toLowerCase();
-      return fullName.includes(q) || roll.includes(q) || id.includes(q);
-    });
-  }, [studentsList, studentSearchText]);
+  // Options for Searchable AppDropdowns
+  const classOptions: DropdownOption[] = useMemo(() => [
+    { value: "", label: tAcademic("allClasses") },
+    ...classesList.map((c) => ({ value: c.id, label: c.name })),
+  ], [classesList, tAcademic]);
+
+  const sectionOptions: DropdownOption[] = useMemo(() => [
+    { value: "", label: tAcademic("allSections") },
+    ...filteredSections.map((s) => ({ value: s.id, label: s.name })),
+  ], [filteredSections, tAcademic]);
+
+  const studentOptions: DropdownOption[] = useMemo(() => [
+    ...studentsList.map((s: any) => {
+      const name = formatStudentName(s.firstName, s.lastName, s.firstNameBn, s.lastNameBn);
+      const roll = s.rollNumber ? ` (${s.rollNumber})` : "";
+      const idTag = s.studentId && s.studentId !== s.rollNumber ? ` • ${s.studentId}` : "";
+      return {
+        value: s.id,
+        label: `${name}${roll}${idTag}`,
+      };
+    }),
+  ], [studentsList]);
 
   function handleSelectStudent(studentId: string) {
     setSelectedStudentId(studentId);
@@ -183,15 +183,26 @@ export default function StudentPerformancePage() {
 
         <div className="flex items-center gap-2">
           {performance && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrintTranscript}
-              className="gap-2 shadow-xs"
-            >
-              <Printer className="h-4 w-4" />
-              {t("printReport")}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportStudentPerformancePDF(performance, `Performance_${performance.student.studentId}_${performance.academicYear.label}.pdf`)}
+                className="gap-2 shadow-xs flex items-center"
+              >
+                <FileDown className="h-4 w-4" />
+                {t("exportPDF")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrintTranscript}
+                className="gap-2 shadow-xs flex items-center"
+              >
+                <Printer className="h-4 w-4" />
+                {t("printReport")}
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -205,26 +216,18 @@ export default function StudentPerformancePage() {
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {t("selectClass")}
               </label>
-              <Select
+              <AppDropdown
                 value={selectedClassId}
-                onValueChange={(val) => {
-                  setSelectedClassId(val === "ALL" ? "" : val);
+                onChange={(val) => {
+                  setSelectedClassId(val);
                   setSelectedSectionId("");
                   setSelectedStudentId("");
                 }}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder={t("selectClass")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">{t("allSections")}</SelectItem>
-                  {classesList.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={classOptions}
+                placeholder={t("selectClass")}
+                searchable
+                searchPlaceholder={tAcademic("searchClassPlaceholder")}
+              />
             </div>
 
             {/* Section Filter */}
@@ -232,74 +235,42 @@ export default function StudentPerformancePage() {
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {t("selectSection")}
               </label>
-              <Select
+              <AppDropdown
                 value={selectedSectionId}
-                onValueChange={(val) => {
-                  setSelectedSectionId(val === "ALL" ? "" : val);
+                onChange={(val) => {
+                  setSelectedSectionId(val);
                   setSelectedStudentId("");
                 }}
+                options={sectionOptions}
+                placeholder={!selectedClassId ? tAcademic("selectClassFirst") : t("selectSection")}
                 disabled={!selectedClassId}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder={t("selectSection")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">{t("allSections")}</SelectItem>
-                  {filteredSections.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                searchable
+                searchPlaceholder={tAcademic("searchSectionPlaceholder")}
+              />
             </div>
 
-            {/* Student Search & Select */}
+            {/* Student Search & Select (Disabled until Class is chosen) */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {t("selectStudent")}
               </label>
-              <Select
+              <AppDropdown
                 value={selectedStudentId}
-                onValueChange={handleSelectStudent}
-                disabled={studentsList.length === 0}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder={studentsList.length === 0 ? t("noResults") : t("selectStudent")} />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {studentsList.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      <span className="font-medium">{s.firstName} {s.lastName}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        ({s.rollNumber || s.studentId})
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Academic Session */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {t("academicSession")}
-              </label>
-              <Select
-                value={selectedYearId}
-                onValueChange={(val) => setSelectedYearId(val)}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder={t("currentSession")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map((year: any) => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={handleSelectStudent}
+                options={studentOptions}
+                placeholder={
+                  !selectedClassId
+                    ? tAcademic("selectClassFirst")
+                    : isStudentsLoading
+                    ? tAcademic("loading")
+                    : studentsList.length === 0
+                    ? t("noResults")
+                    : t("selectStudent")
+                }
+                disabled={!selectedClassId || isStudentsLoading || studentsList.length === 0}
+                searchable
+                searchPlaceholder={tAcademic("searchStudentPlaceholder")}
+              />
             </div>
           </div>
         </CardContent>

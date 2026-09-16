@@ -164,5 +164,59 @@ When building or updating a domain page in Pathshala-Pro:
 - [ ] Tables use `ERPDataTable` with search bar, filter triggers, status pills, and pagination.
 - [ ] All Add / Edit forms use `TopSheet` sliding smoothly from the top of the viewport.
 - [ ] Form layouts use `ERPFormSection` and `ERPFormGrid` for structured multi-column arrangement.
+- [ ] Student, class, section, and group selection follows the Unified Academic Hierarchy Selector (`AcademicStudentSelector`).
 - [ ] Colors and spacing strictly use tokens from `src/lib/design-tokens.ts`.
 - [ ] Code navigation and symbol lookups use **CodeGraph**.
+
+---
+
+## 7. Unified Academic Hierarchy & Student Selection Architecture
+
+### Core Invariants (MANDATORY FOR ALL AGENTS)
+1. **Never Standalone:** Student selection must almost never exist in isolation. It must be scoped by the academic hierarchy: **Academic Year $\rightarrow$ Class $\rightarrow$ Section $\rightarrow$ Group $\rightarrow$ Student**. (Only exception: high-speed POS cashier desk with direct ID/barcode search).
+2. **Strict Cascading Filtering:** Downstream selectors MUST be filtered by upstream parent IDs.
+3. **Disabled-Until-Selected:** Downstream selectors MUST be `disabled` with an informative placeholder (e.g., *"Select class first..."*, *"Select section first..."*) until the required parent is chosen.
+4. **Immediate Reset on Change:** Changing an upstream parent (e.g. Class) MUST immediately reset all downstream values (`sectionId = ""`, `groupId = ""`, `studentId = ""`) to prevent cross-class data corruption.
+5. **Universal Reusable Standard (`AcademicStudentSelector`):**
+   - **Inline Mode (`mode="inline"`):** Renders cascading dropdowns for page toolbars (Performance, Mark Sheets, Attendance).
+   - **Modal Drawer Mode (`mode="modal"` / `StudentSelectorModal`):** Wraps the cascading hierarchy in a standard TopSheet supporting single- and multi-student selection.
+
+### Usage Example:
+```tsx
+import { AcademicStudentSelector } from "@/components/shared/academic-student-selector";
+
+// In page toolbar:
+<AcademicStudentSelector
+  mode="inline"
+  value={{ classId, sectionId, groupId, studentId }}
+  onChange={({ classId, sectionId, groupId, studentId }) => {
+    setClassId(classId);
+    setSectionId(sectionId);
+    setGroupId(groupId);
+    setStudentId(studentId);
+  }}
+  showStudent={true}
+/>
+```
+
+---
+
+## 8. TanStack Query Key Hierarchy & Real-Time Sync Architecture
+
+### Zero Extra API Load Principle
+- When an entity is created, edited, or deleted (e.g. creating a Class in Academic Setup), all other views across the app (Admissions, Fees, Timetable, Exams) must reflect the updated data automatically without requiring a full manual browser refresh.
+- To achieve this without placing unnecessary background load or polling on the API, we leverage TanStack Query's prefix array invalidation.
+
+### Strict Hierarchical Array Standard
+- All query keys must start with the singular or plural resource domain as the first element:
+  - `["classes", ...]`
+  - `["sections", ...]`
+  - `["groups", ...]`
+  - `["students", ...]`
+  - `["subjects", ...]`
+  - `["staff", ...]`
+  - `["academic-years", ...]`
+  - `["vouchers", ...]`
+- **FORBIDDEN:** Flat hyphenated strings as root query keys (e.g. `["classes-all"]`, `["classes-dropdown"]`, `["groups-filter"]`, `["students-hostel"]`). These do not match prefix invalidations (`invalidateQueries({ queryKey: ["classes"] })`) and lead to stale UI bugs.
+- Always use centralized hooks from `@/hooks/use-queries` (`useClasses`, `useSections`, `useGroups`, `useSubjects`) for academic entities.
+

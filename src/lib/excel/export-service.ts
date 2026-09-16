@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { addCurrency, roundCurrency } from "@/lib/math-utils";
 
 export interface FeeDaybookRow {
+  sno: number;
   date: string;
   voucherNumber: string;
   studentId: string;
@@ -29,22 +30,14 @@ export interface TabulationStudentRow {
 }
 
 /**
- * 1. Export Fee Collections Daybook to Excel
+ * Fee Collections Daybook row builder. Single source of truth for the Excel
+ * workbook and the PDF export, so both files always agree on the figures.
  */
-export async function exportFeeDaybookToExcel(
+export async function fetchFeeDaybookRows(
   tenantId: string,
   startDate?: Date,
   endDate?: Date
-): Promise<Buffer> {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Pathshala-Pro ERP";
-  workbook.created = new Date();
-
-  const worksheet = workbook.addWorksheet("Fee Collection Daybook", {
-    views: [{ showGridLines: true }],
-  });
-
-  // Query transactions
+): Promise<FeeDaybookRow[]> {
   let transactions: any[] = [];
   let vouchers: any[] = [];
   let students: any[] = [];
@@ -95,6 +88,42 @@ export async function exportFeeDaybookToExcel(
   const studentById = new Map(students.map((student) => [student.id, student]));
   const classNames = new Map(classes.map((schoolClass) => [schoolClass.id, schoolClass.name]));
 
+  return transactions.map((tx, index) => {
+    const voucher = voucherById.get(tx.feeVoucherId);
+    const student = voucher ? studentById.get(voucher.studentProfileId) : undefined;
+    return {
+      sno: index + 1,
+      date: tx.timestamp.toISOString().slice(0, 10),
+      voucherNumber: voucher?.voucherId || "-",
+      studentId: student?.studentId || "-",
+      studentName: student ? `${student.firstName} ${student.lastName}`.trim() : "Student",
+      className: student?.classId ? classNames.get(student.classId) || "-" : "-",
+      paymentMode: tx.paymentMethod,
+      receiptNumber: tx.receiptNumber,
+      amountPaid: roundCurrency(Number(tx.amountPaid) || 0),
+      journalEntryRef: tx.transactionId,
+    };
+  });
+}
+
+/**
+ * 1. Export Fee Collections Daybook to Excel
+ */
+export async function exportFeeDaybookToExcel(
+  tenantId: string,
+  startDate?: Date,
+  endDate?: Date
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Pathshala-Pro ERP";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Fee Collection Daybook", {
+    views: [{ showGridLines: true }],
+  });
+
+  const daybookRows = await fetchFeeDaybookRows(tenantId, startDate, endDate);
+
   // Header Title Rows
   worksheet.addRow(["Pathshala-Pro School Management System"]);
   worksheet.addRow(["Fee Collections Daybook Report"]);
@@ -127,27 +156,11 @@ export async function exportFeeDaybookToExcel(
 
   let totalCollected = 0;
 
-  transactions.forEach((tx, index) => {
-    const voucher = voucherById.get(tx.feeVoucherId);
-    const student = voucher ? studentById.get(voucher.studentProfileId) : undefined;
-    const amount = roundCurrency(Number(tx.amountPaid) || 0);
+  daybookRows.forEach((daybookRow) => {
     // Accumulate through integer cents so the footer cannot drift a paisa off
     // the sum of the 2dp row displays (SUM(round) vs round(SUM)).
-    totalCollected = addCurrency(totalCollected, amount);
-
-    const row = worksheet.addRow({
-      sno: index + 1,
-      date: tx.timestamp.toISOString().slice(0, 10),
-      voucherNumber: voucher?.voucherId || "-",
-      studentId: student?.studentId || "-",
-      studentName: student ? `${student.firstName} ${student.lastName}`.trim() : "Student",
-      className: student?.classId ? classNames.get(student.classId) || "-" : "-",
-      paymentMode: tx.paymentMethod,
-      receiptNumber: tx.receiptNumber,
-      amountPaid: amount,
-      journalEntryRef: tx.transactionId,
-    });
-
+    totalCollected = addCurrency(totalCollected, daybookRow.amountPaid);
+    const row = worksheet.addRow(daybookRow);
     row.getCell("amountPaid").numFmt = "#,##0.00";
   });
 
@@ -230,7 +243,7 @@ export async function exportAcademicTabulationSheetToExcel(
     if (!studentMap.has(st.id)) {
       studentMap.set(st.id, {
         rollNumber: st.rollNumber,
-        studentName: st.studentId, // or name
+        studentName: `${st.firstName} ${st.lastName}`.trim() || st.studentId,
         studentId: st.studentId,
         subjectMarks: {},
         totalObtained: 0,

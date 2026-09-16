@@ -26,7 +26,7 @@ import {
   Building2,
   Clock,
 } from "lucide-react";
-import { useAcademicYears } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 interface BatchInvoiceModalProps {
@@ -60,8 +60,7 @@ export function BatchInvoiceModal({
   const t = useTranslations("feesExtras.batchInvoice");
   const tMonths = useTranslations("months");
   const { currencySymbol, formatCurrency } = useTenantFormatting();
-  const { data: academicYearsResponse } = useAcademicYears();
-  const academicYears = academicYearsResponse?.data || [];
+  const { academicYears, selectedAcademicYearId } = useAcademicYearContext();
 
   const now = new Date();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,7 +87,7 @@ export function BatchInvoiceModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const activeAyId = formData.academicYearId || academicYears[0]?.id;
+    const activeAyId = formData.academicYearId || selectedAcademicYearId;
     if (!activeAyId) {
       toast.error(t("errSelectYear"));
       return;
@@ -219,7 +218,7 @@ export function BatchInvoiceModal({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("academicYearLabel")}</Label>
               <AppDropdown
-                value={formData.academicYearId || academicYears[0]?.id || ""}
+                value={formData.academicYearId || selectedAcademicYearId}
                 onChange={(v) => setFormData({ ...formData, academicYearId: v })}
                 options={academicYears.map((ay: any) => ({
                   value: ay.id,

@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface InventoryStockItem {
   code: string;
@@ -43,7 +44,7 @@ const defaultLabels = {
 };
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 22, paddingBottom: 22, paddingHorizontal: 18, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 7.5, fontFamily: "Helvetica" },
+  page: { paddingTop: 22, paddingBottom: 22, paddingHorizontal: 18, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 7.5, fontFamily: "NotoSans" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1D4ED8", paddingBottom: 8, marginBottom: 8 },
   schoolBlock: { flexDirection: "row", flex: 1, alignItems: "center" },
   logo: { width: 36, height: 36, borderRadius: 6, objectFit: "cover", marginRight: 8 },
@@ -70,11 +71,12 @@ const styles = StyleSheet.create({
 
 export function InventoryStockReportTemplate({ school, generatedAt, items, labels: l }: InventoryStockReportProps) {
   const L = { ...defaultLabels, ...l };
+  const fontFamily = getPdfFontFamily(school?.name, school?.address, pdfTextSample(items));
   const lowCount = items.filter((i) => i.quantity <= i.minStockLevel).length;
   const totalValue = items.reduce((sum, i) => sum + i.quantity * i.costPrice, 0);
   return (
     <Document title="Inventory_Stock_Report" author={school.name}>
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={[styles.page, { fontFamily }]}>
         <View style={styles.header}>
           <View style={styles.schoolBlock}>
             {school.logoUrl ? <Image src={school.logoUrl} style={styles.logo} /> : (

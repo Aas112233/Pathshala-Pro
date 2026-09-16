@@ -97,7 +97,7 @@ export default function AdmissionsPage() {
 
   // Fetch classes
   const { data: classesData, isLoading: isClassesLoading } = useQuery({
-    queryKey: ["classes-all"],
+    queryKey: ["classes", "all"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) throw new Error(t('admissions.fetchClassesError'));
@@ -107,7 +107,7 @@ export default function AdmissionsPage() {
 
   // Fetch groups (filtered by selected class)
   const { data: groupsData, isLoading: isGroupsLoading } = useQuery({
-    queryKey: ["groups-all", { classId: selectedClass }],
+    queryKey: ["groups", "all", { classId: selectedClass }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
       const res = await fetch(`/api/groups?limit=100&classId=${selectedClass}`);
@@ -119,7 +119,7 @@ export default function AdmissionsPage() {
 
   // Fetch sections (filtered by selected class and group)
   const { data: sectionsData, isLoading: isSectionsLoading } = useQuery({
-    queryKey: ["sections-all", { classId: selectedClass, groupId: selectedGroup }],
+    queryKey: ["sections", "all", { classId: selectedClass, groupId: selectedGroup }],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
       const params = new URLSearchParams({
@@ -136,7 +136,7 @@ export default function AdmissionsPage() {
 
   // Fetch academic years
   const { data: academicYearsData, isLoading: isAcademicYearsLoading } = useQuery({
-    queryKey: ["academic-years-all"],
+    queryKey: ["academic-years", "all"],
     queryFn: async () => {
       const res = await fetch("/api/academic-years?limit=100");
       if (!res.ok) throw new Error(t('admissions.fetchAcademicYearsError'));
@@ -199,7 +199,11 @@ export default function AdmissionsPage() {
   };
 
   const handleAddStudents = (students: Student[]) => {
-    const newItems: AdmissionItem[] = students.map((student) => ({
+    // The selector allows re-picking already-added students — dedupe by id so
+    // the list (and the admission POST) never contains the same student twice.
+    const existingIds = new Set(admissionItems.map((item) => item.student.id));
+    const fresh = students.filter((student) => !existingIds.has(student.id));
+    const newItems: AdmissionItem[] = fresh.map((student) => ({
       student,
       classId: selectedClass,
       groupId: selectedGroup || undefined,
@@ -207,7 +211,7 @@ export default function AdmissionsPage() {
     }));
 
     setAdmissionItems([...admissionItems, ...newItems]);
-    toast.success(t('admissions.addStudentsSuccess', { count: students.length }));
+    toast.success(t('admissions.addStudentsSuccess', { count: newItems.length }));
   };
 
   const handleCreateStudent = async (data: CreateStudentDTO) => {
@@ -321,7 +325,7 @@ export default function AdmissionsPage() {
 
   // Fetch groups/sections for the edit modal's selected class
   const { data: editGroupsData } = useQuery({
-    queryKey: ["edit-groups", { classId: editClassId }],
+    queryKey: ["groups", "edit", { classId: editClassId }],
     queryFn: async () => {
       if (!editClassId) return { data: [] };
       const res = await fetch(`/api/groups?limit=100&classId=${editClassId}`);
@@ -332,7 +336,7 @@ export default function AdmissionsPage() {
   });
 
   const { data: editSectionsData } = useQuery({
-    queryKey: ["edit-sections", { classId: editClassId, groupId: editGroupId }],
+    queryKey: ["sections", "edit", { classId: editClassId, groupId: editGroupId }],
     queryFn: async () => {
       if (!editClassId) return { data: [] };
       const params = new URLSearchParams({
@@ -500,7 +504,7 @@ export default function AdmissionsPage() {
           onSearchChange={(v) => setFilters({ search: v })}
           searchPlaceholder={t('admissions.searchPlaceholder')}
           isLoading={isStudentsLoading}
-          emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{t('common.noResults')}</div>}
+          emptyState={<div className="py-12 text-center text-sm text-muted-foreground">{t('admissions.noResults')}{t('admissions.noResultsHint') && <div className="mt-2 text-xs text-muted-foreground">{t('admissions.noResultsHint')}</div>}</div>}
         />
       </div>
     );
@@ -665,7 +669,7 @@ export default function AdmissionsPage() {
                 <div className="space-y-2">
                   {admissionItems.map((item, index) => (
                     <div
-                      key={item.student.id}
+                      key={`${item.student.id}-${index}`}
                       className="flex items-center justify-between px-3 py-2 border-b border-border/60 last:border-b-0"
                     >
                       <div className="flex items-center gap-3">
@@ -740,7 +744,7 @@ export default function AdmissionsPage() {
                   disabled={createAdmissionMutation.isPending || admissionItems.length === 0 || !canAddStudents}
                   className="w-full mt-8 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-medium"
                 >
-                  <Save className="h-4 w-4" />{" "}
+                  <Save className="h-4 w-4" />
                   {createAdmissionMutation.isPending ? t('admissions.processing') : t('admissions.completeAdmission')}
                 </Button>
               )}

@@ -54,16 +54,16 @@ export default function QuestionPaperPreviewPage() {
       const sanitizedName = (paper?.title || "Exam-Paper").replace(/[^a-zA-Z0-9\u0980-\u09FF-]/g, "_");
       const result = await exportElementToHighResPDF("question-paper-print-sheet", {
         fileName: `${sanitizedName}.pdf`,
-        scale: 2.5,
+        paper: paperData?.data,
       });
 
       if (result.success) {
-        toast.success("PDF সফলভাবে ডাউনলোড হয়েছে", { id: toastId });
+        toast.success(t("questionPapers.pdfDownloaded"), { id: toastId });
       } else {
-        toast.error(result.error || "PDF তৈরিতে সমস্যা হয়েছে", { id: toastId });
+        toast.error(result.error || t("questionPapers.pdfError"), { id: toastId });
       }
     } catch (err: any) {
-      toast.error(err.message || "PDF এক্সপোর্টে ত্রুটি হয়েছে", { id: toastId });
+      toast.error(err.message || t("questionPapers.pdfExportError"), { id: toastId });
     } finally {
       setIsExporting(false);
     }

@@ -74,7 +74,7 @@ export default function HostelPage() {
   const { allocations, pagination: allocPagination, isLoading: isAllocLoading, createAllocation, deleteAllocation } = useHostelAllocationsViewModel(allocSearch, "", allocPage);
 
   const { data: studentsData } = useQuery({
-    queryKey: ["students-hostel"],
+    queryKey: ["students", "hostel"],
     queryFn: async () => {
       const r = await fetch("/api/students?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
@@ -490,7 +490,7 @@ export default function HostelPage() {
               <ERPFormField label={t("hostelName")} required error={hostelErrors.name}><Input value={hostelForm.name} onChange={(e) => setHostelForm((p) => ({ ...p, name: e.target.value }))} placeholder={t("hostelName")} /></ERPFormField>
               <ERPFormField label={t("type")}><AppDropdown value={hostelForm.type} onChange={(v) => setHostelForm((p) => ({ ...p, type: v }))} options={[{ value: "BOYS", label: t("boys") }, { value: "GIRLS", label: t("girls") }, { value: "COMBINED", label: t("combined") }]} /></ERPFormField>
               <ERPFormField label={t("wardenName")}><Input value={hostelForm.wardenName} onChange={(e) => setHostelForm((p) => ({ ...p, wardenName: e.target.value }))} placeholder={t("wardenName")} /></ERPFormField>
-              <ERPFormField label={t("wardenPhone")}><Input value={hostelForm.wardenPhone} onChange={(e) => setHostelForm((p) => ({ ...p, wardenPhone: e.target.value }))} placeholder={t("wardenPhone")} /></ERPFormField>
+              <ERPFormField label={t("wardenPhone")}><Input type="tel" value={hostelForm.wardenPhone} onChange={(e) => setHostelForm((p) => ({ ...p, wardenPhone: e.target.value }))} placeholder={t("wardenPhone")} /></ERPFormField>
               <ERPFormField label={t("capacity")}><Input type="number" min={0} value={hostelForm.capacity} onChange={(e) => setHostelForm((p) => ({ ...p, capacity: parseInt(e.target.value) || 0 }))} /></ERPFormField>
               <ERPFormField label={t("address")}><Input value={hostelForm.address} onChange={(e) => setHostelForm((p) => ({ ...p, address: e.target.value }))} placeholder={t("address")} /></ERPFormField>
             </ERPFormGrid>

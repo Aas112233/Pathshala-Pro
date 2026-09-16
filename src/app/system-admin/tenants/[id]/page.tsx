@@ -46,10 +46,10 @@ export default function TenantDetailPage() {
       if (json.success) {
         setTenant(json.data);
       } else {
-        toast.error(json.error?.message || "Failed to load tenant details");
+        toast.error(json.error?.message || t("saasAdmin.tenantDetail.loadFailed"));
       }
     } catch {
-      toast.error("Network error loading school telemetry");
+      toast.error(t("saasAdmin.tenantDetail.loadNetworkError"));
     } finally {
       setIsLoading(false);
     }
@@ -70,15 +70,15 @@ export default function TenantDetailPage() {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        toast.success(`Logged in as ${tenant.name}`);
+        toast.success(t("saasAdmin.tenantDetail.impersonateSuccess", { name: tenant.name }));
         localStorage.removeItem(`tenant_settings_${tenant.tenantId}`);
         window.location.href = "/";
       } else {
-        toast.error("Failed to impersonate tenant");
+        toast.error(t("saasAdmin.tenantDetail.impersonateFailed"));
         setIsImpersonating(false);
       }
     } catch {
-      toast.error("Error initiating support session");
+      toast.error(t("saasAdmin.tenantDetail.supportSessionError"));
       setIsImpersonating(false);
     }
   };
@@ -94,13 +94,13 @@ export default function TenantDetailPage() {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        toast.success(`Status updated to ${newStatus}`);
+        toast.success(t("saasAdmin.tenantDetail.statusUpdated", { status: newStatus }));
         fetchTenantDetails();
       } else {
-        toast.error("Failed to update status");
+        toast.error(t("saasAdmin.tenantDetail.statusUpdateFailed"));
       }
     } catch {
-      toast.error("Network error");
+      toast.error(t("saasAdmin.tenantDetail.networkError"));
     } finally {
       setIsUpdatingStatus(false);
     }

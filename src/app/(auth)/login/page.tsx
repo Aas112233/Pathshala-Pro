@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useState, useEffect, useRef } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
+import Image from "next/image";
+import { useTheme } from "next-themes";
 import { useLogin } from "@/hooks/use-queries";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
+import { locales, localeNames, type Locale, isRtl } from "@/i18n/config";
 import { toast } from "sonner";
 import {
   Mail,
@@ -15,104 +18,82 @@ import {
   EyeOff,
   GraduationCap,
   Building2,
-  Zap,
   ShieldCheck,
+  CheckCircle2,
+  Receipt,
+  Globe,
+  Sun,
+  Moon,
+  LogIn,
+  ChevronDown,
+  Check,
+  HelpCircle,
 } from "lucide-react";
-import Image from "next/image";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AppModal } from "@/components/ui/app-modal";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-function getBengaliDate(date: Date) {
-  const gDay = date.getDate();
-  const gMonth = date.getMonth();
-  const gYear = date.getFullYear();
+type DemoRole = "ADMIN" | "PRINCIPAL" | "ACCOUNTANT" | "TEACHER";
 
-  const isLeapYear = (gYear % 4 === 0 && gYear % 100 !== 0) || gYear % 400 === 0;
-
-  const starts = [15, 14, 15, 14, 15, 15, 16, 16, 16, 17, 16, 16];
-  const bnMonths = [
-    "মাঘ",
-    "ফাল্গুন",
-    "চৈত্র",
-    "বৈশাখ",
-    "জ্যৈষ্ঠ",
-    "আষাঢ়",
-    "শ্রাবণ",
-    "ভাদ্র",
-    "আশ্বিন",
-    "কার্তিক",
-    "অগ্রহায়ণ",
-    "পৌষ",
-  ];
-  const bnMonthDays = [30, isLeapYear ? 30 : 29, 30, 31, 31, 31, 31, 31, 31, 30, 30, 30];
-
-  let bnMonthIdx;
-  let bnDay;
-
-  if (gDay >= starts[gMonth]) {
-    bnMonthIdx = gMonth;
-    bnDay = gDay - starts[gMonth] + 1;
-  } else {
-    bnMonthIdx = gMonth === 0 ? 11 : gMonth - 1;
-    bnDay = bnMonthDays[bnMonthIdx] - (starts[gMonth] - gDay) + 1;
-  }
-
-  let bnYear = gYear - 593;
-  if (gMonth < 3 || (gMonth === 3 && gDay < 14)) {
-    bnYear -= 1;
-  }
-
-  const bnNums = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-  const toBnNum = (n: number) =>
-    n
-      .toString()
-      .split("")
-      .map((c) => bnNums[parseInt(c, 10)])
-      .join("");
-
-  return `${toBnNum(bnDay)} ${bnMonths[bnMonthIdx]} ${toBnNum(bnYear)}`;
+interface DemoPreset {
+  role: DemoRole;
+  labelKey: "demoSuperAdmin" | "demoPrincipal" | "demoAccountant" | "demoTeacher";
+  email: string;
 }
+
+const DEMO_PRESETS: DemoPreset[] = [
+  { role: "ADMIN", labelKey: "demoSuperAdmin", email: "admin@school.com" },
+  { role: "PRINCIPAL", labelKey: "demoPrincipal", email: "principal@school.com" },
+  { role: "ACCOUNTANT", labelKey: "demoAccountant", email: "accountant@school.com" },
+  { role: "TEACHER", labelKey: "demoTeacher", email: "teacher@school.com" },
+];
 
 export default function LoginPage() {
   const t = useTranslations("auth");
+  const currentLocale = useLocale() as Locale;
+  const { theme, setTheme } = useTheme();
   const loginMutation = useLogin();
   const { login } = useAuth();
-  // Duplicate-press guard: blocks re-entry even before React re-renders.
   const { run, isPending } = useSubmitGuard();
-  const [showPassword, setShowPassword] = useState(false);
+
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
-  const [calendarDays, setCalendarDays] = useState<
-    { label: string; date: number; isActive: boolean }[]
-  >([]);
-  const [dates, setDates] = useState({ english: "", bengali: "", arabic: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<DemoRole | null>(null);
+  const [localeDropdownOpen, setLocaleDropdownOpen] = useState(false);
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const days = [];
-    const today = new Date();
-    for (let i = -3; i <= 3; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      days.push({
-        label: d.toLocaleDateString("en-US", { weekday: "short" }),
-        date: d.getDate(),
-        isActive: i === 0,
-      });
-    }
-    setCalendarDays(days);
-
-    try {
-      const ms = { day: "numeric", month: "long", year: "numeric" } as const;
-      setDates({
-        english: new Intl.DateTimeFormat("en-US", ms).format(today),
-        bengali: getBengaliDate(today),
-        arabic: new Intl.DateTimeFormat("ar-SA", {
-          ...ms,
-          calendar: "islamic-umalqura",
-        }).format(today),
-      });
-    } catch {
-      setDates({ english: t("currentDate"), bengali: t("currentDate"), arabic: t("currentDate") });
-    }
+    setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setLocaleDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const switchLocale = (newLocale: Locale) => {
+    document.cookie = `locale=${newLocale};path=/;max-age=31536000`;
+    setLocaleDropdownOpen(false);
+    window.location.reload();
+  };
+
+  const handleSelectPreset = (preset: DemoPreset) => {
+    setSelectedRole(preset.role);
+    setEmailInput(preset.email);
+    setPasswordInput("password123");
+    toast.info(`${t(preset.labelKey)} credentials loaded`);
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -120,7 +101,6 @@ export default function LoginPage() {
     const email = emailInput.trim();
     const password = passwordInput;
 
-    // Wrapped in the submit guard: rapid double-presses / double-Enter are ignored.
     void run(async () => {
       try {
         const result = await loginMutation.mutateAsync({ email, password });
@@ -128,381 +108,468 @@ export default function LoginPage() {
         if (!result.error) {
           login(result.data.user);
           toast.success(t("welcomeToast"));
-          // The auth token is an HTTP-only cookie set by the completed login
-          // response. Use a full replacement so the dashboard is rendered with
-          // the fresh server session instead of racing the AuthProvider's
-          // client-side redirect.
           window.location.replace("/");
         }
       } catch (error) {
         const message =
-          error instanceof Error
-            ? error.message
-            : t("invalidCredentials");
+          error instanceof Error ? error.message : t("invalidCredentials");
         toast.error(message);
       }
     });
   };
 
+  const rtlActive = isRtl(currentLocale);
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F8F9FD] p-4 transition-colors duration-500 dark:bg-slate-950 sm:p-8 lg:p-12">
-      {/* ── Ambient Animated Background ─────────────────────────── */}
-      <style>{`
-        @keyframes lp-fade-up {
-          from { opacity: 0; transform: translateY(18px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes lp-drift {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33%      { transform: translate(30px, -24px) scale(1.08); }
-          66%      { transform: translate(-24px, 18px) scale(0.95); }
-        }
-        @keyframes lp-float {
-          0%, 100% { transform: translateY(0); }
-          50%      { transform: translateY(-8px); }
-        }
-      `}</style>
+    <div
+      className={cn(
+        "flex min-h-screen w-full bg-background font-sans text-foreground antialiased",
+        rtlActive && "dir-rtl"
+      )}
+    >
+      {/* ── Left Pillar: Institutional Showcase (Desktop) ──────── */}
+      <div className="relative hidden w-1/2 flex-col justify-between border-r border-slate-800/80 bg-slate-950 p-10 text-white lg:flex xl:p-14 2xl:p-16 select-none overflow-hidden">
+        {/* Subtle geometric dot grid texture */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+            backgroundSize: "32px 32px",
+          }}
+        />
 
-      {/* Gradient orbs */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-indigo-400/25 blur-[120px] dark:bg-indigo-600/20"
-        style={{ animation: "lp-drift 18s ease-in-out infinite" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-48 -right-40 h-[36rem] w-[36rem] rounded-full bg-violet-400/20 blur-[130px] dark:bg-violet-600/15"
-        style={{ animation: "lp-drift 22s ease-in-out infinite", animationDelay: "-6s" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[26rem] w-[26rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300/15 blur-[110px] dark:bg-cyan-500/10"
-        style={{ animation: "lp-drift 26s ease-in-out infinite", animationDelay: "-12s" }}
-      />
+        {/* Soft atmospheric depth gradient */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-indigo-950/40 via-transparent to-slate-950/80"
+        />
 
-      {/* Subtle grid texture */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.35] dark:opacity-[0.15]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, rgb(100 116 139 / 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgb(100 116 139 / 0.08) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(ellipse 70% 60% at 50% 45%, black 30%, transparent 75%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 60% 60% at 50% 45%, black 30%, transparent 75%)",
-        }}
-      />
-
-      {/* ── Main Card ───────────────────────────────────────────── */}
-      <div
-        className="relative flex w-full max-w-[1280px] overflow-hidden rounded-[2.5rem] bg-white/90 shadow-[0_24px_70px_-16px_rgba(79,70,229,0.18),0_8px_24px_-8px_rgba(0,0,0,0.08)] ring-1 ring-slate-900/5 backdrop-blur-xl transition-colors duration-500 dark:bg-slate-900/90 dark:shadow-[0_24px_70px_-16px_rgba(0,0,0,0.6)] dark:ring-white/10 lg:min-h-[760px]"
-        style={{ animation: "lp-fade-up 0.7s cubic-bezier(0.22,1,0.36,1) both" }}
-      >
-        {/* Left Side - Image Board & Live Stats */}
-        <div className="relative hidden w-1/2 p-4 lg:block">
-          <div className="relative h-full w-full overflow-hidden rounded-[2rem]">
-            <Image
-              src="/login-bg.png"
-              alt={t("students")}
-              fill
-              className="object-cover transition-transform duration-[10s] hover:scale-110"
-              priority
-            />
-            {/* Soft Gradient Overlay for depth */}
-            <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/90 via-indigo-900/30 to-transparent mix-blend-multiply transition-opacity duration-300 dark:mix-blend-overlay" />
-            <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/50 to-transparent" />
-
-            {/* Top Logo Badge inside Image */}
-            <div
-              className="absolute left-8 top-8 rounded-full border border-white/20 bg-slate-900/60 py-2 pl-2 pr-6 text-base font-bold tracking-wide text-white shadow-xl backdrop-blur-md"
-              style={{ animation: "lp-fade-up 0.8s cubic-bezier(0.22,1,0.36,1) 0.15s both" }}
-            >
-              <span className="flex items-center gap-3.5">
-                <div className="relative h-14 w-14 overflow-hidden rounded-[12px] border border-white/10 shadow-sm">
-                  <Image
-                    src="/logo.png"
-                    alt="Pathshala Pro Logo"
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-                <div>
-                  <span className="block text-lg font-black tracking-tight text-white">
-                    Pathshala Pro
-                  </span>
-                  <span className="block text-[11px] font-medium tracking-wide text-indigo-300">
-                    Smart Education ERP
-                  </span>
-                </div>
+        {/* Brand Header */}
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="relative h-11 w-11 overflow-hidden rounded-xl border border-white/15 bg-white/5 shadow-md">
+              <Image
+                src="/pathshalapro-app-icon.webp"
+                alt="Pathshala Pro Logo"
+                fill
+                className="object-cover"
+                priority
+              />
+            </div>
+            <div>
+              <span className="block text-lg font-bold tracking-tight text-white">
+                Pathshala Pro
+              </span>
+              <span className="block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                Institutional School ERP
               </span>
             </div>
+          </div>
 
-            {/* Floating Stat Chips */}
-            <div
-              className="absolute right-8 top-8 flex flex-col items-end gap-3"
-              style={{ animation: "lp-fade-up 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both" }}
-            >
-              <div
-                className="flex items-center gap-2.5 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 shadow-lg backdrop-blur-xl"
-                style={{ animation: "lp-float 6s ease-in-out infinite" }}
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/80 text-white shadow-inner">
-                  <GraduationCap className="h-4 w-4" />
-                </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">{t("studentsStat")}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    {t("students")}
-                  </p>
-                </div>
-              </div>
-              <div
-                className="flex items-center gap-2.5 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 shadow-lg backdrop-blur-xl"
-                style={{ animation: "lp-float 6s ease-in-out infinite", animationDelay: "-2s" }}
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/80 text-white shadow-inner">
-                  <Building2 className="h-4 w-4" />
-                </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">{t("institutesStat")}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    {t("institutes")}
-                  </p>
-                </div>
-              </div>
-              <div
-                className="flex items-center gap-2.5 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 shadow-lg backdrop-blur-xl"
-                style={{ animation: "lp-float 6s ease-in-out infinite", animationDelay: "-4s" }}
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/80 text-white shadow-inner">
-                  <Zap className="h-4 w-4" />
-                </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-bold text-white">{t("uptimeStat")}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-white/70">
-                    {t("uptime")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Mini Calendar Glassmorphic Card */}
-            <div
-              className="absolute bottom-8 left-8 right-8 max-w-md overflow-hidden rounded-3xl border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur-xl"
-              style={{ animation: "lp-fade-up 0.8s cubic-bezier(0.22,1,0.36,1) 0.45s both" }}
-            >
-              <div className="flex items-center gap-1.5 justify-between">
-                {calendarDays.length > 0 ? (
-                  calendarDays.map((day, i) => (
-                    <div
-                      key={i}
-                      className={`flex min-w-[2.75rem] flex-col items-center rounded-2xl p-1.5 transition-colors ${day.isActive
-                        ? "border border-white/30 bg-white/25 text-white shadow-sm"
-                        : "text-white/70"
-                        }`}
-                    >
-                      <span className="mb-0.5 text-[10px] font-medium uppercase tracking-wider">
-                        {day.label}
-                      </span>
-                      <span
-                        className={`text-base font-bold ${day.isActive ? "text-white" : "text-white/90"
-                          }`}
-                      >
-                        {day.date}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex h-[50px] w-full items-center justify-center text-white/50">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                )}
-              </div>
-
-              {/* Today's Dates Card */}
-              <div className="mt-3 flex flex-col justify-center rounded-2xl bg-white/95 p-3.5 shadow-lg backdrop-blur-md">
-                {dates.english ? (
-                  <div className="space-y-1.5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      {t("todayCalendars")}
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2 pt-1">
-                      <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 p-1.5">
-                        <span className="rounded bg-blue-200 px-1 text-[9px] font-bold text-blue-800">
-                          EN
-                        </span>
-                        <span className="text-[11px] font-semibold text-slate-800 truncate">
-                          {dates.english}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 rounded-lg bg-teal-50 p-1.5">
-                        <span className="rounded bg-teal-200 px-1 text-[9px] font-bold text-teal-800">
-                          BN
-                        </span>
-                        <span className="text-[11px] font-semibold text-slate-800 truncate">
-                          {dates.bengali}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 rounded-lg bg-emerald-50 p-1.5">
-                        <span className="rounded bg-emerald-200 px-1 text-[9px] font-bold text-emerald-800">
-                          AR
-                        </span>
-                        <span
-                          className="text-[11px] font-semibold text-slate-800 truncate"
-                          dir="rtl"
-                        >
-                          {dates.arabic}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex h-[40px] items-center justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-300 backdrop-blur-xs">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span>Cloud SaaS v1.0</span>
           </div>
         </div>
 
-        {/* Right Side - Form */}
-        <div className="flex w-full flex-col justify-center p-8 sm:p-12 lg:w-1/2 lg:p-14 xl:p-16">
-          <div className="mx-auto w-full max-w-[420px]">
-            {/* Mobile Logo */}
-            <div className="mb-6 inline-flex items-center gap-3 lg:hidden">
-              <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-slate-100 shadow-md dark:border-slate-800">
-                <Image
-                  src="/pathshalapro-app-icon.webp"
-                  alt="App Icon"
-                  fill
-                  className="rounded-2xl object-cover object-[center_72%] scale-110"
-                />
-              </div>
-              <span className="text-xl font-bold text-slate-900 dark:text-white">Pathshala Pro</span>
-            </div>
+        {/* Center Presentation: Narrative & Core Pillars */}
+        <div className="relative z-10 my-auto max-w-xl py-8">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">
+            <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" />
+            <span>{t("enterpriseEdition")}</span>
+          </div>
 
-            <div className="space-y-2 pb-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                {t("securityPortal")}
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-white xl:text-4xl leading-snug">
+            {t("heroHeadline")}
+          </h1>
+
+          <p className="mt-3 text-sm text-slate-300/90 leading-relaxed">
+            {t("heroSubhead")}
+          </p>
+
+          {/* Operational Pillars Grid */}
+          <div className="mt-8 grid grid-cols-2 gap-3.5">
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 transition-colors hover:bg-white/[0.08]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                <GraduationCap className="h-4 w-4" />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {t("welcome")}
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t("description")}
+              <p className="mt-2.5 text-xs font-semibold text-white">
+                {t("pillarAcademic")}
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Field */}
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="email"
-                  className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300"
-                >
-                  {t("emailAddress")}
-                </label>
-                <div className="group relative">
-                  <div className="pointer-events-none absolute left-0 top-0 flex h-full w-12 items-center justify-center text-slate-400 transition-colors group-focus-within:text-primary">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    required
-                    autoComplete="email"
-                    placeholder={t("emailPlaceholder")}
-                    disabled={isPending}
-                    className="h-12 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 pl-12 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all hover:bg-slate-100/60 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:hover:bg-slate-800 dark:focus:bg-slate-900"
-                  />
-                </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 transition-colors hover:bg-white/[0.08]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300">
+                <Receipt className="h-4 w-4" />
               </div>
+              <p className="mt-2.5 text-xs font-semibold text-white">
+                {t("pillarFinance")}
+              </p>
+            </div>
 
-              {/* Password Field */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="password"
-                    className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300"
-                  >
-                    {t("password")}
-                  </label>
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toast.info(t("resetPasswordHelp"));
-                    }}
-                    className="text-xs font-medium text-primary hover:underline"
-                  >
-                    {t("forgotPassword")}
-                  </a>
-                </div>
-                <div className="group relative">
-                  <div className="pointer-events-none absolute left-0 top-0 flex h-full w-12 items-center justify-center text-slate-400 transition-colors group-focus-within:text-primary">
-                    <Lock className="h-4 w-4" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                    placeholder="••••••••••••"
-                    disabled={isPending}
-                    className="h-12 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 pl-12 pr-12 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all hover:bg-slate-100/60 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:hover:bg-slate-800 dark:focus:bg-slate-900"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((p) => !p)}
-                    className="absolute right-0 top-0 flex h-full w-12 items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 transition-colors hover:bg-white/[0.08]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-300">
+                <CheckCircle2 className="h-4 w-4" />
               </div>
+              <p className="mt-2.5 text-xs font-semibold text-white">
+                {t("pillarAttendance")}
+              </p>
+            </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isPending}
-                aria-busy={isPending || undefined}
-                className="group relative mt-2 flex h-12 w-full items-center justify-center overflow-hidden rounded-2xl bg-primary text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/35 disabled:pointer-events-none disabled:opacity-70"
-              >
-                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
-                <span className="relative flex items-center gap-2">
-                  {isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>{t("authenticating")}</span>
-                    </>
-                  ) : (
-                    t("signInErp")
-                  )}
-                </span>
-              </button>
-
-              <div className="text-center pt-4">
-                <p className="text-xs text-slate-500">
-                  {t("newSchool")}{" "}
-                  <Link href="/onboarding" className="font-semibold text-primary hover:underline">
-                    {t("onboardTrial")}
-                  </Link>
-                </p>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 transition-colors hover:bg-white/[0.08]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
+                <Building2 className="h-4 w-4" />
               </div>
-            </form>
+              <p className="mt-2.5 text-xs font-semibold text-white">
+                {t("pillarMultiCampus")}
+              </p>
+            </div>
+          </div>
+
+          {/* Audited Metrics Strip */}
+          <div className="mt-8 grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xs">
+            <div className="px-3 text-center">
+              <p className="text-xl font-bold tracking-tight text-white">
+                {t("institutesStat")}
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                {t("institutes")}
+              </p>
+            </div>
+            <div className="px-3 text-center">
+              <p className="text-xl font-bold tracking-tight text-white">
+                {t("studentsStat")}
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                {t("students")}
+              </p>
+            </div>
+            <div className="px-3 text-center">
+              <p className="text-xl font-bold tracking-tight text-emerald-400">
+                {t("slaMetric")}
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                {t("uptime")}
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* Footer Security Badge */}
+        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-4 text-xs text-slate-400">
+          <div className="flex items-center gap-2">
+            <Lock className="h-3.5 w-3.5 text-slate-500" />
+            
+          </div>
+          <span>&copy; {new Date().getFullYear()} Pathshala Pro</span>
+        </div>
       </div>
+
+      {/* ── Right Pillar: Authentication Portal ─────────────────── */}
+      <div className="flex min-h-screen flex-1 flex-col justify-between p-6 sm:p-10 lg:p-12 xl:p-16">
+        {/* Top Utility Header */}
+        <div className="flex items-center justify-between">
+          {/* Operational Status Badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <span>{t("systemStatus")}</span>
+          </div>
+
+          {/* Controls: Language Switcher & Theme Toggle */}
+          <div className="flex items-center gap-2">
+            {/* Language Switcher */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setLocaleDropdownOpen(!localeDropdownOpen)}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-card px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  localeDropdownOpen && "bg-muted text-foreground"
+                )}
+                aria-label="Select Language"
+              >
+                <Globe className="h-3.5 w-3.5 text-primary" />
+                <span>{localeNames[currentLocale] || "Language"}</span>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform duration-200",
+                    localeDropdownOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {localeDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-40 overflow-hidden rounded-xl border border-border/80 bg-popover p-1 shadow-lg z-50">
+                  {locales.map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => switchLocale(loc)}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-muted",
+                        currentLocale === loc
+                          ? "bg-accent font-semibold text-primary"
+                          : "text-popover-foreground"
+                      )}
+                    >
+                      <span>{localeNames[loc]}</span>
+                      {currentLocale === loc && (
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Dark/Light Mode Toggle */}
+            {isMounted && (
+              <button
+                type="button"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Toggle Theme"
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Center Portal Form Box */}
+        <div className="mx-auto my-auto w-full max-w-[420px] py-8">
+          {/* Mobile Brand Lockup (visible only on small screens) */}
+          <div className="mb-6 flex items-center gap-3 lg:hidden">
+            <div className="relative h-11 w-11 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+              <Image
+                src="/pathshalapro-app-icon.webp"
+                alt="Pathshala Pro Logo"
+                fill
+                className="object-cover"
+                priority
+              />
+            </div>
+            <div>
+              <span className="block text-lg font-bold tracking-tight text-foreground">
+                Pathshala Pro
+              </span>
+              <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Institutional School ERP
+              </span>
+            </div>
+          </div>
+
+          {/* Form Header */}
+          <div className="space-y-1.5 pb-6">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>{t("securityPortal")}</span>
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {t("welcome")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("description")}
+            </p>
+          </div>
+
+          {/* Quick Demo Credentials Bar */}
+          <div className="mb-5 rounded-xl border border-border/80 bg-muted/40 p-2.5">
+            <div className="flex items-center justify-between pb-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("demoAccounts")}
+              </span>
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70" />
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {DEMO_PRESETS.map((preset) => (
+                <button
+                  key={preset.role}
+                  type="button"
+                  onClick={() => handleSelectPreset(preset)}
+                  className={cn(
+                    "rounded-lg border px-1.5 py-1 text-center text-xs font-medium transition-all",
+                    selectedRole === preset.role
+                      ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                      : "border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {t(preset.labelKey)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Authentication Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Field */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="email"
+                className="text-xs font-semibold uppercase tracking-wider text-foreground"
+              >
+                {t("emailAddress")}
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => {
+                    setEmailInput(e.target.value);
+                    if (selectedRole) setSelectedRole(null);
+                  }}
+                  required
+                  autoComplete="email"
+                  placeholder={t("emailPlaceholder")}
+                  disabled={isPending}
+                  className="h-11 w-full rounded-xl border border-input bg-card pl-10 pr-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/60 outline-none transition-all hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="password"
+                  className="text-xs font-semibold uppercase tracking-wider text-foreground"
+                >
+                  {t("password")}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setForgotModalOpen(true)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {t("forgotPassword")}
+                </button>
+              </div>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted-foreground">
+                  <Lock className="h-4 w-4" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••••••"
+                  disabled={isPending}
+                  className="h-11 w-full rounded-xl border border-input bg-card pl-10 pr-10 text-sm font-medium text-foreground placeholder:text-muted-foreground/60 outline-none transition-all hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Me Option */}
+            <div className="flex items-center space-x-2 pt-0.5">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(!!checked)}
+              />
+              <label
+                htmlFor="remember"
+                className="text-xs font-medium leading-none text-muted-foreground cursor-pointer select-none"
+              >
+                {t("rememberMe")}
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>{t("authenticating")}</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  <span>{t("signInErp")}</span>
+                </>
+              )}
+            </Button>
+
+            {/* Onboarding Link */}
+            <div className="pt-3 text-center">
+              <p className="text-xs text-muted-foreground">
+                {t("newSchool")}{" "}
+                <Link
+                  href="/onboarding"
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {t("onboardTrial")}
+                </Link>
+              </p>
+            </div>
+          </form>
+        </div>
+
+        {/* Trust & Compliance Footer */}
+        <div className="text-center text-[11px] text-muted-foreground/80">
+          <p>
+            
+          </p>
+        </div>
+      </div>
+
+      {/* Forgot Password Guidance Modal */}
+      <AppModal
+        isOpen={forgotModalOpen}
+        onClose={() => setForgotModalOpen(false)}
+        title={t("resetModalTitle")}
+        maxWidth="md"
+      >
+        <div className="space-y-4 py-2">
+          <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-muted/30 p-4">
+            <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed text-foreground">
+              {t("resetPasswordHelp")}
+            </p>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setForgotModalOpen(false)}
+            >
+              {t("resetModalClose")}
+            </Button>
+          </div>
+        </div>
+      </AppModal>
     </div>
   );
 }

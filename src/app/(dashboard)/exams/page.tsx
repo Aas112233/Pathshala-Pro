@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, Pencil, Trash2, Eye, Calendar, Printer, FileText, Users } from "lucide-react";
 import { useExams, useCreateExam, useDeleteExam, type Exam } from "@/hooks/use-exams";
-import { useAcademicYears } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
@@ -75,11 +75,6 @@ interface ClassSubjectOption {
   };
 }
 
-interface AcademicYearOption {
-  id: string;
-  label: string;
-}
-
 export default function ExamsPage() {
   const t = useTranslations('exams');
   const tCommon = useTranslations("common");
@@ -104,19 +99,21 @@ export default function ExamsPage() {
   const { exportExamAdmitCardPDF, exportBatchAdmitCardsPDF, exportTranscriptPDF } = usePDFExport();
   const [printingExamId, setPrintingExamId] = useState<string | null>(null);
 
-  const { data: examsData, isLoading } = useExams();
-  const { data: academicYearsData } = useAcademicYears();
+  const { academicYears, selectedAcademicYearId } = useAcademicYearContext();
+  const { data: examsData, isLoading } = useExams({
+    academicYearId: selectedAcademicYearId || undefined,
+  });
   const createExam = useCreateExam();
   const deleteExam = useDeleteExam();
   const { data: classesData = [] } = useQuery<ClassOption[]>({
-    queryKey: ["classes-for-exams"],
+    queryKey: ["classes", "exams"],
     queryFn: async (): Promise<ClassOption[]> => {
       const response = await api.get<ClassOption>("/api/classes?limit=100");
       return Array.isArray(response.data) ? response.data : [];
     },
   });
   const { data: classSubjects = [], isLoading: isClassSubjectsLoading } = useQuery<ClassSubjectOption[]>({
-    queryKey: ["exam-class-subjects", selectedClassId],
+    queryKey: ["class-subjects", "exams", selectedClassId],
     queryFn: async (): Promise<ClassSubjectOption[]> => {
       const response = await api.get<ClassSubjectOption[]>(`/api/class-subjects?classId=${selectedClassId}`) as ApiSuccessResponse<ClassSubjectOption[]>;
       return response.data;
@@ -126,22 +123,27 @@ export default function ExamsPage() {
 
   // Extract data from API response structure
   const exams = examsData ?? [];
-  const academicYears = (Array.isArray(academicYearsData)
-    ? academicYearsData
-    : academicYearsData?.data ?? []) as AcademicYearOption[];
   const classes = classesData;
   const selectedSubjectIds = selectedClassId
     ? (subjectSelectionByClass[selectedClassId] ?? classSubjects.map((item) => item.subjectId))
     : [];
 
   const [formData, setFormData] = useState({
-    academicYearId: "",
+    academicYearId: selectedAcademicYearId,
     name: "",
     type: "MID_TERM" as Exam["type"],
     startDate: "",
     endDate: "",
     isPublished: false,
   });
+
+  // Prefill exam form once the global academic year resolves
+  useEffect(() => {
+    if (selectedAcademicYearId && !formData.academicYearId) {
+      setFormData((prev) => ({ ...prev, academicYearId: selectedAcademicYearId }));
+    }
+  }, [selectedAcademicYearId, formData.academicYearId]);
+
   const [formErrors, setFormErrors] = useState<{
     academicYearId?: string;
     name?: string;
@@ -157,7 +159,7 @@ export default function ExamsPage() {
 
   function resetForm() {
     setFormData({
-      academicYearId: "",
+      academicYearId: selectedAcademicYearId,
       name: "",
       type: "MID_TERM",
       startDate: "",

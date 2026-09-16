@@ -30,7 +30,11 @@ export function getLockedStudentPlacementFields(
 ) {
   if (!hasStudentHistoricalUsage(counts)) return [];
   return (["classId", "groupId", "sectionId", "rollNumber"] as const).filter(
-    (field) => Object.prototype.hasOwnProperty.call(requested, field) && requested[field] !== current[field]
+    (field) => {
+      // If the student currently has no assigned class, initial admission / placement is permitted.
+      if (!current.classId) return false;
+      return Object.prototype.hasOwnProperty.call(requested, field) && requested[field] !== current[field];
+    }
   );
 }
 

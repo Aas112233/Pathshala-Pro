@@ -327,7 +327,6 @@ export default function FeeReportPage() {
                 data={data}
                 isLoading={isLoading}
                 showExport={false}
-                onExportCSV={handleExportExcel}
               />
             ) : (
               <ReportEmptyState

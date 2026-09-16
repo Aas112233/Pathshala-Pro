@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/providers/auth-provider";
 import {
@@ -28,49 +28,43 @@ import {
   formatNoticeRelativeTime,
 } from "@/lib/notices-helpers";
 import { NoticeDetailModal } from "./notice-detail-modal";
+import { useNotices } from "@/hooks/use-queries";
 
 export function LoginAnnouncementsDialog() {
   const t = useTranslations();
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [announcements, setAnnouncements] = useState<NoticeItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [viewingDetail, setViewingDetail] = useState<NoticeItem | null>(null);
 
-  const checkLoginAnnouncements = useCallback(async () => {
-    if (!user || isAuthLoading) return;
+  // Shared ["notices"] cache — no extra network call when header already loaded it.
+  const { data } = useNotices(
+    { activeOnly: true, limit: 50 },
+    { enabled: !!user && !isAuthLoading }
+  );
 
+  const announcements = useMemo(() => {
+    if (!data) return [];
     try {
-      const res = await fetch("/api/notices?activeOnly=true");
-      const json = await res.json();
-
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const ackSet = getAcknowledgedLoginAnnouncements();
-        
-        // Filter for urgent, pinned, or unacknowledged announcements
-        const unacknowledged = json.data.filter((n: NoticeItem) => {
-          if (ackSet.has(n.id)) return false;
-          // Show if pinned, urgent, or published in last 14 days
-          const pubDate = new Date(n.publishDate).getTime();
-          const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-          return n.isPinned || n.priority === "URGENT" || n.priority === "HIGH" || pubDate > fourteenDaysAgo;
-        });
-
-        if (unacknowledged.length > 0) {
-          setAnnouncements(unacknowledged);
-          setCurrentIndex(0);
-          setIsOpen(true);
-        }
-      }
+      const ackSet = getAcknowledgedLoginAnnouncements();
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      return (data as NoticeItem[]).filter((n) => {
+        if (ackSet.has(n.id)) return false;
+        // Show if pinned, urgent, or published in last 14 days
+        const pubDate = new Date(n.publishDate).getTime();
+        return n.isPinned || n.priority === "URGENT" || n.priority === "HIGH" || pubDate > fourteenDaysAgo;
+      });
     } catch {
-      // Silent catch for login announcement check
+      return [];
     }
-  }, [user, isAuthLoading]);
+  }, [data]);
 
   useEffect(() => {
-    // Run announcement check on login / initial load
-    void checkLoginAnnouncements();
-  }, [checkLoginAnnouncements]);
+    if (!user || isAuthLoading || announcements.length === 0) return;
+    setCurrentIndex(0);
+    setIsOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isAuthLoading, announcements.length]);
 
   if (!isOpen || announcements.length === 0) {
     return viewingDetail ? (

@@ -77,13 +77,13 @@ export default function SalaryPage() {
 
   // Fetch staff list for dropdowns
   const { data: staffData } = useQuery({
-    queryKey: ["staff-all-salary"],
+    queryKey: ["staff", "salary"],
     queryFn: () => staffApi.list({ limit: 100, filters: { isActive: true } }),
   });
 
   // Fetch academic years for dropdowns
   const { data: academicYearsData } = useQuery({
-    queryKey: ["academic-years-all-salary"],
+    queryKey: ["academic-years", "salary"],
     queryFn: () => academicYearsApi.list({ limit: 100 }),
   });
 

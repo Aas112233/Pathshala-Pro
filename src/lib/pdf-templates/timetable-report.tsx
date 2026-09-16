@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
 
 export interface TimetableEntry {
   dayOfWeek: string;
@@ -47,7 +48,7 @@ const defaultLabels = {
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 18, paddingBottom: 18, paddingHorizontal: 16, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 7.5, fontFamily: "Helvetica" },
+  page: { paddingTop: 18, paddingBottom: 18, paddingHorizontal: 16, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 7.5, fontFamily: "NotoSans" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1D4ED8", paddingBottom: 8, marginBottom: 8 },
   schoolBlock: { flexDirection: "row", flex: 1, alignItems: "center" },
   logo: { width: 36, height: 36, borderRadius: 6, objectFit: "cover", marginRight: 8 },
@@ -84,6 +85,9 @@ const styles = StyleSheet.create({
 
 export function TimetableReportTemplate({ school, data, generatedAt, labels: l }: TimetableReportProps) {
   const L = { ...defaultLabels, ...l };
+  const fontFamily = getPdfFontFamily(
+    school?.name, school?.address, data.className, data.sectionName, pdfTextSample(data.entries)
+  );
   const periods = data.periods.length > 0 ? data.periods : Array.from(new Set(data.entries.map((e) => e.periodNumber))).sort((a, b) => a - b).map((n) => {
     const e = data.entries.find((x) => x.periodNumber === n)!;
     return { periodNumber: n, startTime: e.startTime, endTime: e.endTime, isBreak: e.isBreak, breakLabel: e.breakLabel };
@@ -95,7 +99,7 @@ export function TimetableReportTemplate({ school, data, generatedAt, labels: l }
 
   return (
     <Document title={`Timetable-${data.className}${data.sectionName ? `-${data.sectionName}` : ""}`} author={school.name}>
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={[styles.page, { fontFamily }]}>
         <View style={styles.header}>
           <View style={styles.schoolBlock}>
             {school.logoUrl ? <Image src={school.logoUrl} style={styles.logo} /> : (

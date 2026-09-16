@@ -12,7 +12,7 @@ import {
 import { createFeeVoucherSchema, updateFeeVoucherSchema } from "@/lib/schemas";
 import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
-import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 import { roundCurrency } from "@/lib/math-utils";
 
 /**
@@ -32,7 +32,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
     const studentId = searchParams.get("studentId") || "";
-    const academicYearId = searchParams.get("academicYearId") || "";
+    const academicYearIdParam = searchParams.get("academicYearId");
+    const resolvedAcademicYearId = academicYearIdParam
+      ? academicYearIdParam.trim()
+      : await resolveRequestAcademicYearId(request, tenantId);
 
     const skip = (page - 1) * limit;
 
@@ -56,8 +59,8 @@ export async function GET(request: NextRequest) {
       where.studentProfileId = studentId;
     }
 
-    if (academicYearId) {
-      where.academicYearId = academicYearId;
+    if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
+      where.academicYearId = resolvedAcademicYearId;
     }
 
     // C1 self-scoping: a STUDENT/PARENT token must never read the whole

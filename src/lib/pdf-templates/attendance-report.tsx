@@ -1,6 +1,7 @@
 import {
   PdfFilterItem,
   PdfSchoolInfo,
+  PdfCommonLabels,
   ReportBaseTemplate,
 } from "./report-base";
 
@@ -18,6 +19,7 @@ interface AttendanceRow {
 }
 
 interface AttendanceReportTemplateProps {
+  locale?: string;
   school: PdfSchoolInfo;
   dateRangeLabel: string;
   generatedAt: string;
@@ -29,18 +31,22 @@ interface AttendanceReportTemplateProps {
     defaulterCount: string;
   };
   records: AttendanceRow[];
+  labels?: PdfCommonLabels;
 }
 
 export function AttendanceReportTemplate({
+  locale,
   school,
   dateRangeLabel,
   generatedAt,
   filters,
   metrics,
   records,
+  labels,
 }: AttendanceReportTemplateProps) {
   return (
     <ReportBaseTemplate
+      locale={locale}
       school={school}
       title="Attendance Analysis Report"
       subtitle="Attendance patterns and defaulter analysis"
@@ -66,6 +72,7 @@ export function AttendanceReportTemplate({
         { key: "status", label: "Status", flex: 1, align: "center" },
       ]}
       rows={records}
+      labels={labels}
       notes={[
         "Attendance percentage is calculated from present days divided by total days.",
         "Students below the minimum threshold should be reviewed by the class teacher.",

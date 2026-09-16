@@ -178,22 +178,45 @@ export async function PUT(
       }
     }
 
-    // Validate dates if both are provided
-    if (data.startDate && data.endDate) {
-      if (new Date(data.startDate) >= new Date(data.endDate)) {
-        return badRequest("Invalid dates", [
-          {
-            field: "startDate",
-            code: "invalid",
-            message: "Start date must be before end date",
-          },
-        ]);
-      }
+    // Validate dates if provided
+    const startDate = data.startDate ? new Date(data.startDate) : undefined;
+    const endDate = data.endDate ? new Date(data.endDate) : undefined;
+
+    if (startDate && isNaN(startDate.getTime())) {
+      return badRequest("Invalid start date", [
+        { field: "startDate", code: "invalid", message: "Start date must be a valid date" },
+      ]);
     }
+
+    if (endDate && isNaN(endDate.getTime())) {
+      return badRequest("Invalid end date", [
+        { field: "endDate", code: "invalid", message: "End date must be a valid date" },
+      ]);
+    }
+
+    const effectiveStart = startDate ?? existingYear.startDate;
+    const effectiveEnd = endDate ?? existingYear.endDate;
+
+    if (effectiveStart >= effectiveEnd) {
+      return badRequest("Invalid dates", [
+        {
+          field: "startDate",
+          code: "invalid",
+          message: "Start date must be before end date",
+        },
+      ]);
+    }
+
+    const updatePayload: Record<string, any> = {};
+    if (data.yearId !== undefined) updatePayload.yearId = data.yearId;
+    if (data.label !== undefined) updatePayload.label = data.label;
+    if (startDate !== undefined) updatePayload.startDate = startDate;
+    if (endDate !== undefined) updatePayload.endDate = endDate;
+    if (data.isClosed !== undefined) updatePayload.isClosed = data.isClosed;
 
     const updatedAcademicYear = await prisma.academicYear.update({
       where: { id },
-      data,
+      data: updatePayload,
       select: {
         id: true,
         yearId: true,

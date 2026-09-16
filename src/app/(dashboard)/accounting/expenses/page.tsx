@@ -227,30 +227,31 @@ export default function ExpensesPage() {
 
             <div className="flex items-center gap-2">
               <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-              <select
+              <AppDropdown
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="h-9 px-3 rounded-md border border-input bg-background text-xs"
-              >
-                <option value="">{t("accounting.expenses.allCategories")}</option>
-                {categories.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedCategory}
+                options={[
+                  { value: "", label: t("accounting.expenses.allCategories") },
+                  ...categories.map((c: any) => ({ value: c.id, label: c.name })),
+                ]}
+                placeholder={t("accounting.expenses.allCategories")}
+                searchable
+                triggerClassName="h-9 text-xs"
+              />
 
-              <select
+              <AppDropdown
                 value={selectedPaymentMethod}
-                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                className="h-9 px-3 rounded-md border border-input bg-background text-xs"
-              >
-                <option value="">{t("accounting.expenses.allMethods")}</option>
-                <option value="CASH">{t("accounting.expenses.methodCash")}</option>
-                <option value="BANK">{t("accounting.expenses.methodBank")}</option>
-                <option value="CHEQUE">{t("accounting.expenses.methodCheque")}</option>
-                <option value="DIGITAL">{t("accounting.expenses.methodDigital")}</option>
-              </select>
+                onChange={setSelectedPaymentMethod}
+                options={[
+                  { value: "", label: t("accounting.expenses.allMethods") },
+                  { value: "CASH", label: t("accounting.expenses.methodCash") },
+                  { value: "BANK", label: t("accounting.expenses.methodBank") },
+                  { value: "CHEQUE", label: t("accounting.expenses.methodCheque") },
+                  { value: "DIGITAL", label: t("accounting.expenses.methodDigital") },
+                ]}
+                placeholder={t("accounting.expenses.allMethods")}
+                triggerClassName="h-9 text-xs"
+              />
 
               {(search || selectedCategory || selectedPaymentMethod) && (
                 <Button

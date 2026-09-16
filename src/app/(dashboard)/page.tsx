@@ -7,12 +7,11 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import {
   useStudents,
-  useStaff,
-  useFees,
   useTransactions,
-  useAttendance,
-  useAcademicYears,
+  useDashboardSummary,
+  useNotices,
 } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { hasPermission } from "@/lib/permissions";
 import {
   GraduationCap,
@@ -54,27 +53,11 @@ export default function DashboardPage() {
   } = useTenantFormatting();
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<(string | number)[]>([]);
-  const [notices, setNotices] = useState<any[]>([]);
-  const [isNoticesLoading, setIsNoticesLoading] = useState(true);
   const [viewingNotice, setViewingNotice] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
   React.useEffect(() => {
     setMounted(true);
-    const fetchDashboardNotices = async () => {
-      try {
-        const res = await fetch("/api/notices?activeOnly=true");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setNotices(json.data.slice(0, 4));
-        }
-      } catch {
-        // Silent catch for dashboard notice feed
-      } finally {
-        setIsNoticesLoading(false);
-      }
-    };
-    void fetchDashboardNotices();
   }, []);
 
   // Permissions & Queries
@@ -82,44 +65,39 @@ export default function DashboardPage() {
     user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "students", "read"));
-  const canReadStaff =
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "staff", "read"));
   const canReadFees =
     user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "fees", "read"));
-  const canReadAcademic =
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN" ||
-    (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "academic", "read"));
 
   const queryEnabled = !isAuthLoading && !!user;
+
+  const { activeAcademicYear } = useAcademicYearContext();
+
+  // Server-aggregated KPI summary: 1 small request instead of the previous
+  // fees-limit-100 + attendance-limit-100 client-side sums.
+  const {
+    data: summary,
+    isLoading: isSummaryLoading,
+  } = useDashboardSummary(
+    { academicYearId: activeAcademicYear?.id },
+    { enabled: queryEnabled }
+  );
+
+  // Shared ["notices"] cache with header/banner/login dialog (limit 4 for feed).
+  const {
+    data: noticesData,
+    isLoading: isNoticesLoading,
+  } = useNotices({ activeOnly: true, limit: 4 }, { enabled: queryEnabled });
+  const notices = noticesData ?? [];
 
   // Real Database Queries
   const {
     data: studentsResponse,
     isLoading: isStudentsLoading,
   } = useStudents(
-    { page: 1, limit: 10 },
+    { page: 1, limit: 10, academicYearId: activeAcademicYear?.id } as any,
     { enabled: queryEnabled && canReadStudents }
-  );
-
-  const {
-    data: staffResponse,
-    isLoading: isStaffLoading,
-  } = useStaff(
-    { page: 1, limit: 1 },
-    { enabled: queryEnabled && canReadStaff }
-  );
-
-  const {
-    data: feesResponse,
-    isLoading: isFeesLoading,
-  } = useFees(
-    { page: 1, limit: 100 },
-    { enabled: queryEnabled && canReadFees }
   );
 
   const {
@@ -130,44 +108,27 @@ export default function DashboardPage() {
     { enabled: queryEnabled && canReadFees }
   );
 
-  const {
-    data: attendanceResponse,
-    isLoading: isAttendanceLoading,
-  } = useAttendance(
-    { page: 1, limit: 100 },
-    { enabled: queryEnabled }
-  );
+  const isKpiLoading = isStudentsLoading || isSummaryLoading;
 
-  const { data: academicYearsData } = useAcademicYears(
-    { page: 1, limit: 10 },
-    { enabled: queryEnabled && canReadAcademic }
-  );
-
-  const isKpiLoading = isStudentsLoading || isStaffLoading || isFeesLoading;
-
-  const totalStudents = (studentsResponse as any)?.pagination?.totalCount ?? 0;
-  const totalStaff = (staffResponse as any)?.pagination?.totalCount ?? 0;
-  const totalFeesCount = (feesResponse as any)?.pagination?.totalCount ?? 0;
+  const totalStudents = summary?.totalStudents ?? (studentsResponse as any)?.pagination?.totalCount ?? 0;
+  const totalStaff = summary?.totalStaff ?? 0;
+  const totalFeesCount = summary?.fees.totalCount ?? 0;
   const recentStudents = (studentsResponse as any)?.data || [];
   const recentTransactions = (transactionsResponse as any)?.data || [];
-  const feeVouchersList = (feesResponse as any)?.data || [];
-  const attendanceList = (attendanceResponse as any)?.data || [];
 
-  // Calculate real financial volume from database vouchers
-  const totalInvoicedSum = feeVouchersList.reduce((acc: number, v: any) => acc + (v.totalDue || 0), 0);
-  const totalCollectedSum = feeVouchersList.reduce((acc: number, v: any) => acc + (v.amountPaid || 0), 0);
-  const totalBalanceDue = feeVouchersList.reduce((acc: number, v: any) => acc + (v.balance || 0), 0);
+  // Server-computed financial + attendance aggregates (today's attendance).
+  const totalInvoicedSum = summary?.fees.totalDue ?? 0;
+  const totalCollectedSum = summary?.fees.amountPaid ?? 0;
+  const totalBalanceDue = summary?.fees.balance ?? 0;
 
-  // Calculate real daily attendance counts
-  const presentCount = attendanceList.filter((a: any) => a.status === "PRESENT").length;
-  const absentCount = attendanceList.filter((a: any) => a.status === "ABSENT").length;
-  const attendanceTotal = attendanceList.length;
-  const attendanceRate = attendanceTotal > 0 ? ((presentCount / attendanceTotal) * 100).toFixed(1) : null;
+  const presentCount = summary?.attendance.present ?? 0;
+  const absentCount = summary?.attendance.absent ?? 0;
+  const attendanceTotal = summary?.attendance.total ?? 0;
+  const attendanceRate = attendanceTotal > 0 ? Number(summary?.attendance.rate ?? 0).toFixed(1) : null;
 
-  // Derive current academic session
-  const activeYear = (academicYearsData as any)?.data?.find((y: any) => !y.isClosed) || (academicYearsData as any)?.data?.[0];
-  const academicSessionLabel = activeYear
-    ? formatAcademicPeriod(activeYear, t("academicPeriods.session"))
+  // Derive current academic session (global selection)
+  const academicSessionLabel = activeAcademicYear
+    ? formatAcademicPeriod(activeAcademicYear, t("academicPeriods.session"))
     : formatAcademicPeriod(null, t("academicPeriods.session"));
 
   // Real Student DataTable Columns

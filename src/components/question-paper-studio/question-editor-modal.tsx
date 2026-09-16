@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { QuestionItem, QuestionType, SubQuestion } from '@/types/exam-studio';
 import { MathSymbolToolbar } from '@/components/question-paper-studio/math-symbol-toolbar';
 import { RichTextField } from '@/components/ui/rich-text-field';
+import { AppDropdown } from '@/components/ui/app-dropdown';
 import {
   X,
   Plus,
@@ -283,22 +284,23 @@ function QuestionEditorDialog({
               <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                 দক্ষতা স্তর (Cognitive Level)
               </label>
-              <select
+              <AppDropdown
                 value={formData.cognitiveLevel || 'জ্ঞান'}
-                onChange={(e) =>
+                onChange={(v) =>
                   setFormData({
                     ...formData,
-                    cognitiveLevel: e.target.value as any,
+                    cognitiveLevel: v as any,
                   })
                 }
-                className="w-full px-3 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-              >
-                <option value="জ্ঞান">জ্ঞানমূলক (Knowledge)</option>
-                <option value="অনুধাবন">অনুধাবনমূলক (Comprehension)</option>
-                <option value="প্রয়োগ">প্রয়োগমূলক (Application)</option>
-                <option value="উচ্চতর দক্ষতা">উচ্চতর দক্ষতা (Higher Order)</option>
-                <option value="সমন্বিত">সমন্বিত (Integrated CQ)</option>
-              </select>
+                options={[
+                  { value: "জ্ঞান", label: "জ্ঞানমূলক (Knowledge)" },
+                  { value: "অনুধাবন", label: "অনুধাবনমূলক (Comprehension)" },
+                  { value: "প্রয়োগ", label: "প্রয়োগমূলক (Application)" },
+                  { value: "উচ্চতর দক্ষতা", label: "উচ্চতর দক্ষতা (Higher Order)" },
+                  { value: "সমন্বিত", label: "সমন্বিত (Integrated CQ)" },
+                ]}
+                triggerClassName="text-xs"
+              />
             </div>
           </div>
 

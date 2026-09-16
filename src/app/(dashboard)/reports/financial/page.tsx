@@ -13,6 +13,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import {
   BarChart,
   ExportDropdown,
@@ -26,11 +27,11 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
+import { usePDFExport } from "@/hooks/use-pdf-export";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { AppDropdown } from "@/components/ui/app-dropdown";
 
 interface ExpenseRecord {
   id: string;
@@ -77,6 +78,7 @@ export default function FinancialReportPage() {
     schoolPhone: settings.phone,
     schoolEmail: settings.email,
   });
+  const { exportFinancialReportPDF } = usePDFExport();
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -154,6 +156,47 @@ export default function FinancialReportPage() {
     });
     if (result.success) {
       toast.success(t("exportedExcel"));
+      return;
+    }
+    toast.error(t("exportFailed"));
+  };
+
+  const handleExportPDF = async () => {
+    const result = await exportFinancialReportPDF({
+      school: {
+        name: settings.name || "Pathshala Pro School",
+        address: settings.address || "",
+        phone: settings.phone || "",
+        email: settings.email || "",
+        logoUrl: settings.logoUrl,
+      },
+      title: t("title"),
+      subtitle: t("description"),
+      generatedAt,
+      dateRangeLabel: `${fromDate || t("start")} to ${toDate || t("present")}`,
+      filters: [
+        { label: t("range"), value: `${fromDate || t("start")} to ${toDate || t("present")}` },
+      ],
+      metrics: metrics
+        ? [
+            { label: t("totalFeeCollections"), value: formatCurrency(metrics.totalIncome), tone: "success" },
+            { label: t("totalOperationalExpenses"), value: formatCurrency(metrics.totalExpenses), tone: "danger" },
+            { label: t("netCashBalance"), value: formatCurrency(metrics.netBalance) },
+            { label: t("topExpenseCategory"), value: metrics.topExpenseCategory },
+          ]
+        : [],
+      records: data.map((row) => ({
+        expenseNumber: row.expenseNumber,
+        title: row.title,
+        payeeName: row.payeeName,
+        category: row.category,
+        paymentMethod: row.paymentMethod,
+        amount: formatCurrency(row.amount),
+        expenseDate: formatDate(row.expenseDate),
+      })),
+    });
+    if (result.success) {
+      toast.success(t("exportedPDF"));
       return;
     }
     toast.error(t("exportFailed"));
@@ -245,6 +288,7 @@ export default function FinancialReportPage() {
           <ExportDropdown
             onExport={(type) => {
               if (type === "excel") void handleExportExcel();
+              if (type === "pdf") void handleExportPDF();
             }}
           />
         ) : undefined}
@@ -275,33 +319,34 @@ export default function FinancialReportPage() {
 
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase">{t("category")}</label>
-            <select
+            <AppDropdown
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">{t("allCategories")}</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedCategory}
+              options={[
+                { value: "all", label: t("allCategories") },
+                ...categories.map((cat) => ({ value: cat.id, label: cat.name })),
+              ]}
+              placeholder={t("allCategories")}
+              searchable
+              triggerClassName="mt-1 text-xs"
+            />
           </div>
 
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase">{t("method")}</label>
-            <select
+            <AppDropdown
               value={selectedMethod}
-              onChange={(e) => setSelectedMethod(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">{t("allPaymentMethods")}</option>
-              <option value="CASH">{t("cash")}</option>
-              <option value="BANK">{t("bankAccount")}</option>
-              <option value="CHEQUE">{t("cheque")}</option>
-              <option value="DIGITAL">{t("digitalGateway")}</option>
-            </select>
+              onChange={setSelectedMethod}
+              options={[
+                { value: "all", label: t("allPaymentMethods") },
+                { value: "CASH", label: t("cash") },
+                { value: "BANK", label: t("bankAccount") },
+                { value: "CHEQUE", label: t("cheque") },
+                { value: "DIGITAL", label: t("digitalGateway") },
+              ]}
+              placeholder={t("allPaymentMethods")}
+              triggerClassName="mt-1 text-xs"
+            />
           </div>
         </div>
 
@@ -376,6 +421,7 @@ export default function FinancialReportPage() {
             <ReportTable
               columns={columns}
               data={data}
+              exportFileName="financial_report"
             />
           </div>
         </>

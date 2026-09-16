@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { getPdfFontFamily } from "./pdf-fonts";
 
 export interface LibraryIssueSlipData {
   schoolName: string;
@@ -27,7 +28,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 30,
     fontSize: 9,
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
     backgroundColor: "#ffffff",
     color: "#1e293b",
   },
@@ -42,12 +43,12 @@ const styles = StyleSheet.create({
   },
   schoolName: {
     fontSize: 16,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#1e3a8a",
   },
   slipTitle: {
     fontSize: 10,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#475569",
     textTransform: "uppercase",
     letterSpacing: 1,
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
     fontSize: 8,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     textTransform: "uppercase",
   },
   badgeIssued: {
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 9,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#334155",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 9,
-    fontFamily: "Helvetica-Bold",
+    fontWeight: 700,
     color: "#0f172a",
   },
   noticeBox: {
@@ -160,10 +161,14 @@ export function LibraryIssueSlipDocument({ data }: { data: LibraryIssueSlipData 
   const isOverdue = data.status === "OVERDUE";
   const isReturned = data.status === "RETURNED";
   const curr = data.currencySymbol || "$";
+  const fontFamily = getPdfFontFamily(
+    data.schoolName, data.borrowerName, data.className, data.sectionName,
+    data.bookTitle, data.bookAuthor, data.issuedByName
+  );
 
   return (
     <Document>
-      <Page size="A5" orientation="landscape" style={styles.page}>
+      <Page size="A5" orientation="landscape" style={[styles.page, { fontFamily }]}>
         {/* Header */}
         <View style={styles.headerContainer}>
           <View>

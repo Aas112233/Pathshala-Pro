@@ -117,6 +117,7 @@ model Tenant {
   questionPaperVersions  QuestionPaperVersion[]
   questionPaperSets      QuestionPaperSet[]
   syllabusWeights        SyllabusWeight[]
+  calendarEvents         CalendarEvent[]
 }
 
 model User {
@@ -143,6 +144,7 @@ model User {
   recordedExpenses       Expense[]
   issuedBookIssues       BookIssue[]
   createdHomeworks       Homework[]
+  createdCalendarEvents  CalendarEvent[]        @relation("CalendarEventCreator")
   inventoryTransactions  InventoryTransaction[]
   approvedLeaves         LeaveApplication[]
   issuedCertificates     Certificate[]
@@ -182,7 +184,7 @@ model StudentProfile {
   classId            String?
   groupId            String?
   sectionId          String?
-  status             String    @default("ACTIVE")
+  status             StudentStatus @default(ACTIVE)
   admissionDate      DateTime  @default(now())
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -836,6 +838,7 @@ model Class {
   classFeeStructures  ClassFeeStructure[]
   timetables          Timetable[]
   homeworks           Homework[]
+  calendarEvents      CalendarEvent[]
   enquiries           Enquiry[]
   academicSessions    StudentAcademicSession[]
   questions           Question[]
@@ -889,6 +892,7 @@ model Section {
   studentProfiles  StudentProfile[]
   timetables       Timetable[]
   homeworks        Homework[]
+  calendarEvents   CalendarEvent[]
   academicSessions StudentAcademicSession[]
 
   @@unique([tenantId, sectionId])
@@ -1825,6 +1829,40 @@ model AcademicHoliday {
 }
 
 // =========================================================================
+// CALENDAR MODULE
+// =========================================================================
+
+model CalendarEvent {
+  id                String    @id @default(cuid())
+  tenantId          String
+  title             String
+  description       String?   @db.Text
+  category          String    @default("EVENT") // EVENT, MEETING, PTM, SPORTS, CULTURAL, ADMISSION_TEST, OTHER
+  location          String?
+  color             String    @default("blue") // UI accent token: blue | amber | emerald | rose | violet | slate
+  startDate         DateTime
+  endDate           DateTime? // null = same day; timed events carry clock time on both bounds
+  isAllDay          Boolean   @default(true)
+  recurrence        String    @default("NONE") // NONE, WEEKLY, MONTHLY
+  recurrenceEndDate DateTime? // inclusive; null = recurring forever (UI caps expansion range)
+  audience          String    @default("ALL") // ALL, STAFF, CLASS
+  classId           String?
+  sectionId         String?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  class     Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation("CalendarEventCreator", fields: [createdById], references: [id])
+
+  @@index([tenantId, startDate, endDate])
+  @@index([tenantId, category])
+  @@index([tenantId, classId])
+}
+
+// =========================================================================
 // STUDENT ADMISSION & APPLICANT DOCUMENT MODELS
 // =========================================================================
 
@@ -2074,4 +2112,11 @@ model PlatformSetting {
   description     String?
   lastUpdatedById String
   updatedAt       DateTime @updatedAt
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  GRADUATED
+  TRANSFERRED
 }

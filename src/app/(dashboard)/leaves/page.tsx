@@ -55,7 +55,7 @@ export default function LeavesPage() {
   });
 
   const { data: studentsData } = useQuery({
-    queryKey: ["students-leaves"],
+    queryKey: ["students", "leaves"],
     queryFn: async () => {
       const r = await fetch("/api/students?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
@@ -63,7 +63,7 @@ export default function LeavesPage() {
     },
   });
   const { data: staffData } = useQuery({
-    queryKey: ["staff-leaves"],
+    queryKey: ["staff", "leaves"],
     queryFn: async () => {
       const r = await fetch("/api/staff?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed");

@@ -200,6 +200,7 @@ export const createAcademicYearSchema = z.object({
   label: z.string().min(1, "Label is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
+  isClosed: z.boolean().optional(),
 });
 
 export const updateAcademicYearSchema = createAcademicYearSchema.partial();
@@ -906,3 +907,57 @@ export const generateBlueprintSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Blueprint marks (${computed}) must equal totalMarks (${data.totalMarks})`, path: ["totalMarks"] });
   }
 });
+
+// Calendar schemas
+export const CALENDAR_CATEGORIES = ["EVENT", "MEETING", "PTM", "SPORTS", "CULTURAL", "ADMISSION_TEST", "OTHER"] as const;
+export const CALENDAR_COLORS = ["blue", "amber", "emerald", "rose", "violet", "slate"] as const;
+export const CALENDAR_RECURRENCES = ["NONE", "WEEKLY", "MONTHLY"] as const;
+export const CALENDAR_AUDIENCES = ["ALL", "STAFF", "CLASS"] as const;
+export const HOLIDAY_TYPES = ["PUBLIC", "RELIGIOUS", "TERM_BREAK", "EXAM_PREP", "EMERGENCY"] as const;
+
+export const createCalendarEventSchema = z
+  .object({
+    title: z.string().min(1, "Title is required").max(120, "Title is too long"),
+    description: z.string().max(2000).optional().or(z.literal("")),
+    category: z.enum(CALENDAR_CATEGORIES).default("EVENT"),
+    location: z.string().max(160).optional().or(z.literal("")),
+    color: z.enum(CALENDAR_COLORS).default("blue"),
+    startDate: z.string().min(1, "Start date is required"),
+    endDate: z.string().optional().or(z.literal("")),
+    isAllDay: z.boolean().default(true),
+    recurrence: z.enum(CALENDAR_RECURRENCES).default("NONE"),
+    recurrenceEndDate: z.string().optional().or(z.literal("")),
+    audience: z.enum(CALENDAR_AUDIENCES).default("ALL"),
+    classId: z.string().optional().or(z.literal("")),
+    sectionId: z.string().optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    if (data.endDate && data.startDate && new Date(data.endDate) < new Date(data.startDate)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End date cannot be before start date", path: ["endDate"] });
+    }
+    if (data.audience === "CLASS" && !data.classId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select a class for class-scoped events", path: ["classId"] });
+    }
+    if (data.sectionId && !data.classId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Section requires a class", path: ["sectionId"] });
+    }
+  });
+
+export const updateCalendarEventSchema = createCalendarEventSchema.innerType().partial();
+
+export const createAcademicHolidaySchema = z
+  .object({
+    academicYearId: z.string().min(1, "Academic year is required"),
+    title: z.string().min(1, "Title is required").max(120, "Title is too long"),
+    holidayType: z.enum(HOLIDAY_TYPES).default("PUBLIC"),
+    startDate: z.string().min(1, "Start date is required"),
+    endDate: z.string().min(1, "End date is required"),
+    description: z.string().max(1000).optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    if (new Date(data.endDate) < new Date(data.startDate)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End date cannot be before start date", path: ["endDate"] });
+    }
+  });
+
+export const updateAcademicHolidaySchema = createAcademicHolidaySchema.innerType().partial();

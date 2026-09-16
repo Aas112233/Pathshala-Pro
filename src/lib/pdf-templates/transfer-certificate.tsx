@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily } from "./pdf-fonts";
 
 export interface TransferCertificateData {
   certificateNumber: string;
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     color: "#0F172A",
     fontSize: 9,
-    fontFamily: "Helvetica",
+    fontFamily: "NotoSans",
   },
   watermark: {
     position: "absolute",
@@ -148,13 +149,18 @@ const styles = StyleSheet.create({
 
 export function TransferCertificateTemplate({ school, data, verificationUrl, labels: l }: TransferCertificateProps) {
   const L = { ...defaultLabels, ...l };
+  const fontFamily = getPdfFontFamily(
+    school?.name, school?.address, data.studentName, data.fatherName,
+    data.motherName, data.guardianName, data.className, data.section,
+    data.reasonForLeaving, data.conduct, data.remarks
+  );
   const qrSrc = verificationUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verificationUrl)}`
     : undefined;
 
   return (
     <Document title={`TC-${data.certificateNumber}`} author={school.name}>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { fontFamily }]}>
         <View style={styles.borderOuter} />
         <View style={styles.borderInner} />
         <Text style={styles.watermark}>{school.name?.split(" ")[0]?.toUpperCase() || "SCHOOL"}</Text>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Save, Calendar } from "lucide-react";
 import { useExam, useUpdateExam } from "@/hooks/use-exams";
-import { useAcademicYears } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
@@ -56,11 +56,6 @@ interface ClassSubjectOption {
   };
 }
 
-interface AcademicYearOption {
-  id: string;
-  label: string;
-}
-
 export default function EditExamPage() {
   const t = useTranslations('exams');
   const router = useRouter();
@@ -69,7 +64,7 @@ export default function EditExamPage() {
   const { formatDate } = useTenantFormatting();
 
   const { data: examData, isLoading: isExamLoading, error: examError } = useExam(examId || "");
-  const { data: academicYearsData } = useAcademicYears();
+  const { academicYears } = useAcademicYearContext();
   const updateExam = useUpdateExam();
 
   const [selectedClassId, setSelectedClassId] = useState("");
@@ -78,7 +73,7 @@ export default function EditExamPage() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const { data: classesData = [] } = useQuery<ClassOption[]>({
-    queryKey: ["classes-for-exams-edit"],
+    queryKey: ["classes", "exams-edit"],
     queryFn: async (): Promise<ClassOption[]> => {
       const response = await api.get<ClassOption>("/api/classes?limit=100");
       return Array.isArray(response.data) ? response.data : [];
@@ -86,7 +81,7 @@ export default function EditExamPage() {
   });
 
   const { data: classSubjects = [], isLoading: isClassSubjectsLoading } = useQuery<ClassSubjectOption[]>({
-    queryKey: ["exam-class-subjects-edit", selectedClassId],
+    queryKey: ["class-subjects", "exam-edit", selectedClassId],
     queryFn: async (): Promise<ClassSubjectOption[]> => {
       if (!selectedClassId) return [];
       const response = await api.get<ClassSubjectOption[]>(`/api/class-subjects?classId=${selectedClassId}`) as ApiSuccessResponse<ClassSubjectOption[]>;
@@ -96,14 +91,11 @@ export default function EditExamPage() {
   });
 
   // Extract data from API response structure FIRST (before the query that depends on it)
-  const academicYears = (Array.isArray(academicYearsData)
-    ? academicYearsData
-    : academicYearsData?.data ?? []) as AcademicYearOption[];
   const classes = classesData;
 
   // Fetch all classes with their subjects in parallel to find matching class for saved subjects
   const { data: allClassSubjectsData } = useQuery<Map<string, ClassSubjectOption[]>>({
-    queryKey: ["all-classes-subjects-for-edit", classes.map((c) => c.id).join(",")],
+    queryKey: ["class-subjects", "all-edit", classes.map((c) => c.id).join(",")],
     queryFn: async () => {
       const classSubjectsMap = new Map<string, ClassSubjectOption[]>();
       if (!classes.length) return classSubjectsMap;

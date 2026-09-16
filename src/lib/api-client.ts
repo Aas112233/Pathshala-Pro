@@ -38,6 +38,17 @@ export class ApiClient {
       ...(customHeaders as Record<string, string> || {}),
     };
 
+    if (typeof window !== "undefined" && !headers["X-Academic-Year-Id"] && !headers["x-academic-year-id"]) {
+      try {
+        const match = document.cookie.match(/(?:^|;\s*)pathshala_academic_year=([^;]+)/);
+        if (match?.[1]) {
+          headers["X-Academic-Year-Id"] = decodeURIComponent(match[1]);
+        }
+      } catch {
+        // ignore cookie read error
+      }
+    }
+
     const url = `${this.baseUrl}${endpoint}`;
 
     const response = await fetch(url, {
@@ -56,7 +67,20 @@ export class ApiClient {
       }
 
       const error = result as ApiErrorResponse;
-      throw new ApiError(error.message, response.status, error.details);
+      // AGENTS #11: unmask field-level validation errors. Appending them to the
+      // Error message means every existing `toast.error(e?.message)` renders
+      // them without touching each call site. `details` is still preserved for
+      // programmatic use.
+      const detailText = Array.isArray(error.details)
+        ? error.details
+            .map((detail) => `[Field '${detail.field ?? "-"}', Code: ${detail.code}] ${detail.message}`)
+            .join("\n")
+        : "";
+      throw new ApiError(
+        detailText && error.message ? `${error.message}\n${detailText}` : error.message || detailText,
+        response.status,
+        error.details
+      );
     }
 
     return result as T;
@@ -100,6 +124,12 @@ export class ApiClient {
         }
       });
     }
+
+    // Handle common academic filter parameters directly
+    if ((params as any).classId) searchParams.set("classId", String((params as any).classId));
+    if ((params as any).sectionId) searchParams.set("sectionId", String((params as any).sectionId));
+    if ((params as any).groupId) searchParams.set("groupId", String((params as any).groupId));
+    if ((params as any).status) searchParams.set("status", String((params as any).status));
 
     // Handle gender filter specifically
     if ((params as any).gender) {
@@ -524,5 +554,31 @@ export const timetableApi = {
     const qs = new URLSearchParams(params).toString();
     return api.get<any>(`/api/timetables/conflicts?${qs}` as any);
   },
+};
+
+export const calendarApi = {
+  list: (params: { start: string; end: string; classId?: string; sectionId?: string }) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v) as [string, string][]
+    ).toString();
+    return api.get<any[]>(`/api/calendar?${qs}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/calendar", data),
+  update: (id: string, data: any) => api.put<any>(`/api/calendar/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/calendar/${id}`),
+  icsUrl: (params: { start: string; end: string }) => {
+    const qs = new URLSearchParams(params).toString();
+    return `/api/calendar/ics?${qs}`;
+  },
+};
+
+export const holidaysApi = {
+  list: (academicYearId: string) => {
+    const qs = new URLSearchParams({ academicYearId }).toString();
+    return api.get<any[]>(`/api/holidays?${qs}` as any);
+  },
+  create: (data: any) => api.post<any>("/api/holidays", data),
+  update: (id: string, data: any) => api.put<any>(`/api/holidays/${id}`, data),
+  remove: (id: string) => api.delete<any>(`/api/holidays/${id}`),
 };
 

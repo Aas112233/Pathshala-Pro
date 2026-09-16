@@ -93,6 +93,9 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
     case "academic-years":
     case "class-subjects":
       return "academic";
+    case "calendar":
+    case "holidays":
+      return "calendar";
     case "exams":
     case "exam-results":
     case "promotion-rules":

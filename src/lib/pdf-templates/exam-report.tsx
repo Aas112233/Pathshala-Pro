@@ -1,6 +1,7 @@
 import {
   PdfFilterItem,
   PdfSchoolInfo,
+  PdfCommonLabels,
   ReportBaseTemplate,
 } from "./report-base";
 
@@ -19,6 +20,7 @@ interface ExamRow {
 }
 
 interface ExamReportTemplateProps {
+  locale?: string;
   school: PdfSchoolInfo;
   dateRangeLabel: string;
   generatedAt: string;
@@ -30,18 +32,22 @@ interface ExamReportTemplateProps {
     topPerformers: string;
   };
   records: ExamRow[];
+  labels?: PdfCommonLabels;
 }
 
 export function ExamReportTemplate({
+  locale,
   school,
   dateRangeLabel,
   generatedAt,
   filters,
   metrics,
   records,
+  labels,
 }: ExamReportTemplateProps) {
   return (
     <ReportBaseTemplate
+      locale={locale}
       school={school}
       title="Exam Performance Report"
       subtitle="Exam results and subject performance analysis"
@@ -68,6 +74,7 @@ export function ExamReportTemplate({
         { key: "status", label: "Status", flex: 0.8, align: "center" },
       ]}
       rows={records}
+      labels={labels}
       notes={[
         "Pass and grade values are based on the configured grading logic at export time.",
         "Use the detailed spreadsheet export for deeper subject-level analysis.",

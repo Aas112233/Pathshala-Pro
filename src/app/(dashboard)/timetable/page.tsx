@@ -63,7 +63,7 @@ export default function TimetablePage() {
 
   // Masters for dropdowns
   const { data: classesData } = useQuery({
-    queryKey: ["classes-all-timetable"],
+    queryKey: ["classes", "timetable"],
     queryFn: async () => {
       const r = await fetch("/api/classes?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed to fetch classes");
@@ -71,7 +71,7 @@ export default function TimetablePage() {
     },
   });
   const { data: sectionsData } = useQuery({
-    queryKey: ["sections-all-timetable", selectedClass],
+    queryKey: ["sections", "timetable", selectedClass],
     queryFn: async () => {
       if (!selectedClass) return { data: [] };
       const r = await fetch(`/api/sections?limit=100&classId=${selectedClass}`, { credentials: "include" });
@@ -81,7 +81,7 @@ export default function TimetablePage() {
     enabled: !!selectedClass,
   });
   const { data: yearsData } = useQuery({
-    queryKey: ["academic-years-timetable"],
+    queryKey: ["academic-years", "timetable"],
     queryFn: async () => {
       const r = await fetch("/api/academic-years?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed to fetch years");
@@ -89,7 +89,7 @@ export default function TimetablePage() {
     },
   });
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects-all-timetable"],
+    queryKey: ["subjects", "timetable"],
     queryFn: async () => {
       const r = await fetch("/api/subjects", { credentials: "include" });
       if (!r.ok) throw new Error("Failed to fetch subjects");
@@ -97,7 +97,7 @@ export default function TimetablePage() {
     },
   });
   const { data: staffData } = useQuery({
-    queryKey: ["staff-all-timetable"],
+    queryKey: ["staff", "timetable"],
     queryFn: async () => {
       const r = await fetch("/api/staff?limit=100", { credentials: "include" });
       if (!r.ok) throw new Error("Failed to fetch staff");
@@ -145,7 +145,7 @@ export default function TimetablePage() {
       periods: effPeriods,
     };
     const res = await exportTimetablePDF(school, data, new Date().toLocaleDateString());
-    if(res.success) toast.success("Timetable PDF downloaded"); else toast.error("Failed");
+    if(res.success) toast.success(t("pdfDownloadSuccess")); else toast.error(tCommon("downloadFailed"));
   };
 
   const entriesBySlot = useMemo(() => {

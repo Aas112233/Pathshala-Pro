@@ -1,6 +1,7 @@
 import {
   PdfFilterItem,
   PdfSchoolInfo,
+  PdfCommonLabels,
   ReportBaseTemplate,
 } from "./report-base";
 import type { ProfitLossStatementRow } from "@/lib/profit-loss-export";
@@ -17,6 +18,7 @@ export interface ProfitLossReportTemplateProps {
   columns: { section: string; lineItem: string; amount: string; share: string };
   rows: ProfitLossStatementRow[];
   notes?: string[];
+  labels?: PdfCommonLabels;
 }
 
 /**
@@ -37,6 +39,7 @@ export function ProfitLossReportTemplate({
   columns,
   rows,
   notes,
+  labels,
 }: ProfitLossReportTemplateProps) {
   return (
     <ReportBaseTemplate
@@ -56,6 +59,7 @@ export function ProfitLossReportTemplate({
         { key: "share", label: columns.share, flex: 0.7, align: "right" },
       ]}
       rows={rows}
+      labels={labels}
       notes={notes}
     />
   );

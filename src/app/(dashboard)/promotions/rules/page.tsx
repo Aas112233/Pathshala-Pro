@@ -19,7 +19,8 @@ import {
   useDeletePromotionRule,
   type PromotionRule,
 } from "@/hooks/use-exams";
-import { useAcademicYears, useStudents } from "@/hooks/use-queries";
+import { useStudents } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,10 +61,12 @@ export default function PromotionRulesPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any | null>(null);
   const [deletingRule, setDeletingRule] = useState<any | null>(null);
-  const [selectedYear, setSelectedYear] = useState<string>("");
+  const {
+    academicYears,
+    selectedAcademicYearId: selectedYear,
+  } = useAcademicYearContext();
 
   const { data: rulesData, isLoading } = usePromotionRules({ academicYearId: selectedYear || undefined });
-  const { data: academicYearsData } = useAcademicYears();
   const { data: studentsData } = useStudents();
 
   const createRule = useCreatePromotionRule();
@@ -92,7 +95,6 @@ export default function PromotionRulesPage() {
 
   // Extract data from API response
   const rules = Array.isArray(rulesData) ? rulesData : (rulesData as any)?.data;
-  const academicYears = Array.isArray(academicYearsData) ? academicYearsData : (academicYearsData as any)?.data;
   const students = Array.isArray(studentsData) ? studentsData : (studentsData as any)?.data;
 
   // Fallback to unique classes from students if classesList is empty
@@ -217,22 +219,6 @@ export default function PromotionRulesPage() {
           <Plus className="h-4 w-4 mr-2" />
           {t("createRule")}
         </Button>
-      </div>
-
-      {/* Filter */}
-      <div className="flex items-center gap-4">
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[300px]">
-            <SelectValue placeholder={t("selectAcademicYear")} />
-          </SelectTrigger>
-          <SelectContent>
-            {academicYears?.map((year: any) => (
-              <SelectItem key={year.id} value={year.id}>
-                {year.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Rules Grid */}

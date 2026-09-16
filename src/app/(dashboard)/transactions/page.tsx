@@ -24,11 +24,15 @@ import {
   Eye,
   Layers,
   FileSpreadsheet,
+  FileText,
   Loader2,
 } from "lucide-react";
 import { downloadBlob } from "@/lib/download-blob";
 import { useTransactionViewModel } from "@/viewmodels/transactions/use-transaction-view-model";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useExcelExport } from "@/hooks/use-excel-export";
+import { usePDFExport } from "@/hooks/use-pdf-export";
+import type { ExcelColumn } from "@/lib/excel-exporter";
 import { formatStudentName } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -37,7 +41,7 @@ import { toast } from "sonner";
 export default function TransactionsPage() {
   const t = useTranslations("transactions");
   const tCommon = useTranslations("common");
-  const { formatCurrency, formatDate } = useTenantFormatting();
+  const { formatCurrency, formatDate, settings } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadFees = hasPermission(perms, "fees", "read");
@@ -61,6 +65,8 @@ export default function TransactionsPage() {
 
   const [detail, setDetail] = useState<any | null>(null);
   const [isExportingDaybook, setIsExportingDaybook] = useState(false);
+  const [isExportingDaybookPdf, setIsExportingDaybookPdf] = useState(false);
+  const { exportFeeDaybookPDF } = usePDFExport();
 
   const handleDelete = async (id: string) => {
     if (!confirm(t("confirmDelete"))) return;
@@ -70,9 +76,9 @@ export default function TransactionsPage() {
   };
 
   /**
-   * Full-range Fee Collections Daybook. Built server-side because the CSV
-   * below can only ever hold the page currently in memory — the daybook has to
-   * cover every receipt in the selected range.
+   * Full-range Fee Collections Daybook. Built server-side because the table
+   * export below can only ever hold the page currently in memory — the daybook
+   * has to cover every receipt in the selected range.
    */
   const handleExportDaybook = async () => {
     if (isExportingDaybook) return;
@@ -98,38 +104,133 @@ export default function TransactionsPage() {
     }
   };
 
-  const handleExportCsv = () => {
+  const { exportData } = useExcelExport({
+    fileName: "transactions",
+    schoolName: settings.name || "Pathshala Pro School",
+    schoolAddress: settings.address,
+    schoolPhone: settings.phone,
+    schoolEmail: settings.email,
+  });
+
+  /**
+   * Full-range Fee Collections Daybook as PDF. Pulls the same server-built row
+   * set as the Excel daybook (`?format=json`) so it is never truncated to the
+   * page currently loaded in the table.
+   */
+  const handleExportDaybookPDF = async () => {
+    if (isExportingDaybookPdf) return;
+    setIsExportingDaybookPdf(true);
+    try {
+      const params = new URLSearchParams({ format: "json" });
+      if (filters.fromDate) params.set("startDate", filters.fromDate);
+      if (filters.toDate) params.set("endDate", filters.toDate);
+      const res = await fetch(`/api/accounting/daybook?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message || t("daybookFailed"));
+      }
+      const json = await res.json();
+      const rows = Array.isArray(json.data) ? json.data : [];
+      if (rows.length === 0) {
+        toast.error(t("noData"));
+        return;
+      }
+
+      const totalCollected = rows.reduce(
+        (sum: number, row: any) => sum + Number(row.amountPaid || 0),
+        0
+      );
+      const dateRange = `${filters.fromDate || "—"} → ${filters.toDate || "—"}`;
+
+      const result = await exportFeeDaybookPDF({
+        school: {
+          name: settings.name || "Pathshala Pro School",
+          address: settings.address || "",
+          phone: settings.phone || "",
+          email: settings.email || "",
+          logoUrl: settings.logoUrl,
+        },
+        title: t("title"),
+        subtitle: t("daybookExport"),
+        generatedAt: new Date().toLocaleString(),
+        dateRangeLabel: dateRange,
+        filters: [
+          {
+            label: t("tableColumns.paymentMethod"),
+            value: filters.paymentMethod === "ALL" ? t("allStatuses") : filters.paymentMethod,
+          },
+          { label: t("tableColumns.date"), value: dateRange },
+        ],
+        metrics: [
+          { label: t("kpi.totalTransactions"), value: String(rows.length) },
+          { label: t("kpi.totalAmount"), value: formatCurrency(totalCollected), tone: "success" },
+        ],
+        records: rows.map((row: any) => ({
+          sno: row.sno,
+          date: row.date,
+          voucherNumber: row.voucherNumber,
+          studentId: row.studentId,
+          studentName: row.studentName,
+          className: row.className,
+          paymentMode: row.paymentMode,
+          receiptNumber: row.receiptNumber,
+          amountPaid: formatCurrency(row.amountPaid),
+          journalEntryRef: row.journalEntryRef,
+        })),
+      });
+
+      if (result.success) {
+        toast.success(t("daybookPdfExported"));
+        return;
+      }
+      toast.error(t("daybookFailed"));
+    } catch (error: any) {
+      toast.error(error?.message || t("daybookFailed"));
+    } finally {
+      setIsExportingDaybookPdf(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
     if (transactions.length === 0) {
       toast.error(t("noData"));
       return;
     }
-    const headers = ["transactionId", "receiptNumber", "student", "feeType", "amountPaid", "paymentMethod", "collectedBy", "date"];
-    // RFC-4180 quoting plus a guard on leading =,+,-,@ so Excel cannot execute
-    // a student or fee-type name as a formula on import.
-    const cell = (value: unknown) => {
-      const text = String(value ?? "");
-      const guarded = ["=", "+", "-", "@"].includes(text[0]) ? `'${text}` : text;
-      return `"${guarded.replace(/"/g, '""')}"`;
-    };
-    const rows = transactions.map((r: any) => {
+    const columns: ExcelColumn[] = [
+      { header: t("tableColumns.transactionId"), key: "transactionId" },
+      { header: t("tableColumns.receiptNumber"), key: "receiptNumber" },
+      { header: t("tableColumns.student"), key: "student" },
+      { header: t("tableColumns.feeType"), key: "feeType" },
+      { header: t("tableColumns.amount"), key: "amountPaid", style: "currency" },
+      { header: t("tableColumns.paymentMethod"), key: "paymentMethod" },
+      { header: t("tableColumns.collectedBy"), key: "collectedBy" },
+      { header: t("tableColumns.date"), key: "date", style: "date" },
+    ];
+    const data = transactions.map((r: any) => {
       const s = r.feeVoucher?.studentProfile;
-      const student = s ? `${s.firstName} ${s.lastName}` : "";
-      return [
-        cell(r.transactionId),
-        cell(r.receiptNumber),
-        cell(student),
-        cell(r.feeVoucher?.feeType || ""),
-        cell(Number(r.amountPaid ?? 0).toFixed(2)),
-        cell(r.paymentMethod),
-        cell(r.collectedBy?.name || ""),
-        cell(r.timestamp ? new Date(r.timestamp).toISOString() : ""),
-      ].join(",");
+      return {
+        transactionId: r.transactionId,
+        receiptNumber: r.receiptNumber,
+        student: s
+          ? formatStudentName(s.firstName, s.lastName, s.firstNameBn, s.lastNameBn)
+          : "",
+        feeType: r.feeVoucher?.feeType || "",
+        amountPaid: Number(r.amountPaid ?? 0),
+        paymentMethod: r.paymentMethod,
+        collectedBy: r.collectedBy?.name || "",
+        date: r.timestamp ? new Date(r.timestamp) : "",
+      };
     });
-    // BOM so Excel on Windows decodes Bengali/Hindi/Urdu names as UTF-8.
-    const csv = "﻿" + [headers.map(cell).join(","), ...rows].join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    downloadBlob(blob, `transactions_${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success(tCommon("export"));
+    const result = await exportData({ title: t("title"), columns, data });
+    if (result.success) {
+      toast.success(t("exportedExcel"));
+    } else {
+      toast.error(
+        result.error instanceof Error ? result.error.message : String(result.error)
+      );
+    }
   };
 
   const paymentOptions = [
@@ -238,9 +339,9 @@ export default function TransactionsPage() {
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")} icon={ArrowLeftRight}>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCsv} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1.5">
             <Download className="h-3.5 w-3.5" />
-            {tCommon("export")}
+            {t("exportExcel")}
           </Button>
           <Button
             variant="outline"
@@ -255,6 +356,20 @@ export default function TransactionsPage() {
               <FileSpreadsheet className="h-3.5 w-3.5" />
             )}
             {isExportingDaybook ? t("daybookExporting") : t("daybookExport")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportDaybookPDF}
+            disabled={isExportingDaybookPdf}
+            className="gap-1.5"
+          >
+            {isExportingDaybookPdf ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileText className="h-3.5 w-3.5" />
+            )}
+            {isExportingDaybookPdf ? t("daybookExporting") : t("daybookPdfExport")}
           </Button>
         </div>
       </PageHeader>

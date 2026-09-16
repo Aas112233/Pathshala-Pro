@@ -68,7 +68,7 @@ export default function FeeCollectionPage() {
 
   // 1. Search Students
   const { data: studentsData, isLoading: isSearching } = useQuery({
-    queryKey: ["students-fee-collection", searchTerm],
+    queryKey: ["students", "fee-collection", searchTerm],
     queryFn: async () => {
       const p = new URLSearchParams({ limit: "15" });
       if (searchTerm.trim()) p.set("search", searchTerm.trim());
@@ -81,7 +81,7 @@ export default function FeeCollectionPage() {
 
   // 2. Fetch Vouchers for Selected Student
   const { data: studentVouchersData, isLoading: isLoadingVouchers } = useQuery({
-    queryKey: ["student-vouchers", selectedStudent?.id],
+    queryKey: ["vouchers", "student", selectedStudent?.id],
     queryFn: async () => {
       if (!selectedStudent?.id) return { data: [] };
       const res = await fetch(`/api/fees?studentProfileId=${selectedStudent.id}&limit=50`, {
@@ -99,7 +99,7 @@ export default function FeeCollectionPage() {
 
   // 3. Fetch Student Class Fee Structure (for direct on-the-spot collection)
   const { data: studentClassStructureData } = useQuery({
-    queryKey: ["student-class-structure", selectedStudent?.classId],
+    queryKey: ["class-fee-structures", "student-class", selectedStudent?.classId],
     queryFn: async () => {
       if (!selectedStudent?.classId) return null;
       const res = await fetch(`/api/fees/structures?classId=${selectedStudent.classId}`, {
@@ -117,7 +117,7 @@ export default function FeeCollectionPage() {
 
   // 4. Fetch Recent Today Transactions
   const { data: recentTxData, isLoading: isLoadingRecent } = useQuery({
-    queryKey: ["transactions-today-cashier"],
+    queryKey: ["transactions", "today-cashier"],
     queryFn: async () => {
       const res = await fetch("/api/transactions?limit=10", { credentials: "include" });
       if (!res.ok) return { data: [] };
@@ -168,10 +168,9 @@ export default function FeeCollectionPage() {
       return json.data;
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["student-vouchers"] });
+      qc.invalidateQueries({ queryKey: ["vouchers"] });
       qc.invalidateQueries({ queryKey: ["fees"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["transactions-today-cashier"] });
 
       setLastPaymentResult(data);
       setIsSuccessModalOpen(true);

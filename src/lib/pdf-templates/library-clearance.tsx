@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { PdfSchoolInfo } from "./report-base";
+import { getPdfFontFamily } from "./pdf-fonts";
 
 export interface LibraryClearanceData {
   certificateNumber: string;
@@ -59,7 +60,7 @@ const defaultLabels = {
 };
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 22, paddingBottom: 22, paddingHorizontal: 26, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 8.5, fontFamily: "Helvetica" },
+  page: { paddingTop: 22, paddingBottom: 22, paddingHorizontal: 26, backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: 8.5, fontFamily: "NotoSans" },
   watermark: { position: "absolute", top: 300, left: 50, right: 50, textAlign: "center", fontSize: 60, fontWeight: 700, color: "#DBEAFE", opacity: 0.32, transform: "rotate(-30deg)" },
   borderOuter: { position: "absolute", top: 12, left: 12, right: 12, bottom: 12, border: "1.5px solid #1D4ED8", borderRadius: 6 },
   borderInner: { position: "absolute", top: 15, left: 15, right: 15, bottom: 15, border: "0.5px solid #93C5FD", borderRadius: 4 },
@@ -105,11 +106,15 @@ const styles = StyleSheet.create({
 
 export function LibraryClearanceTemplate({ school, data, verificationUrl, labels: l }: LibraryClearanceProps) {
   const L = { ...defaultLabels, ...l };
+  const fontFamily = getPdfFontFamily(
+    school?.name, school?.address, data.studentName, data.fatherName,
+    data.className, data.remarks, data.librarianName
+  );
   const qrSrc = verificationUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verificationUrl)}` : undefined;
   const clear = data.isClear;
   return (
     <Document title={`Clearance-${data.certificateNumber}`} author={school.name}>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { fontFamily }]}>
         <View style={styles.borderOuter} /><View style={styles.borderInner} />
         <Text style={styles.watermark}>{school.name?.split(" ")[0]?.toUpperCase() || "SCHOOL"}</Text>
 
@@ -173,7 +178,7 @@ export function LibraryClearanceTemplate({ school, data, verificationUrl, labels
         </View>
 
         <Text style={{ fontSize: 8, color: clear ? "#15803D" : "#DC2626", textAlign: "center", fontWeight: 700, marginBottom: 4 }}>{clear ? L.declarationClear : L.declarationPending}</Text>
-        {data.remarks ? <Text style={{ fontSize: 7, color: "#475569", fontStyle: "italic", textAlign: "center", marginBottom: 6 }}>{data.remarks}</Text> : null}
+        {data.remarks ? <Text style={{ fontSize: 7, color: "#475569", textAlign: "center", marginBottom: 6 }}>{data.remarks}</Text> : null}
 
         <View style={styles.footerRow}>
           <View style={styles.qrBox}>

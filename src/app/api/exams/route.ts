@@ -10,7 +10,7 @@ import {
 } from "@/lib/api-response";
 import { createExamSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 
 async function generateUniqueExamId(tenantId: string) {
   const latestExam = await prisma.exam.findFirst({
@@ -53,7 +53,10 @@ export async function GET(request: NextRequest) {
 
     const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
-    const academicYearId = searchParams.get("academicYearId");
+    const academicYearIdParam = searchParams.get("academicYearId");
+    const resolvedAcademicYearId = academicYearIdParam
+      ? academicYearIdParam.trim()
+      : await resolveRequestAcademicYearId(request, tenantId);
     const type = searchParams.get("type");
     const isPublished = searchParams.get("isPublished");
 
@@ -64,8 +67,8 @@ export async function GET(request: NextRequest) {
       isPublished?: boolean;
     } = { tenantId };
 
-    if (academicYearId) {
-      where.academicYearId = academicYearId;
+    if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
+      where.academicYearId = resolvedAcademicYearId;
     }
 
     if (type) {

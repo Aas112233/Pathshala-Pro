@@ -7,6 +7,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { TenantSettingsProvider } from "@/components/providers/tenant-settings-provider";
+import { AcademicYearProvider } from "@/components/providers/academic-year-provider";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { UnsavedChangesProvider } from "@/providers/unsaved-changes-provider";
 import { Toaster } from "sonner";
@@ -75,7 +76,8 @@ export default async function RootLayout({
             <AuthProvider>
               <TenantSettingsProvider>
                 <QueryProvider>
-                  <ErrorBoundary>
+                  <AcademicYearProvider>
+                    <ErrorBoundary>
                     <UnsavedChangesProvider>
                       <PageTitleUpdater />
                       {children}
@@ -87,7 +89,8 @@ export default async function RootLayout({
                         visibleToasts={3}
                       />
                     </UnsavedChangesProvider>
-                  </ErrorBoundary>
+                    </ErrorBoundary>
+                  </AcademicYearProvider>
                 </QueryProvider>
               </TenantSettingsProvider>
             </AuthProvider>

@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { ERPDataTable } from "@/components/ui/erp-data-table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { usePDFExport } from "@/hooks/use-pdf-export";
-import { useAcademicYears } from "@/hooks/use-queries";
+import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
 import {
   Users,
@@ -75,16 +76,16 @@ export default function BulkFeeEntryPage() {
   const canWriteFees = hasPermission(perms, "fees", "write");
   const canManageFees = hasPermission(perms, "fees", "manage");
 
-  // 1. Academic Years
-  const { data: ayResponse } = useAcademicYears();
-  const academicYears = ayResponse?.data || EMPTY_ARRAY;
-  const [selectedYearId, setSelectedYearId] = useState<string>("");
-  const activeYearId = selectedYearId || academicYears[0]?.id || "";
+  // 1. Academic Years (global academic year selection)
+  const {
+    academicYears,
+    selectedAcademicYearId: activeYearId,
+  } = useAcademicYearContext();
   const selectedYear = academicYears.find((ay: any) => ay.id === activeYearId);
 
   // 2. Classes query
   const { data: classesResponse } = useQuery({
-    queryKey: ["classes-bulk-fee"],
+    queryKey: ["classes", "bulk-fee"],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true", { credentials: "include" });
       if (!res.ok) return { data: [] };
@@ -112,7 +113,7 @@ export default function BulkFeeEntryPage() {
 
   // 3. Query Students for Selected Class & Section
   const { data: studentsData, isLoading: isLoadingStudents } = useQuery({
-    queryKey: ["students-for-bulk-fee", selectedClassId, selectedSectionId],
+    queryKey: ["students", "bulk-fee", selectedClassId, selectedSectionId],
     queryFn: async () => {
       if (!selectedClassId) return { data: [] };
       const p = new URLSearchParams({
@@ -131,7 +132,7 @@ export default function BulkFeeEntryPage() {
 
   // 4. Query Class Fee Structure for selected class
   const { data: structureData } = useQuery({
-    queryKey: ["class-fee-structure-bulk", selectedClassId, activeYearId],
+    queryKey: ["class-fee-structures", "bulk", selectedClassId, activeYearId],
     queryFn: async () => {
       if (!selectedClassId) return null;
       const res = await fetch(
@@ -150,7 +151,7 @@ export default function BulkFeeEntryPage() {
 
   // 5. Query Open Vouchers for this Class
   const { data: vouchersData } = useQuery({
-    queryKey: ["vouchers-bulk-class", selectedClassId, activeYearId],
+    queryKey: ["vouchers", "bulk-class", selectedClassId, activeYearId],
     queryFn: async () => {
       if (!selectedClassId) return { data: [] };
       const res = await fetch(`/api/fees?limit=300`, {
@@ -165,7 +166,7 @@ export default function BulkFeeEntryPage() {
 
   // 6. Query Concessions
   const { data: concessionsData } = useQuery({
-    queryKey: ["concessions-bulk"],
+    queryKey: ["concessions", "bulk"],
     queryFn: async () => {
       const res = await fetch("/api/fees/concessions?limit=500", { credentials: "include" });
       if (!res.ok) return { data: [] };
@@ -304,8 +305,8 @@ export default function BulkFeeEntryPage() {
       return json.data;
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["students-for-bulk-fee"] });
-      qc.invalidateQueries({ queryKey: ["vouchers-bulk-class"] });
+      qc.invalidateQueries({ queryKey: ["students", "bulk-fee"] });
+      qc.invalidateQueries({ queryKey: ["vouchers", "bulk-class"] });
       qc.invalidateQueries({ queryKey: ["fees"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
       setUserAmounts({});
@@ -370,6 +371,147 @@ export default function BulkFeeEntryPage() {
     setUserAmounts((prev) => ({ ...prev, [id]: amount }));
     setSelectedIds((prev) => ({ ...prev, [id]: amount > 0 }));
   };
+
+  // ERPDataTable selection bridge — replicates toggleRow's auto-fill of the
+  // default amount when a row becomes selected.
+  const handleSelectionChange = (ids: (string | number)[]) => {
+    const idSet = new Set(ids.map(String));
+    const nextSelected: Record<string, boolean> = {};
+    const nextAmounts: Record<string, number> = { ...userAmounts };
+    roster.forEach((r) => {
+      const sel = idSet.has(r.id);
+      nextSelected[r.id] = sel;
+      if (sel && (!nextAmounts[r.id] || nextAmounts[r.id] === 0)) {
+        const netMonthly = roundCurrency(r.baseMonthlyFee - r.discountAmount);
+        nextAmounts[r.id] = Math.min(netMonthly, r.remainingDue);
+      } else if (!sel) {
+        nextAmounts[r.id] = 0;
+      }
+    });
+    setSelectedIds(nextSelected);
+    setUserAmounts(nextAmounts);
+  };
+
+  const bulkColumns: import("@/components/ui/erp-data-table").ColumnDef<StudentRowState>[] = [
+    {
+      key: "roll",
+      header: t("roll"),
+      headerClassName: "py-3 px-3",
+      cell: (row) => (
+        <span className="font-mono font-bold text-muted-foreground">{row.rollNumber}</span>
+      ),
+    },
+    {
+      key: "studentName",
+      header: t("studentName"),
+      headerClassName: "py-3 px-4",
+      cell: (row) => (
+        <div className="font-bold text-foreground">
+          <span>{row.firstName} {row.lastName}</span>
+          <p className="text-[10px] text-muted-foreground font-mono">
+            {t("id")} {row.studentId}{" "}
+            {row.sectionName && `• ${t("sectionShort")} ${row.sectionName}`}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "monthlyRate",
+      header: t("monthlyRate"),
+      headerClassName: "py-3 px-3",
+      cell: (row) => (
+        <span className="font-mono text-muted-foreground">
+          {formatCurrency(roundCurrency(row.baseMonthlyFee - row.discountAmount))}
+          {row.discountAmount > 0 && (
+            <span className="text-[10px] text-emerald-600 block">
+              (-{formatCurrency(row.discountAmount)} {t("scholarship")})
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: "paidToDate",
+      header: t("paidToDate"),
+      headerClassName: "py-3 px-3",
+      cell: (row) =>
+        row.amountPaidSoFar > 0 ? (
+          <div className="font-mono">
+            <span className="text-emerald-600 font-bold">{formatCurrency(row.amountPaidSoFar)}</span>
+            <p className="text-[10px] text-emerald-600 font-semibold">
+              {row.paidMonthsCount}/12 Mo ({MONTH_NAMES.slice(0, row.paidMonthsCount).map((m) => m.slice(0, 3)).join(", ")}) {t("paid")}
+            </p>
+          </div>
+        ) : (
+          <span className="font-mono text-muted-foreground">{t("noPaid", { currency: currencySymbol })}</span>
+        ),
+    },
+    {
+      key: "collectingFor",
+      header: t("collectingFor"),
+      headerClassName: "py-3 px-3 font-bold text-primary",
+      cell: (row) =>
+        row.isAlreadyPaidForTargetMonth ? (
+          <Badge variant="outline" className="text-[10px] font-semibold border-emerald-300 text-emerald-700 bg-emerald-50">
+            {currentMonthName} {t("paid")}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-[10px] font-bold border-primary text-primary bg-primary/10">
+            {row.targetMonthLabel}
+          </Badge>
+        ),
+    },
+    {
+      key: "remainingDues",
+      header: t("remainingDues"),
+      headerClassName: "py-3 px-3 font-bold text-foreground",
+      cell: (row) => (
+        <div className="font-mono font-bold text-rose-600">
+          <span>{formatCurrency(row.remainingDue)}</span>
+          <p className="text-[10px] text-muted-foreground font-normal">
+            {t("unpaidMonths", { count: row.unpaidMonthsCount })}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "payingAmount",
+      header: t("payingAmount", { currency: currencySymbol }),
+      headerClassName: "py-3 px-4 font-bold text-foreground w-44",
+      cell: (row) => (
+        <Input
+          type="number"
+          min="0"
+          placeholder={t("amountPlaceholder")}
+          value={row.amountToPay === 0 ? "" : row.amountToPay}
+          onChange={(e) => updateAmountToPay(row.id, parseFloat(e.target.value) || 0)}
+          className="h-8 text-xs font-mono font-bold w-36 bg-background border-input focus:ring-primary"
+        />
+      ),
+    },
+    {
+      key: "status",
+      header: t("status"),
+      headerClassName: "py-3 px-3 text-right",
+      className: "text-right",
+      cell: (row) =>
+        row.amountToPay >= row.remainingDue && row.remainingDue > 0 ? (
+          <Badge variant="outline" className="text-[10px] font-semibold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300">
+            {t("clearAll")}
+          </Badge>
+        ) : row.amountToPay > 0 ? (
+          <Badge variant="outline" className="text-[10px] font-semibold border-primary text-primary bg-primary/10">
+            {t("collect")}
+          </Badge>
+        ) : row.isAlreadyPaidForTargetMonth ? (
+          <Badge variant="secondary" className="text-[10px] text-emerald-700 bg-emerald-100">
+            {t("paid")}
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="text-[10px]">{t("skip")}</Badge>
+        ),
+    },
+  ];
 
   const autoFillSelectedMonth = () => {
     const newAmounts: Record<string, number> = {};
@@ -512,18 +654,7 @@ export default function BulkFeeEntryPage() {
       {/* Top Filter Selection Card */}
       <Card className="border border-border shadow-none rounded-lg">
         <CardContent className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-            {/* Academic Year */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">{t("academicYear")}</Label>
-              <AppDropdown
-                value={activeYearId}
-                onChange={(v) => setSelectedYearId(v)}
-                options={academicYears.map((ay: any) => ({ value: ay.id, label: ay.label }))}
-                searchable
-              />
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             {/* Target Class */}
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-foreground">{t("selectClass")}</Label>
@@ -687,217 +818,40 @@ export default function BulkFeeEntryPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-border bg-muted/30 text-muted-foreground font-semibold uppercase tracking-wider">
-                <th className="py-3 px-3 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    onChange={toggleSelectAll}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                  />
-                </th>
-                <th className="py-3 px-3">{t("roll")}</th>
-                <th className="py-3 px-4">{t("studentName")}</th>
-                <th className="py-3 px-3">{t("monthlyRate")}</th>
-                <th className="py-3 px-3">{t("paidToDate")}</th>
-                <th className="py-3 px-3 font-bold text-primary">{t("collectingFor")}</th>
-                <th className="py-3 px-3 font-bold text-foreground">{t("remainingDues")}</th>
-                <th className="py-3 px-4 font-bold text-foreground w-44">
-                  {t("payingAmount", { currency: currencySymbol })}
-                </th>
-                <th className="py-3 px-3 text-right">{t("status")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoadingStudents ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
-                    {t("loadingStudents")}
-                  </td>
-                </tr>
-              ) : roster.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-muted-foreground">
-                    <Users className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-                    <p className="font-semibold text-xs text-foreground">
-                      {t("noStudents")}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {t("tryClass")}
-                    </p>
-                  </td>
-                </tr>
-              ) : displayedRoster.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-muted-foreground">
-                    <Search className="h-6 w-6 mx-auto mb-2 text-muted-foreground/40" />
-                    <p className="font-semibold text-xs text-foreground">
-                      {t("noMatching", { term: searchQuery })}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {t("trySearch")}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSearchQuery("")}
-                      className="mt-2 h-7 text-xs text-primary font-semibold"
-                    >
-                      {t("clearSearch")}
-                    </Button>
-                  </td>
-                </tr>
-              ) : (
-                displayedRoster.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={`transition-colors ${
-                      row.isSelected
-                        ? "bg-primary/5 hover:bg-primary/10"
-                        : "hover:bg-muted/30 opacity-70"
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <td className="py-3 px-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={row.isSelected}
-                        onChange={() => toggleRow(row.id)}
-                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                      />
-                    </td>
-
-                    {/* Roll Number */}
-                    <td className="py-3 px-3 font-mono font-bold text-muted-foreground">
-                      {row.rollNumber}
-                    </td>
-
-                    {/* Student Name */}
-                    <td className="py-3 px-4 font-bold text-foreground">
-                      <div>
-                        <span>
-                          {row.firstName} {row.lastName}
-                        </span>
-                        <p className="text-[10px] text-muted-foreground font-mono">
-                          {t("id")} {row.studentId}{" "}
-                          {row.sectionName && `• ${t("sectionShort")} ${row.sectionName}`}
-                        </p>
-                      </div>
-                    </td>
-
-                    {/* Monthly Base Fee */}
-                    <td className="py-3 px-3 font-mono text-muted-foreground">
-                      {formatCurrency(roundCurrency(row.baseMonthlyFee - row.discountAmount))}
-                      {row.discountAmount > 0 && (
-                        <span className="text-[10px] text-emerald-600 block">
-                          (-{formatCurrency(row.discountAmount)} {t("scholarship")})
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Paid to Date */}
-                    <td className="py-3 px-3 font-mono">
-                      {row.amountPaidSoFar > 0 ? (
-                        <div>
-                          <span className="text-emerald-600 font-bold">
-                            {formatCurrency(row.amountPaidSoFar)}
-                          </span>
-                          <p className="text-[10px] text-emerald-600 font-semibold">
-                            {row.paidMonthsCount}/12 Mo (
-                            {MONTH_NAMES.slice(0, row.paidMonthsCount).map((m) => m.slice(0, 3)).join(", ")}
-                            ) {t("paid")}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">{t("noPaid", { currency: currencySymbol })}</span>
-                      )}
-                    </td>
-
-                    {/* Collecting For Month Badge */}
-                    <td className="py-3 px-3">
-                      {row.isAlreadyPaidForTargetMonth ? (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] font-semibold border-emerald-300 text-emerald-700 bg-emerald-50"
-                        >
-                          {currentMonthName} {t("paid")}
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] font-bold border-primary text-primary bg-primary/10"
-                        >
-                          {row.targetMonthLabel}
-                        </Badge>
-                      )}
-                    </td>
-
-                    {/* Remaining Dues */}
-                    <td className="py-3 px-3 font-mono font-bold text-rose-600">
-                      <div>
-                        <span>{formatCurrency(row.remainingDue)}</span>
-                        <p className="text-[10px] text-muted-foreground font-normal">
-                          {t("unpaidMonths", { count: row.unpaidMonthsCount })}
-                        </p>
-                      </div>
-                    </td>
-
-                    {/* Paying Amount Input */}
-                    <td className="py-2.5 px-4">
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder={t("amountPlaceholder")}
-                        value={row.amountToPay === 0 ? "" : row.amountToPay}
-                        onChange={(e) =>
-                          updateAmountToPay(
-                            row.id,
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        className="h-8 text-xs font-mono font-bold w-36 bg-background border-input focus:ring-primary"
-                      />
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-3 px-3 text-right">
-                      {row.amountToPay >= row.remainingDue && row.remainingDue > 0 ? (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] font-semibold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        >
-                          {t("clearAll")}
-                        </Badge>
-                      ) : row.amountToPay > 0 ? (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] font-semibold border-primary text-primary bg-primary/10"
-                        >
-                          {t("collect")}
-                        </Badge>
-                      ) : row.isAlreadyPaidForTargetMonth ? (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] text-emerald-700 bg-emerald-100"
-                        >
-                          {t("paid")}
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px]">
-                          {t("skip")}
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <ERPDataTable<StudentRowState>
+          data={displayedRoster}
+          keyExtractor={(row) => row.id}
+          columns={bulkColumns}
+          selectedIds={roster.filter((r) => r.isSelected).map((r) => r.id)}
+          onSelectionChange={handleSelectionChange}
+          isLoading={isLoadingStudents}
+          rowClassName={(row) => (row.isSelected ? "bg-primary/5 hover:bg-primary/10" : "opacity-70")}
+          emptyState={
+            roster.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">
+                <Users className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="font-semibold text-xs text-foreground">{t("noStudents")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("tryClass")}</p>
+              </div>
+            ) : (
+              <div className="py-12 text-center text-muted-foreground">
+                <Search className="h-6 w-6 mx-auto mb-2 text-muted-foreground/40" />
+                <p className="font-semibold text-xs text-foreground">
+                  {t("noMatching", { term: searchQuery })}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("trySearch")}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery("")}
+                  className="mt-2 h-7 text-xs text-primary font-semibold"
+                >
+                  {t("clearSearch")}
+                </Button>
+              </div>
+            )
+          }
+        />
       </Card>
 
       {/* Sticky Bottom Action Bar */}

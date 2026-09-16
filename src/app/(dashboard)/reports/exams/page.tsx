@@ -458,7 +458,6 @@ export default function ExamReportPage() {
                 data={data}
                 isLoading={isLoading}
                 showExport={false}
-                onExportCSV={handleExportExcel}
               />
             ) : (
               <ReportEmptyState

@@ -21,6 +21,7 @@ import { locales, localeNames, type Locale } from "@/i18n/config";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { HeaderNotificationCenter } from "@/components/layout/header-notification-center";
+import { AcademicYearSelector } from "@/components/layout/academic-year-selector";
 
 function getBreadcrumbKey(pathname: string): string {
   if (pathname === "/" || pathname === "/system-admin") return "nav.dashboard";
@@ -140,6 +141,9 @@ export function Header() {
 
       {/* Right - Global Actions */}
       <div className="flex items-center gap-2.5 shrink-0">
+        {/* Global Academic Year Selection */}
+        <AcademicYearSelector />
+
         {/* Categorized Notifications Center */}
         <HeaderNotificationCenter />
 

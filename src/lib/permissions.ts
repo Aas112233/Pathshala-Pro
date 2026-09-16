@@ -168,6 +168,7 @@ export const ALL_PERMISSION_MODULES = [
   "hostel",
   "certificates",
   "health",
+  "calendar",
 ] as const;
 
 export const FULL_ACCESS_PERMISSIONS: UserPermissions = Object.fromEntries(
@@ -265,6 +266,7 @@ const ROLE_MODULE_SUPPLEMENT: Record<UserRole, UserPermissions> = {
     homework: { read: true, write: true, manage: true },
     certificates: { read: true, write: true, manage: true },
     leaves: { read: true, write: true, manage: true },
+    calendar: { read: true, write: true, manage: true },
   },
   // Operations manager: owns the campus estate, not the ledger.
   MANAGER: {
@@ -280,6 +282,7 @@ const ROLE_MODULE_SUPPLEMENT: Record<UserRole, UserPermissions> = {
     library: { read: true, write: true, manage: true },
     health: { read: true, write: true, manage: true },
     enquiries: { read: true, write: true, manage: true },
+    calendar: { read: true, write: true, manage: true },
   },
   ACCOUNTANT: {
     expenses: { read: true, write: true },
@@ -296,18 +299,21 @@ const ROLE_MODULE_SUPPLEMENT: Record<UserRole, UserPermissions> = {
     health: { read: true, write: true },
     notices: { read: true, write: true },
     reports: { read: true },
+    calendar: { read: true, write: true, manage: true },
   },
   TEACHER: {
     homework: { read: true, write: true },
     timetable: { read: true },
     notices: { read: true },
     library: { read: true },
+    calendar: { read: true },
   },
   CLERK: {
     certificates: { read: true, write: true },
     notices: { read: true },
     library: { read: true },
     reports: { read: true },
+    calendar: { read: true },
   },
   PARENT: {
     notices: { read: true },
@@ -318,6 +324,7 @@ const ROLE_MODULE_SUPPLEMENT: Record<UserRole, UserPermissions> = {
     hostel: { read: true },
     library: { read: true },
     "exam-results": { read: true },
+    calendar: { read: true },
   },
   STUDENT: {
     notices: { read: true },
@@ -328,6 +335,7 @@ const ROLE_MODULE_SUPPLEMENT: Record<UserRole, UserPermissions> = {
     hostel: { read: true },
     library: { read: true },
     "exam-results": { read: true },
+    calendar: { read: true },
   },
 };
 
@@ -537,6 +545,8 @@ export function getModuleForPath(path: string): string | null {
     case "health":
     case "health-records":
       return "health";
+    case "calendar":
+      return "calendar";
     default:
       return baseRoute;
   }
@@ -590,6 +600,7 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
     icon: "BookOpen",
     modules: [
       { id: "timetable", label: "Timetable" },
+      { id: "calendar", label: "School Calendar" },
       { id: "homework", label: "Homework" },
       { id: "notices", label: "Notices & Circulars" },
       { id: "library", label: "Library" },
