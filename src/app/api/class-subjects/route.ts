@@ -96,21 +96,29 @@ export async function POST(request: NextRequest) {
     // Create a map of subjectId to database id
     const subjectIdMap = new Map(existingSubjects.map((s: { id: string; subjectId: string }) => [s.subjectId, s.id]));
 
-    // Remove existing subject assignments for this class
-    await prisma.classSubject.deleteMany({
-      where: { tenantId, classId },
-    });
+    const classSubjects = subjects.map((s: any, index: number) => ({
+      tenantId,
+      classId,
+      subjectId: subjectIdMap.get(s.subjectId)!, // Use the subject record's primary key
+      isCompulsory: s.isCompulsory ?? true,
+      sortOrder: s.sortOrder ?? index,
+    }));
 
-    // Create new subject assignments
-    const classSubjects = await prisma.classSubject.createMany({
-      data: subjects.map((s: any, index: number) => ({
-        tenantId,
-        classId,
-        subjectId: subjectIdMap.get(s.subjectId)!, // Use the subject record's primary key
-        isCompulsory: s.isCompulsory ?? true,
-        sortOrder: s.sortOrder ?? index,
-      })),
-    });
+    const transactionOps = [
+      prisma.classSubject.deleteMany({
+        where: { tenantId, classId },
+      }),
+    ];
+
+    if (classSubjects.length > 0) {
+      transactionOps.push(
+        prisma.classSubject.createMany({
+          data: classSubjects,
+        })
+      );
+    }
+
+    await prisma.$transaction(transactionOps);
 
     // Fetch the created assignments with subject details
     const result = await prisma.classSubject.findMany({

@@ -478,7 +478,7 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
                 </View>
                 {term.rank && (
                   <Text style={reportCardStyles.termResult}>
-                    Rank: {term.rank}/{term.totalStudents}
+                    {tPdf("rankPrefix")} {term.rank}/{term.totalStudents}
                   </Text>
                 )}
               </View>
@@ -516,26 +516,26 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
         {/* Overall Summary */}
         <View style={reportCardStyles.summarySection}>
           <View style={reportCardStyles.summaryItem}>
-            <Text style={reportCardStyles.summaryLabel}>Total Marks</Text>
+            <Text style={reportCardStyles.summaryLabel}>{tPdf("totalMarks")}</Text>
             <Text style={reportCardStyles.summaryValue}>{overallObtained} / {overallTotal}</Text>
           </View>
           <View style={reportCardStyles.summaryItem}>
-            <Text style={reportCardStyles.summaryLabel}>Overall %</Text>
+            <Text style={reportCardStyles.summaryLabel}>{tPdf("overallPercent")}</Text>
             <Text style={reportCardStyles.summaryValue}>{overallPercentage}%</Text>
           </View>
           <View style={reportCardStyles.summaryItem}>
-            <Text style={reportCardStyles.summaryLabel}>Final Result</Text>
+            <Text style={reportCardStyles.summaryLabel}>{tPdf("finalResult")}</Text>
             <Text style={[reportCardStyles.summaryValue, {
               color: allPassed ? "#15803D" : "#DC2626"
             }]}>
-              {allPassed ? "PASS" : "FAIL"}
+              {allPassed ? tPdf("passResult") : tPdf("failResult")}
             </Text>
           </View>
         </View>
 
         {/* Attendance */}
         <View style={reportCardStyles.attendanceSection}>
-          <Text style={reportCardStyles.sectionTitle}>Attendance Record</Text>
+          <Text style={reportCardStyles.sectionTitle}>{tPdf("attendanceRecord")}</Text>
           <View style={reportCardStyles.attendanceGrid}>
             {attendance.map((month, index) => (
               <View key={index} style={reportCardStyles.attendanceMonth}>
@@ -554,12 +554,12 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
         {/* Co-Curricular Activities */}
         {coCurricular && coCurricular.length > 0 && (
           <View style={reportCardStyles.coCurricularSection}>
-            <Text style={reportCardStyles.sectionTitle}>Co-Curricular Activities</Text>
+            <Text style={reportCardStyles.sectionTitle}>{tPdf("coCurricular")}</Text>
             <View style={reportCardStyles.coCurricularTable}>
               {coCurricular.map((activity, index) => (
                 <View key={index} style={index % 2 === 1 ? [reportCardStyles.tableRow, reportCardStyles.tableRowAlt] : [reportCardStyles.tableRow]}>
                   <Text style={[reportCardStyles.tableCell, { flex: 2 }]} fixed>{activity.activity}</Text>
-                  <Text style={[reportCardStyles.tableCell, { width: 50 }]} fixed>Grade: {activity.grade}</Text>
+                  <Text style={[reportCardStyles.tableCell, { width: 50 }]} fixed>{tPdf("gradePrefix")} {activity.grade}</Text>
                   <Text style={[reportCardStyles.tableCell, { flex: 2 }]} fixed>{activity.remarks || "-"}</Text>
                 </View>
               ))}
@@ -571,13 +571,13 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
         <View style={reportCardStyles.remarksSection}>
           {teacherRemarks && (
             <View style={reportCardStyles.remarkBox}>
-              <Text style={reportCardStyles.remarkLabel}>Class Teacher&apos;s Remarks</Text>
+              <Text style={reportCardStyles.remarkLabel}>{tPdf("teacherRemarks")}</Text>
               <Text style={reportCardStyles.remarkText}>{teacherRemarks}</Text>
             </View>
           )}
           {principalRemarks && (
             <View style={reportCardStyles.remarkBox}>
-              <Text style={reportCardStyles.remarkLabel}>Principal&apos;s Remarks</Text>
+              <Text style={reportCardStyles.remarkLabel}>{tPdf("principalRemarks")}</Text>
               <Text style={reportCardStyles.remarkText}>{principalRemarks}</Text>
             </View>
           )}
@@ -587,21 +587,21 @@ export const ReportCardTemplate: React.FC<ReportCardProps> = ({
         <View style={reportCardStyles.footer}>
           <View style={reportCardStyles.signature}>
             <View style={reportCardStyles.signatureLine} />
-            <Text style={reportCardStyles.signatureText}>Class Teacher</Text>
+            <Text style={reportCardStyles.signatureText}>{tPdf("classTeacher")}</Text>
           </View>
           <View style={reportCardStyles.signature}>
             <View style={reportCardStyles.signatureLine} />
-            <Text style={reportCardStyles.signatureText}>Examination In-charge</Text>
+            <Text style={reportCardStyles.signatureText}>{tPdf("examIncharge")}</Text>
           </View>
           <View style={reportCardStyles.signature}>
             <View style={reportCardStyles.signatureLine} />
-            <Text style={reportCardStyles.signatureText}>Principal</Text>
+            <Text style={reportCardStyles.signatureText}>{tPdf("principal")}</Text>
           </View>
         </View>
 
         {/* Legend */}
         <Text style={reportCardStyles.legend}>
-          Grade Scale: A+ (90%+, GP 4.0), A (80-89%, GP 3.7), B (70-79%, GP 3.3), C (60-69%, GP 3.0), D (40-59%, GP 2.0), F (Below 40%, GP 0.0)
+          {tPdf("legend")}
         </Text>
       </Page>
     </Document>

@@ -113,7 +113,8 @@ export async function PUT(
 
     if (
       usageCounts.promotions > 0 &&
-      Object.prototype.hasOwnProperty.call(body, "name")
+      data.name !== undefined &&
+      data.name !== existingClass.name
     ) {
       lockedFields.push("name");
     }
@@ -123,7 +124,8 @@ export async function PUT(
         usageCounts.promotions > 0 ||
         usageCounts.classSubjects > 0 ||
         usageCounts.promotionRules > 0) &&
-      Object.prototype.hasOwnProperty.call(body, "classNumber")
+      data.classNumber !== undefined &&
+      data.classNumber !== existingClass.classNumber
     ) {
       lockedFields.push("classNumber");
     }
@@ -142,7 +144,7 @@ export async function PUT(
     }
 
     const updatedClass = await prisma.class.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       select: {
         id: true,

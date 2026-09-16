@@ -77,6 +77,7 @@ export default function ClassesPage() {
   const [classNumberError, setClassNumberError] = useState("");
   const [pendingSubjects, setPendingSubjects] = useState<string[]>([]);
   const [subjectTypeMap, setSubjectTypeMap] = useState<Record<string, boolean>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -119,10 +120,10 @@ export default function ClassesPage() {
   useEffect(() => {
     if (editClassSubjects && editingClass && isModalOpen) {
       const subjects = Array.isArray(editClassSubjects) ? editClassSubjects : [editClassSubjects];
-      const ids = subjects.map((s: any) => s.subjectId);
+      const ids = subjects.map((s: any) => s.subject.subjectId);
       setPendingSubjects(ids);
       const typeMap: Record<string, boolean> = {};
-      subjects.forEach((s: any) => { typeMap[s.subjectId] = s.isCompulsory; });
+      subjects.forEach((s: any) => { typeMap[s.subject.subjectId] = s.isCompulsory; });
       setSubjectTypeMap(typeMap);
     }
   }, [editClassSubjects, editingClass, isModalOpen]);
@@ -139,7 +140,6 @@ export default function ClassesPage() {
       return json;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["classes"] }),
-    onError: (err: any) => { if (!classNumberError) toast.error(err.message || t("updateClassError")); },
   });
 
   const updateMutation = useMutation({
@@ -153,7 +153,6 @@ export default function ClassesPage() {
       return json;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["classes"] }),
-    onError: (err: any) => { if (!classNumberError) toast.error(err.message || t("updateClassError")); },
   });
 
   const deleteMutation = useMutation({
@@ -238,6 +237,7 @@ export default function ClassesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving || (editingClass && !editClassSubjects)) return;
     setClassNumberError("");
     const nextErrors: { name?: string; classNumber?: string } = {};
     if (!formData.name.trim()) nextErrors.name = t("requiredField", { field: t("className") });
@@ -250,6 +250,7 @@ export default function ClassesPage() {
 
     const payload = { ...formData, classNumber: parseInt(formData.classNumber) || 0 };
 
+    setIsSaving(true);
     try {
       let classId: string;
 
@@ -262,26 +263,33 @@ export default function ClassesPage() {
       }
 
       // Save subjects
-      if (pendingSubjects.length > 0) {
+      if (editingClass || pendingSubjects.length > 0) {
         const subjects = pendingSubjects.map((subjectId, index) => ({
           subjectId,
           isCompulsory: subjectTypeMap[subjectId] ?? true,
           sortOrder: index,
         }));
-        await fetch("/api/class-subjects", {
+        const response = await fetch("/api/class-subjects", {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({ classId, subjects }),
         });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || error.details?.[0]?.message || t("updateClassError"));
+        }
       }
 
       toast.success(editingClass ? t("classUpdated") : t("classCreated"));
       queryClient.invalidateQueries({ queryKey: ["class-subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
       closeModal();
-    } catch { /* handled by mutation */ }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("updateClassError"));
+    } finally {
+      setIsSaving(false);
+    }
   };
-
-  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   // ──── Columns ────
   const columns: ColumnDef<ClassData>[] = [
@@ -438,7 +446,7 @@ export default function ClassesPage() {
               <Button variant="outline" type="button" onClick={closeModal}>
                 {t("cancel")}
               </Button>
-              <Button type="submit" form="class-form" disabled={isSaving} className="gap-2">
+              <Button type="submit" form="class-form" disabled={isSaving || (!!editingClass && !editClassSubjects)} className="gap-2">
                 <Save className="h-4 w-4" />
                 {isSaving ? t("saving") : t("saveClassAndSubjects")}
               </Button>
@@ -585,15 +593,17 @@ export default function ClassesPage() {
                           ? "bg-primary/5 border-primary/30 ring-1 ring-primary/20"
                           : "bg-background hover:bg-muted/50 border-border"
                       )}
-                      onClick={() => handleToggleSubject(subject.subjectId)}
                     >
+                      <label className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer">
                       <Checkbox
                         checked={isSelected}
-                        className="h-4 w-4 pointer-events-none"
+                        onCheckedChange={() => handleToggleSubject(subject.subjectId)}
+                        aria-label={subject.name}
+                        className="h-4 w-4"
                       />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{subject.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-medium truncate">{subject.name}</span>
+                        <span className="flex items-center gap-2 mt-1">
                           <Badge variant="outline" className="text-[10px] h-4 px-1.5">{subject.code}</Badge>
                           <Badge
                             variant={subject.category === "COMPULSORY" ? "default" : "secondary"}
@@ -603,8 +613,9 @@ export default function ClassesPage() {
                               ? t("subjectCategoryCompulsory")
                               : t("subjectCategoryElective")}
                           </Badge>
-                        </div>
-                      </div>
+                        </span>
+                      </span>
+                      </label>
 
                       {/* Compulsory/Elective Toggle */}
                       {isSelected && (
