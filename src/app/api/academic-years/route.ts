@@ -97,6 +97,15 @@ export async function POST(request: NextRequest) {
     const validation = createAcademicYearSchema.safeParse(body);
 
     if (!validation.success) {
+      const invalidDate = validation.error.errors.find((err) =>
+        err.code === "custom" && (err.path[0] === "startDate" || err.path[0] === "endDate")
+      );
+      if (invalidDate) {
+        const field = String(invalidDate.path[0]);
+        return badRequest(field === "startDate" ? "Invalid start date" : "Invalid end date", [
+          { field, code: "invalid", message: invalidDate.message },
+        ]);
+      }
       const errors = validation.error.errors.map((err) => ({
         field: err.path.join("."),
         code: err.code,

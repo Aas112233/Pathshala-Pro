@@ -75,13 +75,22 @@ export function TenantActionsDropdown({
         <MoreVertical className="h-4 w-4" />
       </button>
 
-      {isOpen && (
+      {isOpen && (() => {
+        const rect = dropdownRef.current?.getBoundingClientRect();
+        const menuHeight = 260; // approximate rendered height of the menu
+        const spaceBelow = rect ? window.innerHeight - rect.bottom : 0;
+        const spaceAbove = rect ? rect.top : 0;
+        const openUpward = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+
+        return (
         <div
           className="z-50 min-w-[210px] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground p-1.5 shadow-xl"
           style={{
             position: "fixed",
-            top: `${(dropdownRef.current?.getBoundingClientRect().bottom || 0) + 4}px`,
-            left: `${(dropdownRef.current?.getBoundingClientRect().right || 0) - 210}px`,
+            ...(openUpward
+              ? { bottom: `${window.innerHeight - (rect?.top || 0) + 4}px` }
+              : { top: `${(rect?.bottom || 0) + 4}px` }),
+            left: `${(rect?.right || 0) - 210}px`,
           }}
         >
           {/* Support Impersonation Action */}
@@ -148,7 +157,8 @@ export function TenantActionsDropdown({
             <span>{isSuspending ? "Suspending..." : "Suspend School"}</span>
           </button>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

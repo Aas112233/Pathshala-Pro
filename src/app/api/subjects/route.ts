@@ -24,11 +24,18 @@ export async function GET(request: NextRequest) {
     const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
     const isActive = searchParams.get("isActive");
+    const classId = searchParams.get("classId");
 
     const where: any = { tenantId };
 
     if (isActive !== null) {
       where.isActive = isActive === "true";
+    }
+
+    if (classId) {
+      where.classSubjects = {
+        some: { classId, tenantId },
+      };
     }
 
     const subjects = await prisma.subject.findMany({

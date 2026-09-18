@@ -115,11 +115,11 @@ export function StudentFiltersBar({
         </div>
 
         <div className="min-w-[140px]">
-          <AppDropdown value={groupId} onChange={onGroupChange} options={groupOptions} placeholder={t("filters.group.all") || "All Groups"} searchable disabled={!classId} />
+          <AppDropdown value={groupId} onChange={onGroupChange} options={groupOptions} placeholder={!classId ? t("filters.selectClassFirst") : t("filters.group.all") || "All Groups"} searchable disabled={!classId} />
         </div>
 
         <div className="min-w-[150px]">
-          <AppDropdown value={sectionId} onChange={onSectionChange} options={sectionOptions} placeholder={t("filters.section.all") || "All Sections"} searchable disabled={!classId} />
+          <AppDropdown value={sectionId} onChange={onSectionChange} options={sectionOptions} placeholder={!classId ? t("filters.selectClassFirst") : t("filters.section.all") || "All Sections"} searchable disabled={!classId} />
         </div>
 
         <div className="min-w-[130px]">

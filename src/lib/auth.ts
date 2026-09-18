@@ -134,12 +134,13 @@ export async function generateAuthToken(
   tenantId: string,
   role?: string,
   email?: string,
-  sessionVersion?: number
+  sessionVersion?: number,
+  subscriptionBlocked?: boolean
 ): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + 24 * 60 * 60; // 24 hours
 
-  return new SignJWT({ userId, tenantId, role, email, sessionVersion })
+  return new SignJWT({ userId, tenantId, role, email, sessionVersion, subscriptionBlocked })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setExpirationTime(exp)
     .setIssuedAt(iat)

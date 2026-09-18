@@ -1,7 +1,7 @@
 import React from "react";
 import { pdf } from "@react-pdf/renderer";
 import { StudentPerformanceOverview } from "@/lib/student-performance";
-import { StudentPerformancePDF } from "./performance-pdf-template";
+import { StudentPerformancePDF, PerformancePDFSchoolInfo } from "./performance-pdf-template";
 import { downloadBlob } from "@/lib/download-blob";
 
 /**
@@ -10,10 +10,15 @@ import { downloadBlob } from "@/lib/download-blob";
  *
  * @param performance - Student performance data
  * @param fileName - Download file name
+ * @param options - Optional school metadata and locale
  */
 export async function exportStudentPerformancePDF(
   performance: StudentPerformanceOverview,
-  fileName: string = "Student-Performance-Report.pdf"
+  fileName: string = "Student-Performance-Report.pdf",
+  options?: {
+    school?: PerformancePDFSchoolInfo;
+    locale?: string;
+  }
 ): Promise<{ success: boolean; error?: string }> {
   const studentName = `${performance.student.firstName} ${performance.student.lastName}`.trim() || "Student";
   const studentRollNumber = performance.student.rollNumber || "N/A";
@@ -23,6 +28,8 @@ export async function exportStudentPerformancePDF(
       performance,
       studentName,
       studentRollNumber,
+      school: options?.school,
+      locale: options?.locale,
     });
     const blob = await pdf(element as any).toBlob();
 

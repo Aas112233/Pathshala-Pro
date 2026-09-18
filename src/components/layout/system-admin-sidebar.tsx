@@ -30,7 +30,13 @@ export function SystemAdminSidebar({ collapsed, onToggle }: SystemAdminSidebarPr
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         <Link href="/system-admin" className="flex items-center gap-2.5 overflow-hidden">
           <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-primary-foreground">
-            <Image src="/pathshalapro-app-icon.webp" alt="App Icon" fill className="object-cover scale-125 rounded-lg" />
+            <Image
+              src="/pathshalapro-app-icon.webp"
+              alt="App Icon"
+              fill
+              sizes="32px"
+              className="object-cover scale-125 rounded-lg"
+            />
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">

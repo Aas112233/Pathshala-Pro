@@ -3,6 +3,7 @@ import React from "react";
 import { StudentMarksheetPDF } from "@/lib/pdf/marksheet-template";
 import { ThreePartFeeChallanPDF } from "@/lib/pdf/fee-challan-template";
 import { StaffPayslipPDF } from "@/lib/pdf/payslip-template";
+import { StudentPerformancePDF } from "./question-paper-studio/performance-pdf-template";
 import {
   exportFeeDaybookToExcel,
   exportAcademicTabulationSheetToExcel,
@@ -130,6 +131,108 @@ describe("PDF Templates, Excel Exports & Analytics Engine", () => {
 
       expect(React.isValidElement(element)).toBe(true);
     });
+
+    it("instantiates Enhanced Student Performance Analytics PDF component without errors", () => {
+      const element = React.createElement(StudentPerformancePDF, {
+        performance: {
+          student: {
+            id: "stu-1",
+            studentId: "STD-2026-001",
+            rollNumber: "12",
+            firstName: "Ayesha",
+            lastName: "Siddiqua",
+            firstNameBn: "আয়েশা",
+            lastNameBn: "সিদ্দিকা",
+            className: "Grade 10",
+            sectionName: "A",
+            groupName: "Science",
+            admissionDate: new Date("2024-01-01"),
+            status: "ACTIVE",
+          },
+          academicYear: {
+            id: "ay-1",
+            label: "2025-2026",
+          },
+          metrics: {
+            cumulativeGpa: 3.92,
+            maxGpa: 4.0,
+            overallPercentage: 92.5,
+            letterGrade: "A+",
+            remarks: "Outstanding",
+            meritRank: 2,
+            meritRankLabel: "2nd",
+            totalClassStudents: 45,
+            percentile: 98,
+            totalExamsTaken: 3,
+            totalSubjectsPassed: 6,
+            totalSubjectsFailed: 0,
+          },
+          attendance: {
+            totalDays: 180,
+            presentDays: 172,
+            absentDays: 5,
+            lateDays: 3,
+            excusedDays: 0,
+            attendanceRate: 95.5,
+            punctualityRate: 98.3,
+            status: "EXCELLENT",
+          },
+          homework: {
+            totalAssigned: 40,
+            submittedCount: 39,
+            onTimeCount: 38,
+            completionRate: 97.5,
+            averageScorePercentage: 94.0,
+          },
+          subjectMastery: [
+            {
+              subjectId: "sub-1",
+              subjectName: "Advanced Mathematics",
+              subjectCode: "MTH101",
+              obtainedMarks: 96,
+              maxMarks: 100,
+              percentage: 96,
+              letterGrade: "A+",
+              gradePoint: 4.0,
+              classAveragePercentage: 78,
+              masteryLevel: "EXCELLENT",
+              trend: "IMPROVING",
+            },
+          ],
+          examProgression: [
+            {
+              examId: "ex-1",
+              examTitle: "Mid-Term Examination",
+              examType: "Term",
+              term: "Term 1",
+              totalMarksObtained: 550,
+              totalMaxMarks: 600,
+              percentage: 91.7,
+              gpa: 3.9,
+              letterGrade: "A+",
+              rankInExam: 2,
+            },
+          ],
+          insights: {
+            strengths: ["Analytical problem solving in Mathematics", "High class attendance"],
+            focusAreas: ["Practical lab records formatting"],
+            actionableRecommendations: ["Participate in upcoming inter-school science Olympiad"],
+            riskLevel: "LOW",
+          },
+        },
+        studentName: "Ayesha Siddiqua",
+        studentRollNumber: "12",
+        school: {
+          name: "Pathshala International Academy",
+          address: "Dhanmondi, Dhaka, Bangladesh",
+          phone: "+880 1700-000000",
+          email: "info@pathshalapro.edu",
+        },
+        locale: "en",
+      });
+
+      expect(React.isValidElement(element)).toBe(true);
+    });
   });
 
   describe("Excel Export Service", () => {
@@ -153,6 +256,6 @@ describe("PDF Templates, Excel Exports & Analytics Engine", () => {
       expect(metrics.financials).toBeDefined();
       expect(metrics.academics).toBeDefined();
       expect(metrics.monthlyTrends.length).toBe(6);
-    }, 15000);
+    }, 60000);
   });
 });

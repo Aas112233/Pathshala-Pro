@@ -5,7 +5,7 @@ import { getJwtSecretKey } from "@/lib/jwt";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 
 // Paths that do not require authentication
-const PUBLIC_PATHS = ["/login", "/verify"];
+const PUBLIC_PATHS = ["/login", "/verify", "/onboarding"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -62,7 +62,22 @@ export async function proxy(request: NextRequest) {
       // Regular school admins and users cannot access the SaaS superadmin area
       return NextResponse.redirect(new URL("/", request.url));
     }
-    
+
+    // Edge subscription gate for page routes. The API layer enforces the
+    // authoritative, real-time check on every /api/* request and the client
+    // banner redirects on grace lapse; this middleware blocks blocked tenants at
+    // the edge for freshly minted sessions (subscriptionBlocked is embedded in
+    // the JWT at login). System admins, impersonated support sessions and the
+    // inactive notice page itself are exempt.
+    const subscriptionBlocked = payload.subscriptionBlocked === true;
+    if (
+      subscriptionBlocked &&
+      !isPlatformSystemAdmin &&
+      !pathname.startsWith("/subscription")
+    ) {
+      return NextResponse.redirect(new URL("/subscription/inactive", request.url));
+    }
+
     // Valid context, proceed
     return NextResponse.next();
   } catch (error: any) {

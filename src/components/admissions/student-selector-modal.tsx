@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Search, UserCheck, X, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { cn, formatStudentName } from "@/lib/utils";
+import { cn, formatStudentName, fuzzyFilter } from "@/lib/utils";
 
 interface Student {
   id: string;
@@ -121,10 +121,18 @@ export function StudentSelectorModal({
     enabled: !!selectedClass,
   });
 
-  const students = useMemo(
+  const rawStudents = useMemo(
     () => ("data" in (studentsData || {})) ? (studentsData as any).data : [],
     [studentsData]
   );
+
+  const students = useMemo(() => {
+    if (!search.trim()) return rawStudents;
+    return fuzzyFilter(rawStudents, search, (s: Student) => {
+      const name = formatStudentName(s.firstName, s.lastName, s.firstNameBn, s.lastNameBn);
+      return `${name} ${s.rollNumber || ""} ${s.studentId || ""}`;
+    });
+  }, [rawStudents, search]);
 
   const classes = useMemo(
     () => ("data" in (classesData || {})) ? (classesData as any).data : [],
@@ -155,6 +163,18 @@ export function StudentSelectorModal({
     { value: "", label: t("allSections") },
     ...sections.map((s: any) => ({ value: s.id, label: s.name })),
   ];
+
+  // Picks survive filter changes (batch building across cohorts), so group
+  // them by each student's own class for visibility at confirm time.
+  const selectedGroups = useMemo(() => {
+    const map = new Map<string, Student[]>();
+    for (const s of tempSelected) {
+      const label = s.class?.name || t("unassignedCohort");
+      if (!map.has(label)) map.set(label, []);
+      map.get(label)!.push(s);
+    }
+    return [...map.entries()];
+  }, [tempSelected, t]);
 
   const isSelected = (student: Student) => {
     return tempSelected.some((s) => s.id === student.id);
@@ -258,7 +278,10 @@ export function StudentSelectorModal({
           <div>
             <AppDropdown
               value={selectedGroup}
-              onChange={setSelectedGroup}
+              onChange={(val) => {
+                setSelectedGroup(val);
+                setSelectedSection("");
+              }}
               options={groupOptions}
               placeholder={!selectedClass ? t("selectClassFirst") : t("filterByGroup")}
               searchable
@@ -279,13 +302,39 @@ export function StudentSelectorModal({
           </div>
         </div>
 
-        {/* Selected Count */}
+        {/* Selected students grouped by cohort */}
         {tempSelected.length > 0 && (
-          <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
-            <UserCheck className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              {t("studentsSelected", { count: tempSelected.length })}
-            </span>
+          <div className="space-y-2 rounded-lg bg-primary/10 p-3">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-primary">
+                {t("studentsSelected", { count: tempSelected.length })}
+              </span>
+            </div>
+            {selectedGroups.map(([groupLabel, members]) => (
+              <div key={groupLabel} className="space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground">{groupLabel}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {members.map((s) => (
+                    <span
+                      key={s.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-card py-0.5 pl-2.5 pr-1 text-xs text-foreground"
+                    >
+                      {formatStudentName(s.firstName, s.lastName, s.firstNameBn, s.lastNameBn)}
+                      {s.rollNumber ? ` (${s.rollNumber})` : ""}
+                      <button
+                        type="button"
+                        onClick={() => toggleSelect(s)}
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label={`Remove ${s.firstName} ${s.lastName}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

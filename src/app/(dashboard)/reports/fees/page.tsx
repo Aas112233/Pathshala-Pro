@@ -23,6 +23,7 @@ import { useExcelExport } from "@/hooks/use-excel-export";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
+import { colors } from "@/lib/design-tokens";
 import { toast } from "sonner";
 
 interface FeeVoucher {
@@ -55,7 +56,7 @@ interface FeeReportData {
 export default function FeeReportPage() {
   const tFee = useTranslations("reports.feeReport");
   const { settings } = useTenantSettings();
-  const { formatCurrency, formatDateTime } = useTenantFormatting();
+  const { formatCurrency, formatCompactCurrency, formatDateTime } = useTenantFormatting();
   const { exportFeeReport } = useExcelExport({
     fileName: "fee_report",
     schoolName: settings.name || "Pathshala Pro School",
@@ -188,8 +189,8 @@ export default function FeeReportPage() {
   };
 
   const paymentMethodData = [
-    { label: tFee("cash"), value: metrics?.cashCollected || 0, color: "hsl(var(--primary))" },
-    { label: tFee("digital"), value: metrics?.digitalCollected || 0, color: "hsl(var(--secondary))" },
+    { label: tFee("cash"), value: metrics?.cashCollected || 0, color: "var(--chart-1)" },
+    { label: tFee("digital"), value: metrics?.digitalCollected || 0, color: "var(--chart-4)" },
   ];
   const statusCounts = {
     PAID: data.filter((voucher) => voucher.status === "PAID").length,
@@ -302,17 +303,26 @@ export default function FeeReportPage() {
         }
         insights={
           data.length > 0 ? (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <PieChart title={tFee("paymentMethodBreakdown")} data={paymentMethodData} size={200} />
+            <div className="grid items-stretch gap-6 lg:grid-cols-2">
+              <PieChart
+                title={tFee("paymentMethodBreakdown")}
+                data={paymentMethodData}
+                size={240}
+                formatValue={formatCurrency}
+                formatTotal={formatCompactCurrency}
+                className="min-w-0 rounded-2xl border-border/60 shadow-xs"
+              />
               <BarChart
                 title={tFee("voucherStatusDistribution")}
                 data={[
-                  { label: tFee("paid"), value: statusCounts.PAID, color: "hsl(var(--primary))" },
-                  { label: tFee("pending"), value: statusCounts.PENDING, color: "hsl(var(--secondary))" },
-                  { label: tFee("partial"), value: statusCounts.PARTIAL, color: "hsl(var(--accent))" },
-                  { label: tFee("overdue"), value: statusCounts.OVERDUE, color: "hsl(var(--destructive))" },
+                  { label: tFee("paid"), value: statusCounts.PAID, color: colors.secondary[500] },
+                  { label: tFee("pending"), value: statusCounts.PENDING, color: colors.accent.amber },
+                  { label: tFee("partial"), value: statusCounts.PARTIAL, color: "var(--chart-1)" },
+                  { label: tFee("overdue"), value: statusCounts.OVERDUE, color: colors.accent.red },
                 ]}
-                height={200}
+                horizontal
+                height={240}
+                className="min-w-0 rounded-2xl border-border/60 shadow-xs"
               />
             </div>
           ) : undefined

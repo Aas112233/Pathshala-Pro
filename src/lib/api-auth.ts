@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AuthContext } from "@/lib/auth";
 import { getAuthContext } from "@/lib/auth";
-import { forbidden, unauthorized } from "@/lib/api-response";
+import { errorResponse, forbidden, unauthorized } from "@/lib/api-response";
 import { hasPermission, hasRolePermission, getEffectivePermissions, type PermissionAction, type Permission } from "@/lib/permissions";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 import { prisma } from "@/lib/prisma";
+import {
+  getSubscriptionEnforcementState,
+} from "@/lib/subscription-service";
+import {
+  getModuleKeyForApiPath,
+  resolveTenantModules,
+} from "@/lib/tenant-modules";
 
 type AccessResult =
   | { authContext: AuthContext; response?: never }
@@ -151,6 +158,58 @@ export async function requireApiAccess(
       return { response: forbidden("Platform system administrator access is required") };
     }
     return { authContext };
+  }
+
+  // The restricted notice page needs this read-only, tenant-scoped endpoint.
+  // This is an exact method/path exception, not a general subscription bypass.
+  if (request.method === "GET" && request.nextUrl.pathname === "/api/tenants/subscription-status") {
+    return { authContext };
+  }
+
+  // Subscription enforcement for regular tenant users.
+  // System admins, platform owners and impersonated support sessions are exempt.
+  if (!isSystemAdmin && !authContext.isImpersonated && authContext.tenantId) {
+    // Enforcement evaluates dates directly; a background sweep is not an access gate.
+    let enforcement;
+    try {
+      enforcement = await getSubscriptionEnforcementState(authContext.tenantId);
+    } catch {
+      return { response: errorResponse("Unable to verify subscription access. Please retry.", 503) };
+    }
+    if (enforcement?.blocked) {
+      return {
+        response: forbidden(
+          enforcement.reason ||
+            "Subscription is not active. Please contact your administrator to restore access."
+        ),
+      };
+    }
+
+    // Module licensing & entitlement check
+    const moduleKey = getModuleKeyForApiPath(request.nextUrl.pathname);
+    if (moduleKey) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { tenantId: authContext.tenantId },
+        select: {
+          featureFlags: true,
+          featureOverride: {
+            select: {
+              hasHostel: true,
+              hasTransport: true,
+              hasPayroll: true,
+            },
+          },
+        },
+      });
+      const resolved = resolveTenantModules(tenant?.featureFlags, tenant?.featureOverride);
+      if (resolved[moduleKey] === false) {
+        return {
+          response: forbidden(
+            `The '${moduleKey}' module is not licensed or enabled for this educational institute.`
+          ),
+        };
+      }
+    }
   }
 
   if (options?.permission) {

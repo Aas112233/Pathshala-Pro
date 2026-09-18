@@ -118,7 +118,7 @@ export async function updateTenantStatus(
   const updatedTenant = await tx.tenant.update({
     where: { tenantId },
     data: {
-      // In case status is a custom field on tenant or subscription
+      subscriptionStatus: status,
     },
   });
 
@@ -126,7 +126,10 @@ export async function updateTenantStatus(
   await tx.tenantSubscription.updateMany({
     where: { tenantId },
     data: {
-      status: status === "ACTIVE" ? "ACTIVE" : status === "SUSPENDED" ? "PAST_DUE" : "TRIALING",
+      status: status === "ACTIVE" ? "ACTIVE"
+        : status === "SUSPENDED" ? "PAST_DUE"
+        : status === "EXPIRED" ? "EXPIRED"
+        : status === "ARCHIVED" ? "INACTIVE" : "TRIALING",
     },
   });
 

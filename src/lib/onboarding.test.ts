@@ -133,10 +133,12 @@ describe("Institute Onboarding & Tenant Provisioning", () => {
       expect(parsed.success).toBe(false);
     });
 
-    it("rejects password with fewer than 6 characters", () => {
-      const invalid = { ...validPayload, adminPassword: "123" };
-      const parsed = onboardInstituteSchema.safeParse(invalid);
-      expect(parsed.success).toBe(false);
+    it("rejects password with fewer than 8 characters or missing digits", () => {
+      const tooShort = { ...validPayload, adminPassword: "Short1!" };
+      expect(onboardInstituteSchema.safeParse(tooShort).success).toBe(false);
+
+      const noDigit = { ...validPayload, adminPassword: "NoDigitsPassword!" };
+      expect(onboardInstituteSchema.safeParse(noDigit).success).toBe(false);
     });
 
     it("rejects invalid slug characters (e.g. spaces or uppercase in slug)", () => {

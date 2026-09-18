@@ -9,11 +9,24 @@ import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   try {
-    const access = await requireApiAccess(req, { module: "notices" });
+    const { searchParams } = new URL(req.url);
+    const activeOnly = searchParams.get("activeOnly") === "true";
+
+    // Two read surfaces share this endpoint:
+    //  - Broadcast feeds (activeOnly=true): published + unexpired + tenant-scoped
+    //    notices that power the header bell, dashboard feed, login dialog and
+    //    banner. Those components render for every signed-in user — including
+    //    restricted profiles whose custom permission set omits `notices` — so
+    //    this read is gated by authentication + subscription checks only.
+    //  - Management list (activeOnly unset): includes unpublished drafts and
+    //    therefore keeps the `notices:read` module gate.
+    const access = await requireApiAccess(
+      req,
+      activeOnly ? { module: null, allowUnmapped: true } : { module: "notices" }
+    );
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;
-    const { searchParams } = new URL(req.url);
 
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
     const limit = Math.min(
@@ -26,7 +39,6 @@ export async function GET(req: NextRequest) {
     const priority = searchParams.get("priority") || "";
     const audience = searchParams.get("audience") || "";
     const isPinned = searchParams.get("isPinned");
-    const activeOnly = searchParams.get("activeOnly") === "true";
 
     const where: any = {
       OR: [

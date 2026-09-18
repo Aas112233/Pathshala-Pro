@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { clsx } from 'clsx';
+import { fuzzyFilter } from '@/lib/utils';
 
 export interface DropdownOption {
     value: string;
@@ -55,8 +56,7 @@ export function AppDropdown({
     const selected = safeOptions.find((option) => option?.value === value);
     const filtered = useMemo(() => {
         if (!isSearchable || !search.trim()) return safeOptions;
-        const key = search.trim().toLowerCase();
-        return safeOptions.filter((option) => (option?.label ?? '').toLowerCase().includes(key));
+        return fuzzyFilter(safeOptions, search, (option) => option?.label ?? '');
     }, [safeOptions, search, isSearchable]);
 
     useEffect(() => {

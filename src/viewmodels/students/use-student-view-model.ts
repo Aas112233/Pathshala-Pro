@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { studentsApi } from "@/lib/api-client";
@@ -147,6 +147,19 @@ export function useStudentViewModel(): StudentViewModel {
     setPage(1);
     setSelectedIds(new Set());
   }, []);
+
+  // Academic year is the root scope: classes/sections/groups (and any checked
+  // rows) belong to one session, so a year switch drops the whole hierarchy.
+  // Search/status/gender are session-independent and survive.
+  const prevYearRef = useRef(selectedAcademicYearId);
+  useEffect(() => {
+    if (prevYearRef.current !== selectedAcademicYearId) {
+      prevYearRef.current = selectedAcademicYearId;
+      setFiltersState((prev) => ({ ...prev, classId: "", sectionId: "", groupId: "" }));
+      setPage(1);
+      setSelectedIds(new Set());
+    }
+  }, [selectedAcademicYearId]);
 
   const setPageSize = useCallback((size: number) => {
     setPageSizeState(size);

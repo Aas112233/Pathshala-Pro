@@ -1,4 +1,9 @@
 {
+  "dateValidation": {
+    "invalid": "অনুগ্রহ করে একটি সঠিক তারিখ নির্বাচন করুন।",
+    "futureBirthDate": "জন্মতারিখ ভবিষ্যতের হতে পারে না।",
+    "rangeOrder": "শেষ তারিখ শুরুর তারিখের আগে হতে পারে না।"
+  },
   "layout": {
     "title": "পাঠশালা প্রো",
     "template": "%s | পাঠশালা প্রো",
@@ -242,19 +247,19 @@
     "attendance": "উপস্থিতি",
     "exams": "পরীক্ষা",
     "examinations": "পরীক্ষা ও ফলাফল",
-    "questionPapers": "প্রশ্নপত্র তৈরি ও লাইব্রেরি",
+    "questionPapers": "প্রশ্নপত্র",
     "questionBank": "প্রশ্ন ব্যাংক",
     "academicYear": "শিক্ষাবর্ষ",
-    "classes": "শ্রেণী ও শাখা",
-    "groups": "গ্রুপ",
+    "classes": "শ্রেণী",
+    "groups": "শিক্ষা গ্রুপ",
     "sections": "শাখা",
     "finance": "ফি ও হিসাব ব্যবস্থাপনা",
     "feeVouchers": "ফি ইনভয়েস",
     "feeStructures": "ফি কাঠামো",
-    "feeCollection": "সিঙ্গেল পিওএস কাউন্টার",
-    "bulkFeeCollection": "বাল্ক ক্লাস ফি এন্ট্রি",
+    "feeCollection": "ফি আদায় (পিওএস)",
+    "bulkFeeCollection": "বাল্ক ফি এন্ট্রি",
     "transactions": "লেনদেন",
-    "expenses": "ব্যয় লেজার",
+    "expenses": "ব্যয়",
     "bankAccounts": "ব্যাংক ও ক্যাশ একাউন্ট",
     "profitLoss": "লাভ ও ক্ষতির বিবরণী",
     "statements": "হিসাবের বিবরণী",
@@ -270,19 +275,19 @@
     "settings": "স্কুল সেটিংস",
     "promotions": "শিক্ষার্থী পদোন্নতি",
     "promotionRules": "পদোন্নতির নিয়ম",
-    "subjects": "বিষয় ও গ্রুপ",
+    "subjects": "বিষয়",
     "examResults": "পরীক্ষার ফলাফল",
     "reports": "রিপোর্ট ও অ্যানালিটিক্স",
     "communication": "যোগাযোগ ও নোটিশ",
     "notices": "নোটিশ বোর্ড",
     "noticeBoard": "নোটিশ বোর্ড",
     "timetable": "রুটিন",
-    "calendar": "স্কুল ক্যালেন্ডার",
+    "calendar": "একাডেমিক ক্যালেন্ডার",
     "enquiries": "অনুসন্ধান",
     "library": "লাইব্রেরি",
     "homework": "হোমওয়ার্ক",
     "transport": "পরিবহন",
-    "leaves": "ছুটি",
+    "leaves": "ছুটি ব্যবস্থাপনা",
     "inventory": "স্টোর ও ইনভেন্টরি",
     "store": "স্টোর ও ইনভেন্টরি",
     "hostel": "হোস্টেল",
@@ -364,6 +369,7 @@
     "alreadyAdmitted": "ইতিমধ্যে ভর্তিকৃত",
     "assignedToClass": "ইতিমধ্যে {className}-এ বরাদ্দ",
     "studentsSelected": "{count} জন শিক্ষার্থী নির্বাচিত",
+    "unassignedCohort": "শ্রেণিবিহীন",
     "selectStudentsModalTitle": "শিক্ষার্থী নির্বাচন করুন",
     "selectStudentsModalDesc": "ভর্তির জন্য বিদ্যমান শিক্ষার্থীদের অনুসন্ধান এবং নির্বাচন করুন। বর্তমান শ্রেণির তথ্য প্রতিটি শিক্ষার্থীর নিচে প্রদর্শিত হবে।",
     "filterByClass": "শ্রেণি অনুযায়ী ফিল্টার করুন",
@@ -549,6 +555,7 @@
       "clearFilters": "ফিল্টার মুছুন",
       "title": "ফিল্টার",
       "clear": "পরিষ্কার করুন",
+      "selectClassFirst": "প্রথমে ক্লাস নির্বাচন করুন...",
       "class": {
         "all": "সকল ক্লাস"
       },
@@ -1405,6 +1412,9 @@
     "saveSuccess": "পরীক্ষার ফলাফল সফলভাবে সংরক্ষিত!",
     "saveError": "পরীক্ষার ফলাফল সংরক্ষণ ব্যর্থ",
     "fillAllMarks": "সকল শিক্ষার্থীর নম্বর পূরণ করুন",
+    "absent": "অনুপস্থিত",
+    "clearAbsent": "উপস্থিত করুন",
+    "saveErrorSummary": "{message} (+{count} আরও)",
     "summary": "সারসংক্ষেপ",
     "examName": "পরীক্ষা",
     "className": "শ্রেণী",
@@ -2202,6 +2212,7 @@
     "title": "রিপোর্ট ও অ্যানালিটিক্স হাব",
     "description": "প্রাতিষ্ঠানিক বুদ্ধিমত্তা, অডিট ও এক্সপোর্টযোগ্য লেজার",
     "overview": "রিপোর্ট ওভারভিউ",
+    "charts": { "total": "মোট" },
     "feeReport": {
       "status": "Status",
       "method": "Method",
@@ -2478,6 +2489,7 @@
     },
     "filters": {
       "selectClass": "শ্রেণি নির্বাচন করুন",
+      "selectClassFirst": "প্রথমে শ্রেণি নির্বাচন করুন...",
       "allClasses": "সব শ্রেণি",
       "selectSection": "শাখা নির্বাচন করুন",
       "allSections": "সব শাখা",
@@ -2811,7 +2823,7 @@
     "loginEmailPh": "e.g. principal@beaconhouse.edu",
     "masterPasswordLabel": "Master Password *",
     "generatePassword": "Generate Secure Password",
-    "passwordPh": "Minimum 6 characters",
+    "passwordPh": "ন্যূনতম ৮টি অক্ষর (অক্ষর ও সংখ্যা)",
     "reviewTitle": "Review & Confirm Setup",
     "reviewDesc": "Verify all configurations before instant cloud provisioning.",
     "schoolDetails": "School Details",
@@ -2838,7 +2850,7 @@
       "errDates": "Please select session start and end dates",
       "errFullName": "Please enter your full name",
       "errEmail": "Please enter a valid administrator email",
-      "errPassword": "Password must be at least 6 characters",
+      "errPassword": "পাসওয়ার্ড অন্তত ৮ অক্ষরের হতে হবে এবং তাতে অক্ষর ও সংখ্যা থাকতে হবে",
       "provisionFailed": "Failed to provision institute",
       "success": "School registered successfully!",
       "networkError": "Network error during onboarding",
@@ -2960,6 +2972,7 @@
       "colLifecycle": "LIFECYCLE ACTIONS",
       "activate": "Activate",
       "suspend": "Suspend",
+      "managePlan": "প্ল্যান পরিচালনা করুন",
       "estimatedMrr": "Estimated MRR",
       "mrrCaption": "Monthly Recurring Revenue",
       "estimatedArr": "Estimated ARR",
@@ -3004,7 +3017,36 @@
       "neverLoggedIn": "Never logged in",
       "statusUpdated": "স্ট্যাটাস {status} এ আপডেট হয়েছে",
       "statusUpdateFailed": "স্ট্যাটাস আপডেট করতে ব্যর্থ",
-      "networkError": "নেটওয়ার্ক ত্রুটি"
+      "networkError": "নেটওয়ার্ক ত্রুটি",
+      "loadFailed": "সাবস্ক্রিপশন লাইফসাইকেল লোড করতে ব্যর্থ",
+      "planPickerLabel": "প্ল্যান টিয়ার",
+      "planPickerPlaceholder": "প্ল্যান নির্বাচন করুন...",
+      "planPickerHelper": "টেন্যান্টকে একটি সক্রিয় ক্যাটালগ প্ল্যানে স্থানান্তর করুন",
+      "endDateLabel": "সাবস্ক্রিপশন সমাপ্তির তারিখ",
+      "endDateHelper": "যে তারিখে অর্থপ্রদানকৃত অ্যাক্সেস শেষ হবে",
+      "graceDaysLabel": "গ্রেস পিরিয়ড (দিন)",
+      "graceDaysHelper": "সমাপ্তির তারিখের পর অতিরিক্ত দিন",
+      "daysRemainingLabel": "স্ট্যাটাস ও অবশিষ্ট দিন",
+      "daysRemaining": "{days} দিন বাকি",
+      "noEndDate": "কোনো সমাপ্তির তারিখ নির্ধারিত নেই",
+      "planIncluded": "অন্তর্ভুক্ত {students} শিক্ষার্থী, {staff} কর্মী এবং {storage} MB স্টোরেজ",
+      "graceActiveDetail": "গ্রেস পিরিয়ড সক্রিয় - অ্যাক্সেস {date} তারিখে শেষ হবে",
+      "graceConfigured": "গ্রেস পিরিয়ড {date} তারিখে শেষ হবে",
+      "refresh": "রিফ্রেশ করুন",
+      "saveAndNotify": "সংরক্ষণ করুন ও টেন্যান্টকে জানান",
+      "saving": "সংরক্ষণ হচ্ছে...",
+      "saveSuccess": "সাবস্ক্রিপশন আপডেট হয়েছে এবং টেন্যান্টকে জানানো হয়েছে",
+      "saveFailed": "সাবস্ক্রিপশন আপডেট করতে ব্যর্থ",
+      "historyTitle": "সাবস্ক্রিপশন ইতিহাস",
+      "historyEmpty": "এখনও কোনো পরিবর্তন নথিভুক্ত হয়নি",
+      "historyTypePlanChange": "প্ল্যান পরিবর্তন",
+      "historyTypeStatusChange": "স্ট্যাটাস পরিবর্তন",
+      "historyTypeEndDateChange": "সমাপ্তির তারিখ পরিবর্তন",
+      "historyTypeGraceChange": "গ্রেস পিরিয়ড পরিবর্তন",
+      "historyTypeExpiry": "মেয়াদোত্তীর্ণ",
+      "graceDaysInline": "({days} দিন গ্রেস)",
+      "endsOnInline": "শেষ {date}",
+      "changedBy": "পরিবর্তন করেছেন {email}"
     },
     "onboard": {
       "title": "Onboard New Educational Institute",
@@ -3901,6 +3943,9 @@
     "deleteConfirm": "আপনি কি নিশ্চিতভাবে এই শ্রেণি ফি কাঠামো মুছতে চান?",
     "deleteSuccess": "ফি কাঠামো সফলভাবে মুছে ফেলা হয়েছে",
     "saveSuccess": "শ্রেণি ফি কাঠামো সফলভাবে সংরক্ষিত হয়েছে!",
+    "updateStructure": "ফি কাঠামো আপডেট করুন",
+    "existingStructureNotice": "এই শ্রেণির জন্য ইতিমধ্যে কনফিগার করা ফি কাঠামো পাওয়া গেছে। সংরক্ষিত মানসমূহ লোড করা হয়েছে — সংরক্ষণ করলে এটি আপডেট হবে।",
+    "existingStructureLoaded": "এই শ্রেণির পূর্বসংরক্ষিত ফি কাঠামো লোড করা হয়েছে। সংরক্ষণ করলে এটি আপডেট হবে।",
     "concessionsTitle": "শিক্ষার্থী ছাড় ও বৃত্তি",
     "concessionsSubtitle": "ফি ছাড় ও বৃত্তি বরাদ্দ করুন",
     "selectStudent": "শিক্ষার্থী নির্বাচন করুন",
@@ -4053,7 +4098,13 @@
       "class": "শ্রেণি",
       "subject": "বিষয়",
       "fullMarks": "পূর্ণমান",
-      "marks": "নম্বর"
+      "marks": "নম্বর",
+      "singleColumn": "এক কলাম",
+      "twoColumn": "দুই কলাম",
+      "compact": "সংক্ষিপ্ত",
+      "normal": "স্বাভাবিক",
+      "watermark": "জলছাপ",
+      "orDivider": "— অথবা —"
     },
     "noPapers": "এখনও কোনো প্রশ্নপত্র নেই",
     "noPapersHint": "স্মার্ট ব্লুপ্রিন্ট জেনারেটর ব্যবহার করুন বা ম্যানুয়ালি প্রশ্নপত্র তৈরি করুন।",
@@ -4248,7 +4299,68 @@
     "cardPos": "Card / POS",
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
-    "amountPlaceholder": "০.০০"
+    "amountPlaceholder": "০.০০",
+    "monthAlreadyPaid": "{student} এর জন্য {month} মাসের ফি ইতোমধ্যে পরিশোধ করা হয়েছে"
+  },
+  "subscription": {
+    "banner": {
+      "graceTitle": "সাবস্ক্রিপশনের অতিরিক্ত সময়সীমা",
+      "graceEndsOn": "প্রবেশাধিকার বজায় রাখতে {date}-এর আগে নবায়ন করুন।",
+      "graceActive": "প্রবেশাধিকার বজায় রাখতে আপনার সাবস্ক্রিপশন নবায়ন করুন।",
+      "endingSoonTitle": "আপনার সাবস্ক্রিপশন শীঘ্রই শেষ হচ্ছে",
+      "endsOn": "আপনার সাবস্ক্রিপশন {date} তারিখে শেষ হবে।",
+      "daysLeft": "বাকি দিন: {days}",
+      "plan": "প্ল্যান: {plan}"
+    },
+    "inactive": {
+      "title": "সাবস্ক্রিপশন নিষ্ক্রিয়",
+      "message": "আপনার প্রতিষ্ঠানের সাবস্ক্রিপশন নিষ্ক্রিয় রয়েছে। প্রবেশাধিকার পুনরুদ্ধার করতে এটি নবায়ন করুন।",
+      "supportHeading": "নবায়নে সাহায্য প্রয়োজন?",
+      "supportText": "নবায়নে সাহায্যের জন্য আপনার প্রতিষ্ঠানের প্রশাসক বা সহায়তা দলের সঙ্গে যোগাযোগ করুন।",
+      "backToLogin": "লগইনে ফিরে যান",
+      "renewalSteps": "প্ল্যাটফর্ম সহায়তা দলের মাধ্যমে নবায়নের ব্যবস্থা করতে আপনার প্রতিষ্ঠানের প্রশাসককে বলুন। নিশ্চিত হওয়ার পর নিচে প্রবেশাধিকার যাচাই করুন। প্রবেশাধিকার পুনরুদ্ধার না হওয়া পর্যন্ত বিদ্যালয়ের তথ্য পাওয়া যাবে না।",
+      "checkAccess": "নবায়নের অবস্থা যাচাই করুন",
+      "checking": "অবস্থা যাচাই করা হচ্ছে…",
+      "checkFailed": "নবায়নের অবস্থা যাচাই করা যায়নি। আবার চেষ্টা করুন।",
+      "stillInactive": "প্রবেশাধিকার এখনও সীমিত। নবায়ন সম্পন্ন করতে প্রশাসক বা প্ল্যাটফর্ম সহায়তা দলের সঙ্গে যোগাযোগ করুন।",
+      "signOut": "সাইন আউট করুন",
+      "signingOut": "সাইন আউট হচ্ছে…"
+    }
+  },
+  "adminTools": {
+    "title": "অ্যাডমিন টুলস",
+    "description": "শুধুমাত্র পঠনযোগ্য টেন্যান্ট সততা নির্ণয়",
+    "readOnly": "শুধুমাত্র পঠনযোগ্য: কোনো রেকর্ড পরিবর্তন করা হবে না",
+    "limitations": "যাচাইকরণ শুধুমাত্র প্রদর্শিত পৃষ্ঠা এবং নির্বাচিত নিয়ম কভার করে। এটি পুরো স্কুলকে প্রত্যয়িত করে না, জার্নাল বা অর্থপ্রদানের সমন্বয় করে না, বা ঐতিহাসিক একাডেমিক সেশনগুলিকে বৈধ করে না। ফলাফলগুলির জন্য ম্যানুয়াল পর্যালোচনা প্রয়োজন; কোনো স্বয়ংক্রিয় মেরামত উপলব্ধ নেই।",
+    "tenant": "স্কুল টেন্যান্ট আইডি",
+    "tenantPlaceholder": "টেন্যান্ট ডিরেক্টরি থেকে সঠিক টেন্যান্ট আইডি লিখুন",
+    "check": "যাচাই",
+    "placement": "শিক্ষার্থী স্থান নির্ধারণের সম্পর্ক",
+    "fees": "অ-বাতিল ফি ব্যালেন্স পাটিগণিত",
+    "run": "যাচাই চালান",
+    "running": "রেকর্ড যাচাই করা হচ্ছে...",
+    "reset": "রিসেট",
+    "search": "রেকর্ড রেফারেন্স দিয়ে অনুসন্ধান করুন",
+    "reference": "রেফারেন্স",
+    "status": "স্ট্যাটাস",
+    "findings": "ফলাফল",
+    "review": "পর্যালোচনা প্রয়োজন",
+    "noIssue": "কোনো সমস্যা পাওয়া যায়নি",
+    "checkPassed": "এই নিয়ম দ্বারা কোনো অসঙ্গতি ধরা পড়েনি।",
+    "classMissing": "নির্ধারিত শ্রেণী এই টেন্যান্ট থেকে অনুপস্থিত।",
+    "sectionMismatch": "শাখা অনুপস্থিত বা নির্ধারিত শ্রেণী/গ্রুপের সাথে মিলছে না।",
+    "groupMismatch": "গ্রুপ অনুপস্থিত বা নির্ধারিত শ্রেণীর সাথে মিলছে না।",
+    "feeBalance": "সংরক্ষিত ব্যালেন্স মোট প্রদেয় বিয়োগ পরিশোধিত পরিমাণের চেয়ে আলাদা।",
+    "invalidAmount": "একটি আর্থিক মান ঋণাত্মক, অসীম, বা সমর্থিত সীমার বাইরে।",
+    "empty": "কোনো মিল থাকা রেকর্ড পাওয়া যায়নি। অনুসন্ধান বা টেন্যান্টের সুযোগ পরিবর্তন করুন।",
+    "scope": "নির্বাচিত টেন্যান্ট: {tenantId}। শুধুমাত্র এই পৃষ্ঠার রেকর্ড পরীক্ষা করা হয়েছে।",
+    "checkedAt": "যাচাই করার সময় {time}",
+    "results": "রেকর্ড যাচাইকরণ",
+    "rowsPerPage": "প্রতি পৃষ্ঠায় সারি",
+    "previous": "পূর্ববর্তী পৃষ্ঠা",
+    "next": "পরবর্তী পৃষ্ঠা",
+    "range": "{start}-{end} এর মধ্যে {total}",
+    "requestFailed": "ডায়াগনস্টিকস অনুরোধ ব্যর্থ হয়েছে (HTTP {status})।"
   },
   "systemAdminPages": {
     "loadAuditFailed": "Failed to load audit logs",
@@ -4281,8 +4393,21 @@
     "featureDescription": "Per-tenant module toggles — disable hostel/transport/library etc without code deploy",
     "loadingTenants": "Loading tenants...",
     "noTenants": "No tenants",
-    "flagsUpdated": "Feature flags updated",
-    "save": "Save",
+    "flagsUpdated": "ফিচার ফ্ল্যাগ আপডেট করা হয়েছে",
+    "save": "সংরক্ষণ করুন",
+    "moduleAccess": "মডিউল অ্যাক্সেস ও লাইসেন্সিং",
+    "moduleAccessDescription": "এই বিদ্যালয়টির জন্য সক্রিয় ইআরপি মডিউল এবং কার্যক্ষমতার সুবিধা পরিচালনা করুন।",
+    "modulesUpdated": "মডিউল অ্যাক্সেস অনুমতি সফলভাবে আপডেট করা হয়েছে!",
+    "updateModulesFailed": "মডিউল অ্যাক্সেস আপডেট করতে ব্যর্থ হয়েছে",
+    "modulesCategoryCore": "কোর একাডেমিক ও ভর্তি",
+    "modulesCategoryAcademic": "মূল্যায়ন ও পাঠ্যক্রম",
+    "modulesCategoryFinance": "অর্থায়ন, বিলিং ও বেতন",
+    "modulesCategoryFacilities": "ক্যাম্পাস সুবিধা ও লজিস্টিকস",
+    "enabledCount": "{total} এর মধ্যে {enabled} মডিউল সক্রিয়",
+    "saveModuleAccess": "মডিউল অ্যাক্সেস সংরক্ষণ করুন",
+    "savingModuleAccess": "অনুমতি আপডেট হচ্ছে...",
+    "moduleEnabled": "সক্রিয়",
+    "moduleDisabled": "নিষ্ক্রিয়",
     "loadBroadcastsFailed": "Failed to load platform broadcasts",
     "broadcastRemoved": "Broadcast removed",
     "removeBroadcastFailed": "Failed to remove broadcast",
@@ -4913,5 +5038,79 @@
     "generatedOn": "তৈরির তারিখ: {date}",
     "authorizedSignatory": "অনুমোদিত স্বাক্ষরকারী / প্রধান শিক্ষক",
     "viewPerformance": "পারফরম্যান্স দেখুন"
+  },
+  "tenantModules": {
+    "academics": {
+      "title": "একাডেমিক ব্যবস্থাপনা",
+      "description": "শ্রেণী, শাখা, গ্রুপ এবং বিষয় পাঠ্যক্রম সেটআপ"
+    },
+    "admissions": {
+      "title": "ভর্তি ও অনুসন্ধান",
+      "description": "শিক্ষার্থী ভর্তির আবেদন, তথ্য অনুসন্ধান ও অনবোর্ডিং"
+    },
+    "attendance": {
+      "title": "উপস্থিতি ব্যবস্থা",
+      "description": "শিক্ষার্থী ও কর্মীদের দৈনিক উপস্থিতি এবং দ্রুত এন্ট্রি ব্যবস্থা"
+    },
+    "examinations": {
+      "title": "পরীক্ষা ও গ্রেডিং",
+      "description": "পরীক্ষার সময়সূচি, ফলাফল এন্ট্রি, নম্বরপত্র ও প্রশ্নপত্র স্টুডিও"
+    },
+    "fees": {
+      "title": "ফি বিলিং ও সরাসরি সংগ্রহ",
+      "description": "মাসিক ফি চালান, শিক্ষার্থী বিশেষ সুবিধা ও সরাসরি ফি সংগ্রহ"
+    },
+    "accounting": {
+      "title": "সাধারণ হিসাব ও তহবিল",
+      "description": "৫-স্তরের হিসাব চার্ট, ডাবল এন্ট্রি জার্নাল ও ব্যয় ব্যবস্থাপনা"
+    },
+    "payroll": {
+      "title": "কর্মী ও বেতন ব্যবস্থাপনা",
+      "description": "কর্মী প্রোফাইল, বেতন কাঠামো হিসাব, পে-রোল প্রক্রিয়াকরণ ও পে-স্লিপ"
+    },
+    "timetable": {
+      "title": "সময়সূচি ও রুটিন",
+      "description": "ক্লাস রুটিন, পিরিয়ড শিডিউলিং এবং শিক্ষক প্রতিস্থাপন পরিকল্পনা"
+    },
+    "calendar": {
+      "title": "ক্যালেন্ডার ও অনুষ্ঠান",
+      "description": "ক্যাম্পাস ইভেন্ট শিডিউলিং, ছুটির তালিকা ও প্রাতিষ্ঠানিক ক্যালেন্ডার"
+    },
+    "homework": {
+      "title": "বাড়ির কাজ ও অ্যাসাইনমেন্ট",
+      "description": "ডিজিটাল বাড়ির কাজ প্রদান, ফাইল সংযুক্তি ও জমা গ্রহণ"
+    },
+    "notices": {
+      "title": "নোটিশ বোর্ড ও বিজ্ঞপ্তি",
+      "description": "ক্যাম্পাস ঘোষণা, নির্দিষ্ট ভূমিকাভিত্তিক বার্তা ও জরুরি বিজ্ঞপ্তি"
+    },
+    "leaves": {
+      "title": "ছুটির আবেদন",
+      "description": "শিক্ষার্থী ও কর্মীদের ছুটির আবেদন ব্যবস্থাপনা ও অনুমোদন"
+    },
+    "transport": {
+      "title": "পরিবহন ও যানবাহন",
+      "description": "বাস রুট, স্টপ, যানবাহন ট্র্যাকিং ও শিক্ষার্থী পরিবহন বণ্টন"
+    },
+    "hostel": {
+      "title": "ছাত্রাবাস ও আবাসন",
+      "description": "হোস্টেল ভবন, রুম বরাদ্দ, সিট ক্ষমতা ও আবাসিক শিক্ষার্থী"
+    },
+    "library": {
+      "title": "গ্রন্থাগার ও বই বণ্টন",
+      "description": "বই ক্যাটালগিং, আইএসবিএন ট্র্যাকিং, সদস্য ঋণ ও বিলম্ব ফি"
+    },
+    "inventory": {
+      "title": "স্টোর ও মালামাল",
+      "description": "ক্যাম্পাস স্টক, স্টেশনারি সামগ্রী, ক্রয়াদেশ ও বণ্টন ট্র্যাকিং"
+    },
+    "certificates": {
+      "title": "সার্টিফিকেট জেনারেটর",
+      "description": "ছাড়পত্র, চারিত্রিক সনদ, প্রশংসাপত্র ও প্রত্যয়নপত্র তৈরি"
+    },
+    "health": {
+      "title": "স্বাস্থ্য ও চিকিৎসা",
+      "description": "শিক্ষার্থীদের স্বাস্থ্য রেকর্ড, জরুরি যোগাযোগ, চিকিৎসার ইতিহাস ও অ্যালার্জি"
+    }
   }
 }

@@ -196,7 +196,11 @@ export async function POST(request: NextRequest) {
         endDate: new Date(data.endDate),
         totalMarks: data.totalMarks,
         passPercentage: data.passPercentage,
-        isPublished: data.isPublished,
+        // Exams always start as drafts. Publishing is a guarded, irreversible
+        // transition enforced in PUT /api/exams/[id] (requires results to
+        // exist, cannot be undone, and notifies guardians) — it must never be
+        // reachable through the create endpoint.
+        isPublished: false,
         subjects: {
           create: data.subjects.map((subject) => ({
             tenantId,

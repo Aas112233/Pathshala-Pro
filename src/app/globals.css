@@ -7,9 +7,9 @@
 /* Ink and teal theme - practical, calm, and readable */
 
 :root {
-  --font-sans: "Plus Jakarta Sans", "Noto Serif Bengali", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-bengali: "Noto Serif Bengali", serif;
-  --font-mono: "Plus Jakarta Sans", "Noto Serif Bengali", -apple-system, BlinkMacSystemFont, monospace;
+  --font-sans: var(--font-jakarta-local), var(--font-bengali-local), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-bengali: var(--font-bengali-local), serif;
+  --font-mono: var(--font-jakarta-local), var(--font-bengali-local), -apple-system, BlinkMacSystemFont, monospace;
   --background: oklch(0.985 0.002 260);
   --foreground: oklch(0.175 0.015 260);
   --card: oklch(1 0 0);
@@ -147,42 +147,42 @@
 
 /* Custom Typography & Font Classes */
 .noto-serif-bengali {
-  font-family: "Noto Serif Bengali", serif;
+  font-family: var(--font-bengali-local), serif;
   font-optical-sizing: auto;
   font-style: normal;
   font-variation-settings: "wdth" 100;
 }
 
 .plus-jakarta-sans {
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-jakarta-local), sans-serif;
   font-optical-sizing: auto;
   font-style: normal;
 }
 
 /* Noto Serif Bengali weight variants (100 to 900) */
-.noto-serif-bengali-100 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 100; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-200 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 200; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-300 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 300; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-400 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 400; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-500 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 500; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-600 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 600; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-700 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 700; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-800 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 800; font-style: normal; font-variation-settings: "wdth" 100; }
-.noto-serif-bengali-900 { font-family: "Noto Serif Bengali", serif; font-optical-sizing: auto; font-weight: 900; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-100 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 100; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-200 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 200; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-300 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 300; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-400 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 400; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-500 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 500; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-600 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 600; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-700 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 700; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-800 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 800; font-style: normal; font-variation-settings: "wdth" 100; }
+.noto-serif-bengali-900 { font-family: var(--font-bengali-local), serif; font-optical-sizing: auto; font-weight: 900; font-style: normal; font-variation-settings: "wdth" 100; }
 
 /* Plus Jakarta Sans weight variants (200 to 800) */
-.plus-jakarta-sans-200 { font-family: "Plus Jakarta Sans", sans-serif; font-optical-sizing: auto; font-weight: 200; font-style: normal; }
-.plus-jakarta-sans-300 { font-family: "Plus Jakarta Sans", sans-serif; font-optical-sizing: auto; font-weight: 300; font-style: normal; }
-.plus-jakarta-sans-400 { font-family: "Plus Jakarta Sans", sans-serif; font-optical-sizing: auto; font-weight: 400; font-style: normal; }
-.plus-jakarta-sans-500 { font-family: "Plus Jakarta Sans", sans-serif; font-optical-sizing: auto; font-weight: 500; font-style: normal; }
-.plus-jakarta-sans-600 { font-family: "Plus Jakarta Sans", sans-serif; font-optical-sizing: auto; font-weight: 600; font-style: normal; }
-.plus-jakarta-sans-700 { font-family: "Plus Jakarta Sans", sans-serif; font-optical-sizing: auto; font-weight: 700; font-style: normal; }
-.plus-jakarta-sans-800 { font-family: "Plus Jakarta Sans", sans-serif; font-optical-sizing: auto; font-weight: 800; font-style: normal; }
+.plus-jakarta-sans-200 { font-family: var(--font-jakarta-local), sans-serif; font-optical-sizing: auto; font-weight: 200; font-style: normal; }
+.plus-jakarta-sans-300 { font-family: var(--font-jakarta-local), sans-serif; font-optical-sizing: auto; font-weight: 300; font-style: normal; }
+.plus-jakarta-sans-400 { font-family: var(--font-jakarta-local), sans-serif; font-optical-sizing: auto; font-weight: 400; font-style: normal; }
+.plus-jakarta-sans-500 { font-family: var(--font-jakarta-local), sans-serif; font-optical-sizing: auto; font-weight: 500; font-style: normal; }
+.plus-jakarta-sans-600 { font-family: var(--font-jakarta-local), sans-serif; font-optical-sizing: auto; font-weight: 600; font-style: normal; }
+.plus-jakarta-sans-700 { font-family: var(--font-jakarta-local), sans-serif; font-optical-sizing: auto; font-weight: 700; font-style: normal; }
+.plus-jakarta-sans-800 { font-family: var(--font-jakarta-local), sans-serif; font-optical-sizing: auto; font-weight: 800; font-style: normal; }
 
 /* Automatic Bengali font application for Bengali language locale */
 html[lang="bn"],
 :lang(bn) {
-  font-family: "Noto Serif Bengali", "Plus Jakarta Sans", serif;
+  font-family: var(--font-bengali-local), var(--font-jakarta-local), serif;
 }
 
 /* Ensure all Numbers, Currencies, Tables, and Metric Figures match the App Font Style with standard clean digits */
@@ -200,7 +200,7 @@ table,
 
 html[lang="bn"] .font-mono,
 :lang(bn) .font-mono {
-  font-family: "Noto Serif Bengali", "Plus Jakarta Sans", serif;
+  font-family: var(--font-bengali-local), var(--font-jakarta-local), serif;
   font-variant-numeric: normal;
   font-feature-settings: "zero" 0;
 }
@@ -224,19 +224,19 @@ html[lang="bn"] .font-mono,
 
 @layer utilities {
   .font-bangla-hind {
-    font-family: 'Hind Siliguri', sans-serif;
+    font-family: var(--font-hind-local), sans-serif;
   }
   .font-bangla-tiro {
-    font-family: 'Tiro Bangla', serif;
+    font-family: var(--font-tiro-local), serif;
   }
   .font-bangla-noto {
-    font-family: 'Noto Serif Bengali', serif;
+    font-family: var(--font-bengali-local), serif;
   }
   .font-bangla-anek {
-    font-family: 'Anek Bangla', sans-serif;
+    font-family: var(--font-anek-local), sans-serif;
   }
   .font-arabic-amiri {
-    font-family: 'Amiri', serif;
+    font-family: var(--font-amiri-local), serif;
   }
 }
 
@@ -282,8 +282,29 @@ html[lang="bn"] .font-mono,
   }
 
   [id^="question-card-"],
-  .question-item-card {
+  .question-item-card,
+  .print-question-item {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  .print-header-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-section-header {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-two-col {
+    column-count: 2 !important;
+    column-gap: 24px !important;
+    column-rule: 1px solid #d1d5db !important;
+  }
+
+  .print-two-col > * {
+    break-inside: avoid !important;
   }
 }

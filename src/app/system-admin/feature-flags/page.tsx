@@ -9,8 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { TENANT_MODULE_KEYS, TenantModuleKey } from "@/lib/tenant-modules";
 
-const FLAG_KEYS = ["hostel", "transport", "library", "inventory", "health", "certificates", "homework", "timetable"] as const;
+const FLAG_KEYS = TENANT_MODULE_KEYS;
 
 export default function FeatureFlagsPage() {
   const t = useTranslations("systemAdminPages");

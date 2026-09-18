@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
+import { ApiError } from "@/lib/api-error";
 
 /**
  * Helper: tuition-only capped stacking. Each concession declares appliesToHead.
@@ -87,8 +88,15 @@ async function createWalletLedgerIfNeeded(
         reason: params.reason,
       },
     });
-  } catch {
-    // table may not exist in test mocks — ignore
+  } catch (error) {
+    // A mocked / in-memory TransactionClient (unit tests) has no raw-SQL support
+    // and no StudentWalletLedger model, so there is nothing to serialise or
+    // record. Any REAL failure must propagate: swallowing it here would both
+    // lose the wallet credit (money silently unallocated, violating the
+    // excess-to-2050 rule) and leave Postgres in an aborted state (25P02), which
+    // then surfaces on the next statement as a misleading, unrelated error.
+    if (typeof (tx as any)?.$queryRaw !== "function") return;
+    throw error;
   }
 }
 
@@ -372,7 +380,7 @@ export async function postLegacyFeeInvoiceAccrual(
   const discount = new Prisma.Decimal(params.discountAmount || 0);
   if (gross.lessThanOrEqualTo(0)) return null;
   if (discount.lessThan(0) || discount.greaterThan(gross)) {
-    throw new Error(`Invalid fee discount (${discount.toString()}) for ${gross.toString()}.`);
+    throw ApiError.unprocessableEntity(`Invalid fee discount (${discount.toString()}) for ${gross.toString()}.`);
   }
 
   const [feeHead, accounts] = await Promise.all([
@@ -389,10 +397,17 @@ export async function postLegacyFeeInvoiceAccrual(
     where: { tenantId: params.tenantId, code: revenueCode, isActive: true },
   });
   const accountMap = new Map(accounts.map((account) => [account.code, account]));
-  if (!accountMap.has("1030")) throw new Error("Accounts Receivable account (1030) not configured.");
-  if (!revenueAccount) throw new Error(`Revenue account (${revenueCode}) not configured.`);
+  // A tenant without a seeded chart of accounts cannot post a fee accrual.
+  // Throwing ApiError (not a bare Error) keeps the actionable reason visible to
+  // the administrator instead of collapsing into a generic 500.
+  if (!accountMap.has("1030")) {
+    throw ApiError.internal("Accounts Receivable account (1030) not configured. Seed the tenant's chart of accounts under Accounting > Chart of Accounts.");
+  }
+  if (!revenueAccount) {
+    throw ApiError.internal(`Revenue account (${revenueCode}) not configured. Map the ${params.feeHeadCode} fee head to an active account under Accounting > Fee Heads.`);
+  }
   if (discount.greaterThan(0) && !accountMap.has("5060")) {
-    throw new Error("Fee Concession account (5060) not configured.");
+    throw ApiError.internal("Fee Concession account (5060) not configured. Seed the tenant's chart of accounts before granting concessions.");
   }
 
   const net = gross.minus(discount);
@@ -468,7 +483,7 @@ export async function postLegacyFeePaymentJournal(
   const applied = new Prisma.Decimal(params.appliedToInvoice);
   const excess = new Prisma.Decimal(params.excessToWallet || 0);
   if (payment.lessThanOrEqualTo(0) || !applied.plus(excess).equals(payment)) {
-    throw new Error("Invalid fee payment journal amounts.");
+    throw ApiError.internal("Invalid fee payment journal amounts.");
   }
 
   let bankCode = params.paymentMethod === "CASH" ? "1020" : "1010";
@@ -496,7 +511,9 @@ export async function postLegacyFeePaymentJournal(
   });
   const accountMap = new Map(accounts.map((account) => [account.code, account]));
   for (const code of requiredCodes) {
-    if (!accountMap.has(code)) throw new Error(`Account (${code}) not configured.`);
+    if (!accountMap.has(code)) {
+      throw ApiError.internal(`Account (${code}) not configured for payment method ${params.paymentMethod}. Seed the tenant's chart of accounts under Accounting > Chart of Accounts.`);
+    }
   }
 
   const voucherNumber = await getNextVoucherNumber(tx, params.tenantId, "RECEIPT");

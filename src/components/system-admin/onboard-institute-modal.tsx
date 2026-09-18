@@ -102,6 +102,12 @@ const TEMPLATE_DESCRIPTIONS: Record<
     count: "5 Years",
     icon: Landmark,
   },
+  IGCSE_CAMBRIDGE: {
+    label: "Cambridge IGCSE",
+    description: "IGCSE Year 1 & 2 (Grades 9-10) with Cambridge curriculum",
+    count: "2 Years + Streams",
+    icon: Landmark,
+  },
   MADRASA: {
     label: "Madrasa / Religious Institute",
     description: "Nazra Quran, Hifz-ul-Quran & Dars-e-Nizami levels",

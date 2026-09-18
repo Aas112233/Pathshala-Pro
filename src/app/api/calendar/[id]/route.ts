@@ -38,6 +38,18 @@ export async function PUT(
     }
 
     const data = validation.data;
+    if (data.startDate !== undefined || data.endDate !== undefined || data.recurrenceEndDate !== undefined) {
+      const rangeValidation = updateCalendarEventSchema.safeParse({
+        startDate: data.startDate ?? existing.startDate.toISOString(),
+        endDate: data.endDate !== undefined ? data.endDate : existing.endDate?.toISOString(),
+        recurrenceEndDate: data.recurrenceEndDate !== undefined ? data.recurrenceEndDate : existing.recurrenceEndDate?.toISOString(),
+      });
+      if (!rangeValidation.success) {
+        return validationError(rangeValidation.error.errors.map((err) => ({
+          field: err.path.join("."), code: err.code, message: err.message,
+        })));
+      }
+    }
     const event = await prisma.calendarEvent.update({
       where: { id: existing.id },
       data: {

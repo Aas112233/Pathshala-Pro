@@ -146,7 +146,7 @@ export function TopSheet({
         aria-labelledby="top-sheet-title"
         aria-describedby={description ? "top-sheet-desc" : undefined}
         className={cn(
-          "relative z-50 w-full flex flex-col max-h-[92vh] bg-background border-x border-b border-border shadow-xl rounded-b-lg overflow-hidden transition-all",
+          "relative z-50 w-full flex flex-col max-h-[92vh] bg-background border-x border-b border-border shadow-xl rounded-b-lg overflow-hidden will-change-[transform,opacity] transform-gpu transition-[transform,opacity]",
           isVisible
             ? "duration-300 ease-out translate-y-0 opacity-100"
             : "duration-200 ease-in -translate-y-6 opacity-0",
@@ -190,7 +190,7 @@ export function TopSheet({
 
         {/* Sticky Footer Action Bar */}
         {footer && (
-          <div className="sticky bottom-0 z-10 border-t border-border/80 bg-muted/30 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
+          <div className="sticky bottom-0 z-10 border-t border-border/80 bg-background/98 px-6 py-3.5 flex items-center justify-between">
             {footer}
           </div>
         )}

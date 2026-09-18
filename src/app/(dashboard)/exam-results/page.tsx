@@ -10,6 +10,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { formatStudentName } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ClipboardCheck,
   Save,
@@ -24,6 +25,7 @@ import {
   Trophy,
   Lock,
   FileSpreadsheet,
+  X,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -46,6 +48,8 @@ interface StudentMark {
   existingGrade?: string;
   existingStatus?: string;
   isLocked?: boolean;
+  /** Explicitly marked absent — persisted as status "ABSENT" with 0 marks. */
+  isAbsent?: boolean;
 }
 
 export default function ExamResultsPage() {
@@ -57,12 +61,8 @@ export default function ExamResultsPage() {
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadExams = hasPermission(perms, "exams", "read");
-  const canWriteExams = hasPermission(perms, "exams", "write");
-  const canManageExams = hasPermission(perms, "exams", "manage");
   const canReadResults = hasPermission(perms, "exam-results", "read");
   const canWriteResults = hasPermission(perms, "exam-results", "write");
-  // keep exams write/manage in scope for lint (exam selector uses read; write/manage reserved for exam edits)
-  void canWriteExams; void canManageExams;
 
   // View state: list (default) or form
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -105,7 +105,7 @@ export default function ExamResultsPage() {
 
   // Fetch exams
   const { data: examsData } = useQuery({
-    queryKey: ["exams", "all"],
+    queryKey: ["exams", { all: true }],
     queryFn: async () => {
       const res = await fetch("/api/exams");
       if (!res.ok) throw new Error("Failed to fetch exams");
@@ -115,7 +115,7 @@ export default function ExamResultsPage() {
 
   // Fetch classes
   const { data: classesData } = useQuery({
-    queryKey: ["classes", "all"],
+    queryKey: ["classes", { all: true, isActive: true }],
     queryFn: async () => {
       const res = await fetch("/api/classes?limit=100&isActive=true");
       if (!res.ok) throw new Error("Failed to fetch classes");
@@ -125,7 +125,7 @@ export default function ExamResultsPage() {
 
   // Fetch results for the list view with server-side pagination & filters
   const { data: allResultsData, isLoading: isResultsLoading } = useQuery({
-    queryKey: ["all-exam-results", listPage, debouncedSearch, filterExam, filterClass, filterSubject, filterStatus],
+    queryKey: ["exam-results", "list", { page: listPage, search: debouncedSearch, examId: filterExam, classId: filterClass, subjectId: filterSubject, status: filterStatus }],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(listPage),
@@ -185,10 +185,34 @@ export default function ExamResultsPage() {
     })),
   ], [exams, t]);
 
-  // Build subject filter from all exams' subjects (deduplicated)
+  // Fetch class-specific subjects when filterClass is chosen
+  const { data: filterClassSubjectsData } = useQuery({
+    queryKey: ["class-subjects", { classId: filterClass, scope: "exam-results-filter" }],
+    queryFn: async () => {
+      if (!filterClass) return [];
+      const res = await fetch(`/api/class-subjects?classId=${filterClass}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data || []).map((cs: any) => cs.subject).filter(Boolean);
+    },
+    enabled: !!filterClass,
+  });
+
+  // Build subject filter from exams' subjects (scoped by filterClass if set)
   const listSubjectFilterOptions = useMemo(() => {
+    if (filterClass && filterClassSubjectsData && filterClassSubjectsData.length > 0) {
+      return [
+        { value: "", label: t("filterAllSubjects") },
+        ...filterClassSubjectsData.map((s: any) => ({
+          value: s.id,
+          label: s.name,
+        })),
+      ];
+    }
+
     const map = new Map<string, string>();
     exams.forEach((e: any) => {
+      if (filterClass && e.classId && e.classId !== filterClass) return;
       e.subjects?.forEach((es: any) => {
         const subj = es.subject;
         if (subj?.id && subj?.name) map.set(subj.id, subj.name);
@@ -198,13 +222,14 @@ export default function ExamResultsPage() {
       { value: "", label: t("filterAllSubjects") },
       ...Array.from(map.entries()).map(([id, name]) => ({ value: id, label: name })),
     ];
-  }, [exams, t]);
+  }, [exams, filterClass, filterClassSubjectsData, t]);
 
   const listStatusFilterOptions = useMemo(
     () => [
       { value: "", label: t("filterAllStatus") },
       { value: "PASS", label: t("pass") },
       { value: "FAIL", label: t("fail") },
+      { value: "ABSENT", label: t("absent") },
     ],
     [t]
   );
@@ -241,7 +266,7 @@ export default function ExamResultsPage() {
 
   // Fetch students by class
   const { data: studentsData, isLoading: studentsLoading } = useQuery({
-    queryKey: ["students", "by-class", selectedClass],
+    queryKey: ["students", { classId: selectedClass, status: "ACTIVE", sortBy: "rollNumber", sortOrder: "asc", limit: 200 }],
     queryFn: async () => {
       const res = await fetch(
         `/api/students?limit=200&classId=${selectedClass}&status=ACTIVE&sortBy=rollNumber&sortOrder=asc`,
@@ -255,7 +280,7 @@ export default function ExamResultsPage() {
 
   // Fetch existing results for the selected exam + subject + class combo (avoid pagination truncation)
   const { data: existingResultsData, isLoading: existingResultsLoading } = useQuery({
-    queryKey: ["exam-results", selectedExam, selectedSubject, selectedClass],
+    queryKey: ["exam-results", "marks-entry", { examId: selectedExam, subjectId: selectedSubject, classId: selectedClass }],
     queryFn: async () => {
       const params = new URLSearchParams({ examId: selectedExam, subjectId: selectedSubject, limit: "200" });
       if (selectedClass) params.set("classId", selectedClass);
@@ -314,6 +339,10 @@ export default function ExamResultsPage() {
           obtainedMarks: existing ? String(existing.obtainedMarks) : "",
           existingGrade: existing?.grade,
           existingStatus: existing?.status,
+          // Locked rows must render as locked in the auto-entry flow too,
+          // otherwise the client sends them and relies on the server alone.
+          isLocked: Boolean(existing?.isLocked),
+          isAbsent: existing?.status === "ABSENT",
         };
       });
 
@@ -365,6 +394,7 @@ export default function ExamResultsPage() {
         existingGrade: existing?.grade,
         existingStatus: existing?.status,
         isLocked: Boolean(existing?.isLocked),
+        isAbsent: existing?.status === "ABSENT",
       };
     });
 
@@ -379,7 +409,9 @@ export default function ExamResultsPage() {
       toast.error(t("marksLockedDuePromotion"));
       return;
     }
-    const maxMarks = selectedSubjectInfo?.maxMarks || 100;
+    if (student?.isAbsent) return; // clear the absent flag before entering marks
+    const maxMarks = selectedSubjectInfo?.maxMarks;
+    if (!maxMarks) return; // no silent fallback ceiling — the server derives it
     // Allow empty string for clearing
     if (value === "") {
       setStudentMarks((prev) =>
@@ -395,42 +427,53 @@ export default function ExamResultsPage() {
     );
   };
 
+  // Toggle the explicit-absent flag for a student row
+  const handleAbsentToggle = (index: number, absent: boolean) => {
+    const student = studentMarks[index];
+    if (student?.isLocked) {
+      toast.error(t("marksLockedDuePromotion"));
+      return;
+    }
+    setStudentMarks((prev) =>
+      prev.map((m, i) =>
+        i === index
+          ? { ...m, isAbsent: absent, obtainedMarks: absent ? "" : m.obtainedMarks }
+          : m
+      )
+    );
+  };
+
   // Save exam results
   const saveMutation = useMutation({
     mutationFn: async (results: any[]) => {
-      // If editing a single result, use PUT with single result
-      if (editingResult) {
-        const res = await fetch(`/api/exam-results/${editingResult.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(results[0]),
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.message || "Failed to update result");
-        }
-        return res.json();
-      }
-
-      // Otherwise use bulk save
-      const res = await fetch("/api/exam-results", {
+      // Single-result edit goes to the [id] endpoint; everything else is a
+      // bulk upsert (safe to re-run — existing rows are updated in place).
+      const endpoint = editingResult ? `/api/exam-results/${editingResult.id}` : "/api/exam-results";
+      const res = await fetch(endpoint, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(results),
+        body: JSON.stringify(editingResult ? results[0] : results),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to save results");
+        const data = await res.json().catch(() => null);
+        // Surface the first field-level error plus how many more failed,
+        // instead of dumping the entire joined summary into one toast.
+        const fieldErrors: Array<{ message?: string }> = Array.isArray(data?.errors) ? data.errors : [];
+        const first = fieldErrors[0]?.message;
+        const extra = fieldErrors.length - 1;
+        const summary = first
+          ? extra > 0
+            ? t("saveErrorSummary", { message: first, count: extra })
+            : first
+          : data?.message || t(editingResult ? "updateError" : "saveError");
+        throw new Error(summary);
       }
       return res.json();
     },
     onSuccess: () => {
       toast.success(t(editingResult ? "updateSuccess" : "saveSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["all-exam-results"] });
       queryClient.invalidateQueries({ queryKey: ["exam-results"] });
       handleBack();
     },
@@ -440,11 +483,17 @@ export default function ExamResultsPage() {
   });
 
   const handleSave = () => {
-    const maxMarks = selectedSubjectInfo?.maxMarks || 100;
+    const maxMarks = selectedSubjectInfo?.maxMarks;
+    if (!maxMarks) {
+      toast.error(t("pleaseSelectAll"));
+      return;
+    }
 
-    // Filter out students with empty marks
+    // Rows with marks are saved as graded results; rows flagged absent are
+    // saved as an explicit status "ABSENT" with zero marks — an absent
+    // student must never silently look like "not graded yet" or a 0/F scorer.
     const filledMarks = studentMarks.filter(
-      (m) => m.obtainedMarks !== "" && m.obtainedMarks !== undefined
+      (m) => (m.obtainedMarks !== "" && m.obtainedMarks !== undefined) || m.isAbsent
     );
 
     if (filledMarks.length === 0) {
@@ -457,8 +506,9 @@ export default function ExamResultsPage() {
       academicYearId: selectedExamObj?.academicYearId,
       examId: selectedExam,
       subjectId: selectedSubject,
-      maxMarks: maxMarks,
-      obtainedMarks: parseFloat(m.obtainedMarks),
+      maxMarks,
+      obtainedMarks: m.isAbsent ? 0 : parseFloat(m.obtainedMarks),
+      absent: Boolean(m.isAbsent),
       reExamAllowed: false,
     }));
 
@@ -511,19 +561,22 @@ export default function ExamResultsPage() {
   };
 
   // Computed stats
-  const passMarks = selectedSubjectInfo?.passMarks || 33;
-  const maxMarks = selectedSubjectInfo?.maxMarks || 100;
-  const passPercentage = (passMarks / maxMarks) * 100;
+  const passMarks = selectedSubjectInfo?.passMarks ?? 0;
+  const maxMarks = selectedSubjectInfo?.maxMarks ?? 0;
+  const passPercentage = maxMarks > 0 ? (passMarks / maxMarks) * 100 : 0;
   const filledCount = studentMarks.filter(
     (m) => m.obtainedMarks !== ""
   ).length;
+  const absentCount = studentMarks.filter((m) => m.isAbsent).length;
   const passedCount = studentMarks.filter((m) => {
+    if (m.isAbsent) return false;
     const marks = parseFloat(m.obtainedMarks);
-    return !isNaN(marks) && (marks / maxMarks) * 100 >= passPercentage;
+    return !isNaN(marks) && maxMarks > 0 && (marks / maxMarks) * 100 >= passPercentage;
   }).length;
   const failedCount = studentMarks.filter((m) => {
+    if (m.isAbsent) return false;
     const marks = parseFloat(m.obtainedMarks);
-    return !isNaN(marks) && (marks / maxMarks) * 100 < passPercentage;
+    return !isNaN(marks) && maxMarks > 0 && (marks / maxMarks) * 100 < passPercentage;
   }).length;
   const initialMarksRef = useMemo(() => studentMarks.map((m) => ({ id: m.studentProfileId, marks: m.obtainedMarks })), [isFormReady]);
   const marksEntryDirty = isFormOpen && isFormReady && JSON.stringify(initialMarksRef) !== JSON.stringify(studentMarks.map((m) => ({ id: m.studentProfileId, marks: m.obtainedMarks })));
@@ -557,7 +610,7 @@ export default function ExamResultsPage() {
   // Grade color helper
   const getGradeColor = (marks: string) => {
     const num = parseFloat(marks);
-    if (isNaN(num)) return "";
+    if (isNaN(num) || maxMarks <= 0) return "";
     const pct = (num / maxMarks) * 100;
     if (pct >= 80) return "text-emerald-600";
     if (pct >= 60) return "text-blue-600";
@@ -567,7 +620,7 @@ export default function ExamResultsPage() {
 
   const getGradeLabel = (marks: string) => {
     const num = parseFloat(marks);
-    if (isNaN(num)) return "-";
+    if (isNaN(num) || maxMarks <= 0) return "-";
     const pct = (num / maxMarks) * 100;
     if (pct >= 80) return "A+";
     if (pct >= 70) return "A";
@@ -821,7 +874,10 @@ export default function ExamResultsPage() {
                 <div className="w-44">
                   <AppDropdown
                     value={filterClass}
-                    onChange={setFilterClass}
+                    onChange={(val) => {
+                      setFilterClass(val);
+                      setFilterSubject("");
+                    }}
                     options={listClassFilterOptions}
                     placeholder={t("filterAllClasses") || "All Classes"}
                     searchable
@@ -898,7 +954,7 @@ export default function ExamResultsPage() {
       <div className="space-y-6">
         <PageHeader
           title={editingResult ? t("editResult") : t("marksEntry")}
-          description={`${selectedExamObj?.name} — ${selectedSubjectInfo?.name} (${t("maxMarks")}: ${maxMarks})`}
+          description={`${selectedExamObj?.name} — ${selectedSubjectInfo?.name} (${t("maxMarks")}: ${selectedSubjectInfo?.maxMarks ?? "-"})`}
           icon={ClipboardCheck}
         >
           <Button variant="outline" onClick={handleBack}>
@@ -992,16 +1048,16 @@ export default function ExamResultsPage() {
                           <Input
                             type="number"
                             value={student.obtainedMarks}
-                            disabled={student.isLocked || !canWriteResults}
+                            disabled={student.isLocked || student.isAbsent || !canWriteResults}
                             onChange={(e) =>
                               handleMarksChange(index, e.target.value)
                             }
                             onFocus={(e) => e.target.select()}
                             min={0}
-                            max={maxMarks}
+                            max={maxMarks || undefined}
                             step="0.5"
                             placeholder="0"
-                            className={`w-20 text-center font-semibold ${gradeColor} ${student.isLocked || !canWriteResults ? "bg-muted/60 text-muted-foreground opacity-75 cursor-not-allowed" : ""}`}
+                            className={`w-20 text-center font-semibold ${gradeColor} ${student.isLocked || student.isAbsent || !canWriteResults ? "bg-muted/60 text-muted-foreground opacity-75 cursor-not-allowed" : ""}`}
                           />
                         </div>
                         <div className="col-span-1 text-center text-sm text-muted-foreground">
@@ -1014,8 +1070,27 @@ export default function ExamResultsPage() {
                             {grade}
                           </span>
                         </div>
-                        <div className="col-span-2 flex justify-center">
-                          {student.obtainedMarks !== "" ? (
+                        <div className="col-span-2 flex items-center justify-center gap-1">
+                          {student.isAbsent ? (
+                            <>
+                              <StatusBadge
+                                status="ABSENT"
+                                domain="examResult"
+                                label={t("absent")}
+                                icon={<XCircle className="h-3 w-3" />}
+                              />
+                              {canWriteResults && !student.isLocked && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAbsentToggle(index, false)}
+                                  className="text-muted-foreground hover:text-foreground"
+                                  title={t("clearAbsent")}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </>
+                          ) : student.obtainedMarks !== "" ? (
                             isPassing ? (
                               <StatusBadge
                                 status="PASS"
@@ -1031,6 +1106,15 @@ export default function ExamResultsPage() {
                                 icon={<XCircle className="h-3 w-3" />}
                               />
                             )
+                          ) : canWriteResults && !student.isLocked ? (
+                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                              <Checkbox
+                                checked={false}
+                                disabled={student.isLocked || !canWriteResults}
+                                onCheckedChange={() => handleAbsentToggle(index, true)}
+                              />
+                              {t("absent")}
+                            </label>
                           ) : (
                             <span className="text-xs text-muted-foreground">
                               —
@@ -1103,6 +1187,16 @@ export default function ExamResultsPage() {
                           {failedCount}
                         </span>
                       </div>
+                      {absentCount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <XCircle className="h-3 w-3" /> {t("absent")}
+                          </span>
+                          <span className="font-bold text-muted-foreground">
+                            {absentCount}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Pass rate bar */}

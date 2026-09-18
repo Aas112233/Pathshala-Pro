@@ -11,6 +11,7 @@ import {
 } from "@/lib/api-response";
 import { authCookieName, clearAuthCookie } from "@/lib/auth-cookies";
 import { getEffectivePermissions } from "@/lib/permissions";
+import { resolveTenantModules } from "@/lib/tenant-modules";
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,7 +39,11 @@ export async function GET(request: NextRequest) {
         tenantId,
       },
       include: {
-        tenant: true,
+        tenant: {
+          include: {
+            featureOverride: true,
+          },
+        },
       },
     });
 
@@ -94,6 +99,7 @@ export async function GET(request: NextRequest) {
       impersonatedBy: typeof payload.impersonatedBy === "string" ? payload.impersonatedBy : undefined,
       isImpersonated: payload.isImpersonated === true,
       permissions: getEffectivePermissions(user.role, user.permissions),
+      moduleAccess: resolveTenantModules(user.tenant.featureFlags, user.tenant.featureOverride),
     });
   } catch (error) {
     const response = unauthorized("Session expired");

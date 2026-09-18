@@ -26,8 +26,10 @@ import {
   Search,
 } from "lucide-react";
 import { FileDown } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useStudents, useStudentPerformance } from "@/hooks/use-queries";
 import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +55,8 @@ interface SectionItem {
 export default function StudentPerformancePage() {
   const t = useTranslations("studentPerformance");
   const tAcademic = useTranslations("academicSelector");
+  const locale = useLocale();
+  const { settings } = useTenantSettings();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -187,11 +191,28 @@ export default function StudentPerformancePage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => exportStudentPerformancePDF(performance, `Performance_${performance.student.studentId}_${performance.academicYear.label}.pdf`)}
+                onClick={() =>
+                  exportStudentPerformancePDF(
+                    performance,
+                    `Performance_${performance.student.studentId}_${performance.academicYear.label}.pdf`,
+                    {
+                      school: {
+                        name: settings?.name || "PATHSHALA PRO SCHOOL MANAGEMENT",
+                        address: settings?.address,
+                        phone: settings?.phone,
+                        email: settings?.email,
+                        logoUrl: settings?.logoUrl,
+                        website: settings?.website,
+                        motto: settings?.motto,
+                      },
+                      locale,
+                    }
+                  )
+                }
                 className="gap-2 shadow-xs flex items-center"
               >
                 <FileDown className="h-4 w-4" />
-                {t("exportPDF")}
+                {t("exportPdf")}
               </Button>
               <Button
                 variant="outline"
@@ -306,9 +327,20 @@ export default function StudentPerformancePage() {
       ) : (
         <div className="space-y-6 print:space-y-4">
           {/* Institutional Printable Header (Only visible on Print) */}
-          <div className="hidden print:block border-b pb-4 mb-4 text-center space-y-1">
-            <h2 className="text-2xl font-bold text-black uppercase tracking-wider">{t("officialTranscript")}</h2>
-            <p className="text-xs text-muted-foreground">{performance.academicYear?.label} — {t("generatedOn", { date: new Date().toLocaleDateString() })}</p>
+          <div className="hidden print:block border-b-2 border-primary pb-4 mb-4 text-center space-y-1">
+            <h1 className="text-xl font-bold text-black uppercase tracking-wider">
+              {settings?.name || "PATHSHALA PRO SCHOOL MANAGEMENT"}
+            </h1>
+            {settings?.address && (
+              <p className="text-xs text-muted-foreground">{settings.address}</p>
+            )}
+            <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground pt-1">
+              <span>{performance.academicYear?.label}</span>
+              <span>•</span>
+              <span>{t("officialTranscript")}</span>
+              <span>•</span>
+              <span>{t("generatedOn", { date: new Date().toLocaleDateString() })}</span>
+            </div>
           </div>
 
           {/* Student Banner */}

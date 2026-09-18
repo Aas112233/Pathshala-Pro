@@ -86,6 +86,13 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
     );
   };
 
+  // Switching rosters invalidates the name/ID search (date is shared context
+  // and correctly persists across the toggle).
+  const handleTypeChange = (type: AttendanceType) => {
+    setAttendanceType(type);
+    setSearch("");
+  };
+
   const handleMarkAll = (status: AttendanceStatus) => {
     setAttendanceList(prev =>
       prev.map(entry => ({ ...entry, status }))
@@ -168,7 +175,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
           <Button
             type="button"
             variant={attendanceType === "student" ? "default" : "outline"}
-            onClick={() => setAttendanceType("student")}
+            onClick={() => handleTypeChange("student")}
             className="flex-1"
           >
             <Users className="h-4 w-4 mr-2" />
@@ -177,7 +184,7 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
           <Button
             type="button"
             variant={attendanceType === "staff" ? "default" : "outline"}
-            onClick={() => setAttendanceType("staff")}
+            onClick={() => handleTypeChange("staff")}
             className="flex-1"
           >
             <Briefcase className="h-4 w-4 mr-2" />

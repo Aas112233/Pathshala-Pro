@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { internalFileUrlSchema } from "@/lib/file-url";
+import { birthDateSchema, dateInputSchema, isDateRangeValid, optionalDateInputSchema, validateDateRangeFields } from "@/lib/date-validation";
 
 // Auth schemas
 export const loginSchema = z.object({
@@ -46,7 +47,7 @@ export const createStudentSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   firstNameBn: z.string().optional(),
   lastNameBn: z.string().optional(),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: birthDateSchema,
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional().or(z.literal("")),
   address: z.string().optional(),
   guardianName: z.string().min(1, "Guardian name is required"),
@@ -75,7 +76,7 @@ export const createFeeVoucherSchema = z.object({
   baseAmount: z.number().min(0).default(0),
   discountAmount: z.number().min(0).default(0),
   totalDue: z.number().min(0, "Total due must be non-negative"),
-  dueDate: z.string().min(1, "Due date is required"),
+  dueDate: dateInputSchema("Due date"),
   discount: z.number().min(0).default(0),
   arrears: z.number().min(0).default(0),
 });
@@ -87,7 +88,7 @@ export const batchFeeInvoicingSchema = z.object({
   feeType: z.string().min(1, "Fee type is required").default("TUITION"),
   month: z.number().int().min(1).max(12).optional(),
   year: z.number().int().min(2000).max(2100).optional(),
-  dueDate: z.string().min(1, "Due date is required"),
+  dueDate: dateInputSchema("Due date"),
   baseAmount: z.number().min(0, "Base amount must be non-negative").default(0),
   useClassFeeStructure: z.boolean().default(true),
   target: z.enum(["ALL_STUDENTS", "CLASS", "SECTION"]).default("ALL_STUDENTS"),
@@ -180,11 +181,11 @@ export const createStaffSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
   baseSalary: z.number().min(0).default(0),
-  hireDate: z.string().min(1, "Hire date is required"),
-  joiningDate: z.string().optional(),
+  hireDate: dateInputSchema("Hire date"),
+  joiningDate: optionalDateInputSchema,
   qualification: z.string().optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: birthDateSchema,
   address: z.string().optional(),
   profilePictureUrl: internalFileUrlSchema.optional(),
   driveFileId: z.string().optional(),
@@ -198,8 +199,8 @@ export const updateStaffSchema = createStaffSchema.partial();
 export const createAcademicYearSchema = z.object({
   yearId: z.string().min(1, "Year ID is required"),
   label: z.string().min(1, "Label is required"),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
+  startDate: dateInputSchema("Start date"),
+  endDate: dateInputSchema("End date"),
   isClosed: z.boolean().optional(),
 });
 
@@ -207,7 +208,7 @@ export const updateAcademicYearSchema = createAcademicYearSchema.partial();
 
 // Attendance schemas
 export const createAttendanceSchema = z.object({
-  date: z.string().min(1, "Date is required"),
+  date: dateInputSchema(),
   studentProfileId: z.string().optional(),
   staffProfileId: z.string().optional(),
   status: z.enum(["PRESENT", "ABSENT", "LATE", "LEAVE"]),
@@ -234,8 +235,8 @@ export const createExamSchema = z.object({
   academicYearId: z.string().min(1, "Academic year is required"),
   name: z.string().min(1, "Exam name is required"),
   type: z.enum(["MID_TERM", "FINAL", "UNIT_TEST", "ANNUAL"]).default("MID_TERM"),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
+  startDate: dateInputSchema("Start date"),
+  endDate: dateInputSchema("End date"),
   totalMarks: z.number().min(1).default(100),
   passPercentage: z.number().min(1).max(100).default(33),
   isPublished: z.boolean().default(false),
@@ -266,14 +267,21 @@ const createExamResultNewSchemaShape = z.object({
   subjectId: z.string().min(1, "Subject is required"),
   maxMarks: z.number().min(1),
   obtainedMarks: z.number().min(0),
+  /**
+   * Marks a student as explicitly absent. When true, `obtainedMarks` is
+   * ignored by the grader and persisted `status` becomes "ABSENT" with
+   * zero marks — instead of silently looking like a 0/F scorer.
+   */
+  absent: z.boolean().optional().default(false),
   reExamAllowed: z.boolean().default(false),
 });
 
 // `obtainedMarks` can't be bounded above via a per-field validator since the
 // bound (maxMarks) is a sibling field whose value varies per subject/exam —
-// enforce it with an object-level refinement instead.
+// enforce it with an object-level refinement instead. Absent rows bypass the
+// marks bound entirely (they persist as ABSENT with 0 marks).
 export const createExamResultNewSchema = createExamResultNewSchemaShape.refine(
-  (data) => data.obtainedMarks <= data.maxMarks,
+  (data) => data.absent || data.obtainedMarks <= data.maxMarks,
   { message: "obtainedMarks cannot exceed maxMarks", path: ["obtainedMarks"] }
 );
 
@@ -319,7 +327,7 @@ export const createSalaryLedgerSchema = z.object({
   advances: z.number().min(0).default(0),
   status: z.enum(["PENDING", "PARTIAL", "PAID"]).default("PENDING"),
   paidAmount: z.number().min(0).default(0),
-  paidAt: z.string().optional(),
+  paidAt: optionalDateInputSchema,
 });
 
 export const updateSalaryLedgerSchema = createSalaryLedgerSchema.partial();
@@ -350,11 +358,54 @@ export const CLASS_TEMPLATE_PRESETS = [
   "IN_CBSE_SECONDARY_SR_SEC",
   "BD_NCTB_PRIMARY_SSC_HSC",
   "O_A_LEVELS",
+  "IGCSE_CAMBRIDGE",
   "MADRASA",
   "CUSTOM",
 ] as const;
 
 export type ClassTemplatePreset = (typeof CLASS_TEMPLATE_PRESETS)[number];
+
+export const onboardAcademicStructureItemSchema = z.object({
+  name: z.string().min(1).max(80),
+  code: z.string().min(1).max(16),
+  sequence: z.number().int().positive(),
+  sections: z.array(z.string().min(1).max(40)).max(20).default([]),
+  groups: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(40),
+        shortName: z.string().min(1).max(10),
+        subjects: z.array(z.string().min(1).max(16)).default([]),
+      })
+    )
+    .default([]),
+  subjects: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(80),
+        code: z.string().min(1).max(16),
+        type: z.enum(["THEORY", "PRACTICAL", "BOTH"]).default("THEORY"),
+        totalMarks: z.number().int().positive().optional(),
+        passMarks: z.number().int().nonnegative().optional(),
+      })
+    )
+    .default([]),
+});
+
+export type OnboardAcademicStructureItem = z.infer<typeof onboardAcademicStructureItemSchema>;
+
+export const onboardFeeStructureItemSchema = z.object({
+  classCode: z.string().min(1).max(16),
+  tuitionFee: z.number().nonnegative(),
+  labFee: z.number().nonnegative().default(0),
+  computerFee: z.number().nonnegative().default(0),
+  examFee: z.number().nonnegative().default(0),
+  sportsFee: z.number().nonnegative().default(0),
+  libraryFee: z.number().nonnegative().default(0),
+  otherFee: z.number().nonnegative().default(0),
+});
+
+export type OnboardFeeStructureItem = z.infer<typeof onboardFeeStructureItemSchema>;
 
 export const RESERVED_TENANT_SLUGS = [
   "system",
@@ -429,13 +480,20 @@ export const onboardInstituteSchema = z.object({
   academicStartDate: z.string().min(1, "Academic start date is required"),
   academicEndDate: z.string().min(1, "Academic end date is required"),
   classTemplate: z.enum(CLASS_TEMPLATE_PRESETS).default("K_12"),
+  academicStructure: z.array(onboardAcademicStructureItemSchema).max(20).optional(),
+  fiscalYearStartMonth: z.number().int().min(1).max(12).optional(),
+  feeStructures: z.array(onboardFeeStructureItemSchema).max(30).optional(),
 
   adminName: z.string().min(2, "Admin name must be at least 2 characters"),
   adminEmail: z.preprocess(
     (val) => (typeof val === "string" ? val.trim().toLowerCase() : val),
     z.string().email("Valid admin email is required")
   ),
-  adminPassword: z.string().min(6, "Password must be at least 6 characters"),
+  adminPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Za-z]/, "Password must contain at least one letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
   adminPhone: z.string().optional(),
 
   subscriptionStatus: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "EXPIRED"]).default("TRIAL"),
@@ -459,7 +517,7 @@ export const createExpenseSchema = z.object({
   categoryId: z.string().min(1, "Category is required"),
   amount: z.number().positive("Amount must be greater than 0"),
   paymentMethod: z.enum(["CASH", "BANK", "CHEQUE", "DIGITAL"]).default("CASH"),
-  expenseDate: z.string().min(1, "Expense date is required"),
+  expenseDate: dateInputSchema("Expense date"),
   payeeName: z.string().optional(),
   receiptNumber: z.string().optional(),
   notes: z.string().optional(),
@@ -562,7 +620,7 @@ export const createBookIssueSchema = z.object({
   staffProfileId: z.string().optional().nullable(),
   borrowerName: z.string().min(1, "Borrower name is required"),
   borrowerIdNo: z.string().min(1, "Borrower ID is required"),
-  dueDate: z.string().min(1, "Due date is required"),
+  dueDate: dateInputSchema("Due date"),
   notes: z.string().optional().nullable(),
 });
 
@@ -610,7 +668,7 @@ export const createHomeworkSchema = z.object({
   title: z.string().min(2, "Title is required"),
   description: z.string().min(5, "Description is required"),
   attachmentUrl: internalFileUrlSchema.optional().nullable().or(z.literal("")),
-  dueDate: z.string().min(1, "Due date is required"),
+  dueDate: dateInputSchema("Due date"),
 });
 
 export const updateHomeworkSchema = createHomeworkSchema.partial();
@@ -634,12 +692,15 @@ export const createLeaveSchema = z.object({
   studentProfileId: z.string().optional().nullable(),
   staffProfileId: z.string().optional().nullable(),
   leaveType: z.enum(["SICK", "CASUAL", "EMERGENCY", "OTHER"]).default("SICK"),
-  fromDate: z.string().min(1, "From date is required"),
-  toDate: z.string().min(1, "To date is required"),
+  fromDate: dateInputSchema("From date"),
+  toDate: dateInputSchema("To date"),
   reason: z.string().min(5, "Reason is required"),
 }).refine((d) => (d.applicantType === "STUDENT" ? !!d.studentProfileId : !!d.staffProfileId), {
   message: "Applicant is required",
   path: ["studentProfileId"],
+}).refine((d) => isDateRangeValid(d.fromDate, d.toDate), {
+  message: "To date cannot be before from date",
+  path: ["toDate"],
 });
 
 export const updateLeaveSchema = z.object({
@@ -922,19 +983,17 @@ export const createCalendarEventSchema = z
     category: z.enum(CALENDAR_CATEGORIES).default("EVENT"),
     location: z.string().max(160).optional().or(z.literal("")),
     color: z.enum(CALENDAR_COLORS).default("blue"),
-    startDate: z.string().min(1, "Start date is required"),
-    endDate: z.string().optional().or(z.literal("")),
+    startDate: dateInputSchema("Start date"),
+    endDate: optionalDateInputSchema,
     isAllDay: z.boolean().default(true),
     recurrence: z.enum(CALENDAR_RECURRENCES).default("NONE"),
-    recurrenceEndDate: z.string().optional().or(z.literal("")),
+    recurrenceEndDate: optionalDateInputSchema,
     audience: z.enum(CALENDAR_AUDIENCES).default("ALL"),
     classId: z.string().optional().or(z.literal("")),
     sectionId: z.string().optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
-    if (data.endDate && data.startDate && new Date(data.endDate) < new Date(data.startDate)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "End date cannot be before start date", path: ["endDate"] });
-    }
+    validateDateRangeFields(data, ctx);
     if (data.audience === "CLASS" && !data.classId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Select a class for class-scoped events", path: ["classId"] });
     }
@@ -943,15 +1002,15 @@ export const createCalendarEventSchema = z
     }
   });
 
-export const updateCalendarEventSchema = createCalendarEventSchema.innerType().partial();
+export const updateCalendarEventSchema = createCalendarEventSchema.innerType().partial().superRefine(validateDateRangeFields);
 
 export const createAcademicHolidaySchema = z
   .object({
     academicYearId: z.string().min(1, "Academic year is required"),
     title: z.string().min(1, "Title is required").max(120, "Title is too long"),
     holidayType: z.enum(HOLIDAY_TYPES).default("PUBLIC"),
-    startDate: z.string().min(1, "Start date is required"),
-    endDate: z.string().min(1, "End date is required"),
+    startDate: dateInputSchema("Start date"),
+    endDate: dateInputSchema("End date"),
     description: z.string().max(1000).optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
@@ -960,4 +1019,37 @@ export const createAcademicHolidaySchema = z
     }
   });
 
-export const updateAcademicHolidaySchema = createAcademicHolidaySchema.innerType().partial();
+export const updateAcademicHolidaySchema = createAcademicHolidaySchema.innerType().partial().superRefine(validateDateRangeFields);
+
+// Onboarding template (superadmin-managed provisioning blueprints)
+export const TEMPLATE_COUNTRY_CODES = ["PK", "IN", "BD", "INTL"] as const;
+export const TEMPLATE_CATEGORIES = ["NATIONAL", "INTERNATIONAL", "RELIGIOUS", "GENERIC"] as const;
+
+export const createOnboardingTemplateSchema = z.object({
+  code: z
+    .string()
+    .min(2, "Template code must be at least 2 characters")
+    .max(32, "Template code must be 32 characters or less")
+    .regex(/^[A-Z0-9_]+$/, "Code must contain only uppercase letters, numbers, and underscores"),
+  label: z.string().min(2, "Template label is required").max(80),
+  description: z.string().max(500).optional().or(z.literal("")),
+  countryCode: z.enum(TEMPLATE_COUNTRY_CODES).default("INTL"),
+  board: z.string().max(120).optional().or(z.literal("")),
+  category: z.enum(TEMPLATE_CATEGORIES).default("GENERIC"),
+  currency: z.string().min(3).max(3).default("PKR"),
+  currencySymbol: z.string().min(1).max(4).default("₨"),
+  timezone: z.string().min(3).max(60).default("Asia/Karachi"),
+  gradingSystem: z.enum(["GPA", "PERCENTAGE", "LETTER"]).default("GPA"),
+  curriculum: z.string().min(2).max(16).default("GENERAL"),
+  fiscalYearStartMonth: z.number().int().min(1).max(12).default(7),
+  classes: z.array(onboardAcademicStructureItemSchema).min(1, "At least one class is required").max(30),
+  feeHeads: z.array(onboardFeeStructureItemSchema).max(30).optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const updateOnboardingTemplateSchema = createOnboardingTemplateSchema
+  .omit({ code: true })
+  .partial();
+
+export type CreateOnboardingTemplateInput = z.infer<typeof createOnboardingTemplateSchema>;
+export type UpdateOnboardingTemplateInput = z.infer<typeof updateOnboardingTemplateSchema>;

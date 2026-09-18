@@ -3,39 +3,13 @@ import { prisma } from "@/lib/prisma";
 import {
   successResponse,
   paginatedResponse,
-  errorResponse,
-  unauthorized,
-  notFound,
   badRequest,
   validationError,
   handleApiError,
 } from "@/lib/api-response";
 import { createExamResultNewSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
-import { safePercentage } from "@/lib/math-utils";
-
-// Grading scale configuration
-const GRADING_SCALE = [
-  { minPercentage: 80, grade: "A+", point: 5.0, remark: "Excellent" },
-  { minPercentage: 70, grade: "A", point: 4.5, remark: "Very Good" },
-  { minPercentage: 60, grade: "A-", point: 4.0, remark: "Good" },
-  { minPercentage: 50, grade: "B", point: 3.5, remark: "Average" },
-  { minPercentage: 40, grade: "C", point: 3.0, remark: "Satisfactory" },
-  { minPercentage: 33, grade: "D", point: 2.0, remark: "Pass" },
-  { minPercentage: 0, grade: "F", point: 0.0, remark: "Fail" },
-];
-
-export function calculateGrade(marks: number, maxMarks: number) {
-  const percentage = safePercentage(marks, maxMarks);
-  const gradeInfo = GRADING_SCALE.find((g) => percentage >= g.minPercentage) || GRADING_SCALE[GRADING_SCALE.length - 1];
-  return {
-    grade: gradeInfo.grade,
-    gradePoint: gradeInfo.point,
-    percentage,
-    status: percentage >= 33 ? "PASS" : "FAIL",
-  };
-}
+import { validateExamResultBatch } from "@/lib/exam-result-service";
 
 /**
  * GET /api/exam-results
@@ -49,9 +23,10 @@ export async function GET(request: NextRequest) {
     const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
 
-    // Pagination params
+    // Pagination params — the ceiling accommodates marks-entry hydration for
+    // a full class roster in one request (the form refetches everything).
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
+    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
     const skip = (page - 1) * limit;
 
     // Filter params
@@ -159,8 +134,87 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * Parse the request body into schema-valid rows, collecting field-level
+ * errors per row. Shared by POST and PUT.
+ */
+async function parseResultRows(body: unknown) {
+  const resultsData = Array.isArray(body) ? body : [body];
+  if (resultsData.length === 0) {
+    return { parseError: badRequest("No results provided"), rows: [] as ParsedResultRow[] };
+  }
+
+  const rows: ParsedResultRow[] = [];
+  const errors: Array<{ field?: string; code: string; message: string }> = [];
+
+  for (const [index, resultData] of resultsData.entries()) {
+    const validation = createExamResultNewSchema.safeParse(resultData);
+    if (!validation.success) {
+      errors.push(
+        ...validation.error.errors.map((err) => ({
+          field: `results[${index}].${err.path.join(".")}`,
+          code: err.code,
+          message: err.message,
+        }))
+      );
+      continue;
+    }
+    rows.push(validation.data);
+  }
+
+  if (errors.length > 0) {
+    return { parseError: validationError(errors), rows: [] as ParsedResultRow[] };
+  }
+  return { parseError: null, rows };
+}
+
+type ParsedResultRow = ReturnType<typeof createExamResultNewSchema.parse>;
+
+/** Map a race with the unique constraint to the standard duplicate error shape. */
+function duplicateConstraintError(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  ) {
+    return validationError([
+      {
+        field: "results",
+        code: "duplicate",
+        message: "Result already exists for this student, exam, and subject combination",
+      },
+    ]);
+  }
+  return null;
+}
+
+/** Response include shared by POST and PUT writes. */
+const resultWriteInclude = {
+  studentProfile: {
+    select: {
+      studentId: true,
+      firstName: true,
+      lastName: true,
+      rollNumber: true,
+      classId: true,
+    },
+  },
+  subject: {
+    select: {
+      name: true,
+      code: true,
+    },
+  },
+} as const;
+
+/**
  * POST /api/exam-results
- * Create exam result(s) - supports bulk creation
+ * Create exam result(s) — supports bulk creation.
+ *
+ * The whole batch is validated and written inside a single transaction, so a
+ * failure on any row rolls back every row: there are never partial saves, and
+ * concurrent submissions race only against the unique constraint (mapped to a
+ * clean duplicate error).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -168,185 +222,49 @@ export async function POST(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    const { parseError, rows } = await parseResultRows(body);
+    if (parseError) return parseError;
 
-    // Support both single result and bulk results
-    const resultsData = Array.isArray(body) ? body : [body];
-
-    if (resultsData.length === 0) {
-      return badRequest("No results provided");
-    }
-
-    const errors: Array<{ field?: string; code: string; message: string }> = [];
-    const createdResults = [];
-
-    for (const [index, resultData] of resultsData.entries()) {
-      const validation = createExamResultNewSchema.safeParse(resultData);
-
-      if (!validation.success) {
-        const resultErrors = validation.error.errors.map((err) => ({
-          field: `results[${index}].${err.path.join(".")}`,
-          code: err.code,
-          message: err.message,
-        }));
-        errors.push(...resultErrors);
-        continue;
-      }
-
-      const data = validation.data;
-
-      // Verify student exists
-      const student = await prisma.studentProfile.findUnique({
-        where: { id: data.studentProfileId, tenantId },
+    try {
+      const createdResults = await prisma.$transaction(async (tx) => {
+        const { validRows, errors } = await validateExamResultBatch(tx, tenantId, rows, "create");
+        if (errors.length > 0) {
+          return validationError(errors) as never;
+        }
+        return Promise.all(
+          validRows.map((row) =>
+            tx.examResult.create({
+              data: {
+                tenantId,
+                studentProfileId: row.studentProfileId,
+                academicYearId: row.academicYearId,
+                examId: row.examId,
+                subjectId: row.subjectId,
+                maxMarks: row.maxMarks,
+                obtainedMarks: row.obtainedMarks,
+                percentage: row.percentage,
+                grade: row.grade,
+                gradePoint: row.gradePoint,
+                status: row.status,
+                reExamAllowed: row.reExamAllowed,
+              },
+              include: resultWriteInclude,
+            })
+          )
+        );
       });
 
-      if (!student) {
-        errors.push({
-          field: `results[${index}].studentProfileId`,
-          code: "not_found",
-          message: "Student not found",
-        });
-        continue;
-      }
-
-      // Verify exam exists
-      const exam = await prisma.exam.findUnique({
-        where: { id: data.examId, tenantId },
-      });
-
-      if (!exam) {
-        errors.push({
-          field: `results[${index}].examId`,
-          code: "not_found",
-          message: "Exam not found",
-        });
-        continue;
-      }
-
-      if (exam.academicYearId !== data.academicYearId) {
-        errors.push({ field: `results[${index}].academicYearId`, code: "YEAR_MISMATCH", message: "Exam and result must belong to the same academic year" });
-        continue;
-      }
-
-      try {
-        await assertAcademicYearOpen(tenantId, data.academicYearId);
-      } catch (error) {
-        errors.push({ field: `results[${index}].academicYearId`, code: "ACADEMIC_YEAR_CLOSED", message: error instanceof Error ? error.message : "Academic year is closed" });
-        continue;
-      }
-
-      // Verify subject exists
-      const subject = await prisma.subject.findUnique({
-        where: { id: data.subjectId, tenantId },
-      });
-
-      if (!subject) {
-        errors.push({
-          field: `results[${index}].subjectId`,
-          code: "not_found",
-          message: "Subject not found",
-        });
-        continue;
-      }
-
-      // Verify academic year exists
-      const academicYear = await prisma.academicYear.findUnique({
-        where: { id: data.academicYearId, tenantId },
-      });
-
-      if (!academicYear) {
-        errors.push({
-          field: `results[${index}].academicYearId`,
-          code: "not_found",
-          message: "Academic year not found",
-        });
-        continue;
-      }
-
-      // Check if student is already promoted in this academic year (locks mark creation)
-      const isPromoted = await prisma.classPromotion.findFirst({
-        where: {
-          tenantId,
-          studentProfileId: data.studentProfileId,
-          fromAcademicYearId: data.academicYearId,
-          status: "PROMOTED",
-        },
-      });
-
-      if (isPromoted) {
-        errors.push({
-          field: `results[${index}].studentProfileId`,
-          code: "locked",
-          message: "Cannot enter marks. This student has already been promoted and their academic results are locked.",
-        });
-        continue;
-      }
-
-      // Check if result already exists
-      const existingResult = await prisma.examResult.findFirst({
-        where: {
-          tenantId,
-          studentProfileId: data.studentProfileId,
-          examId: data.examId,
-          subjectId: data.subjectId,
-        },
-      });
-
-      if (existingResult) {
-        errors.push({
-          field: `results[${index}]`,
-          code: "duplicate",
-          message: "Result already exists for this student, exam, and subject combination",
-        });
-        continue;
-      }
-
-      // Calculate grade and status
-      const { grade, gradePoint, percentage, status } = calculateGrade(
-        data.obtainedMarks,
-        data.maxMarks
+      return successResponse(
+        createdResults,
+        `Successfully created ${createdResults.length} exam result(s)`,
+        201
       );
-
-      const result = await prisma.examResult.create({
-        data: {
-          tenantId,
-          ...data,
-          percentage,
-          grade,
-          gradePoint,
-          status,
-          reExamAllowed: data.reExamAllowed && status === "FAIL",
-        },
-        include: {
-          studentProfile: {
-            select: {
-              studentId: true,
-              firstName: true,
-              lastName: true,
-              rollNumber: true,
-            },
-          },
-          subject: {
-            select: {
-              name: true,
-              code: true,
-            },
-          },
-        },
-      });
-
-      createdResults.push(result);
+    } catch (error) {
+      const mapped = duplicateConstraintError(error);
+      if (mapped) return mapped;
+      throw error;
     }
-
-    if (errors.length > 0) {
-      return validationError(errors);
-    }
-
-    return successResponse(
-      createdResults,
-      `Successfully created ${createdResults.length} exam result(s)`,
-      201
-    );
   } catch (error) {
     return handleApiError(error);
   }
@@ -354,7 +272,11 @@ export async function POST(request: NextRequest) {
 
 /**
  * PUT /api/exam-results
- * Bulk upsert exam results — create or update
+ * Bulk upsert exam results — create new rows or update existing ones.
+ *
+ * Same transactional guarantee as POST: validation + writes are atomic, and
+ * published exams / promoted students / locked rows are rejected before any
+ * write happens (all-or-nothing, no partial saves).
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -362,178 +284,58 @@ export async function PUT(request: NextRequest) {
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    const { parseError, rows } = await parseResultRows(body);
+    if (parseError) return parseError;
 
-    const resultsData = Array.isArray(body) ? body : [body];
-
-    if (resultsData.length === 0) {
-      return badRequest("No results provided");
-    }
-
-    const errors: Array<{ field?: string; code: string; message: string }> = [];
-    const upsertedResults = [];
-
-    for (const [index, resultData] of resultsData.entries()) {
-      const validation = createExamResultNewSchema.safeParse(resultData);
-
-      if (!validation.success) {
-        const resultErrors = validation.error.errors.map((err) => ({
-          field: `results[${index}].${err.path.join(".")}`,
-          code: err.code,
-          message: err.message,
-        }));
-        errors.push(...resultErrors);
-        continue;
-      }
-
-      const data = validation.data;
-
-      const exam = await prisma.exam.findUnique({
-        where: { id: data.examId, tenantId },
-        select: {
-          id: true,
-          academicYearId: true,
-        },
-      });
-
-      if (!exam) {
-        errors.push({
-          field: `results[${index}].examId`,
-          code: "not_found",
-          message: "Exam not found",
-        });
-        continue;
-      }
-
-      if (exam.academicYearId !== data.academicYearId) {
-        errors.push({ field: `results[${index}].academicYearId`, code: "YEAR_MISMATCH", message: "Exam and result must belong to the same academic year" });
-        continue;
-      }
-
-      try {
-        await assertAcademicYearOpen(tenantId, data.academicYearId);
-      } catch (error) {
-        errors.push({ field: `results[${index}].academicYearId`, code: "ACADEMIC_YEAR_CLOSED", message: error instanceof Error ? error.message : "Academic year is closed" });
-        continue;
-      }
-
-      // Calculate grade and status
-      const { grade, gradePoint, percentage, status } = calculateGrade(
-        data.obtainedMarks,
-        data.maxMarks
-      );
-
-      // Check if student has already been promoted from this academic year
-      const isPromoted = await prisma.classPromotion.findFirst({
-        where: {
-          tenantId,
-          studentProfileId: data.studentProfileId,
-          fromAcademicYearId: data.academicYearId,
-          status: "PROMOTED",
-        },
-      });
-
-      // Check if result already exists
-      const existingResult = await prisma.examResult.findFirst({
-        where: {
-          tenantId,
-          studentProfileId: data.studentProfileId,
-          examId: data.examId,
-          subjectId: data.subjectId,
-        },
-      });
-
-      // If the result is locked or the student was promoted, prevent modifications
-      if (existingResult?.isLocked || isPromoted) {
-        // Ensure result in DB has isLocked set to true
-        if (existingResult && !existingResult.isLocked) {
-          await prisma.examResult.update({
-            where: { id: existingResult.id },
-            data: { isLocked: true },
-          });
+    try {
+      const upsertedResults = await prisma.$transaction(async (tx) => {
+        const { validRows, errors } = await validateExamResultBatch(tx, tenantId, rows, "upsert");
+        if (errors.length > 0) {
+          return validationError(errors) as never;
         }
-        errors.push({
-          field: `results[${index}].studentProfileId`,
-          code: "locked",
-          message: "Cannot modify marks. Student has been promoted and exam results are locked.",
-        });
-        continue;
-      }
+        return Promise.all(
+          validRows.map((row) => {
+            const data = {
+              maxMarks: row.maxMarks,
+              obtainedMarks: row.obtainedMarks,
+              percentage: row.percentage,
+              grade: row.grade,
+              gradePoint: row.gradePoint,
+              status: row.status,
+              reExamAllowed: row.reExamAllowed,
+            };
+            if (row.existingResultId) {
+              return tx.examResult.update({
+                where: { id: row.existingResultId },
+                data,
+                include: resultWriteInclude,
+              });
+            }
+            return tx.examResult.create({
+              data: {
+                tenantId,
+                studentProfileId: row.studentProfileId,
+                academicYearId: row.academicYearId,
+                examId: row.examId,
+                subjectId: row.subjectId,
+                ...data,
+              },
+              include: resultWriteInclude,
+            });
+          })
+        );
+      });
 
-      if (existingResult) {
-        // Update existing result
-        const updated = await prisma.examResult.update({
-          where: { id: existingResult.id },
-          data: {
-            obtainedMarks: data.obtainedMarks,
-            maxMarks: data.maxMarks,
-            percentage,
-            grade,
-            gradePoint,
-            status,
-            reExamAllowed: data.reExamAllowed && status === "FAIL",
-          },
-          include: {
-            studentProfile: {
-              select: {
-                studentId: true,
-                firstName: true,
-                lastName: true,
-                rollNumber: true,
-                classId: true,
-              },
-            },
-            subject: {
-              select: {
-                name: true,
-                code: true,
-              },
-            },
-          },
-        });
-        upsertedResults.push(updated);
-      } else {
-        // Create new result
-        const created = await prisma.examResult.create({
-          data: {
-            tenantId,
-            ...data,
-            percentage,
-            grade,
-            gradePoint,
-            status,
-            reExamAllowed: data.reExamAllowed && status === "FAIL",
-          },
-          include: {
-            studentProfile: {
-              select: {
-                studentId: true,
-                firstName: true,
-                lastName: true,
-                rollNumber: true,
-                classId: true,
-              },
-            },
-            subject: {
-              select: {
-                name: true,
-                code: true,
-              },
-            },
-          },
-        });
-        upsertedResults.push(created);
-      }
+      return successResponse(
+        upsertedResults,
+        `Successfully saved ${upsertedResults.length} exam result(s)`
+      );
+    } catch (error) {
+      const mapped = duplicateConstraintError(error);
+      if (mapped) return mapped;
+      throw error;
     }
-
-    if (errors.length > 0) {
-      return validationError(errors);
-    }
-
-    return successResponse(
-      upsertedResults,
-      `Successfully saved ${upsertedResults.length} exam result(s)`
-    );
   } catch (error) {
     return handleApiError(error);
   }

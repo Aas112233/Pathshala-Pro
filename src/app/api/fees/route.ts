@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), MAX_PAGE_SIZE);
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
-    const studentId = searchParams.get("studentId") || "";
+    const studentId = searchParams.get("studentProfileId") || searchParams.get("studentId") || "";
+    const classId = searchParams.get("classId") || "";
     const academicYearIdParam = searchParams.get("academicYearId");
     const resolvedAcademicYearId = academicYearIdParam
       ? academicYearIdParam.trim()
@@ -57,6 +58,10 @@ export async function GET(request: NextRequest) {
 
     if (studentId) {
       where.studentProfileId = studentId;
+    }
+
+    if (classId) {
+      where.studentProfile = { ...where.studentProfile, classId };
     }
 
     if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {

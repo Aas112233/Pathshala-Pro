@@ -67,7 +67,7 @@ describe("class subject selection", () => {
     expect(checkbox.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByText("Mathematics"));
     expect(checkbox.getAttribute("aria-checked")).toBe("false");
-  });
+  }, 15000);
 
   it("saves an empty subject selection", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 }));

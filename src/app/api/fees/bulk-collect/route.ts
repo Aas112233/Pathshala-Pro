@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, badRequest, handleApiError, safeParseBody } from "@/lib/api-response";
+import { successResponse, badRequest, handleApiError, safeParseBody, ApiError } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -86,9 +86,39 @@ export async function POST(request: NextRequest) {
     // since that snapshot goes stale the moment the transaction starts.
     const voucherMap = new Map(existingVouchers.map((v) => [v.studentProfileId, v]));
 
+    // Financial invariant: a NEW annual voucher must be sized from a configured
+    // fee structure. Falling back to the collected amount (the old
+    // `standardMonthlyFee.isZero() ? payDec : ...` behaviour) booked twelve
+    // months of revenue and receivable off a single month's payment — a 12x
+    // inflation of the ledger. Refuse the batch instead of writing it, and tell
+    // the administrator exactly which class/year is missing its structure.
+    // Students who already have a voucher for this year are unaffected: paying
+    // down an existing balance needs no fee structure.
+    if (standardMonthlyFee.lessThanOrEqualTo(0)) {
+      const studentsNeedingNewVoucher = data.payments.filter(
+        (p) => !(p.feeVoucherId || voucherMap.get(p.studentProfileId)?.id)
+      );
+      if (studentsNeedingNewVoucher.length > 0) {
+        return badRequest(
+          `No active fee structure is configured for ${classRecord.name} in academic year "${academicYear.label}", so the 12-month voucher cannot be sized. Set the monthly fee under Fees > Fee Structures, then collect again (${studentsNeedingNewVoucher.length} of ${data.payments.length} selected student(s) need a new annual voucher).`
+        );
+      }
+    }
+
     const currentYear = data.year || new Date().getFullYear();
     let totalCollected = new Prisma.Decimal(0);
     const results: any[] = [];
+
+    // Each student in this loop costs ~18 sequential round trips (voucher
+    // create, two double-entry journals, three voucher-sequence allocations and
+    // a receipt row), so the batch must NOT rely on Prisma's interactive
+    // transaction defaults: the 5_000 ms default is already exhausted by the
+    // first student on a high-latency link (measured ~3.7 s/student), which
+    // surfaced as "P2028 Transaction already closed" and rolled the entire
+    // batch back. Budget 8 s per student, floored at 30 s and capped at 300 s
+    // (the serverless ceiling), and allow up to 10 s to acquire a pooled
+    // connection instead of the 2 s default.
+    const transactionTimeoutMs = Math.min(300_000, Math.max(30_000, data.payments.length * 8_000));
 
     await prisma.$transaction(async (tx) => {
       for (const item of data.payments) {
@@ -113,6 +143,39 @@ export async function POST(request: NextRequest) {
         }
 
         if (existingV) {
+          // Check for duplicate month payment if target month is specified
+          if (data.month) {
+            let studMonthlyDiscount = new Prisma.Decimal(0);
+            const studConcessions = concessionsByStudent.get(item.studentProfileId) || [];
+            if (studConcessions.length > 0) {
+              studMonthlyDiscount = computeStackedConcession(tuitionMonthly, studConcessions.map(c=>({
+                discountType: c.discountType,
+                discountValue: new Prisma.Decimal(c.discountValue as any),
+                appliesToHead: (c as any).appliesToHead || "TUITION",
+                priority: (c as any).priority,
+                validFrom: (c as any).validFrom,
+                validUntil: (c as any).validUntil,
+              })), standardMonthlyFee);
+            }
+            const netMonthly = Prisma.Decimal.max(new Prisma.Decimal(0), standardMonthlyFee.minus(studMonthlyDiscount));
+            const netMonthlyNum = Number(netMonthly.toFixed(2));
+            if (netMonthlyNum > 0) {
+              const paidMonthsCount = Math.min(12, Math.floor(existingV.amountPaid / netMonthlyNum));
+              if (paidMonthsCount >= data.month) {
+                const studentRec = await tx.studentProfile.findUnique({
+                  where: { id: item.studentProfileId },
+                  select: { firstName: true, lastName: true, studentId: true },
+                });
+                const studentName = studentRec ? `${studentRec.firstName} ${studentRec.lastName}`.trim() : item.studentProfileId;
+                const { getMonthName } = await import("@/lib/constants");
+                const monthName = getMonthName(data.month);
+                throw ApiError.badRequest(
+                  `${studentName} has already paid fees for ${monthName} (${paidMonthsCount}/12 months cleared). Duplicate payment rejected.`
+                );
+              }
+            }
+          }
+
           const totalDue = new Prisma.Decimal(existingV.totalDue);
           const amountPaidPrev = new Prisma.Decimal(existingV.amountPaid);
           const appliedToInvoice = Prisma.Decimal.min(payDec, Prisma.Decimal.max(new Prisma.Decimal(0), totalDue.minus(amountPaidPrev)));
@@ -149,8 +212,8 @@ export async function POST(request: NextRequest) {
             studentProfileId: item.studentProfileId,
             feeVoucherId: existingV.id,
             amount: payDec,
-            appliedToInvoice: Number(appliedToInvoice.toFixed(2)),
-            excessToWallet: Number(excessToWallet.toFixed(2)),
+            appliedToInvoice,
+            excessToWallet,
             paymentMethod: data.paymentMethod || "CASH",
             receiptNumber,
             executedById: user.id,
@@ -162,7 +225,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Initialize new annual voucher — Decimal, stacked cap
-        const monthlyBase = standardMonthlyFee.isZero() ? payDec : standardMonthlyFee;
+        // Sizing is guaranteed non-zero by the fee-structure guard above, so
+        // never derive the fee basis from the amount the cashier happened to type.
+        const monthlyBase = standardMonthlyFee;
         // Compute stacked discount capped at tuition
         let monthlyDiscount = new Prisma.Decimal(0);
         const studConcessions = concessionsByStudent.get(item.studentProfileId) || [];
@@ -249,7 +314,7 @@ export async function POST(request: NextRequest) {
 
         results.push({ studentProfileId: item.studentProfileId, transactionId: t.id, voucherId: v.id });
       }
-    });
+    }, { timeout: transactionTimeoutMs, maxWait: 10_000 });
 
     return successResponse(
       {
@@ -261,6 +326,12 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error) {
-    return handleApiError(error);
+    if (error instanceof ApiError) {
+      return NextResponse.json(error.toJSON(), { status: error.statusCode });
+    }
+    if (typeof error === "object" && error !== null && "code" in error) {
+      return handleApiError(error);
+    }
+    return badRequest(error instanceof Error ? error.message : "Unable to record bulk fee payments.");
   }
 }

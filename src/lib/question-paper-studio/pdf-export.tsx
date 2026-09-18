@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { pdf } from "@react-pdf/renderer";
 import type { ExamPaperStudioModel as ExamPaper } from "@/types/exam-studio";
 import { ExamPaperPDF } from "./exam-paper-pdf-template";
+import { adaptPaperForPdf } from "./exam-paper-adapter";
 import { downloadBlob } from "@/lib/download-blob";
 
 /**
@@ -11,15 +12,25 @@ import { downloadBlob } from "@/lib/download-blob";
  * @param elementId - Retained for API compatibility with existing callers.
  * @param options.fileName - Download file name.
  * @param options.paper - Exam paper data rendered by ExamPaperPDF.
+ * @param options.layoutOverrides - Screen-side layout toggles (two-column,
+ *   compact, watermark) merged over the paper's saved layout so the PDF
+ *   matches what the user currently sees in the preview.
  */
 export async function exportElementToHighResPDF(
   elementId: string,
-  options: { fileName: string; paper: ExamPaper }
+  options: { fileName: string; paper: ExamPaper; layoutOverrides?: Partial<ExamPaper["layout"]> }
 ): Promise<{ success: boolean; error?: string }> {
-  const { fileName, paper } = options;
+  const { fileName, paper, layoutOverrides } = options;
 
   try {
-    const blob = await pdf(createElement(ExamPaperPDF, { paper }) as any).toBlob();
+    // Single choke point: normalize raw API/DB payloads (or partial objects) into a
+    // complete Studio Model so the template never reads undefined (e.g. layout.isRTL).
+    const studioPaper = adaptPaperForPdf(
+      layoutOverrides && paper && typeof paper === "object"
+        ? { ...paper, layout: { ...(paper as any).layout, ...layoutOverrides } }
+        : paper
+    );
+    const blob = await pdf(createElement(ExamPaperPDF, { paper: studioPaper }) as any).toBlob();
     downloadBlob(blob, fileName);
     return { success: true };
   } catch (err: any) {

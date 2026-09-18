@@ -8,6 +8,8 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { isValidBirthDate, isValidDateInput, todayDateString } from "@/lib/date-validation";
 import { clsx } from "clsx";
 import { toast } from "sonner";
 import { ImagePreviewModal } from "@/components/shared/image-preview-modal";
@@ -29,6 +31,7 @@ interface FormErrors {
   guardianName?: string;
   guardianContact?: string;
   guardianEmail?: string;
+  dateOfBirth?: string;
 }
 
 export function StudentFormModal({
@@ -39,6 +42,7 @@ export function StudentFormModal({
   isEditing = false,
 }: StudentFormModalProps) {
   const t = useTranslations("students");
+  const tDate = useTranslations("dateValidation");
   const placementLocked = isEditing && !!initialData?.classId;
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -212,11 +216,15 @@ export function StudentFormModal({
       newErrors.guardianEmail = t("form.invalidEmail");
     }
 
+    if (formData.dateOfBirth && !isValidBirthDate(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = tDate(isValidDateInput(formData.dateOfBirth) ? "futureBirthDate" : "invalid");
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [formData, isEditing, t, tDate]);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     // Clear error when user starts typing
@@ -550,24 +558,26 @@ export function StudentFormModal({
                   />
                 </ERPFormField>
 
-                <ERPFormField label={t("dateOfBirth")} htmlFor="student-dateOfBirth">
+                <ERPFormField label={t("dateOfBirth")} error={errors.dateOfBirth} htmlFor="student-dateOfBirth">
                   <Input
                     id="student-dateOfBirth"
                     type="date"
                     name="dateOfBirth"
                     value={formData.dateOfBirth}
+                    max={todayDateString()}
                     onChange={handleChange}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
-                <ERPFormField label={t("address")} htmlFor="student-address">
-                  <Input
+                <ERPFormField label={t("address")} htmlFor="student-address" className="col-span-full">
+                  <Textarea
                     id="student-address"
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
                     placeholder={t("form.addressPlaceholder")}
                     disabled={isLoading || isUploading}
+                    rows={3}
                   />
                 </ERPFormField>
               </ERPFormGrid>

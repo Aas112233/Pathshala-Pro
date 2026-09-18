@@ -115,7 +115,7 @@ export default function CreateQuestionPaperStudioPage() {
   });
   const classes = classesData?.data || [];
 
-  // Fetch subjects
+  // Fetch subjects (all fallback or class-filtered)
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects-all'],
     queryFn: async () => {
@@ -125,6 +125,23 @@ export default function CreateQuestionPaperStudioPage() {
     },
   });
   const subjects = subjectsData?.data || [];
+
+  // Fetch class-specific subjects
+  const { data: classSubjectsData } = useQuery({
+    queryKey: ['class-subjects', classId],
+    queryFn: async () => {
+      if (!classId) return [];
+      const res = await fetch(`/api/class-subjects?classId=${classId}`);
+      if (!res.ok) throw new Error('Failed to fetch class subjects');
+      const json = await res.json();
+      return (json.data || []).map((cs: any) => ({
+        id: cs.subject?.id || cs.subjectId,
+        name: cs.subject?.name || 'Unknown',
+        code: cs.subject?.code || '',
+      }));
+    },
+    enabled: !!classId,
+  });
 
   // Fetch exams
   const { data: examsData } = useQuery({
@@ -140,12 +157,13 @@ export default function CreateQuestionPaperStudioPage() {
   // Filter subjects by selected class
   const filteredSubjects = useMemo(() => {
     if (!classId) return subjects;
-    return subjects.filter((s: any) => !s.classId || s.classId === classId);
-  }, [subjects, classId]);
+    return classSubjectsData || [];
+  }, [subjects, classId, classSubjectsData]);
 
   // Sync Header details with DB selectors
   const handleSelectClass = (newClassId: string) => {
     setClassId(newClassId);
+    setSubjectId("");
     const cls = classes.find((c: any) => c.id === newClassId);
     if (cls) {
       setCurrentPaper((prev) => ({
@@ -153,6 +171,7 @@ export default function CreateQuestionPaperStudioPage() {
         header: {
           ...prev.header,
           gradeClass: cls.name,
+          subject: "",
         },
       }));
     }
@@ -311,7 +330,7 @@ export default function CreateQuestionPaperStudioPage() {
   const saveMutation = useMutation({
     mutationFn: async (status: 'DRAFT' | 'READY') => {
       const effectiveAcademicYearId = academicYearId || (academicYears[0]?.id as string);
-      const effectiveClassId = classId || (classes[0]?.id as string);
+      const effectiveClassId = classId;
       const effectiveSubjectId = subjectId || (subjects[0]?.id as string);
 
       if (!effectiveAcademicYearId || !effectiveClassId || !effectiveSubjectId) {
@@ -497,7 +516,7 @@ export default function CreateQuestionPaperStudioPage() {
                   label: c.name,
                   value: c.id,
                 }))}
-                value={classId || classes[0]?.id || ''}
+                value={classId}
                 onChange={handleSelectClass}
                 placeholder="শ্রেণি নির্বাচন করুন..."
               />
@@ -513,9 +532,10 @@ export default function CreateQuestionPaperStudioPage() {
                   label: `${s.name}${s.code ? ` (${s.code})` : ''}`,
                   value: s.id,
                 }))}
-                value={subjectId || filteredSubjects[0]?.id || ''}
+                value={subjectId}
                 onChange={handleSelectSubject}
-                placeholder="বিষয় নির্বাচন করুন..."
+                placeholder={!classId ? "প্রথমে শ্রেণি নির্বাচন করুন..." : "বিষয় নির্বাচন করুন..."}
+                disabled={!classId}
               />
             </div>
 

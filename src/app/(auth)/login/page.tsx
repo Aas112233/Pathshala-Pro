@@ -27,27 +27,12 @@ import {
   LogIn,
   ChevronDown,
   Check,
-  HelpCircle,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type DemoRole = "ADMIN" | "PRINCIPAL" | "ACCOUNTANT" | "TEACHER";
-
-interface DemoPreset {
-  role: DemoRole;
-  labelKey: "demoSuperAdmin" | "demoPrincipal" | "demoAccountant" | "demoTeacher";
-  email: string;
-}
-
-const DEMO_PRESETS: DemoPreset[] = [
-  { role: "ADMIN", labelKey: "demoSuperAdmin", email: "admin@school.com" },
-  { role: "PRINCIPAL", labelKey: "demoPrincipal", email: "principal@school.com" },
-  { role: "ACCOUNTANT", labelKey: "demoAccountant", email: "accountant@school.com" },
-  { role: "TEACHER", labelKey: "demoTeacher", email: "teacher@school.com" },
-];
 
 export default function LoginPage() {
   const t = useTranslations("auth");
@@ -61,7 +46,6 @@ export default function LoginPage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<DemoRole | null>(null);
   const [localeDropdownOpen, setLocaleDropdownOpen] = useState(false);
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -88,12 +72,6 @@ export default function LoginPage() {
     window.location.reload();
   };
 
-  const handleSelectPreset = (preset: DemoPreset) => {
-    setSelectedRole(preset.role);
-    setEmailInput(preset.email);
-    setPasswordInput("password123");
-    toast.info(`${t(preset.labelKey)} credentials loaded`);
-  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -108,7 +86,7 @@ export default function LoginPage() {
         if (!result.error) {
           login(result.data.user);
           toast.success(t("welcomeToast"));
-          window.location.replace("/");
+          window.location.replace(result.data.redirectTo === "/subscription/inactive" ? "/subscription/inactive" : "/");
         }
       } catch (error) {
         const message =
@@ -153,6 +131,7 @@ export default function LoginPage() {
                 src="/pathshalapro-app-icon.webp"
                 alt="Pathshala Pro Logo"
                 fill
+                sizes="44px"
                 className="object-cover"
                 priority
               />
@@ -353,6 +332,7 @@ export default function LoginPage() {
                 src="/pathshalapro-app-icon.webp"
                 alt="Pathshala Pro Logo"
                 fill
+                sizes="44px"
                 className="object-cover"
                 priority
               />
@@ -381,32 +361,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Quick Demo Credentials Bar */}
-          <div className="mb-5 rounded-xl border border-border/80 bg-muted/40 p-2.5">
-            <div className="flex items-center justify-between pb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("demoAccounts")}
-              </span>
-              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70" />
-            </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              {DEMO_PRESETS.map((preset) => (
-                <button
-                  key={preset.role}
-                  type="button"
-                  onClick={() => handleSelectPreset(preset)}
-                  className={cn(
-                    "rounded-lg border px-1.5 py-1 text-center text-xs font-medium transition-all",
-                    selectedRole === preset.role
-                      ? "border-primary bg-primary text-primary-foreground shadow-xs"
-                      : "border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {t(preset.labelKey)}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Authentication Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -427,10 +381,7 @@ export default function LoginPage() {
                   name="email"
                   type="email"
                   value={emailInput}
-                  onChange={(e) => {
-                    setEmailInput(e.target.value);
-                    if (selectedRole) setSelectedRole(null);
-                  }}
+                  onChange={(e) => setEmailInput(e.target.value)}
                   required
                   autoComplete="email"
                   placeholder={t("emailPlaceholder")}

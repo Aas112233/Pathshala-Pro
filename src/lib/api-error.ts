@@ -108,6 +108,31 @@ export function handleApiError(
     const prismaError = error as { code: string; meta?: Record<string, unknown>; message?: string };
 
     switch (prismaError.code) {
+      case "P1000":
+      case "P1001":
+      case "P1002":
+      case "P1008":
+      case "P1017":
+      case "P2024": {
+        // Connection / pool failures (unreachable host, bad credentials,
+        // engine timeout, timed-out pooled connection). Always transient or
+        // infra-level: report 503 with Retry-After so clients back off
+        // instead of surfacing a masked 500. Never echo driver internals.
+        return NextResponse.json(
+          {
+            error: true,
+            message: "Database temporarily unavailable. Please retry in a few seconds.",
+            details: [
+              {
+                code: "DB_UNAVAILABLE",
+                message: `Database connection failed (${prismaError.code})`,
+              },
+            ],
+          },
+          { status: 503, headers: { "Retry-After": "5" } }
+        );
+      }
+
       case "P2002": {
         const target = Array.isArray(prismaError.meta?.target)
           ? (prismaError.meta.target as string[]).join(", ")
@@ -180,10 +205,94 @@ export function handleApiError(
           { status: 400 }
         );
       }
+
+      // Raw SQL rejected by the database (e.g. an un-cast enum parameter,
+      // SQLSTATE 42883). The underlying Postgres message is the only useful
+      // thing for whoever has to fix it, so never replace it with a generic one.
+      case "P2010": {
+        const sqlState = (prismaError.meta?.code as string) || undefined;
+        const dbMessage = (prismaError.meta?.message as string) || prismaError.message || "Raw query failed";
+        return NextResponse.json(
+          {
+            error: true,
+            message: `Database rejected the query${sqlState ? ` (SQLSTATE ${sqlState})` : ""}: ${dbMessage}`,
+            details: [{ code: sqlState ? `SQLSTATE_${sqlState}` : "RAW_QUERY_FAILED", message: dbMessage }],
+          },
+          { status: 500 }
+        );
+      }
+
+      // Interactive transaction exceeded its timeout / maxWait, or was rolled
+      // back by the engine. Bulk operations must shrink their batch size.
+      case "P2028": {
+        const cause = prismaError.message || "The database transaction could not be completed";
+        return NextResponse.json(
+          {
+            error: true,
+            message: `Database transaction failed: ${cause}`,
+            details: [{ code: "TRANSACTION_FAILED", message: cause }],
+          },
+          { status: 500 }
+        );
+      }
     }
   }
 
-  // 5. General fallback
+  // 4b. Prisma engine errors that carry NO `code` on the client-side object.
+  // Raw-query failures arrive as `PrismaClientUnknownRequestError` (the SQLSTATE
+  // is only inside the message) and malformed query shapes as
+  // `PrismaClientValidationError`. Without this branch both collapse into the
+  // generic "Internal server error" fallback, making a production incident
+  // impossible to diagnose from the UI or the network tab.
+  const engineErrorName =
+    typeof error === "object" && error !== null ? (error as { name?: string }).name : undefined;
+
+  // Engine failed before a request error code existed (connect refused at
+  // startup, pool exhausted, Rust panic). Same 503 contract as P1001/P2024.
+  if (
+    engineErrorName === "PrismaClientInitializationError" ||
+    engineErrorName === "PrismaClientRustPanicError"
+  ) {
+    console.error(`[API Error] Prisma engine unavailable (${engineErrorName})`);
+    return NextResponse.json(
+      {
+        error: true,
+        message: "Database temporarily unavailable. Please retry in a few seconds.",
+        details: [{ code: "DB_UNAVAILABLE", message: engineErrorName }],
+      },
+      { status: 503, headers: { "Retry-After": "5" } }
+    );
+  }
+
+  if (engineErrorName === "PrismaClientUnknownRequestError" || engineErrorName === "PrismaClientValidationError") {
+    const text = error instanceof Error ? error.message : String(error);
+    const sqlState = text.match(/code:\s*"([0-9A-Z]{5})"/)?.[1];
+    const dbMessage = text.match(/message:\s*"([^"]+)"/)?.[1];
+    const firstLine = text.split("\n").map((line) => line.trim()).filter(Boolean)[0];
+    const summary = [sqlState ? `SQLSTATE ${sqlState}` : null, dbMessage || firstLine].filter(Boolean).join(" - ");
+
+    console.error(`[API Error] Prisma engine error${sqlState ? ` (${sqlState})` : ""}:`, text.slice(0, 1000));
+
+    return NextResponse.json(
+      {
+        error: true,
+        message: `Database operation failed: ${(summary || "unknown engine error").slice(0, 500)}`,
+        details: [
+          {
+            code: sqlState ? `SQLSTATE_${sqlState}` : "DB_ENGINE_ERROR",
+            message: (dbMessage || firstLine || "No further detail").slice(0, 500),
+          },
+        ],
+      },
+      { status: 500 }
+    );
+  }
+
+  // 5. General fallback. Unclassified errors are deliberately masked: they may
+  // carry internal detail (stack frames, driver internals) that must not reach
+  // the client. Services that raise *actionable* domain errors (missing chart
+  // of accounts, unbalanced journal, ...) must throw `ApiError` explicitly so
+  // branch 1 above surfaces their message instead of landing here.
   console.error(`[API Error] ${fallbackMessage}:`, error);
 
   return NextResponse.json(

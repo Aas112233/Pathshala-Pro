@@ -47,6 +47,7 @@ const TEMPLATE_ICONS: Record<ClassTemplatePreset, LucideIcon> = {
   BD_NCTB_PRIMARY_SSC_HSC: School,
   HIGHER_SEC_11_12: GraduationCap,
   O_A_LEVELS: Landmark,
+  IGCSE_CAMBRIDGE: Landmark,
   MADRASA: BookMarked,
   CUSTOM: Sliders,
 };
@@ -149,7 +150,12 @@ export default function PublicOnboardingPage() {
         toast.error(t("toast.errEmail"));
         return false;
       }
-      if (!formData.adminPassword || formData.adminPassword.length < 6) {
+      if (
+        !formData.adminPassword ||
+        formData.adminPassword.length < 8 ||
+        !/[A-Za-z]/.test(formData.adminPassword) ||
+        !/[0-9]/.test(formData.adminPassword)
+      ) {
         toast.error(t("toast.errPassword"));
         return false;
       }

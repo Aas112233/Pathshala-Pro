@@ -12,17 +12,24 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { jwtVerify } from "jose";
 import { getJwtSecretKey } from "@/lib/jwt";
 import { onboardInstituteSchema, RESERVED_TENANT_SLUGS } from "@/lib/schemas";
-import { getClassTemplateDefinitions, generateTenantSlug, type TemplateClassDef } from "@/lib/onboarding-templates";
+import {
+  getClassTemplateDefinitions,
+  generateTenantSlug,
+  type TemplateClassDef,
+} from "@/lib/onboarding-templates";
+import { resolveAcademicStructure, STRUCTURE_ERROR } from "@/lib/onboarding-structure";
 import {
   seedTenantChartOfAccounts,
   seedTenantFeeHeads,
   seedTenantFiscalCalendar,
   seedTenantVoucherSequences,
   seedTenantPromotionRules,
+  seedTenantGroups,
+  seedTenantClassFeeStructures,
 } from "@/lib/tenant-provisioning";
 import bcrypt from "bcryptjs";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
-import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
+import { smartRateLimitAsync, dedupeRequestAsync, getClientIp } from "@/lib/rate-limit";
 
 /**
  * GET /api/tenants
@@ -62,7 +69,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Apply IP-based Rate Limiting & deduplication on public tenant onboarding
-    const ip = request.headers.get("x-forwarded-for") || "unknown_ip";
+    const ip = getClientIp(request);
 
     if (!(await dedupeRequestAsync(`ONBOARD_POST_${ip}`, 3000))) {
       return badRequest("Duplicate onboarding request detected. Please wait a moment.");
@@ -137,6 +144,22 @@ export async function POST(request: NextRequest) {
       ]);
     }
 
+    // Validate custom academic structure uniqueness BEFORE the transaction
+    if (data.academicStructure?.length) {
+      try {
+        resolveAcademicStructure(data.classTemplate ?? "K_12", data.academicStructure);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.startsWith(STRUCTURE_ERROR.DUPLICATE_CODE)) {
+          return badRequest(`Duplicate class code '${msg.split(":")[1]}' in academic structure. Class codes must be unique.`);
+        }
+        if (msg.startsWith(STRUCTURE_ERROR.DUPLICATE_SEQUENCE)) {
+          return badRequest(`Duplicate class sequence '${msg.split(":")[1]}' in academic structure. Class numbers must be unique.`);
+        }
+        throw err;
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(data.adminPassword, 10);
 
@@ -208,8 +231,11 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // 4. Seed Initial Class Structure & Sections
-        const classDefinitions = getClassTemplateDefinitions(data.classTemplate ?? "K_12");
+        // 4. Seed Initial Class Structure & Sections (template or wizard override)
+        const classDefinitions = resolveAcademicStructure(
+          data.classTemplate ?? "K_12",
+          data.academicStructure
+        );
         const uniqueSubjectsMap = new Map<string, TemplateClassDef["subjects"][number]>();
         for (const def of classDefinitions) {
           for (const sub of def.subjects) {

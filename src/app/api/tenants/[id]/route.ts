@@ -10,6 +10,8 @@ import {
 import { requireApiAccess } from "@/lib/api-auth";
 import { logAuditEvent } from "@/lib/audit-logger";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+import { getTenantSubscription } from "@/lib/subscription-service";
+import { resolveTenantModules } from "@/lib/tenant-modules";
 
 /**
  * GET /api/tenants/[id]
@@ -37,13 +39,16 @@ export async function GET(
       where: {
         OR: [{ id }, { tenantId: id }],
       },
+      include: {
+        featureOverride: true,
+      },
     });
 
     if (!tenant) {
       return notFound("School tenant was not found.");
     }
 
-    const [users, activeAcademicYear, studentCount, staffCount, feeVoucherCount, transactionCount, attendanceCount, examResultCount, classCount, expenseCount, bankAccountCount] = await Promise.all([
+    const [users, activeAcademicYear, studentCount, staffCount, feeVoucherCount, transactionCount, attendanceCount, examResultCount, classCount, expenseCount, bankAccountCount, subscription] = await Promise.all([
       prisma.user.findMany({
         where: { tenantId: tenant.tenantId },
         select: {
@@ -70,6 +75,7 @@ export async function GET(
       prisma.class.count({ where: { tenantId: tenant.tenantId } }),
       prisma.expense.count({ where: { tenantId: tenant.tenantId } }),
       prisma.bankAccount.count({ where: { tenantId: tenant.tenantId } }),
+      getTenantSubscription(prisma as any, tenant.tenantId),
     ]);
 
     const counts = {
@@ -100,6 +106,18 @@ export async function GET(
         totalBalanceDue: feeSummary._sum.balance || 0,
       },
       activeAcademicYear: activeAcademicYear || null,
+      subscription: subscription
+        ? {
+            planCode: subscription.plan?.code ?? null,
+            planName: subscription.plan?.name ?? null,
+            status: subscription.status,
+            subscriptionEndAt: subscription.subscriptionEndAt,
+            currentPeriodEnd: subscription.currentPeriodEnd,
+            gracePeriodDays: subscription.gracePeriodDays,
+            graceEndsAt: subscription.graceEndsAt,
+          }
+        : null,
+      moduleAccess: resolveTenantModules(tenant.featureFlags, tenant.featureOverride),
     });
   } catch (error) {
     return handleApiError(error);
@@ -140,6 +158,14 @@ export async function PUT(
       return notFound("Tenant was not found.");
     }
 
+    let updatedFeatureFlags = undefined;
+    if (isPlatformAdmin && body.featureFlags && typeof body.featureFlags === "object") {
+      updatedFeatureFlags = {
+        ...resolveTenantModules(existingTenant.featureFlags, null),
+        ...body.featureFlags,
+      };
+    }
+
     const updated = await prisma.tenant.update({
       where: { id: existingTenant.id },
       data: {
@@ -154,8 +180,26 @@ export async function PUT(
         curriculum: body.curriculum ?? undefined,
         maxGracePerSubject: body.maxGracePerSubject !== undefined ? Number(body.maxGracePerSubject) : undefined,
         maxGracePerStudent: body.maxGracePerStudent !== undefined ? Number(body.maxGracePerStudent) : undefined,
+        featureFlags: updatedFeatureFlags ?? undefined,
       },
     });
+
+    if (updatedFeatureFlags) {
+      await prisma.tenantFeatureOverride.upsert({
+        where: { tenantId: existingTenant.tenantId },
+        create: {
+          tenantId: existingTenant.tenantId,
+          hasHostel: updatedFeatureFlags.hostel ?? true,
+          hasTransport: updatedFeatureFlags.transport ?? true,
+          hasPayroll: updatedFeatureFlags.payroll ?? true,
+        },
+        update: {
+          hasHostel: updatedFeatureFlags.hostel ?? true,
+          hasTransport: updatedFeatureFlags.transport ?? true,
+          hasPayroll: updatedFeatureFlags.payroll ?? true,
+        },
+      });
+    }
 
     await logAuditEvent({
       tenantId: existingTenant.tenantId,

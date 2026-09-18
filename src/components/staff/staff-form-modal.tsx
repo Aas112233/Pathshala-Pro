@@ -6,6 +6,7 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isValidBirthDate, isValidDateInput, todayDateString } from "@/lib/date-validation";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { clsx } from "clsx";
@@ -34,6 +35,7 @@ interface FormErrors {
   phone?: string;
   baseSalary?: string;
   hireDate?: string;
+  dateOfBirth?: string;
 }
 
 export function StaffFormModal({
@@ -44,6 +46,7 @@ export function StaffFormModal({
   isEditing = false,
 }: StaffFormModalProps) {
   const t = useTranslations("staff");
+  const tDate = useTranslations("dateValidation");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -179,9 +182,16 @@ export function StaffFormModal({
       }
     }
 
+    if (formData.dateOfBirth && !isValidBirthDate(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = tDate(isValidDateInput(formData.dateOfBirth) ? "futureBirthDate" : "invalid");
+    }
+    if (formData.hireDate && !isValidDateInput(formData.hireDate)) {
+      newErrors.hireDate = tDate("invalid");
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, createUserAccount, userEmail, userPassword]);
+  }, [formData, createUserAccount, userEmail, userPassword, tDate]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -514,12 +524,13 @@ export function StaffFormModal({
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Date of Birth" htmlFor="dateOfBirth">
+                <ERPFormField label="Date of Birth" error={errors.dateOfBirth} htmlFor="dateOfBirth">
                   <Input
                     id="dateOfBirth"
                     type="date"
                     name="dateOfBirth"
                     value={formData.dateOfBirth}
+                    max={todayDateString()}
                     onChange={handleChange}
                     disabled={isLoading || isUploading}
                   />

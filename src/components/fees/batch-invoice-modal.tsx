@@ -219,7 +219,7 @@ export function BatchInvoiceModal({
               <Label className="text-xs font-semibold">{t("academicYearLabel")}</Label>
               <AppDropdown
                 value={formData.academicYearId || selectedAcademicYearId}
-                onChange={(v) => setFormData({ ...formData, academicYearId: v })}
+                onChange={(v) => setFormData({ ...formData, academicYearId: v, classId: "", sectionId: "" })}
                 options={academicYears.map((ay: any) => ({
                   value: ay.id,
                   label: `${ay.label} ${ay.isClosed ? t("closedSuffix") : t("activeSuffix")}`.trim()

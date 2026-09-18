@@ -349,26 +349,6 @@ export function useExamResults(params?: { examId?: string; studentProfileId?: st
   });
 }
 
-export function useCreateExamResults() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: Partial<ExamResult> | Partial<ExamResult>[]) => {
-      const response = await api.post<ExamResult[]>("/api/exam-results", data);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exam-results"] });
-      toast.success("Exam results saved successfully");
-    },
-    onError: (error: any) => {
-      const description = error?.details?.[0]?.message;
-      toast.error(error?.message || "Failed to save exam results", {
-        description: description !== error?.message ? description : undefined,
-      });
-    },
-  });
-}
-
 // Promotion Rule hooks
 export function usePromotionRules(params?: { academicYearId?: string; classId?: string }) {
   return useQuery({

@@ -1,4 +1,9 @@
 {
+  "dateValidation": {
+    "invalid": "कृपया एक मान्य तारीख चुनें।",
+    "futureBirthDate": "जन्म तिथि भविष्य की नहीं हो सकती।",
+    "rangeOrder": "समाप्ति तिथि आरंभ तिथि से पहले नहीं हो सकती।"
+  },
   "layout": {
     "title": "पाठशाला प्रो",
     "template": "%s | पाठशाला प्रो",
@@ -242,19 +247,19 @@
     "attendance": "उपस्थिति",
     "exams": "परीक्षा",
     "examinations": "परीक्षा और परिणाम",
-    "questionPapers": "प्रश्न पत्र और लाइब्रेरी",
+    "questionPapers": "प्रश्न पत्र",
     "questionBank": "प्रश्न बैंक",
     "academicYear": "शिक्षा वर्ष",
-    "classes": "कक्षा और वर्ग",
-    "groups": "समूह",
+    "classes": "कक्षाएं",
+    "groups": "शैक्षणिक समूह",
     "sections": "वर्ग",
     "finance": "शुल्क और वित्त",
     "feeVouchers": "शुल्क चालान",
     "feeStructures": "शुल्क संरचनाएं",
-    "feeCollection": "सिंगल पीओएस काउंटर",
-    "bulkFeeCollection": "थोक कक्षा शुल्क प्रविष्टि",
+    "feeCollection": "शुल्क संग्रह (पीओएस)",
+    "bulkFeeCollection": "थोक शुल्क प्रविष्टि",
     "transactions": "लेनदेन",
-    "expenses": "व्यय बहीखाता",
+    "expenses": "व्यय",
     "bankAccounts": "बैंक और कैश खाते",
     "profitLoss": "लाभ और हानि विवरण",
     "statements": "खाता विवरण",
@@ -270,18 +275,18 @@
     "settings": "स्कूल सेटिंग्स",
     "promotions": "छात्र पदोन्नति",
     "promotionRules": "पदोन्नति नियम",
-    "subjects": "विषय और समूह",
+    "subjects": "विषय",
     "reports": "रिपोर्ट और विश्लेषण",
     "communication": "संचार और नोटिस",
     "notices": "सूचना पट्ट",
     "noticeBoard": "सूचना पट्ट",
     "timetable": "समय सारणी",
-    "calendar": "स्कूल कैलेंडर",
+    "calendar": "शैक्षणिक कैलेंडर",
     "enquiries": "पूछताछ",
     "library": "पुस्तकालय",
     "homework": "गृहकार्य",
     "transport": "परिवहन",
-    "leaves": "अवकाश",
+    "leaves": "अवकाश प्रबंधन",
     "inventory": "स्टोर और इन्वेंटरी",
     "store": "स्टोर और इन्वेंटरी",
     "hostel": "छात्रावास",
@@ -364,6 +369,7 @@
     "alreadyAdmitted": "पहले से प्रवेशित",
     "assignedToClass": "पहले से {className} में आवंटित",
     "studentsSelected": "{count} छात्र चुने गए",
+    "unassignedCohort": "बिना कक्षा",
     "selectStudentsModalTitle": "छात्र चुनें",
     "selectStudentsModalDesc": "प्रवेश के लिए मौजूदा छात्रों को खोजें और चुनें। वर्तमान कक्षा की जानकारी प्रत्येक छात्र के नीचे प्रदर्शित होती है।",
     "filterByClass": "कक्षा अनुसार फ़िल्टर करें",
@@ -547,6 +553,7 @@
       "clearFilters": "फ़िल्टर साफ़ करें",
       "title": "फ़िल्टर",
       "clear": "साफ़ करें",
+      "selectClassFirst": "पहले कक्षा चुनें...",
       "class": {
         "all": "सभी कक्षाएं"
       },
@@ -1405,6 +1412,9 @@
     "saveSuccess": "परीक्षा परिणाम सफलतापूर्वक सहेजे गए!",
     "saveError": "परीक्षा परिणाम सहेजने में विफल",
     "fillAllMarks": "कृपया सभी छात्रों के अंक भरें",
+    "absent": "अनुपस्थित",
+    "clearAbsent": "उपस्थित करें",
+    "saveErrorSummary": "{message} (+{count} और)",
     "summary": "सारांश",
     "examName": "परीक्षा",
     "className": "कक्षा",
@@ -2202,6 +2212,7 @@
     "title": "रिपोर्ट और विश्लेषिकी केंद्र",
     "description": "संस्थागत विश्लेषण, ऑडिट और निर्यात योग्य रिपोर्टें",
     "overview": "रिपोर्ट अवलोकन",
+    "charts": { "total": "कुल" },
     "feeReport": {
       "status": "Status",
       "method": "Method",
@@ -2478,6 +2489,7 @@
     },
     "filters": {
       "selectClass": "कक्षा चुनें",
+      "selectClassFirst": "पहले कक्षा चुनें...",
       "allClasses": "सभी कक्षाएं",
       "selectSection": "वर्ग चुनें",
       "allSections": "सभी वर्ग",
@@ -2811,7 +2823,7 @@
     "loginEmailPh": "e.g. principal@beaconhouse.edu",
     "masterPasswordLabel": "Master Password *",
     "generatePassword": "Generate Secure Password",
-    "passwordPh": "Minimum 6 characters",
+    "passwordPh": "न्यूनतम 8 वर्ण (अक्षर और संख्या)",
     "reviewTitle": "Review & Confirm Setup",
     "reviewDesc": "Verify all configurations before instant cloud provisioning.",
     "schoolDetails": "School Details",
@@ -2838,7 +2850,7 @@
       "errDates": "Please select session start and end dates",
       "errFullName": "Please enter your full name",
       "errEmail": "Please enter a valid administrator email",
-      "errPassword": "Password must be at least 6 characters",
+      "errPassword": "पासवर्ड कम से कम 8 वर्ण का होना चाहिए और उसमें अक्षर व संख्याएँ होनी चाहिए",
       "provisionFailed": "Failed to provision institute",
       "success": "School registered successfully!",
       "networkError": "Network error during onboarding",
@@ -2960,6 +2972,7 @@
       "colLifecycle": "LIFECYCLE ACTIONS",
       "activate": "Activate",
       "suspend": "Suspend",
+      "managePlan": "प्लान प्रबंधित करें",
       "estimatedMrr": "Estimated MRR",
       "mrrCaption": "Monthly Recurring Revenue",
       "estimatedArr": "Estimated ARR",
@@ -3004,7 +3017,36 @@
       "neverLoggedIn": "Never logged in",
       "statusUpdated": "स्थिति {status} में अपडेट हुई",
       "statusUpdateFailed": "स्थिति अपडेट करने में विफल",
-      "networkError": "नेटवर्क त्रुटि"
+      "networkError": "नेटवर्क त्रुटि",
+      "loadFailed": "सदस्यता लाइफसाइकिल लोड करने में विफल",
+      "planPickerLabel": "प्लान टियर",
+      "planPickerPlaceholder": "प्लान चुनें...",
+      "planPickerHelper": "टेनेंट को एक सक्रिय कैटलॉग प्लान पर स्विच करें",
+      "endDateLabel": "सदस्यता समाप्ति तिथि",
+      "endDateHelper": "वह दिनांक जब भुगतान वाली पहुंच समाप्त होगी",
+      "graceDaysLabel": "ग्रेस अवधि (दिन)",
+      "graceDaysHelper": "समाप्ति तिथि के बाद अतिरिक्त दिन",
+      "daysRemainingLabel": "स्थिति और शेष दिन",
+      "daysRemaining": "{days} दिन शेष",
+      "noEndDate": "कोई समाप्ति तिथि निर्धारित नहीं",
+      "planIncluded": "शामिल हैं {students} छात्र, {staff} कर्मचारी और {storage} MB स्टोरेज",
+      "graceActiveDetail": "ग्रेस अवधि सक्रिय है - पहुंच {date} को समाप्त होगी",
+      "graceConfigured": "ग्रेस अवधि {date} को समाप्त होगी",
+      "refresh": "ताज़ा करें",
+      "saveAndNotify": "सहेजें और टेनेंट को सूचित करें",
+      "saving": "सहेजा जा रहा है...",
+      "saveSuccess": "सदस्यता अपडेट हुई और टेनेंट को सूचित किया गया",
+      "saveFailed": "सदस्यता अपडेट करने में विफल",
+      "historyTitle": "सदस्यता इतिहास",
+      "historyEmpty": "अभी तक कोई परिवर्तन दर्ज नहीं हुआ",
+      "historyTypePlanChange": "प्लान परिवर्तन",
+      "historyTypeStatusChange": "स्थिति परिवर्तन",
+      "historyTypeEndDateChange": "समाप्ति तिथि परिवर्तन",
+      "historyTypeGraceChange": "ग्रेस अवधि परिवर्तन",
+      "historyTypeExpiry": "समाप्ति",
+      "graceDaysInline": "({days} दिन ग्रेस)",
+      "endsOnInline": "समाप्ति {date}",
+      "changedBy": "द्वारा परिवर्तित {email}"
     },
     "onboard": {
       "title": "Onboard New Educational Institute",
@@ -3901,6 +3943,9 @@
     "deleteConfirm": "क्या आप वाकई इस कक्षा शुल्क संरचना को हटाना चाहते हैं?",
     "deleteSuccess": "शुल्क संरचना सफलतापूर्वक हटा दी गई",
     "saveSuccess": "कक्षा शुल्क संरचना सफलतापूर्वक सहेजी गई!",
+    "updateStructure": "शुल्क संरचना अपडेट करें",
+    "existingStructureNotice": "इस कक्षा के लिए पहले से कॉन्फ़िगर शुल्क संरचना पाई गई। मौजूदा मान भर दिए गए हैं — सहेजने पर यह अपडेट हो जाएगी।",
+    "existingStructureLoaded": "इस कक्षा के लिए पहले से सहेजी गई शुल्क संरचना लोड की गई। सहेजने पर यह अपडेट हो जाएगी।",
     "concessionsTitle": "छात्र रियायतें और छात्रवृत्ति",
     "concessionsSubtitle": "शुल्क छूट और छात्रवृत्ति असाइन करें",
     "selectStudent": "छात्र चुनें",
@@ -4053,7 +4098,13 @@
       "class": "कक्षा",
       "subject": "विषय",
       "fullMarks": "पूर्णांक",
-      "marks": "अंक"
+      "marks": "अंक",
+      "singleColumn": "एक कॉलम",
+      "twoColumn": "दो कॉलम",
+      "compact": "संक्षिप्त",
+      "normal": "सामान्य",
+      "watermark": "वॉटरमार्क",
+      "orDivider": "— या —"
     },
     "noPapers": "अभी कोई प्रश्न पत्र नहीं है",
     "noPapersHint": "स्मार्ट ब्लूप्रिंट जनरेटर का उपयोग करें या मैन्युअल रूप से प्रश्न पत्र बनाएं।",
@@ -4248,7 +4299,68 @@
     "cardPos": "Card / POS",
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
-    "amountPlaceholder": "0.00"
+    "amountPlaceholder": "0.00",
+    "monthAlreadyPaid": "{student} के लिए {month} का शुल्क पहले ही भुगतान किया जा चुका है"
+  },
+  "subscription": {
+    "banner": {
+      "graceTitle": "सदस्यता की अतिरिक्त समय-सीमा",
+      "graceEndsOn": "पहुँच बनाए रखने के लिए {date} से पहले नवीनीकरण करें।",
+      "graceActive": "पहुँच बनाए रखने के लिए अपनी सदस्यता का नवीनीकरण करें।",
+      "endingSoonTitle": "आपकी सदस्यता जल्द समाप्त हो रही है",
+      "endsOn": "आपकी सदस्यता {date} को समाप्त होगी।",
+      "daysLeft": "शेष दिन: {days}",
+      "plan": "प्लान: {plan}"
+    },
+    "inactive": {
+      "title": "सदस्यता निष्क्रिय है",
+      "message": "आपके संस्थान की सदस्यता निष्क्रिय है। पहुँच बहाल करने के लिए इसका नवीनीकरण करें।",
+      "supportHeading": "नवीनीकरण में सहायता चाहिए?",
+      "supportText": "नवीनीकरण में सहायता के लिए अपने संस्थान के प्रशासक या सहायता टीम से संपर्क करें।",
+      "backToLogin": "लॉगिन पर वापस जाएँ",
+      "renewalSteps": "अपने संस्थान के प्रशासक से प्लेटफ़ॉर्म सहायता टीम के माध्यम से नवीनीकरण कराने को कहें। पुष्टि के बाद नीचे पहुँच जाँचें। पहुँच बहाल होने तक विद्यालय का डेटा उपलब्ध नहीं होगा।",
+      "checkAccess": "नवीनीकरण की स्थिति जाँचें",
+      "checking": "स्थिति जाँची जा रही है…",
+      "checkFailed": "नवीनीकरण की स्थिति नहीं जाँची जा सकी। फिर प्रयास करें।",
+      "stillInactive": "पहुँच अभी भी प्रतिबंधित है। नवीनीकरण पूरा करने के लिए प्रशासक या प्लेटफ़ॉर्म सहायता टीम से संपर्क करें।",
+      "signOut": "साइन आउट करें",
+      "signingOut": "साइन आउट हो रहा है…"
+    }
+  },
+  "adminTools": {
+    "title": "व्यवस्थापक उपकरण",
+    "description": "केवल पढ़ने योग्य टेनेंट अखंडता निदान",
+    "readOnly": "केवल पढ़ने योग्य: कोई रिकॉर्ड नहीं बदला जाएगा",
+    "limitations": "जांच केवल प्रदर्शित पृष्ठ और चयनित नियम को कवर करती है। वे पूरे स्कूल को प्रमाणित नहीं करते हैं, बहीखातों या भुगतानों का मिलान नहीं करते हैं, या ऐतिहासिक शैक्षणिक सत्रों को मान्य नहीं करते हैं। निष्कर्षों की मैन्युअल समीक्षा की आवश्यकता होती है; कोई स्वचालित मरम्मत उपलब्ध नहीं है।",
+    "tenant": "स्कूल टेनेंट आईडी",
+    "tenantPlaceholder": "टेनेंट निर्देशिका से सटीक टेनेंट आईडी दर्ज करें",
+    "check": "जांच",
+    "placement": "छात्र प्लेसमेंट संबंध",
+    "fees": "गैर-रद्द शुल्क शेष अंकगणित",
+    "run": "जांच चलाएं",
+    "running": "रिकॉर्ड की जांच की जा रही है...",
+    "reset": "रीसेट",
+    "search": "रिकॉर्ड संदर्भ द्वारा खोजें",
+    "reference": "संदर्भ",
+    "status": "स्थिति",
+    "findings": "निष्कर्ष",
+    "review": "समीक्षा आवश्यक है",
+    "noIssue": "कोई समस्या नहीं मिली",
+    "checkPassed": "इस नियम द्वारा कोई असंगति नहीं पाई गई।",
+    "classMissing": "सौंपी गई कक्षा इस टेनेंट से गायब है।",
+    "sectionMismatch": "वर्ग गायब है या सौंपी गई कक्षा/समूह से मेल नहीं खाता है।",
+    "groupMismatch": "समूह गायब है या सौंपी गई कक्षा से मेल नहीं खाता है।",
+    "feeBalance": "संग्रहीत शेष राशि कुल देय राशि माइनस भुगतान की गई राशि से भिन्न है।",
+    "invalidAmount": "एक मौद्रिक मूल्य नकारात्मक, गैर-परिमित या समर्थित सीमा से बाहर है।",
+    "empty": "कोई मेल खाने वाला रिकॉर्ड नहीं। खोज या टेनेंट का दायरा बदलें।",
+    "scope": "चयनित टेनेंट: {tenantId}। केवल इस पृष्ठ के रिकॉर्ड की जांच की गई है।",
+    "checkedAt": "जांच का समय {time}",
+    "results": "रिकॉर्ड जांच",
+    "rowsPerPage": "प्रति पृष्ठ पंक्तियाँ",
+    "previous": "पिछला पृष्ठ",
+    "next": "अगला पृष्ठ",
+    "range": "{start}-{end} का {total}",
+    "requestFailed": "निदान अनुरोध विफल रहा (HTTP {status})।"
   },
   "systemAdminPages": {
     "loadAuditFailed": "Failed to load audit logs",
@@ -4281,8 +4393,21 @@
     "featureDescription": "Per-tenant module toggles — disable hostel/transport/library etc without code deploy",
     "loadingTenants": "Loading tenants...",
     "noTenants": "No tenants",
-    "flagsUpdated": "Feature flags updated",
-    "save": "Save",
+    "flagsUpdated": "फीचर फ्लैग अपडेट किए गए",
+    "save": "सहेजें",
+    "moduleAccess": "मॉड्यूल पहुंच और लाइसेंसिंग",
+    "moduleAccessDescription": "इस विद्यालय के लिए सक्षम ईआरपी मॉड्यूल और कार्यात्मक क्षमताओं का प्रबंधन करें।",
+    "modulesUpdated": "मॉड्यूल पहुंच अनुमतियां सफलतापूर्वक अपडेट की गईं!",
+    "updateModulesFailed": "मॉड्यूल पहुंच अपडेट करने में विफल",
+    "modulesCategoryCore": "मुख्य शिक्षा और प्रवेश",
+    "modulesCategoryAcademic": "मूल्यांकन और पाठ्यक्रम",
+    "modulesCategoryFinance": "वित्त, बिलिंग और वेतन",
+    "modulesCategoryFacilities": "परिसर सुविधाएं और लॉजिस्टिक्स",
+    "enabledCount": "{total} में से {enabled} मॉड्यूल सक्रिय हैं",
+    "saveModuleAccess": "मॉड्यूल पहुंच सहेजें",
+    "savingModuleAccess": "अपडेट किया जा रहा है...",
+    "moduleEnabled": "सक्षम",
+    "moduleDisabled": "अक्षम",
     "loadBroadcastsFailed": "Failed to load platform broadcasts",
     "broadcastRemoved": "Broadcast removed",
     "removeBroadcastFailed": "Failed to remove broadcast",
@@ -4913,5 +5038,79 @@
     "generatedOn": "तैयार किया गया: {date}",
     "authorizedSignatory": "अधिकृत हस्ताक्षरकर्ता / प्रधानाचार्य",
     "viewPerformance": "प्रदर्शन देखें"
+  },
+  "tenantModules": {
+    "academics": {
+      "title": "शैक्षणिक प्रबंधन",
+      "description": "कक्षाएं, अनुभाग, शैक्षणिक समूह और विषय पाठ्यक्रम सेटअप"
+    },
+    "admissions": {
+      "title": "प्रवेश और पूछताछ",
+      "description": "छात्र प्रवेश आवेदन, सीआरएम पूछताछ लीड और ऑनबोर्डिंग"
+    },
+    "attendance": {
+      "title": "उपस्थिति प्रणाली",
+      "description": "छात्रों और कर्मचारियों की दैनिक उपस्थिति और त्वरित प्रविष्टि"
+    },
+    "examinations": {
+      "title": "परीक्षा और ग्रेडिंग",
+      "description": "परीक्षा कार्यक्रम, परिणाम प्रविष्टि, अंकतालिका और प्रश्न पत्र स्टूडियो"
+    },
+    "fees": {
+      "title": "शुल्क बिलिंग और पीओएस संग्रह",
+      "description": "मासिक शुल्क चालान, छात्र छूट और प्रत्यक्ष पॉइंट-ऑफ-सेल संग्रह"
+    },
+    "accounting": {
+      "title": "सामान्य बहीखाता और वित्त",
+      "description": "5-स्तरीय चार्ट ऑफ अकाउंट्स, दोहरा लेखा रोजनामचा और व्यय प्रबंधन"
+    },
+    "payroll": {
+      "title": "कर्मचारी मानव संसाधन और वेतन",
+      "description": "कर्मचारी प्रोफाइल, वेतन संरचना गणना, पेरोल रन और वेतन पर्ची"
+    },
+    "timetable": {
+      "title": "समय सारणी दिनचर्या",
+      "description": "कक्षा दिनचर्या, पीरियड शेड्यूलिंग और शिक्षक प्रतिस्थापन योजना"
+    },
+    "calendar": {
+      "title": "स्कूल कैलेंडर और कार्यक्रम",
+      "description": "परिसर कार्यक्रम शेड्यूलिंग, अवकाश प्रबंधन और संस्थागत समयरेखा"
+    },
+    "homework": {
+      "title": "गृहकार्य और कार्यभार",
+      "description": "डिजिटल गृहकार्य जारी करना, दस्तावेज संलग्नक और छात्र प्रस्तुतियां"
+    },
+    "notices": {
+      "title": "सूचना पट्ट और परिपत्र",
+      "description": "परिसर घोषणाएं, लक्षित भूमिका प्रसारण और तत्काल सूचनाएं"
+    },
+    "leaves": {
+      "title": "अवकाश आवेदन",
+      "description": "छात्रों और कर्मचारियों के लिए अवकाश अनुरोध प्रबंधन और अनुमोदन"
+    },
+    "transport": {
+      "title": "परिवहन और वाहन",
+      "description": "बस रूट, स्टॉप, वाहन ट्रैकिंग और छात्र परिवहन आवंटन"
+    },
+    "hostel": {
+      "title": "छात्रावास और आवास",
+      "description": "छात्रावास भवन, कमरा आवंटन, बिस्तर क्षमता और आवासीय छात्र"
+    },
+    "library": {
+      "title": "पुस्तकालय और संचलन",
+      "description": "पुस्तक कैटलॉगिंग, आईएसबीएन ट्रैकिंग, सदस्य ऋण और विलंब शुल्क"
+    },
+    "inventory": {
+      "title": "इन्वेंट्री और स्टोर",
+      "description": "परिसर स्टॉक, स्टेशनरी सामान, खरीद आदेश और वितरण ट्रैकिंग"
+    },
+    "certificates": {
+      "title": "प्रमाणपत्र जनरेटर",
+      "description": "स्थानांतरण, चरित्र, वास्तविक और अध्ययन प्रमाण पत्र निर्माण"
+    },
+    "health": {
+      "title": "स्वास्थ्य और चिकित्सा",
+      "description": "छात्र स्वास्थ्य रिकॉर्ड, आपातकालीन संपर्क, चिकित्सा स्थितियां और एलर्जी"
+    }
   }
 }

@@ -1,0 +1,14 @@
+
+[1m[46m RUN [49m[22m [36mv4.1.2 [39m[90mD:/my project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro[39m
+
+ [32m✓[39m src/app/(dashboard)/academic/classes/page.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 5061[2mms[22m[39m
+     [33m[2m✓[22m[39m selects and deselects a subject without a bubbling-click loop [33m 1763[2mms[22m[39m
+     [33m[2m✓[22m[39m saves an empty subject selection [33m 1376[2mms[22m[39m
+     [33m[2m✓[22m[39m shows subject-save failures instead of reporting success [33m 1115[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps assigned subjects selected when the edit tab mounts [33m 799[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 19:14:28
+[2m   Duration [22m 8.14s[2m (transform 473ms, setup 0ms, import 1.27s, tests 5.06s, environment 1.53s)[22m
+

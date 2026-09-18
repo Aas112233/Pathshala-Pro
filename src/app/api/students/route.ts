@@ -51,16 +51,33 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const where: any = { tenantId };
 
-    if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: "insensitive" } },
-        { lastName: { contains: search, mode: "insensitive" } },
-        { firstNameBn: { contains: search, mode: "insensitive" } },
-        { lastNameBn: { contains: search, mode: "insensitive" } },
-        { studentId: { contains: search, mode: "insensitive" } },
-        { rollNumber: { contains: search, mode: "insensitive" } },
-        { guardianName: { contains: search, mode: "insensitive" } },
-      ];
+    if (search.trim()) {
+      const searchTerms = search.trim().split(/\s+/).filter(Boolean);
+      if (searchTerms.length === 1) {
+        const s = searchTerms[0];
+        where.OR = [
+          { firstName: { contains: s, mode: "insensitive" } },
+          { lastName: { contains: s, mode: "insensitive" } },
+          { firstNameBn: { contains: s, mode: "insensitive" } },
+          { lastNameBn: { contains: s, mode: "insensitive" } },
+          { studentId: { contains: s, mode: "insensitive" } },
+          { rollNumber: { contains: s, mode: "insensitive" } },
+          { guardianName: { contains: s, mode: "insensitive" } },
+        ];
+      } else {
+        // Every token must match at least one field
+        where.AND = searchTerms.map((s) => ({
+          OR: [
+            { firstName: { contains: s, mode: "insensitive" } },
+            { lastName: { contains: s, mode: "insensitive" } },
+            { firstNameBn: { contains: s, mode: "insensitive" } },
+            { lastNameBn: { contains: s, mode: "insensitive" } },
+            { studentId: { contains: s, mode: "insensitive" } },
+            { rollNumber: { contains: s, mode: "insensitive" } },
+            { guardianName: { contains: s, mode: "insensitive" } },
+          ],
+        }));
+      }
     }
 
     if (status) {

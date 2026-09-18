@@ -113,5 +113,10 @@ export {
   FeeDaybookTemplate,
   type FeeDaybookTemplateProps,
 } from "./fee-daybook";
+export {
+  StudentPerformancePDF,
+  type PerformancePDFProps,
+  type PerformancePDFSchoolInfo,
+} from "@/lib/question-paper-studio/performance-pdf-template";
 export * from "./pdf-fonts";
 

@@ -100,12 +100,14 @@ export default function HomeworkPage() {
   });
 
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects", "homework"],
+    queryKey: ["subjects", "homework", formData.classId],
     queryFn: async () => {
-      const r = await fetch("/api/subjects", { credentials: "include" });
+      if (!formData.classId) return { data: [] };
+      const r = await fetch(`/api/subjects?classId=${formData.classId}`, { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
+    enabled: !!formData.classId,
   });
 
   const classes = (classesData as any)?.data ?? [];
@@ -626,7 +628,9 @@ export default function HomeworkPage() {
               <ERPFormField label={t("classLabel")} required error={formErrors.classId}>
                 <AppDropdown
                   value={formData.classId}
-                  onChange={(v) => setFormData((p) => ({ ...p, classId: v }))}
+                  onChange={(v) => {
+                    setFormData((p) => ({ ...p, classId: v, subjectId: "" }));
+                  }}
                   options={classes.map((c: any) => ({ value: c.id, label: c.name }))}
                   placeholder={t("selectClass")}
                   searchable
@@ -641,7 +645,8 @@ export default function HomeworkPage() {
                     value: s.id,
                     label: `${s.name} (${s.code})`,
                   }))}
-                  placeholder={t("selectSubject")}
+                  placeholder={!formData.classId ? t("selectClass") : t("selectSubject")}
+                  disabled={!formData.classId}
                   searchable
                 />
               </ERPFormField>

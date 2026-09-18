@@ -1,10 +1,11 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
   badRequest,
   handleApiError,
   safeParseBody,
+  ApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { z } from "zod";
@@ -103,10 +104,8 @@ export async function POST(request: NextRequest) {
         const newStatus = newBalance.isZero() ? "PAID" : "PARTIAL";
 
         const receiptNumber = data.receiptNumber || await getNextVoucherNumber(tx as any, tenantId, "RECEIPT");
-        const transactionId = await getNextVoucherNumber(tx as any, tenantId, "RECEIPT");
-        // Use tx-sequential IDs: transactionId is RECEIPT sequence, receiptNumber is same or provided
-        const txnId = `TXN-${transactionId}`;
         const rcpt = receiptNumber.startsWith("REC-") ? receiptNumber : `REC-${receiptNumber}`;
+        const txnId = `TXN-${rcpt}`;
 
         const transaction = await tx.transaction.create({
           data: {
@@ -158,7 +157,7 @@ export async function POST(request: NextRequest) {
           note: data.note,
         });
         return [transaction, updatedVoucher] as const;
-      });
+      }, { timeout: 30_000, maxWait: 10_000 });
 
       return successResponse({ transaction, voucher: updatedVoucher }, "Fee payment collected successfully", 201);
     }
@@ -207,8 +206,8 @@ export async function POST(request: NextRequest) {
     const [newVoucher, transaction] = await prisma.$transaction(async (tx) => {
       const voucherId = await getNextVoucherNumber(tx as any, tenantId, "SALES_FEE");
       const receiptNumber = data.receiptNumber || await getNextVoucherNumber(tx as any, tenantId, "RECEIPT");
-      const transactionId = `TXN-${await getNextVoucherNumber(tx as any, tenantId, "RECEIPT")}`;
       const rcpt = receiptNumber.startsWith("REC-") ? receiptNumber : `REC-${receiptNumber}`;
+      const transactionId = `TXN-${rcpt}`;
 
       const v = await tx.feeVoucher.create({
         data: {
@@ -288,10 +287,21 @@ export async function POST(request: NextRequest) {
       });
 
       return [v, t];
-    });
+    }, { timeout: 30_000, maxWait: 10_000 });
 
     return successResponse({ transaction, voucher: newVoucher }, "Fee payment collected successfully", 201);
   } catch (error) {
-    return handleApiError(error);
+    // Never mask a recoverable business-rule failure (e.g. a missing
+    // chart-of-accounts code or unbalanced journal amounts) behind a generic
+    // 500. The fee-service raises plain Errors for domain failures; surface
+    // the real message so the cashier can act. ApiError instances and
+    // Prisma-known errors keep their existing handling.
+    if (error instanceof ApiError) {
+      return NextResponse.json(error.toJSON(), { status: error.statusCode });
+    }
+    if (typeof error === "object" && error !== null && "code" in error) {
+      return handleApiError(error);
+    }
+    return badRequest(error instanceof Error ? error.message : "Unable to record fee payment.");
   }
 }

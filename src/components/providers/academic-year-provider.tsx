@@ -47,7 +47,7 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
       return;
     }
 
-    if (!tenantId || !user) {
+    if (!tenantId || !user || user.role === "SYSTEM_ADMIN") {
       setAcademicYears([]);
       setSelectedId("");
       setIsLoading(false);

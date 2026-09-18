@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { ImpersonationBanner } from "./impersonation-banner";
 import { GlobalBroadcastBanner } from "./global-broadcast-banner";
+import { SubscriptionStatusBanner } from "./subscription-status-banner";
 import { LoginAnnouncementsDialog } from "@/components/notices/login-announcements-dialog";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
@@ -17,9 +18,19 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  // Initial state must match SSR (expanded) to avoid hydration mismatch;
+  // viewport-based collapse is applied in the effect below after mount.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
+
+  // Auto-shrink sidebar according to screen size on open + on resize
+  useEffect(() => {
+    const update = () => setSidebarCollapsed(window.innerWidth < 1024);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
   
   // Dynamic Route Evaluator
   const isAuthorized = () => {
@@ -52,6 +63,7 @@ export function AppShell({ children }: AppShellProps) {
       >
         <ImpersonationBanner />
         <GlobalBroadcastBanner />
+        <SubscriptionStatusBanner />
         <LoginAnnouncementsDialog />
         <Header />
         <main className="flex-1 p-6">

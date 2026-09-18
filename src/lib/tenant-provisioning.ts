@@ -239,3 +239,107 @@ export async function seedTenantPromotionRules(
     skipDuplicates: true,
   });
 }
+
+/**
+ * 6. Class Groups Seeder — creates Group rows per class and links
+ * Section.groupId for sections whose name matches a group name.
+ */
+export async function seedTenantGroups(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  classesById: Map<string, { id: string; code: string }>,
+  groupsByClassCode: Map<string, Array<{ name: string; shortName: string; subjectCodes: string[] }>>,
+  sectionIdsByClassCode: Map<string, Array<{ id: string; name: string }>>
+): Promise<number> {
+  let created = 0;
+
+  for (const [classCode, groups] of groupsByClassCode) {
+    const cls = classesById.get(classCode);
+    if (!cls) continue;
+
+    const groupIdByName = new Map<string, string>();
+    for (const [idx, group] of groups.entries()) {
+      const createdGroup = await tx.group.create({
+        data: {
+          tenantId,
+          groupId: `GRP-${cls.code}-${group.shortName}-${idx + 1}`,
+          classId: cls.id,
+          name: group.name,
+          shortName: group.shortName,
+          subjects: group.subjectCodes,
+        },
+      });
+      groupIdByName.set(group.name, createdGroup.id);
+      created++;
+    }
+
+    for (const section of sectionIdsByClassCode.get(classCode) ?? []) {
+      const groupId = groupIdByName.get(section.name);
+      if (groupId) {
+        await tx.section.update({
+          where: { id: section.id },
+          data: { groupId },
+        });
+      }
+    }
+  }
+
+  return created;
+}
+
+/**
+ * 7. Default Class Fee Structure Seeder — seeds ClassFeeStructure rows from
+ * wizard finance defaults. Total is the sum of all heads (matches the
+ * fees/structures API's addCurrency computation). Silently skips codes that
+ * weren't created.
+ */
+export async function seedTenantClassFeeStructures(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  academicYearId: string,
+  classIdsByCode: Map<string, string>,
+  feeStructures: Array<{
+    classCode: string;
+    tuitionFee: number;
+    labFee?: number;
+    computerFee?: number;
+    examFee?: number;
+    sportsFee?: number;
+    libraryFee?: number;
+    otherFee?: number;
+  }>
+): Promise<number> {
+  const rows = feeStructures
+    .map((f) => {
+      const classId = classIdsByCode.get(f.classCode);
+      if (!classId) return null;
+      const tuitionFee = f.tuitionFee ?? 0;
+      const labFee = f.labFee ?? 0;
+      const computerFee = f.computerFee ?? 0;
+      const examFee = f.examFee ?? 0;
+      const sportsFee = f.sportsFee ?? 0;
+      const libraryFee = f.libraryFee ?? 0;
+      const otherFee = f.otherFee ?? 0;
+      const totalMonthlyFee =
+        tuitionFee + labFee + computerFee + examFee + sportsFee + libraryFee + otherFee;
+      return {
+        tenantId,
+        academicYearId,
+        classId,
+        tuitionFee,
+        labFee,
+        computerFee,
+        examFee,
+        sportsFee,
+        libraryFee,
+        otherFee,
+        totalMonthlyFee,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+
+  if (rows.length === 0) return 0;
+
+  const res = await tx.classFeeStructure.createMany({ data: rows, skipDuplicates: true });
+  return res.count;
+}

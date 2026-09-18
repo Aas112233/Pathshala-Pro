@@ -150,6 +150,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Every student costs a voucher insert plus a full double-entry accrual
+    // journal (with two voucher-sequence allocations), so this loop cannot rely
+    // on Prisma's interactive transaction defaults — the 5_000 ms default is
+    // exhausted after a handful of students on a high-latency link and surfaces
+    // as "P2028 Transaction already closed", rolling back the entire batch.
+    // Budget 8 s per student, floored at 30 s and capped at 300 s.
+    const transactionTimeoutMs = Math.min(300_000, Math.max(30_000, students.length * 8_000));
+
     await prisma.$transaction(async (tx) => {
       for (const student of students) {
         if (alreadyInvoiced.has(student.id)) {
@@ -257,7 +265,7 @@ export async function POST(request: NextRequest) {
         });
         createdCount++;
       }
-    });
+    }, { timeout: transactionTimeoutMs, maxWait: 10_000 });
 
     return successResponse(
       {

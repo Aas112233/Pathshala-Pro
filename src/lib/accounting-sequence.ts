@@ -18,6 +18,12 @@ const VOUCHER_PREFIX_MAP: Record<VoucherTypeEnum, string> = {
  * Uses PostgreSQL row-level pessimistic locking (`SELECT ... FOR UPDATE`)
  * to prevent duplicate voucher sequences under high concurrent load.
  *
+ * `voucherType` is backed by a Postgres enum ("VoucherType"), so every bound
+ * parameter touching that column needs an explicit `::"VoucherType"` cast —
+ * without it Postgres cannot resolve the comparison and raises SQLSTATE 42883
+ * (`operator does not exist: "VoucherType" = text`), which aborts the whole
+ * surrounding transaction.
+ *
  * Output format: `{PREFIX}-{YYYY}-{000001}` (e.g. `SAL-2026-000042`)
  */
 export async function getNextVoucherNumber(
@@ -33,7 +39,7 @@ export async function getNextVoucherNumber(
       SELECT id, current_number 
       FROM "TenantVoucherSequence"
       WHERE "tenantId" = ${tenantId}
-        AND "voucherType" = ${voucherType}
+        AND "voucherType" = ${voucherType}::"VoucherType"
         AND "fiscalYear" = ${fiscalYear}
       FOR UPDATE
     `;
@@ -54,7 +60,7 @@ export async function getNextVoucherNumber(
       nextVal = 1;
       await tx.$executeRaw`
         INSERT INTO "TenantVoucherSequence" ("id", "tenantId", "voucherType", "prefix", "fiscalYear", "current_number", "createdAt", "updatedAt")
-        VALUES (gen_random_uuid()::text, ${tenantId}, ${voucherType}, ${prefix}, ${fiscalYear}, ${nextVal}, NOW(), NOW())
+        VALUES (gen_random_uuid()::text, ${tenantId}, ${voucherType}::"VoucherType", ${prefix}, ${fiscalYear}, ${nextVal}, NOW(), NOW())
         ON CONFLICT ("tenantId", "voucherType", "fiscalYear")
         DO UPDATE SET "current_number" = "TenantVoucherSequence"."current_number" + 1, "updatedAt" = NOW()
       `;
@@ -62,9 +68,19 @@ export async function getNextVoucherNumber(
 
     const paddedSequence = String(nextVal).padStart(6, "0");
     return `${prefix}-${fiscalYear}-${paddedSequence}`;
-  } catch {
-    // Fallback if sequence table is mocked or in in-memory test environment
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    return `${prefix}-${fiscalYear}-${randomSuffix}`;
+  } catch (error) {
+    // Only a client that cannot execute raw SQL at all (a mocked / in-memory
+    // TransactionClient in unit tests) may fall back to a random suffix. A real
+    // Prisma client always exposes $queryRaw/$executeRaw, so a genuine database
+    // error MUST propagate: the previous blanket `catch {}` swallowed Postgres
+    // SQLSTATE 42883 (un-cast `voucherType` enum comparison) here, which minted
+    // a random voucher number while leaving the surrounding Postgres
+    // transaction aborted — every subsequent statement then failed with 25P02
+    // and surfaced to users as a generic 500 "Internal server error".
+    if (typeof (tx as any)?.$queryRaw !== "function" || typeof (tx as any)?.$executeRaw !== "function") {
+      const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+      return `${prefix}-${fiscalYear}-${randomSuffix}`;
+    }
+    throw error;
   }
 }

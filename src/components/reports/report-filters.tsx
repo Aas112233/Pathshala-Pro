@@ -80,7 +80,9 @@ export function ReportFilters({
   };
 
   const handleClassChange = (value: string) => {
-    onFilterChange({ ...filters, classId: value });
+    // Parent changed: drop stale child selections (a section/group from the
+    // previous class would silently mis-scope the generated report).
+    onFilterChange({ ...filters, classId: value, sectionId: undefined, groupId: undefined });
   };
 
   const handleSectionChange = (value: string) => {
@@ -102,6 +104,10 @@ export function ReportFilters({
   const handleExamTypeChange = (value: string) => {
     onFilterChange({ ...filters, examType: value });
   };
+
+  // Child filters are only meaningful for one specific class. "all"/empty
+  // means unscoped, so keep them disabled until a class is picked.
+  const hasSpecificClass = Boolean(filters.classId) && filters.classId !== "all";
 
   return (
     <Card>
@@ -153,9 +159,9 @@ export function ReportFilters({
           {showSectionFilter && (
             <div className="space-y-2">
               <Label>{t("filters.section")}</Label>
-              <Select value={filters.sectionId || ""} onValueChange={handleSectionChange}>
+              <Select value={filters.sectionId || ""} onValueChange={handleSectionChange} disabled={!hasSpecificClass}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t("filters.selectSection")} />
+                  <SelectValue placeholder={hasSpecificClass ? t("filters.selectSection") : t("filters.selectClassFirst")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("filters.allSections")}</SelectItem>
@@ -173,9 +179,9 @@ export function ReportFilters({
           {showGroupFilter && (
             <div className="space-y-2">
               <Label>{t("filters.group")}</Label>
-              <Select value={filters.groupId || ""} onValueChange={handleGroupChange}>
+              <Select value={filters.groupId || ""} onValueChange={handleGroupChange} disabled={!hasSpecificClass}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t("filters.selectGroup")} />
+                  <SelectValue placeholder={hasSpecificClass ? t("filters.selectGroup") : t("filters.selectClassFirst")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("filters.allGroups")}</SelectItem>

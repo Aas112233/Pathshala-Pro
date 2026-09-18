@@ -2,38 +2,14 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
-  errorResponse,
-  unauthorized,
   notFound,
   badRequest,
   handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
-import { integrityViolation, lockedUpdateMessage } from "@/lib/data-integrity";
-import { safePercentage } from "@/lib/math-utils";
-
-// Grading scale configuration
-const GRADING_SCALE = [
-  { minPercentage: 80, grade: "A+", point: 5.0, remark: "Excellent" },
-  { minPercentage: 70, grade: "A", point: 4.5, remark: "Very Good" },
-  { minPercentage: 60, grade: "A-", point: 4.0, remark: "Good" },
-  { minPercentage: 50, grade: "B", point: 3.5, remark: "Average" },
-  { minPercentage: 40, grade: "C", point: 3.0, remark: "Satisfactory" },
-  { minPercentage: 33, grade: "D", point: 2.0, remark: "Pass" },
-  { minPercentage: 0, grade: "F", point: 0.0, remark: "Fail" },
-];
-
-function calculateGrade(marks: number, maxMarks: number) {
-  const percentage = safePercentage(marks, maxMarks);
-  const gradeInfo = GRADING_SCALE.find((g) => percentage >= g.minPercentage) || GRADING_SCALE[GRADING_SCALE.length - 1];
-  return {
-    grade: gradeInfo.grade,
-    gradePoint: gradeInfo.point,
-    percentage,
-    status: percentage >= 33 ? "PASS" : "FAIL",
-  };
-}
+import { integrityViolation } from "@/lib/data-integrity";
+import { gradeExamResult } from "@/lib/exam-grading";
 
 /**
  * GET /api/exam-results/[id]
@@ -99,7 +75,12 @@ export async function GET(
 
 /**
  * PUT /api/exam-results/[id]
- * Update a single exam result
+ * Update a single exam result.
+ *
+ * Guards (in order): tenant ownership, closed academic year, promotion lock
+ * (self-healing), published exam (marks are read-only once published), and
+ * server-authoritative grade derivation from the ExamSubject mapping — the
+ * client-provided maxMarks is validated against the mapping, never trusted.
  */
 export async function PUT(
   request: NextRequest,
@@ -111,7 +92,7 @@ export async function PUT(
 
     const { tenantId } = access.authContext;
     const { id } = await params;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
 
     // Verify result exists
     const existingResult = await prisma.examResult.findUnique({
@@ -132,12 +113,10 @@ export async function PUT(
 
     await assertAcademicYearOpen(tenantId, existingResult.academicYearId);
 
-    // Verify if result is locked
     if (existingResult.isLocked) {
       return badRequest("Cannot modify this exam result. Marks are locked because the student has already been promoted.");
     }
 
-    // Check if student was promoted for this academic year
     const isPromoted = await prisma.classPromotion.findFirst({
       where: {
         tenantId,
@@ -148,47 +127,88 @@ export async function PUT(
     });
 
     if (isPromoted) {
-      // Mark as locked in DB
+      // Self-heal the lock flag so future writes are blocked at the door.
       await prisma.examResult.update({
         where: { id },
         data: { isLocked: true },
       });
-      return badRequest("Cannot modify this exam result. Marks are permanently locked because the student has already been promoted.");
+      return badRequest("Cannot modify this exam result. Marks are permanently locked due to student promotion.");
     }
 
-    // Validate required fields
-    const { obtainedMarks, maxMarks, reExamAllowed } = body;
-
-    if (obtainedMarks === undefined || maxMarks === undefined) {
-      return badRequest("obtainedMarks and maxMarks are required");
+    // Published exams are immutable: report cards, transcripts, and the
+    // guardian portal have already consumed these marks.
+    if (existingResult.exam.isPublished) {
+      return integrityViolation(
+        "Exam result cannot be modified because the parent exam has already been published.",
+        [
+          {
+            field: "id",
+            code: "locked",
+            message:
+              "Published marks are read-only. Use the controlled correction workflow instead of direct edits.",
+          },
+        ]
+      );
     }
 
-    // Validate marks
-    if (typeof obtainedMarks !== "number" || obtainedMarks < 0 || obtainedMarks > maxMarks) {
-      return badRequest("obtainedMarks must be between 0 and maxMarks");
-    }
+    const obtainedMarks = body?.obtainedMarks;
+    const maxMarks = body?.maxMarks;
+    const reExamAllowed = body?.reExamAllowed === true;
+    const absent = body?.absent === true;
 
     if (typeof maxMarks !== "number" || maxMarks <= 0) {
       return badRequest("maxMarks must be a positive number");
     }
 
-    // Calculate grade and status
-    const { grade, gradePoint, percentage, status } = calculateGrade(
-      obtainedMarks,
-      maxMarks
-    );
+    if (!absent && (typeof obtainedMarks !== "number" || obtainedMarks < 0 || obtainedMarks > maxMarks)) {
+      return badRequest("obtainedMarks must be between 0 and maxMarks");
+    }
+
+    // The exam-subject mapping owns the marks ceiling and pass threshold.
+    const examSubject = await prisma.examSubject.findUnique({
+      where: {
+        tenantId_examId_subjectId: {
+          tenantId,
+          examId: existingResult.examId,
+          subjectId: existingResult.subjectId,
+        },
+      },
+      select: { maxMarks: true, passMarks: true },
+    });
+
+    if (!examSubject) {
+      return badRequest("Subject is not part of this exam");
+    }
+
+    if (maxMarks !== examSubject.maxMarks) {
+      return badRequest("maxMarks does not match the exam configuration", [
+        {
+          field: "maxMarks",
+          code: "max_marks_mismatch",
+          message: `Expected ${examSubject.maxMarks} marks for this exam subject`,
+        },
+      ]);
+    }
+
+    const effectiveMarks = absent ? 0 : obtainedMarks;
+    const graded = gradeExamResult({
+      obtainedMarks: effectiveMarks,
+      maxMarks: examSubject.maxMarks,
+      passMarks: examSubject.passMarks,
+      status: absent ? "ABSENT" : null,
+    });
 
     // Update result
     const updated = await prisma.examResult.update({
       where: { id },
       data: {
-        obtainedMarks,
-        maxMarks,
-        percentage,
-        grade,
-        gradePoint,
-        status,
-        reExamAllowed: reExamAllowed && status === "FAIL",
+        maxMarks: examSubject.maxMarks,
+        obtainedMarks: effectiveMarks,
+        percentage: graded.percentage,
+        grade: graded.grade,
+        gradePoint: graded.gradePoint,
+        status: graded.status,
+        reExamAllowed: !absent && reExamAllowed && graded.status === "FAIL",
       },
       include: {
         studentProfile: {

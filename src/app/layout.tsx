@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -14,6 +15,73 @@ import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageTitleUpdater } from "@/components/layout/page-title-updater";
 import { locales, isRtl } from "@/i18n/config";
+
+const jakarta = localFont({
+  src: [
+    { path: "../../public/fonts/PlusJakartaSans-Variable.ttf", weight: "200 800", style: "normal" },
+    { path: "../../public/fonts/PlusJakartaSans-Italic-Variable.ttf", weight: "200 800", style: "italic" },
+  ],
+  variable: "--font-jakarta-local",
+  display: "swap",
+  adjustFontFallback: false,
+});
+
+const bengali = localFont({
+  src: "../../public/fonts/NotoSerifBengali-Variable.ttf",
+  weight: "100 900",
+  style: "normal",
+  variable: "--font-bengali-local",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
+});
+
+const hind = localFont({
+  src: [
+    { path: "../../public/fonts/HindSiliguri-Light.ttf", weight: "300", style: "normal" },
+    { path: "../../public/fonts/HindSiliguri-Regular.ttf", weight: "400", style: "normal" },
+    { path: "../../public/fonts/HindSiliguri-Medium.ttf", weight: "500", style: "normal" },
+    { path: "../../public/fonts/HindSiliguri-SemiBold.ttf", weight: "600", style: "normal" },
+    { path: "../../public/fonts/HindSiliguri-Bold.ttf", weight: "700", style: "normal" },
+  ],
+  variable: "--font-hind-local",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
+});
+
+const tiro = localFont({
+  src: [
+    { path: "../../public/fonts/TiroBangla-Regular.ttf", weight: "400", style: "normal" },
+    { path: "../../public/fonts/TiroBangla-Italic.ttf", weight: "400", style: "italic" },
+  ],
+  variable: "--font-tiro-local",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
+});
+
+const anek = localFont({
+  src: "../../public/fonts/AnekBangla-Variable.ttf",
+  weight: "300 700",
+  style: "normal",
+  variable: "--font-anek-local",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
+});
+
+const amiri = localFont({
+  src: [
+    { path: "../../public/fonts/Amiri-Regular.ttf", weight: "400", style: "normal" },
+    { path: "../../public/fonts/Amiri-Bold.ttf", weight: "700", style: "normal" },
+    { path: "../../public/fonts/Amiri-Italic.ttf", weight: "400", style: "italic" },
+  ],
+  variable: "--font-amiri-local",
+  display: "swap",
+  adjustFontFallback: false,
+  preload: false,
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("layout");
@@ -56,20 +124,8 @@ export default async function RootLayout({
       lang={locale}
       dir={rtl ? "rtl" : "ltr"}
       suppressHydrationWarning
-      className={cn("font-sans")}
+      className={cn(jakarta.variable, bengali.variable, hind.variable, tiro.variable, anek.variable, amiri.variable, "font-sans")}
     >
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Tiro+Bangla:ital@0;1&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body>
         <NextIntlClientProvider messages={messages} locale={locale}>
           <ThemeProvider>

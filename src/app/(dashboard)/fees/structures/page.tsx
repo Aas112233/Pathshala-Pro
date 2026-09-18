@@ -42,6 +42,8 @@ import {
   Award,
   BookOpen,
   CheckCircle2,
+  RefreshCw,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -167,40 +169,89 @@ export default function FeeStructuresPage() {
       : 0;
   const activeConcessionCount = concessions.length;
 
+  const defaultFormValues = {
+    classId: "",
+    academicYearId: activeYearId,
+    tuitionFee: 2500,
+    labFee: 200,
+    computerFee: 300,
+    examFee: 200,
+    sportsFee: 100,
+    libraryFee: 100,
+    otherFee: 0,
+    billingCycle: "MONTHLY" as const,
+    notes: "",
+  };
+
+  const populateFromStructure = (item: ClassFeeStructureItem) => {
+    setEditingStructure(item);
+    setFormValues({
+      classId: item.classId,
+      academicYearId: item.academicYearId,
+      tuitionFee: item.tuitionFee ?? 0,
+      labFee: item.labFee ?? 0,
+      computerFee: item.computerFee ?? 0,
+      examFee: item.examFee ?? 0,
+      sportsFee: item.sportsFee ?? 0,
+      libraryFee: item.libraryFee ?? 0,
+      otherFee: item.otherFee ?? 0,
+      billingCycle: item.billingCycle || "MONTHLY",
+      notes: item.notes || "",
+    });
+  };
+
   const handleOpenAddSheet = () => {
     setEditingStructure(null);
     setFormValues({
-      classId: activeClasses[0]?.id || "",
+      ...defaultFormValues,
       academicYearId: activeYearId,
-      tuitionFee: 2500,
-      labFee: 200,
-      computerFee: 300,
-      examFee: 200,
-      sportsFee: 100,
-      libraryFee: 100,
-      otherFee: 0,
-      billingCycle: "MONTHLY",
-      notes: "",
     });
     setIsStructureSheetOpen(true);
   };
 
   const handleOpenEditSheet = (item: ClassFeeStructureItem) => {
-    setEditingStructure(item);
-    setFormValues({
-      classId: item.classId,
-      academicYearId: item.academicYearId,
-      tuitionFee: item.tuitionFee || 0,
-      labFee: item.labFee || 0,
-      computerFee: item.computerFee || 0,
-      examFee: item.examFee || 0,
-      sportsFee: item.sportsFee || 0,
-      libraryFee: item.libraryFee || 0,
-      otherFee: item.otherFee || 0,
-      billingCycle: item.billingCycle || "MONTHLY",
-      notes: item.notes || "",
-    });
+    populateFromStructure(item);
     setIsStructureSheetOpen(true);
+  };
+
+  const handleClassChange = (selectedClassId: string) => {
+    const targetAyId = formValues.academicYearId || activeYearId;
+    const existing = structures.find(
+      (s: ClassFeeStructureItem) =>
+        s.classId === selectedClassId && (!targetAyId || s.academicYearId === targetAyId)
+    );
+
+    if (existing) {
+      populateFromStructure(existing);
+      toast.info(t("existingStructureLoaded"));
+    } else {
+      setEditingStructure(null);
+      setFormValues((prev) => ({
+        ...prev,
+        classId: selectedClassId,
+      }));
+    }
+  };
+
+  const handleYearChange = (selectedYearId: string) => {
+    const currentClassId = formValues.classId;
+    const existing = currentClassId
+      ? structures.find(
+          (s: ClassFeeStructureItem) =>
+            s.classId === currentClassId && s.academicYearId === selectedYearId
+        )
+      : null;
+
+    if (existing) {
+      populateFromStructure(existing);
+      toast.info(t("existingStructureLoaded"));
+    } else {
+      setEditingStructure(null);
+      setFormValues((prev) => ({
+        ...prev,
+        academicYearId: selectedYearId,
+      }));
+    }
   };
 
   const handleSaveStructure = async (e: React.FormEvent) => {
@@ -503,21 +554,27 @@ export default function FeeStructuresPage() {
                 className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 font-semibold"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {editingStructure ? t("editClassFee") : t("saveStructure")}
+                {editingStructure ? t("updateStructure") : t("saveStructure")}
               </Button>
             </div>
           </div>
         }
       >
         <form onSubmit={handleSaveStructure} className="space-y-6 py-2">
+          {editingStructure && (
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs text-foreground/90 font-medium">
+              <Info className="h-4 w-4 text-primary shrink-0" />
+              <span>{t("existingStructureNotice")}</span>
+            </div>
+          )}
+
           {/* Section 1: Class & Year */}
           <ERPFormSection title={t("gradeAndTerm")} description={t("formDescription")}>
             <ERPFormGrid cols={3}>
               <ERPFormField label={t("targetClass")} required>
                 <AppDropdown
                   value={formValues.classId}
-                  onChange={(v) => setFormData({ classId: v })}
-                  disabled={!!editingStructure}
+                  onChange={handleClassChange}
                   options={activeClasses.map((c: any) => ({ value: c.id, label: c.name }))}
                   placeholder={t("targetClass")}
                   searchable
@@ -527,7 +584,7 @@ export default function FeeStructuresPage() {
               <ERPFormField label={t("academicYear")} required>
                 <AppDropdown
                   value={formValues.academicYearId || activeYearId}
-                  onChange={(v) => setFormData({ academicYearId: v })}
+                  onChange={handleYearChange}
                   options={academicYears.map((ay: any) => ({ value: ay.id, label: ay.label }))}
                   searchable
                 />

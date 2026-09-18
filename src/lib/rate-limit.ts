@@ -31,6 +31,26 @@ const rateLimitMap = new Map<string, RateLimitEntry>();
 /** Tracks the last time a given request key was seen — used for duplicate prevention. */
 const dedupeMap = new Map<string, number>();
 
+/**
+ * Robustly extract client IP from NextRequest.
+ * Prioritizes CF-Connecting-IP, then the first IP in X-Forwarded-For, then X-Real-IP.
+ */
+export function getClientIp(request: { headers: { get: (name: string) => string | null } }): string {
+  const cfIp = request.headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) {
+    const firstIp = xff.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  return "unknown_ip";
+}
+
 // ── Legacy fixed-window limiter (unchanged public contract) ────────────────
 
 // Default configuration: 5 attempts per 15 minutes

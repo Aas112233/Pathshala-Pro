@@ -195,6 +195,38 @@ export async function PUT(
       );
     }
 
+    // Publish transitions are guarded explicitly:
+    //  - draft -> published requires at least one result (guardians must
+    //    never be notified about an exam with no marks) and is irreversible
+    //  - published -> draft is blocked: report cards/transcripts/portal have
+    //    already consumed the marks and guardians may have been notified
+    if (data.isPublished === true && !existingExam.isPublished) {
+      if (usageCounts.results === 0) {
+        return integrityViolation(
+          "Cannot publish an exam that has no results entered yet.",
+          [
+            {
+              field: "isPublished",
+              code: "no_results",
+              message: "Enter exam results before publishing; publishing notifies all guardians.",
+            },
+          ]
+        );
+      }
+    }
+    if (data.isPublished === false && existingExam.isPublished) {
+      return integrityViolation(
+        "Published exams cannot be unpublished because guardians may already have been notified.",
+        [
+          {
+            field: "isPublished",
+            code: "locked",
+            message: "Publishing is irreversible; marks are frozen once the exam is published.",
+          },
+        ]
+      );
+    }
+
     // Check exam ID uniqueness if changing
     if (data.examId && data.examId !== existingExam.examId) {
       const idExists = await prisma.exam.findFirst({

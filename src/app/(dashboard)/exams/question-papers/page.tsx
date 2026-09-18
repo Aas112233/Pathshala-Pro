@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -154,6 +154,42 @@ export default function QuestionPapersLibraryPage() {
     },
   });
   const subjects = subjectsData?.data || [];
+
+  // Fetch class-specific subjects for filter bar
+  const { data: filterClassSubjectsData } = useQuery({
+    queryKey: ["class-subjects", "filter", filterClass],
+    queryFn: async () => {
+      if (!filterClass || filterClass === "ALL") return [];
+      const res = await fetch(`/api/class-subjects?classId=${filterClass}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data || []).map((cs: any) => cs.subject).filter(Boolean);
+    },
+    enabled: !!filterClass && filterClass !== "ALL",
+  });
+
+  const filterAvailableSubjects = useMemo(() => {
+    if (!filterClass || filterClass === "ALL") return subjects;
+    return filterClassSubjectsData || [];
+  }, [filterClass, subjects, filterClassSubjectsData]);
+
+  // Fetch class-specific subjects for blueprint modal
+  const { data: bpClassSubjectsData } = useQuery({
+    queryKey: ["class-subjects", "blueprint", bpClassId],
+    queryFn: async () => {
+      if (!bpClassId) return [];
+      const res = await fetch(`/api/class-subjects?classId=${bpClassId}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data || []).map((cs: any) => cs.subject).filter(Boolean);
+    },
+    enabled: !!bpClassId,
+  });
+
+  const bpAvailableSubjects = useMemo(() => {
+    if (!bpClassId) return [];
+    return bpClassSubjectsData || [];
+  }, [bpClassId, bpClassSubjectsData]);
 
   // Fetch Question Papers
   const { data: papersData, isLoading } = useQuery({
@@ -346,7 +382,7 @@ export default function QuestionPapersLibraryPage() {
             <Button
               variant="outline"
               onClick={() => {
-                if (classes.length > 0) setBpClassId(classes[0].id);
+                setBpClassId("");
                 if (subjects.length > 0) setBpSubjectId(subjects[0].id);
                 if (academicYears.length > 0) setBpAcademicYearId(academicYears[0].id);
                 setBpTitle("Annual Examination 2026-2027");
@@ -407,7 +443,13 @@ export default function QuestionPapersLibraryPage() {
             </div>
 
             {/* Class Filter */}
-            <Select value={filterClass} onValueChange={setFilterClass}>
+            <Select
+              value={filterClass}
+              onValueChange={(val) => {
+                setFilterClass(val);
+                setFilterSubject("ALL");
+              }}
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder={t("questionBank.filterAllClasses")} />
               </SelectTrigger>
@@ -428,8 +470,8 @@ export default function QuestionPapersLibraryPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">{t("questionBank.filterAllSubjects")}</SelectItem>
-                {subjects.map((s: any) => (
-                  <SelectItem key={s.id} value={s.id}>
+                {filterAvailableSubjects.map((s: any) => (
+                  <SelectItem key={s.id || s.subjectId} value={s.id || s.subjectId}>
                     {s.name} ({s.code})
                   </SelectItem>
                 ))}
@@ -683,16 +725,28 @@ export default function QuestionPapersLibraryPage() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-foreground mb-1 block">{t("questionPapers.class")} *</label>
-                <Select value={bpClassId || undefined} onValueChange={setBpClassId}>
+                <Select
+                  value={bpClassId || undefined}
+                  onValueChange={(val) => {
+                    setBpClassId(val);
+                    setBpSubjectId("");
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder={t("questionPapers.selectClass")} /></SelectTrigger>
                   <SelectContent className="z-[80]">{classes.map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div>
                 <label className="text-xs font-semibold text-foreground mb-1 block">{t("questionPapers.subject")} *</label>
-                <Select value={bpSubjectId || undefined} onValueChange={setBpSubjectId}>
-                  <SelectTrigger><SelectValue placeholder={t("questionPapers.selectSubject")} /></SelectTrigger>
-                  <SelectContent className="z-[80]">{subjects.map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name} ({s.code})</SelectItem>))}</SelectContent>
+                <Select
+                  value={bpSubjectId || undefined}
+                  onValueChange={setBpSubjectId}
+                  disabled={!bpClassId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={!bpClassId ? t("questionPapers.selectClass") : t("questionPapers.selectSubject")} />
+                  </SelectTrigger>
+                  <SelectContent className="z-[80]">{bpAvailableSubjects.map((s: any) => (<SelectItem key={s.id || s.subjectId} value={s.id || s.subjectId}>{s.name} ({s.code})</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div>

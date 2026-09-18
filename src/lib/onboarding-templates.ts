@@ -15,12 +15,19 @@ export interface TemplateSubjectDef {
   category?: "COMPULSORY" | "ELECTIVE" | "STREAM";
 }
 
+export interface TemplateGroupDef {
+  name: string;
+  shortName: string;
+  subjectCodes: string[];
+}
+
 export interface TemplateClassDef {
   name: string;
   code: string;
   sequence: number;
   sections: string[];
   ageGroup?: string;
+  groups?: TemplateGroupDef[];
   subjects: TemplateSubjectDef[];
 }
 
@@ -433,6 +440,42 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
         { name: "O-Level Year 3 (Grade 11)", code: "O3", sequence: 3, sections: ["Section A"], subjects: commonSubjects },
         { name: "A-Level Year 1 (AS)", code: "A1", sequence: 4, sections: ["Science", "Business"], subjects: commonSubjects },
         { name: "A-Level Year 2 (A2)", code: "A2", sequence: 5, sections: ["Science", "Business"], subjects: commonSubjects },
+      ];
+
+    case "IGCSE_CAMBRIDGE":
+      return [
+        {
+          name: "IGCSE Year 1 (Grade 9)",
+          code: "IGCSE-1",
+          sequence: 1,
+          sections: ["Science", "Business"],
+          ageGroup: "14-15 years",
+          subjects: [
+            { name: "English as a Second Language", code: "IG-ESL", type: "THEORY", totalMarks: 100, passMarks: 40 },
+            { name: "Mathematics", code: "IG-MATH", type: "THEORY", totalMarks: 100, passMarks: 40 },
+            { name: "Physics", code: "IG-PHY", type: "BOTH", totalMarks: 100, passMarks: 40 },
+            { name: "Chemistry", code: "IG-CHE", type: "BOTH", totalMarks: 100, passMarks: 40 },
+            { name: "Biology", code: "IG-BIO", type: "BOTH", totalMarks: 100, passMarks: 40 },
+            { name: "Business Studies", code: "IG-BUS", type: "THEORY", totalMarks: 100, passMarks: 40 },
+            { name: "Computer Science", code: "IG-CS", type: "BOTH", totalMarks: 100, passMarks: 40 },
+          ],
+        },
+        {
+          name: "IGCSE Year 2 (Grade 10)",
+          code: "IGCSE-2",
+          sequence: 2,
+          sections: ["Science", "Business"],
+          ageGroup: "15-16 years",
+          subjects: [
+            { name: "English as a Second Language", code: "IG-ESL", type: "THEORY", totalMarks: 100, passMarks: 40 },
+            { name: "Mathematics", code: "IG-MATH", type: "THEORY", totalMarks: 100, passMarks: 40 },
+            { name: "Physics", code: "IG-PHY", type: "BOTH", totalMarks: 100, passMarks: 40 },
+            { name: "Chemistry", code: "IG-CHE", type: "BOTH", totalMarks: 100, passMarks: 40 },
+            { name: "Biology", code: "IG-BIO", type: "BOTH", totalMarks: 100, passMarks: 40 },
+            { name: "Business Studies", code: "IG-BUS", type: "THEORY", totalMarks: 100, passMarks: 40 },
+            { name: "Computer Science", code: "IG-CS", type: "BOTH", totalMarks: 100, passMarks: 40 },
+          ],
+        },
       ];
 
     case "MADRASA":

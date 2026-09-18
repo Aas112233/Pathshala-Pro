@@ -69,7 +69,6 @@ export default function EditExamPage() {
 
   const [selectedClassId, setSelectedClassId] = useState("");
   const [subjectSelectionByClass, setSubjectSelectionByClass] = useState<Record<string, string[]>>({});
-  const [hasAutoSelectedClass, setHasAutoSelectedClass] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const { data: classesData = [] } = useQuery<ClassOption[]>({
@@ -92,36 +91,6 @@ export default function EditExamPage() {
 
   // Extract data from API response structure FIRST (before the query that depends on it)
   const classes = classesData;
-
-  // Fetch all classes with their subjects in parallel to find matching class for saved subjects
-  const { data: allClassSubjectsData } = useQuery<Map<string, ClassSubjectOption[]>>({
-    queryKey: ["class-subjects", "all-edit", classes.map((c) => c.id).join(",")],
-    queryFn: async () => {
-      const classSubjectsMap = new Map<string, ClassSubjectOption[]>();
-      if (!classes.length) return classSubjectsMap;
-
-      const responses = await Promise.all(
-        classes.map(async (classItem) => {
-          try {
-            const response = (await api.get<ClassSubjectOption[]>(
-              `/api/class-subjects?classId=${classItem.id}`
-            )) as ApiSuccessResponse<ClassSubjectOption[]>;
-            return { classId: classItem.id, data: response.data || [] };
-          } catch (error) {
-            console.error(`Failed to fetch subjects for class ${classItem.name}:`, error);
-            return { classId: classItem.id, data: [] };
-          }
-        })
-      );
-
-      for (const res of responses) {
-        classSubjectsMap.set(res.classId, res.data);
-      }
-
-      return classSubjectsMap;
-    },
-    enabled: !!examData && classes.length > 0,
-  });
 
   const [formData, setFormData] = useState({
     academicYearId: "",
@@ -175,7 +144,6 @@ export default function EditExamPage() {
 
       if (exam.classId) {
         setSelectedClassId(exam.classId);
-        setHasAutoSelectedClass(true);
       }
 
       if (exam.subjects && exam.subjects.length > 0) {
@@ -192,46 +160,6 @@ export default function EditExamPage() {
       setIsDataLoaded(true);
     }
   }, [examData]);
-
-  // 2. Fallback auto-detection if exam has no direct classId
-  useEffect(() => {
-    if (examData && !selectedClassId) {
-      const exam = examData as any;
-      if (exam.classId) {
-        setSelectedClassId(exam.classId);
-        setHasAutoSelectedClass(true);
-      } else if (allClassSubjectsData && allClassSubjectsData.size > 0 && !hasAutoSelectedClass) {
-        if (exam.subjects && exam.subjects.length > 0) {
-          const savedSubjectIds = exam.subjects
-            .map((s: any) => s.subjectId || s.subject?.subjectId)
-            .filter(Boolean);
-
-          let bestMatchingClassId = "";
-          let maxMatchCount = 0;
-
-          allClassSubjectsData.forEach((subjects, classId) => {
-            const subjectIds = subjects.map((s) => s.subjectId);
-            const matchCount = subjectIds.filter((id) => savedSubjectIds.includes(id)).length;
-            if (matchCount > maxMatchCount) {
-              maxMatchCount = matchCount;
-              bestMatchingClassId = classId;
-            }
-          });
-
-          if (bestMatchingClassId) {
-            setSelectedClassId(bestMatchingClassId);
-            setHasAutoSelectedClass(true);
-          } else if (classes.length > 0) {
-            setSelectedClassId(classes[0].id);
-          }
-        } else if (classes.length > 0) {
-          setSelectedClassId(classes[0].id);
-        }
-      } else if (classes.length > 0 && !allClassSubjectsData) {
-        setSelectedClassId(classes[0].id);
-      }
-    }
-  }, [examData, allClassSubjectsData, classes, hasAutoSelectedClass, selectedClassId]);
 
   function handleSubjectToggle(subjectId: string) {
     if (!selectedClassId) {
@@ -319,7 +247,7 @@ export default function EditExamPage() {
 
   const isPageLoading =
     isExamLoading ||
-    (examData && (!isDataLoaded || !formData.name || (classes.length > 0 && !selectedClassId)));
+    (examData && (!isDataLoaded || !formData.name));
 
   if (isPageLoading) {
     return (

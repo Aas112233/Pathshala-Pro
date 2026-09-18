@@ -117,10 +117,19 @@ export function MonthView({ items, anchor, weekStartsOn, onSelectItem, onSelectD
           const inMonth = cell.getMonth() === anchor.getMonth();
           const isToday = isSameDay(cell, new Date());
           return (
-            <button
-              type="button"
+            <div
               key={index}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelectDay(cell)}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectDay(cell);
+                }
+              }}
+              aria-label={new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(cell)}
               className={cn(
                 "flex min-h-[92px] flex-col gap-1 border-b border-r border-border/50 p-1.5 text-left align-top transition-colors hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                 (index + 1) % 7 === 0 && "border-r-0",
@@ -148,7 +157,7 @@ export function MonthView({ items, anchor, weekStartsOn, onSelectItem, onSelectD
                   </span>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

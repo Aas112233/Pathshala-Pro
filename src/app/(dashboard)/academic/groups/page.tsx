@@ -69,7 +69,7 @@ export default function GroupsPage() {
     },
   });
 
-  // Fetch all subjects from API
+  // Fetch all subjects from API (global fallback)
   const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
     queryKey: ["subjects", "all"],
     queryFn: async () => {
@@ -83,6 +83,39 @@ export default function GroupsPage() {
     if (!subjectsData) return [];
     return ("data" in subjectsData) ? subjectsData.data : [];
   }, [subjectsData]);
+
+  const [formData, setFormData] = useState({
+    classId: "",
+    name: "",
+    shortName: "",
+    selectedSubjects: [] as string[],
+    isActive: true,
+  });
+  const [formErrors, setFormErrors] = useState<{
+    classId?: string;
+    name?: string;
+    shortName?: string;
+  }>({});
+
+  // Fetch class-specific subjects when a class is selected in the modal
+  const { data: classSubjectsData, isLoading: isClassSubjectsLoading } = useQuery<SubjectData[]>({
+    queryKey: ["class-subjects", "group-modal", formData.classId],
+    queryFn: async () => {
+      if (!formData.classId) return [];
+      const res = await fetch(`/api/class-subjects?classId=${formData.classId}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json.data || []).map((cs: any) => ({
+        id: cs.subject?.id || cs.subjectId,
+        subjectId: cs.subject?.subjectId || cs.subjectId,
+        name: cs.subject?.name || "Unknown",
+        code: cs.subject?.code || "",
+        category: cs.subject?.category || (cs.isCompulsory ? "COMPULSORY" : "ELECTIVE"),
+        isActive: true,
+      }));
+    },
+    enabled: !!formData.classId && isModalOpen,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["groups", { page, search }],
@@ -159,19 +192,6 @@ export default function GroupsPage() {
       toast.error(err.message || t("deleteFailed"));
     },
   });
-
-  const [formData, setFormData] = useState({
-    classId: "",
-    name: "",
-    shortName: "",
-    selectedSubjects: [] as string[],
-    isActive: true,
-  });
-  const [formErrors, setFormErrors] = useState<{
-    classId?: string;
-    name?: string;
-    shortName?: string;
-  }>({});
 
   const resetForm = () => {
     setFormData({
@@ -250,15 +270,20 @@ export default function GroupsPage() {
     }));
   };
 
-  // Filter subjects based on search
+  // Filter subjects based on class and search
+  const availableSubjects = useMemo(() => {
+    if (!formData.classId) return [];
+    return classSubjectsData || [];
+  }, [formData.classId, classSubjectsData]);
+
   const filteredSubjects = useMemo(() => {
-    if (!subjectSearch.trim()) return allSubjects;
+    if (!subjectSearch.trim()) return availableSubjects;
     const q = subjectSearch.toLowerCase();
-    return allSubjects.filter(s =>
+    return availableSubjects.filter((s: SubjectData) =>
       s.name.toLowerCase().includes(q) ||
       s.code.toLowerCase().includes(q)
     );
-  }, [allSubjects, subjectSearch]);
+  }, [availableSubjects, subjectSearch]);
 
   const classes = ("data" in (classesData || {})) ? (classesData as any).data : [];
   const classOptions = classes.map((c: any) => ({
@@ -427,7 +452,7 @@ export default function GroupsPage() {
                 <AppDropdown
                   value={formData.classId}
                   onChange={(val) => {
-                    setFormData({ ...formData, classId: val });
+                    setFormData({ ...formData, classId: val, selectedSubjects: [] });
                     if (formErrors.classId) setFormErrors((prev) => ({ ...prev, classId: undefined }));
                   }}
                   invalid={Boolean(formErrors.classId)}
@@ -522,12 +547,12 @@ export default function GroupsPage() {
                   />
                 </div>
                 <div className="max-h-40 overflow-y-auto">
-                  {subjectsLoading ? (
+                  {subjectsLoading || isClassSubjectsLoading ? (
                     <p className="p-3 text-xs text-muted-foreground text-center">{t("loadingSubjects")}</p>
                   ) : filteredSubjects.length === 0 ? (
                     <p className="p-3 text-xs text-muted-foreground text-center">{t("noSubjectsFound")}</p>
                   ) : (
-                    filteredSubjects.map((subject) => {
+                    filteredSubjects.map((subject: SubjectData) => {
                       const isSelected = formData.selectedSubjects.includes(subject.name);
                       return (
                         <label

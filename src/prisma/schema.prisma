@@ -161,7 +161,7 @@ model User {
 }
 
 model StudentProfile {
-  id                 String    @id @default(cuid())
+  id                 String        @id @default(cuid())
   tenantId           String
   studentId          String
   rollNumber         String
@@ -185,9 +185,9 @@ model StudentProfile {
   groupId            String?
   sectionId          String?
   status             StudentStatus @default(ACTIVE)
-  admissionDate      DateTime  @default(now())
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  admissionDate      DateTime      @default(now())
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   tenant               Tenant                   @relation(fields: [tenantId], references: [tenantId])
   class                Class?                   @relation(fields: [classId], references: [id])
@@ -2016,9 +2016,20 @@ enum BillingCycle {
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
+  GRACE
   PAST_DUE
   CANCELLED
   UNPAID
+  EXPIRED
+  INACTIVE
+}
+
+enum SubscriptionChangeType {
+  PLAN_CHANGE
+  STATUS_CHANGE
+  END_DATE_CHANGE
+  GRACE_CHANGE
+  EXPIRY
 }
 
 enum SuperAdminActionType {
@@ -2048,8 +2059,9 @@ model SubscriptionPlan {
   isActive Boolean @default(true)
 
   subscriptions TenantSubscription[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  changelog     SubscriptionChangeLog[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 }
 
 model TenantSubscription {
@@ -2062,17 +2074,53 @@ model TenantSubscription {
   currentPeriodEnd   DateTime
   cancelAtPeriodEnd  Boolean            @default(false)
 
+  // Explicit subscription end date-time set by superadmin (falls back to currentPeriodEnd)
+  subscriptionEndAt DateTime?
+  // Extra days allowed after subscription end before tenant is deactivated
+  gracePeriodDays   Int       @default(0)
+  // Computed as subscriptionEndAt + gracePeriodDays
+  graceEndsAt       DateTime?
+  // Dedupe marker so grace warning notices are not spammed
+  graceNotifiedAt   DateTime?
+  // When tenant was flipped to EXPIRED / INACTIVE
+  expiredAt         DateTime?
+  // Audit trail of last plan mutation
+  lastPlanChangeAt  DateTime?
+  lastPlanChangeBy  String?
+
   customMaxStudents  Int?
   customMaxStaff     Int?
   customMaxStorageMb Int?
 
-  tenant Tenant           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
-  plan   SubscriptionPlan @relation(fields: [planId], references: [id])
+  tenant    Tenant                  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  plan      SubscriptionPlan        @relation(fields: [planId], references: [id])
+  changelog SubscriptionChangeLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId, status])
+}
+
+model SubscriptionChangeLog {
+  id                String                 @id @default(cuid())
+  tenantId          String
+  planId            String
+  oldStatus         SubscriptionStatus
+  newStatus         SubscriptionStatus
+  changeType        SubscriptionChangeType
+  subscriptionEndAt DateTime?
+  gracePeriodDays   Int                    @default(0)
+  changedById       String?
+  changedByEmail    String?
+  details           Json?
+
+  tenant    TenantSubscription @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  plan      SubscriptionPlan   @relation(fields: [planId], references: [id])
+  createdAt DateTime           @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([changeType, createdAt])
 }
 
 model TenantFeatureOverride {
@@ -2088,6 +2136,36 @@ model TenantFeatureOverride {
 
   tenant    Tenant   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
   updatedAt DateTime @updatedAt
+}
+
+// Platform-global onboarding blueprints. Provisioning reads the ACTIVE row
+// matching the wizard's classTemplate code, with a hardcoded fallback in
+// src/lib/onboarding-templates.ts. No tenantId: templates are shared.
+model OnboardingTemplate {
+  id                   String   @id @default(cuid())
+  code                 String   @unique // stable preset code, e.g. K_12
+  label                String
+  description          String?
+  countryCode          String   @default("INTL") // PK | IN | BD | INTL
+  board                String?
+  category             String   @default("GENERIC") // NATIONAL | INTERNATIONAL | RELIGIOUS | GENERIC
+  currency             String   @default("PKR")
+  currencySymbol       String   @default("₨")
+  timezone             String   @default("Asia/Karachi")
+  gradingSystem        String   @default("GPA")
+  curriculum           String   @default("GENERAL")
+  fiscalYearStartMonth Int      @default(7)
+  classes              Json // TemplateClassDef[]: classes, sections, subjects, groups
+  feeHeads             Json? // OnboardFeeStructureItem[] defaults (optional)
+  isSystem             Boolean  @default(false) // seeded presets: editable, not deletable
+  isActive             Boolean  @default(true)
+  version              Int      @default(1)
+  createdBy            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([countryCode])
 }
 
 model SuperAdminActionLog {

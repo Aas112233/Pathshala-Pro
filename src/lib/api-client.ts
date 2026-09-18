@@ -162,7 +162,7 @@ export const api = new ApiClient();
 // Auth API
 export const authApi = {
   login: (email: string, password: string) =>
-    api.post<{ user: any }>("/api/auth/login", { email, password }),
+    api.post<{ user: any; redirectTo: "/" | "/subscription/inactive" }>("/api/auth/login", { email, password }),
 
   register: (data: any) =>
     api.post("/api/auth/register", data),

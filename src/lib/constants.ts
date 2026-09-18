@@ -109,6 +109,11 @@ export const SYSTEM_ADMIN_NAV: NavGroup[] = [
         icon: Flag,
       },
       {
+        titleKey: "adminTools.title",
+        href: "/system-admin/diagnostics",
+        icon: ShieldAlert,
+      },
+      {
         titleKey: "systemAdmin.auditLogs",
         href: "/system-admin/audit-logs",
         icon: ShieldAlert,

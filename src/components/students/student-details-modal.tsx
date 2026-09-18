@@ -66,7 +66,7 @@ export function StudentDetailsModal({
         onClose={onClose}
         title={t("details.title")}
         description={t("details.description")}
-        maxWidth="lg"
+        maxWidth="3xl"
       >
         <div className="space-y-6">
           {/* Profile Header */}
@@ -126,7 +126,7 @@ export function StudentDetailsModal({
           </div>
 
           {/* Details Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {/* Personal Information */}
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground">{t("details.personalInfo")}</h4>
@@ -170,10 +170,9 @@ export function StudentDetailsModal({
                 />
               </div>
             </div>
-          </div>
 
           {/* Admission Information */}
-          <div className="space-y-3">
+          <div className="space-y-3 sm:col-span-2 xl:col-span-1">
             <h4 className="text-sm font-semibold text-foreground">{t("details.admissionInfo")}</h4>
             <div className="rounded-lg border border-border bg-card p-3">
               <DetailRow
@@ -187,6 +186,7 @@ export function StudentDetailsModal({
                 value={student.status}
               />
             </div>
+          </div>
           </div>
 
           {/* Actions */}

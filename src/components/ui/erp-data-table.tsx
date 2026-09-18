@@ -47,11 +47,18 @@ export interface ERPDataTableProps<T> {
   // Selection
   selectedIds?: (string | number)[];
   onSelectionChange?: (selectedIds: (string | number)[]) => void;
+  isRowSelectable?: (row: T, index: number) => boolean;
   // Pagination
   page?: number;
   pageSize?: number;
   totalCount?: number;
   pageSizeOptions?: number[];
+  paginationLabels?: {
+    rowsPerPage: string;
+    range: (start: number, end: number, total: number) => string;
+    previous: string;
+    next: string;
+  };
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
   // Row Click
@@ -80,10 +87,12 @@ export function ERPDataTable<T>({
   secondaryAction,
   selectedIds,
   onSelectionChange,
+  isRowSelectable,
   page = 1,
   pageSize = 10,
   totalCount = data.length,
   pageSizeOptions = [5, 10, 20, 50],
+  paginationLabels,
   onPageChange,
   onPageSizeChange,
   onRowClick,
@@ -102,18 +111,21 @@ export function ERPDataTable<T>({
     onSearchChange?.(val);
   };
 
-  const allRowKeys = data.map((row, idx) => keyExtractor(row, idx));
+  const selectableItems = data
+    .map((row, idx) => ({ row, idx, key: keyExtractor(row, idx), selectable: isRowSelectable ? isRowSelectable(row, idx) : true }))
+    .filter((item) => item.selectable);
+  const selectableRowKeys = selectableItems.map((item) => item.key);
   const isAllSelected =
-    data.length > 0 &&
+    selectableItems.length > 0 &&
     selectedIds !== undefined &&
-    data.every((row, idx) => selectedIds.includes(keyExtractor(row, idx)));
+    selectableItems.every((item) => selectedIds.includes(item.key));
 
   const handleToggleAll = () => {
     if (!onSelectionChange) return;
     if (isAllSelected) {
       onSelectionChange([]);
     } else {
-      onSelectionChange(allRowKeys);
+      onSelectionChange(selectableRowKeys);
     }
   };
 
@@ -273,6 +285,7 @@ export function ERPDataTable<T>({
                       >
                         <Checkbox
                           checked={isSelected}
+                          disabled={isRowSelectable ? !isRowSelectable(row, idx) : false}
                           onCheckedChange={() => handleToggleRow(key)}
                           aria-label={`Select row ${key}`}
                         />
@@ -299,11 +312,13 @@ export function ERPDataTable<T>({
         {/* Rows per page selector */}
         {onPageSizeChange && (
           <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
+            <span>{paginationLabels?.rowsPerPage ?? "Rows per page:"}</span>
             <AppDropdown
               value={String(pageSize)}
               onChange={(v) => onPageSizeChange(Number(v))}
               options={pageSizeOptions.map((opt) => ({ value: String(opt), label: String(opt) }))}
+              searchable={true}
+              searchPlaceholder={searchPlaceholder}
               triggerClassName="h-7 px-2 py-0.5 text-xs"
             />
           </div>
@@ -312,7 +327,7 @@ export function ERPDataTable<T>({
         {/* Count and Chevrons */}
         <div className="flex items-center gap-4 ml-auto">
           <span>
-            {totalCount > 0 ? `${startRow}-${endRow} of ${totalCount}` : "0 of 0"}
+            {paginationLabels ? paginationLabels.range(totalCount > 0 ? startRow : 0, endRow, totalCount) : totalCount > 0 ? `${startRow}-${endRow} of ${totalCount}` : "0 of 0"}
           </span>
 
           {onPageChange && (
@@ -321,6 +336,7 @@ export function ERPDataTable<T>({
                 variant="outline"
                 size="icon"
                 disabled={page <= 1 || isLoading}
+                aria-label={paginationLabels?.previous}
                 onClick={() => onPageChange(page - 1)}
                 className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
               >
@@ -330,6 +346,7 @@ export function ERPDataTable<T>({
                 variant="outline"
                 size="icon"
                 disabled={page >= totalPages || isLoading}
+                aria-label={paginationLabels?.next}
                 onClick={() => onPageChange(page + 1)}
                 className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
               >

@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 interface ChartDataPoint {
   label: string;
@@ -17,6 +17,7 @@ interface BarChartProps {
   className?: string;
   showValues?: boolean;
   showGrid?: boolean;
+  horizontal?: boolean;
 }
 
 export function BarChart({
@@ -27,8 +28,10 @@ export function BarChart({
   className,
   showValues = true,
   showGrid = true,
+  horizontal = false,
 }: BarChartProps) {
   const t = useTranslations("reports");
+  const locale = useLocale();
   if (!data || data.length === 0) {
     return (
       <Card className={className}>
@@ -43,6 +46,36 @@ export function BarChart({
   const barWidth = 40;
   const gap = 20;
   const chartWidth = data.length * (barWidth + gap);
+
+  if (horizontal) {
+    const number = new Intl.NumberFormat(locale);
+    return (
+      <Card className={className}>
+        {title && (
+          <CardHeader>
+            <CardTitle className="text-base">{title}</CardTitle>
+            {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          </CardHeader>
+        )}
+        <CardContent>
+          <ul className="flex flex-col justify-center gap-5" style={{ minHeight: height }}>
+            {data.map((point, index) => (
+              <li key={index} className="space-y-2">
+                <div className="flex items-center justify-between gap-4 text-sm">
+                  <span className="font-medium">{point.label}</span>
+                  {showValues && <span className="font-semibold tabular-nums">{number.format(point.value)}</span>}
+                </div>
+                <div role="meter" aria-label={point.label} aria-valuemin={0} aria-valuemax={Math.max(1, maxValue)} aria-valuenow={point.value}
+                  className="h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full" style={{ width: `${maxValue > 0 ? point.value / maxValue * 100 : 0}%`, backgroundColor: point.color || "var(--chart-1)" }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={className}>
@@ -140,6 +173,8 @@ interface PieChartProps {
   size?: number;
   className?: string;
   showLegend?: boolean;
+  formatValue?: (value: number) => string;
+  formatTotal?: (value: number) => string;
 }
 
 export function PieChart({
@@ -149,30 +184,34 @@ export function PieChart({
   size = 200,
   className,
   showLegend = true,
+  formatValue,
+  formatTotal,
 }: PieChartProps) {
   const t = useTranslations("reports");
-  if (!data || data.length === 0) {
+  const locale = useLocale();
+  const points = (data ?? []).map((point) => ({
+    ...point,
+    value: Number.isFinite(point.value) && point.value > 0 ? point.value : 0,
+  }));
+  const total = points.reduce((sum, point) => sum + point.value, 0);
+  if (total === 0) {
     return (
       <Card className={className}>
-        <CardContent className="flex h-40 items-center justify-center">
-          <p className="text-muted-foreground">{t("common.noData")}</p>
+        {title && <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>}
+        <CardContent className="flex h-56 items-center justify-center">
+          <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
         </CardContent>
       </Card>
     );
   }
 
-  const total = data.reduce((sum, d) => sum + d.value, 0);
-  const colors = [
-    "hsl(var(--primary))",
-    "hsl(var(--secondary))",
-    "hsl(var(--accent))",
-    "hsl(var(--destructive))",
-    "hsl(var(--muted))",
-    "hsl(var(--ring))",
-  ];
+  const colors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+  const number = new Intl.NumberFormat(locale);
+  const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 });
+  const valueLabel = formatValue ?? ((value: number) => number.format(value));
 
   let currentAngle = 0;
-  const slices = data.map((point, index) => {
+  const slices = points.map((point, index) => {
     const percentage = total > 0 ? point.value / total : 0;
     const angle = percentage * 360;
     const startAngle = currentAngle;
@@ -195,9 +234,17 @@ export function PieChart({
       color: point.color || colors[index % colors.length],
       label: point.label,
       value: point.value,
-      percentage: (percentage * 100).toFixed(1),
+      percentage: percent.format(percentage),
+      // Only one positive category can occupy a complete circle.
+      isFullCircle: point.value > 0 && points.filter((item) => item.value > 0).length === 1,
     };
   });
+
+  // Locale-aware compact total for the donut centre (e.g. "Rs 2.5M").
+  const centerTotal = formatTotal ? formatTotal(total) : new Intl.NumberFormat(locale, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(total);
 
   return (
     <Card className={className}>
@@ -210,29 +257,64 @@ export function PieChart({
         </CardHeader>
       )}
       <CardContent>
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <svg width={size} height={size} viewBox="0 0 200 200">
-            {slices.map((slice, index) => (
-              <path
-                key={index}
-                d={slice.path}
-                fill={slice.color}
-                className="transition-opacity hover:opacity-80"
-              />
-            ))}
-          </svg>
+        <div className="flex flex-wrap items-center justify-center gap-6">
+          <div className="relative max-w-full shrink-0" style={{ width: size, aspectRatio: "1" }}>
+            <svg width="100%" height="100%" viewBox="0 0 200 200" role="img" aria-label={title ?? t("charts.total")}>
+              <title>{slices.map((slice) => `${slice.label}: ${valueLabel(slice.value)} (${slice.percentage})`).join("; ")}</title>
+              {slices.filter((slice) => slice.value > 0).map((slice, index) =>
+                slice.isFullCircle ? (
+                  <circle
+                    key={index}
+                    cx="100"
+                    cy="100"
+                    r="80"
+                    fill={slice.color}
+                    className="transition-opacity hover:opacity-80"
+                  />
+                ) : (
+                  <path
+                    key={index}
+                    d={slice.path}
+                    fill={slice.color}
+                    className="transition-opacity hover:opacity-80"
+                  />
+                )
+              )}
+            </svg>
+            {/* Donut hole with the aggregate total */}
+            <div
+              className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center rounded-full bg-card"
+              style={{ inset: "22%" }}
+            >
+              <span title={valueLabel(total)} className="max-w-full break-words px-1 text-center text-xl font-bold tracking-tight text-foreground tabular-nums">
+                {centerTotal}
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("charts.total")}
+              </span>
+            </div>
+          </div>
 
           {showLegend && (
-            <div className="grid gap-2">
+            <div className="grid min-w-0 flex-1 basis-48 gap-3">
               {slices.map((slice, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div
-                    className="h-3 w-3 rounded"
-                    style={{ backgroundColor: slice.color }}
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {slice.label} ({slice.percentage}%)
-                  </span>
+                <div
+                  key={index}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: slice.color }}
+                    />
+                    <span className="text-sm font-medium text-foreground">
+                      {slice.label}
+                    </span>
+                  </div>
+                  <div className="min-w-0 text-end tabular-nums">
+                    <p className="break-words text-sm font-semibold">{valueLabel(slice.value)}</p>
+                    <p className="text-xs text-muted-foreground">{slice.percentage}</p>
+                  </div>
                 </div>
               ))}
             </div>

@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
+import type { TenantModuleKey } from "@/lib/tenant-modules";
+
 interface User {
   id: string;
   tenantId: string;
@@ -12,11 +14,13 @@ interface User {
   isActive: boolean;
   permissions?: Record<string, any> | null;
   tenantName?: string;
+  moduleAccess?: Record<TenantModuleKey, boolean> | null;
 }
 
 interface AuthContextType {
   user: User | null;
   tenantId: string | null;
+  moduleAccess: Record<TenantModuleKey, boolean> | null;
   isLoading: boolean;
   login: (user: User) => void;
   logout: () => Promise<void>;
@@ -26,8 +30,13 @@ const AUTH_STORAGE_KEY = "pathshala_auth_user";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getInitialUser(): { user: User | null; tenantId: string | null; isLoading: boolean } {
-  return { user: null, tenantId: null, isLoading: true };
+function getInitialUser(): {
+  user: User | null;
+  tenantId: string | null;
+  moduleAccess: Record<TenantModuleKey, boolean> | null;
+  isLoading: boolean;
+} {
+  return { user: null, tenantId: null, moduleAccess: null, isLoading: true };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -47,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthState({
             user,
             tenantId: user.tenantId,
+            moduleAccess: user.moduleAccess ?? null,
             isLoading: false,
           });
         }
@@ -71,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setAuthState({
               user,
               tenantId: user.tenantId,
+              moduleAccess: user.moduleAccess ?? null,
               isLoading: false,
             });
           }
@@ -79,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthState({
             user: null,
             tenantId: null,
+            moduleAccess: null,
             isLoading: false,
           });
         }
@@ -101,7 +113,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!authState.isLoading) {
       if (!authState.user) {
-        if (!pathname.startsWith("/login") && !pathname.startsWith("/register")) {
+        // Keep public onboarding and verification accessible without a session.
+        const isPublicPath = ["/login", "/register", "/onboarding", "/verify"].some(
+          (path) => pathname === path || pathname.startsWith(`${path}/`)
+        );
+        if (!isPublicPath) {
           router.push("/login");
         }
       } else {
@@ -117,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState({
       user,
       tenantId: user.tenantId,
+      moduleAccess: user.moduleAccess ?? null,
       isLoading: false,
     });
   }, []);
@@ -128,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState({
       user: null,
       tenantId: null,
+      moduleAccess: null,
       isLoading: false,
     });
 

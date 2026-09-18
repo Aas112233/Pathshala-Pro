@@ -215,6 +215,14 @@ export default function SystemAdminBillingPage() {
       className: "text-right",
       cell: (row) => (
         <div className="flex items-center justify-end gap-1.5">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => window.location.assign(`/system-admin/tenants/${row.tenantId}`)}
+            className="h-7 text-[11px]"
+          >
+            {t("saasAdmin.billing.managePlan")}
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => handleEditBilling(row)} className="h-7 text-[11px]">Edit</Button>
           {row.status !== "ACTIVE" && (
             <Button

@@ -1,0 +1,143 @@
+
+> pathshala-pro@0.1.0 test:run
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.1.2 [39m[90mD:/my project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro[39m
+
+ [32m✓[39m src/lib/auth-crypto.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 7520[2mms[22m[39m
+       [33m[2m✓[22m[39m hashes plaintext passwords securely using bcrypt [33m 831[2mms[22m[39m
+       [33m[2m✓[22m[39m verifies matching password against generated hash [33m 1930[2mms[22m[39m
+       [33m[2m✓[22m[39m rejects incorrect password against generated hash [33m 4665[2mms[22m[39m
+ [32m✓[39m src/lib/math-audit-followup-2026-08-31.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 2667[2mms[22m[39m
+     [33m[2m✓[22m[39m addCurrency(...) reconstructs the exact cent-rounded sum for any random set of amounts [33m 2142[2mms[22m[39m
+     [33m[2m✓[22m[39m 100,000 additions of 0.01 sum to exactly 100000.00, not 99999.99999999997 [33m 431[2mms[22m[39m
+stderr | src/lib/api-error.test.ts > API Error Handler & Failsafe Mapping > maps Prisma engine init failures into 503 without leaking driver internals
+[API Error] Prisma engine unavailable (PrismaClientInitializationError)
+
+stderr | src/lib/api-error.test.ts > API Error Handler & Failsafe Mapping > safely falls back to 500 without leaking raw internal stack
+[API Error] Failed to execute database operation: Error: Database network socket hangup
+    at D:/my project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/src/lib/api-error.test.ts:132:29
+    at file:///D:/my%20project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+    at file:///D:/my%20project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/node_modules/@vitest/runner/dist/chunk-artifact.js:1893:26
+    at file:///D:/my%20project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/node_modules/@vitest/runner/dist/chunk-artifact.js:2316:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///D:/my%20project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/node_modules/@vitest/runner/dist/chunk-artifact.js:2313:10)
+    at file:///D:/my%20project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/node_modules/@vitest/runner/dist/chunk-artifact.js:2295:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///D:/my%20project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/node_modules/@vitest/runner/dist/chunk-artifact.js:2262:10)
+    at file:///D:/my%20project/PathshalaProSchoolManagementSystemERP/Pathshala-Pro/node_modules/@vitest/runner/dist/chunk-artifact.js:2945:64
+
+ [32m✓[39m src/components/providers/auth-provider.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 844[2mms[22m[39m
+ [32m✓[39m src/lib/api-error.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 232[2mms[22m[39m
+ [32m✓[39m src/lib/class-subjects-api.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 175[2mms[22m[39m
+ [32m✓[39m src/lib/math-integrity.test.ts [2m([22m[2m65 tests[22m[2m)[22m[32m 292[2mms[22m[39m
+ [32m✓[39m src/components/ui/input.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 307[2mms[22m[39m
+ [32m✓[39m src/lib/dropdown-search-contracts.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1888[2mms[22m[39m
+     [33m[2m✓[22m[39m renders a standard dropdown button with placeholder [33m 1232[2mms[22m[39m
+     [33m[2m✓[22m[39m automatically renders a search input when options count > 5 [33m 341[2mms[22m[39m
+ [32m✓[39m src/lib/admin-diagnostics.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m src/lib/question-paper.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 614[2mms[22m[39m
+ [32m✓[39m src/lib/i18n-parity-and-interpolation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m src/components/reports/report-charts.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1607[2mms[22m[39m
+     [33m[2m✓[22m[39m renders real translated labels in en [33m 952[2mms[22m[39m
+ [32m✓[39m src/lib/currencies-academic.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 238[2mms[22m[39m
+ [32m✓[39m src/lib/api-response.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 159[2mms[22m[39m
+ [32m✓[39m src/lib/permissions.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 289[2mms[22m[39m
+ [32m✓[39m src/lib/fee-structures.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 5808[2mms[22m[39m
+     [33m[2m✓[22m[39m can query or upsert class fee structures without schema or relation errors [33m 5801[2mms[22m[39m
+ [32m✓[39m src/lib/subscription-login.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 225[2mms[22m[39m
+ [32m✓[39m src/components/ui/button.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 2199[2mms[22m[39m
+     [33m[2m✓[22m[39m renders children and handles onClick when not loading [33m 1814[2mms[22m[39m
+ [32m✓[39m src/lib/grading-ranking.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m src/lib/subscription-i18n.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 390[2mms[22m[39m
+ [32m✓[39m src/components/ui/top-sheet-form.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 2770[2mms[22m[39m
+     [33m[2m✓[22m[39m footer submit button fires the associated form's onSubmit [33m 1948[2mms[22m[39m
+     [33m[2m✓[22m[39m cancel button does not submit [33m 400[2mms[22m[39m
+ [32m✓[39m src/lib/schemas.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 122[2mms[22m[39m
+ [32m✓[39m src/lib/academic-years-api.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 254[2mms[22m[39m
+ [32m✓[39m src/lib/classes-api.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 505[2mms[22m[39m
+ [32m✓[39m src/components/shared/academic-student-selector.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 4054[2mms[22m[39m
+     [33m[2m✓[22m[39m renders with disabled section and student when no class is selected [33m 2524[2mms[22m[39m
+     [33m[2m✓[22m[39m enables section when class is selected and prompts for section before student [33m 645[2mms[22m[39m
+     [33m[2m✓[22m[39m resets downstream section and student when class is changed [33m 590[2mms[22m[39m
+ [32m✓[39m src/lib/db-retry.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+ [32m✓[39m src/lib/homework.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m src/lib/onboarding.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m src/app/subscription/inactive/page.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 3791[2mms[22m[39m
+     [33m[2m✓[22m[39m shows renewal guidance and logs out rather than linking back into a redirect loop [33m 3178[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a still-suspended tenant on the notice page [33m 322[2mms[22m[39m
+ [32m✓[39m src/lib/subscription-access.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 110[2mms[22m[39m
+ [32m✓[39m src/lib/superadmin-service.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m src/lib/attendance-service.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 100[2mms[22m[39m
+ [32m✓[39m src/lib/student-performance.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32m✓[39m src/lib/auxiliary-service.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m src/lib/timetable-service.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 136[2mms[22m[39m
+ [32m✓[39m src/lib/grading.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 189[2mms[22m[39m
+ [32m✓[39m src/lib/rate-limit.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 218[2mms[22m[39m
+ [32m✓[39m src/lib/universal-error-formatting.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/lib/subscription-end-date-api.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 169[2mms[22m[39m
+ [32m✓[39m src/lib/pdf-fonts.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/lib/question-paper-studio/exam-paper-adapter.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/lib/academic-year-isolation.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 246[2mms[22m[39m
+ [32m✓[39m src/lib/calendar-recurrence.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/lib/date-validation.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 194[2mms[22m[39m
+ [32m✓[39m src/lib/accounting.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 89[2mms[22m[39m
+ [32m✓[39m src/lib/transport.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/lib/reports.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m src/lib/tenant-provisioning.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m src/lib/class-subjects-cascading.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 124[2mms[22m[39m
+ [32m✓[39m src/lib/enterprise-pillars.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 83[2mms[22m[39m
+ [32m✓[39m src/app/(dashboard)/layout.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 166[2mms[22m[39m
+ [32m✓[39m src/lib/question-paper-studio/exam-paper-pdf-utils.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 112[2mms[22m[39m
+ [32m✓[39m src/lib/notices.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 153[2mms[22m[39m
+ [32m✓[39m src/lib/fee-service.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 62[2mms[22m[39m
+ [32m✓[39m src/lib/math-utils.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 134[2mms[22m[39m
+ [32m✓[39m src/lib/tenant-modules.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 113[2mms[22m[39m
+ [32m✓[39m src/lib/platform-owner.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/lib/accounting-reports.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m src/lib/statements.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/lib/data-integrity.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 123[2mms[22m[39m
+ [32m✓[39m src/lib/promotion-exam-lock.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/lib/admission-service.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m src/lib/student-enrollment-integrity.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/lib/fuzzy-search.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+ [32m✓[39m src/lib/exam-grading.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+ [32m✓[39m src/components/ui/erp-components.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/lib/salary-payslip.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/lib/library.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m src/lib/hostel.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [31m❯[39m src/app/(dashboard)/academic/classes/page.test.tsx [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 16077[2mms[22m[39m
+     [33m[2m✓[22m[39m selects and deselects a subject without a bubbling-click loop [33m 5616[2mms[22m[39m
+[31m     [31m×[31m saves an empty subject selection[39m[33m 5198[2mms[22m[39m
+     [33m[2m✓[22m[39m shows subject-save failures instead of reporting success [33m 4163[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps assigned subjects selected when the edit tab mounts [33m 1070[2mms[22m[39m
+ [32m✓[39m src/lib/notifications.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/lib/api-auth.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/lib/voucher-bn-probe.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/pdf-excel-analytics.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 36914[2mms[22m[39m
+       [33m[2m✓[22m[39m generates a valid XLSX buffer for Fee Collection Daybook [33m 9915[2mms[22m[39m
+       [33m[2m✓[22m[39m generates a valid XLSX buffer for Academic Tabulation Sheet [33m 3105[2mms[22m[39m
+       [33m[2m✓[22m[39m computes executive dashboard metrics and trends [33m 23869[2mms[22m[39m
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/(dashboard)/academic/classes/page.test.tsx > class subject selection > saves an empty subject selection
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/app/(dashboard)/academic/classes/page.test.tsx:72:3
+     70|   }, 15000);
+     71|
+     72|   it("saves an empty subject selection", async () => {
+       |   ^
+     73|     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stri…
+     74|     vi.stubGlobal("fetch", fetchMock);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m73 passed[39m[22m[90m (74)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m570 passed[39m[22m[90m (571)[39m
+[2m   Start at [22m 19:13:04
+[2m   Duration [22m 57.51s[2m (transform 32.79s, setup 0ms, import 128.99s, tests 93.55s, environment 249.56s)[22m
+

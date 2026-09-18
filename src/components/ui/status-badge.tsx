@@ -57,10 +57,11 @@ const studentStatusMap: Record<string, StatusVariant> = {
   TRANSFERRED: "warning",
 };
 
-/** Exam result pass/fail */
+/** Exam result pass/fail/absent */
 const examResultStatusMap: Record<string, StatusVariant> = {
-  PASS: "success",
-  FAIL: "error",
+  PASS:   "success",
+  FAIL:   "error",
+  ABSENT: "neutral",
 };
 
 /** Attendance report status */

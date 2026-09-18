@@ -14,6 +14,10 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { useCreateHoliday, useDeleteHoliday, useHolidays } from "@/hooks/use-calendar";
 import { HOLIDAY_TYPES } from "@/lib/schemas";
 
+function holidayTypeKey(type: string): string {
+  return type.toLowerCase().replace(/_([a-z])/g, (_, char) => char.toUpperCase());
+}
+
 const EMPTY_HOLIDAY = {
   title: "",
   holidayType: "PUBLIC",
@@ -121,7 +125,7 @@ export function HolidayManagerSheet({
                     onChange={(v) => setForm({ ...form, holidayType: v })}
                     options={HOLIDAY_TYPES.map((type) => ({
                       value: type,
-                      label: t(`types.${type.charAt(0)}${type.slice(1).toLowerCase()}`),
+                      label: t(`types.${holidayTypeKey(type)}`),
                     }))}
                   />
                 </ERPFormField>
@@ -191,7 +195,7 @@ export function HolidayManagerSheet({
                       {format(new Date(holiday.startDate), "dd MMM yyyy")} –{" "}
                       {format(new Date(holiday.endDate), "dd MMM yyyy")}
                       {" · "}
-                      {t(`types.${String(holiday.holidayType).charAt(0)}${String(holiday.holidayType).slice(1).toLowerCase()}`)}
+                      {t(`types.${holidayTypeKey(String(holiday.holidayType))}`)}
                     </p>
                   </div>
                   {canWrite && (

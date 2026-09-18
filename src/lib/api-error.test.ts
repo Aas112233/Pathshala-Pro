@@ -106,6 +106,28 @@ describe("API Error Handler & Failsafe Mapping", () => {
     expect(json.details[0].field).toBe("classId");
   });
 
+  it("maps Prisma connection/pool failures (P1001/P2024) into 503 with Retry-After", async () => {
+    for (const code of ["P1000", "P1001", "P1002", "P1008", "P1017", "P2024"]) {
+      const res = handleApiError({ code, message: "connection failed" });
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Retry-After")).toBe("5");
+      const json = await res.json();
+      expect(json.error).toBe(true);
+      expect(json.message).toContain("temporarily unavailable");
+      expect(json.details[0].code).toBe("DB_UNAVAILABLE");
+    }
+  });
+
+  it("maps Prisma engine init failures into 503 without leaking driver internals", async () => {
+    const err = new Error("socket hangup at TCP.connect");
+    err.name = "PrismaClientInitializationError";
+    const res = handleApiError(err);
+    expect(res.status).toBe(503);
+    const json = await res.json();
+    expect(json.message).toContain("temporarily unavailable");
+    expect(json.message).not.toContain("socket hangup");
+  });
+
   it("safely falls back to 500 without leaking raw internal stack", async () => {
     const unexpectedError = new Error("Database network socket hangup");
     const res500 = handleApiError(unexpectedError, "Failed to execute database operation");

@@ -1,4 +1,9 @@
 {
+  "dateValidation": {
+    "invalid": "براہ کرم درست تاریخ منتخب کریں۔",
+    "futureBirthDate": "تاریخ پیدائش مستقبل کی نہیں ہو سکتی۔",
+    "rangeOrder": "اختتامی تاریخ ابتدائی تاریخ سے پہلے نہیں ہو سکتی۔"
+  },
   "layout": {
     "title": "پاٹھ شالہ پرو",
     "template": "%s | پاٹھ شالہ پرو",
@@ -242,19 +247,19 @@
     "attendance": "حاضری",
     "exams": "امتحانات",
     "examinations": "امتحانات اور نتائج",
-    "questionPapers": "امتحانی پرچہ جات اور لائبریری",
+    "questionPapers": "امتحانی پرچہ جات",
     "questionBank": "سوالات کا بینک",
     "academicYear": "تعلیمی سال",
-    "classes": "کلاسز اور سیکشنز",
-    "groups": "گروپس",
+    "classes": "کلاسز",
+    "groups": "تعلیمی گروپس",
     "sections": "سیکشنز",
     "finance": "فیس اور کھاتہ جات",
     "feeVouchers": "فیس انوائسز",
     "feeStructures": "فیس کا ڈھانچہ",
-    "feeCollection": "سنگل پی او ایس کاؤنٹر",
-    "bulkFeeCollection": "بلک کلاس فیس انٹری",
+    "feeCollection": "فیس وصولی (پی او ایس)",
+    "bulkFeeCollection": "بلک فیس انٹری",
     "transactions": "لین دین",
-    "expenses": "اخراجات کا لیجر",
+    "expenses": "اخراجات",
     "bankAccounts": "بینک اور کیش اکاؤنٹس",
     "profitLoss": "نفع و نقصان کا گوشوارہ",
     "statements": "کھاتہ اسٹیٹمنٹ",
@@ -270,18 +275,18 @@
     "settings": "اسکول کی ترتیبات",
     "promotions": "طلباء کی ترقی",
     "promotionRules": "ترقی کے قوانین",
-    "subjects": "مضامین اور گروپس",
+    "subjects": "مضامین",
     "reports": "رپورٹس اور تجزیات",
     "communication": "مواصلات اور نوٹسز",
     "notices": "نوٹس بورڈ",
     "noticeBoard": "نوٹس بورڈ",
     "timetable": "ٹائم ٹیبل",
-    "calendar": "اسکول کیلنڈر",
+    "calendar": "تعلیمی کیلنڈر",
     "enquiries": "استفسارات",
     "library": "لائبریری",
     "homework": "ہوم ورک",
     "transport": "ٹرانسپورٹ",
-    "leaves": "چھٹیاں",
+    "leaves": "چھٹیوں کا انتظام",
     "inventory": "اسٹور اور انوینٹری",
     "store": "اسٹور اور انوینٹری",
     "hostel": "ہاسٹل",
@@ -364,6 +369,7 @@
     "alreadyAdmitted": "پہلے سے داخل شدہ",
     "assignedToClass": "پہلے سے {className} میں تفویض شدہ",
     "studentsSelected": "{count} طلبہ منتخب ہوئے",
+    "unassignedCohort": "غیر مختص",
     "selectStudentsModalTitle": "طلبہ منتخب کریں",
     "selectStudentsModalDesc": "داخلے کے لیے موجودہ طلبہ کو تلاش اور منتخب کریں۔ موجودہ کلاس کی تفصیلات ہر طالب علم کے نیچے ظاہر ہوتی ہیں۔",
     "filterByClass": "کلاس کے لحاظ سے فلٹر کریں",
@@ -547,6 +553,7 @@
       "clearFilters": "فلٹر صاف کریں",
       "title": "فلٹرز",
       "clear": "صاف کریں",
+      "selectClassFirst": "پہلے کلاس منتخب کریں...",
       "class": {
         "all": "تمام کلاسز"
       },
@@ -1405,6 +1412,9 @@
     "saveSuccess": "امتحان کے نتائج کامیابی سے محفوظ ہو گئے!",
     "saveError": "امتحان کے نتائج محفوظ کرنے میں ناکامی",
     "fillAllMarks": "براہ کرم تمام طلبہ کے نمبر درج کریں",
+    "absent": "غائب",
+    "clearAbsent": "حاضر نشان زد کریں",
+    "saveErrorSummary": "{message} (+{count} مزید)",
     "summary": "خلاصہ",
     "examName": "امتحان",
     "className": "جماعت",
@@ -2202,6 +2212,7 @@
     "title": "رپورٹس اور تجزیاتی مرکز",
     "description": "ادارہ جاتی ذہانت، آڈٹ اور برآمد کے قابل لیجرز",
     "overview": "رپورٹس جائزہ",
+    "charts": { "total": "کل" },
     "feeReport": {
       "status": "Status",
       "method": "Method",
@@ -2478,6 +2489,7 @@
     },
     "filters": {
       "selectClass": "جماعت منتخب کریں",
+      "selectClassFirst": "پہلے جماعت منتخب کریں...",
       "allClasses": "تمام جماعتیں",
       "selectSection": "سیکشن منتخب کریں",
       "allSections": "تمام سیکشنز",
@@ -2811,7 +2823,7 @@
     "loginEmailPh": "مثلاً principal@beaconhouse.edu",
     "masterPasswordLabel": "ماسٹر پاس ورڈ *",
     "generatePassword": "محفوظ پاس ورڈ بنائیں",
-    "passwordPh": "کم از کم 6 حروف",
+    "passwordPh": "کم از کم 8 حروف (حروف اور اعداد)",
     "reviewTitle": "جائزہ لیں اور تصدیق کریں",
     "reviewDesc": "فوری کلاؤڈ اجراء سے پہلے تمام ترتیبات کی تصدیق کریں۔",
     "schoolDetails": "اسکول کی تفصیلات",
@@ -2838,7 +2850,7 @@
       "errDates": "براہ کرم سیشن کی آغاز و اختتام کی تاریخیں منتخب کریں",
       "errFullName": "براہ کرم اپنا پورا نام درج کریں",
       "errEmail": "براہ کرم درست ایڈمن ای میل درج کریں",
-      "errPassword": "پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے",
+      "errPassword": "پاس ورڈ کم از کم 8 حروف کا ہونا چاہیے اور حروف و اعداد پر مشتمل ہو",
       "provisionFailed": "ادارہ تیار کرنے میں ناکامی",
       "success": "اسکول کامیابی سے رجسٹر ہو گیا!",
       "networkError": "اندراج کے دوران نیٹ ورک خرابی",
@@ -2960,6 +2972,7 @@
       "colLifecycle": "لائف سائیکل ایکشنز",
       "activate": "فعال کریں",
       "suspend": "معطل کریں",
+      "managePlan": "پلان منظم کریں",
       "estimatedMrr": "متوقع MRR",
       "mrrCaption": "ماہانہ بار بار ہونے والی آمدنی",
       "estimatedArr": "متوقع ARR",
@@ -3004,7 +3017,36 @@
       "neverLoggedIn": "کبھی لاگ ان نہیں ہوئے",
       "statusUpdated": "اسٹیٹس {status} میں تبدیل ہو گیا",
       "statusUpdateFailed": "اسٹیٹس اپڈیٹ کرنے میں ناکام",
-      "networkError": "نیٹ ورک خرابی"
+      "networkError": "نیٹ ورک خرابی",
+      "loadFailed": "سبسکرپشن لائف سائیکل لوڈ کرنے میں ناکام",
+      "planPickerLabel": "پلان ٹیئر",
+      "planPickerPlaceholder": "پلان منتخب کریں...",
+      "planPickerHelper": "ٹیننٹ کو فعال کیٹلاگ پلان پر منتقل کریں",
+      "endDateLabel": "سبسکرپشن اختتامی تاریخ",
+      "endDateHelper": "وہ تاریخ جب بامعاوضہ رسائی ختم ہو گی",
+      "graceDaysLabel": "گریس پیریڈ (دن)",
+      "graceDaysHelper": "اختتامی تاریخ کے بعد اضافی دن",
+      "daysRemainingLabel": "اسٹیٹس اور بقیہ دن",
+      "daysRemaining": "{days} دن باقی",
+      "noEndDate": "کوئی اختتامی تاریخ مقرر نہیں",
+      "planIncluded": "بشمول {students} طلبہ، {staff} عملہ اور {storage} MB اسٹوریج",
+      "graceActiveDetail": "گریس پیریڈ فعال ہے - رسائی {date} پر ختم ہو گی",
+      "graceConfigured": "گریس پیریڈ {date} کو ختم ہو گا",
+      "refresh": "تازہ کریں",
+      "saveAndNotify": "محفوظ کریں اور ٹیننٹ کو مطلع کریں",
+      "saving": "محفوظ ہو رہا ہے...",
+      "saveSuccess": "سبسکرپشن اپڈیٹ ہو گئی اور ٹیننٹ مطلع ہو گیا",
+      "saveFailed": "سبسکرپشن اپڈیٹ کرنے میں ناکام",
+      "historyTitle": "سبسکرپشن ہسٹری",
+      "historyEmpty": "ابھی تک کوئی تبدیلی درج نہیں ہوئی",
+      "historyTypePlanChange": "پلان تبدیلی",
+      "historyTypeStatusChange": "اسٹیٹس تبدیلی",
+      "historyTypeEndDateChange": "اختتامی تاریخ تبدیلی",
+      "historyTypeGraceChange": "گریس پیریڈ تبدیلی",
+      "historyTypeExpiry": "میعاد ختمی",
+      "graceDaysInline": "({days} دن گریس)",
+      "endsOnInline": "اختتام {date}",
+      "changedBy": "تبدیل کنندہ {email}"
     },
     "onboard": {
       "title": "نیا تعلیمی ادارہ داخل کریں",
@@ -3901,6 +3943,9 @@
     "deleteConfirm": "کیا آپ واقعی اس کلاس کا فیس سٹرکچر حذف کرنا چاہتے ہیں؟",
     "deleteSuccess": "فیس کا ڈھانچہ کامیابی سے حذف ہو گیا",
     "saveSuccess": "کلاس کا فیس سٹرکچر کامیابی سے محفوظ ہو گیا!",
+    "updateStructure": "فیس سٹرکچر اپ ڈیٹ کریں",
+    "existingStructureNotice": "اس کلاس کے لیے موجودہ فیس سٹرکچر پایا گیا۔ محفوظ شدہ معلومات بھر دی گئیں — محفوظ کرنے پر یہ اپ ڈیٹ ہو جائے گا۔",
+    "existingStructureLoaded": "اس کلاس کا پہلے سے محفوظ شدہ فیس سٹرکچر لوڈ کر لیا گیا۔ محفوظ کرنے سے یہ اپ ڈیٹ ہو جائے گا۔",
     "concessionsTitle": "طلباء کی رعایتیں اور اسکالرشپس",
     "concessionsSubtitle": "فیس میں رعایت اور اسکالرشپ تفویض کریں",
     "selectStudent": "طالب علم منتخب کریں",
@@ -4053,7 +4098,13 @@
       "class": "کلاس",
       "subject": "مضمون",
       "fullMarks": "کل نمبر",
-      "marks": "نمبر"
+      "marks": "نمبر",
+      "singleColumn": "ایک کالم",
+      "twoColumn": "دو کالم",
+      "compact": "مختصر",
+      "normal": "معمول",
+      "watermark": "واٹر مارک",
+      "orDivider": "— یا —"
     },
     "noPapers": "ابھی کوئی سوالیہ پرچہ موجود نہیں",
     "noPapersHint": "اسمارٹ بلیو پرنٹ جنریٹر استعمال کریں یا دستی طور پر پرچہ بنائیں۔",
@@ -4248,7 +4299,68 @@
     "cardPos": "Card / POS",
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
-    "amountPlaceholder": "0.00"
+    "amountPlaceholder": "0.00",
+    "monthAlreadyPaid": "{student} کی {month} کی فیس پہلے ہی ادا کی جا چکی ہے"
+  },
+  "subscription": {
+    "banner": {
+      "graceTitle": "سبسکرپشن کی مہلت",
+      "graceEndsOn": "رسائی برقرار رکھنے کے لیے {date} سے پہلے تجدید کریں۔",
+      "graceActive": "رسائی برقرار رکھنے کے لیے اپنی سبسکرپشن کی تجدید کریں۔",
+      "endingSoonTitle": "آپ کی سبسکرپشن جلد ختم ہو رہی ہے",
+      "endsOn": "آپ کی سبسکرپشن {date} کو ختم ہو جائے گی۔",
+      "daysLeft": "باقی دن: {days}",
+      "plan": "پلان: {plan}"
+    },
+    "inactive": {
+      "title": "سبسکرپشن غیر فعال ہے",
+      "message": "آپ کے ادارے کی سبسکرپشن غیر فعال ہے۔ رسائی بحال کرنے کے لیے اس کی تجدید کریں۔",
+      "supportHeading": "تجدید میں مدد چاہیے؟",
+      "supportText": "تجدید میں مدد کے لیے اپنے ادارے کے منتظم یا معاونت کی ٹیم سے رابطہ کریں۔",
+      "backToLogin": "لاگ ان پر واپس جائیں",
+      "renewalSteps": "اپنے ادارے کے منتظم سے کہیں کہ پلیٹ فارم کی معاونت سے تجدید کا انتظام کریں۔ تصدیق کے بعد نیچے رسائی چیک کریں۔ رسائی بحال ہونے تک ادارے کا ڈیٹا دستیاب نہیں ہوگا۔",
+      "checkAccess": "تجدید کی حیثیت چیک کریں",
+      "checking": "حیثیت چیک ہو رہی ہے…",
+      "checkFailed": "تجدید کی حیثیت چیک نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
+      "stillInactive": "رسائی اب بھی محدود ہے۔ تجدید مکمل کرنے کے لیے منتظم یا پلیٹ فارم کی معاونت سے رابطہ کریں۔",
+      "signOut": "سائن آؤٹ کریں",
+      "signingOut": "سائن آؤٹ ہو رہا ہے…"
+    }
+  },
+  "adminTools": {
+    "title": "ایڈمن ٹولز",
+    "description": "صرف پڑھنے کے لیے ٹیننٹ کی درستگی کی تشخیص",
+    "readOnly": "صرف پڑھنے کے لیے: کوئی ریکارڈ تبدیل نہیں کیا جائے گا",
+    "limitations": "جانچ صرف دکھائے گئے صفحے اور منتخب اصول پر محیط ہے۔ یہ پورے اسکول کی توثیق نہیں کرتی، نہ ہی کھاتہ جات کا تصفیہ کرتی ہے اور نہ ہی سابقہ تعلیمی سیشنز کی توثیق کرتی ہے۔ نتائج کے لیے دستی جائزے کی ضرورت ہوتی ہے؛ کوئی خودکار مرمت دستیاب نہیں ہے۔",
+    "tenant": "اسکول ٹیننٹ ID",
+    "tenantPlaceholder": "ٹیننٹ ڈائریکٹری سے درست ٹیننٹ ID درج کریں",
+    "check": "جانچ",
+    "placement": "طالب علم کی تعیناتی کے تعلقات",
+    "fees": "نان وائیڈڈ فیس بیلنس کا حساب",
+    "run": "جانچ چلائیں",
+    "running": "ریکارڈز کی جانچ ہو رہی ہے...",
+    "reset": "ری سیٹ",
+    "search": "ریکارڈ ریفرنس سے تلاش کریں",
+    "reference": "ریفرنس",
+    "status": "حیثیت",
+    "findings": "نتائج",
+    "review": "جائزہ درکار ہے",
+    "noIssue": "کوئی مسئلہ نہیں پایا گیا",
+    "checkPassed": "اس اصول کے تحت کوئی عدم مطابقت نہیں پائی گئی۔",
+    "classMissing": "مقررہ کلاس اس ٹیننٹ میں موجود نہیں ہے۔",
+    "sectionMismatch": "سیکشن موجود نہیں ہے یا مقررہ کلاس/گروپ سے مطابقت نہیں رکھتا۔",
+    "groupMismatch": "گروپ موجود نہیں ہے یا مقررہ کلاس سے مطابقت نہیں رکھتا۔",
+    "feeBalance": "محفوظ شدہ بیلنس واجب الادا رقم منفی ادا شدہ رقم سے مختلف ہے۔",
+    "invalidAmount": "رقم کی قیمت منفی، غیر متناہی، یا تعاون یافتہ حد سے باہر ہے۔",
+    "empty": "کوئی مماثل ریکارڈ نہیں ملا۔ تلاش یا ٹیننٹ کا دائرہ کار تبدیل کریں۔",
+    "scope": "منتخب ٹیننٹ: {tenantId}۔ صرف اس صفحے کے ریکارڈز کی جانچ کی گئی ہے۔",
+    "checkedAt": "جانچ کا وقت: {time}",
+    "results": "ریکارڈ کی جانچ",
+    "rowsPerPage": "فی صفحہ قطاریں",
+    "previous": "پچھلا صفحہ",
+    "next": "اگلا صفحہ",
+    "range": "{start}-{end} از {total}",
+    "requestFailed": "تشخیصی درخواست ناکام ہو گئی (HTTP {status})۔"
   },
   "systemAdminPages": {
     "loadAuditFailed": "Failed to load audit logs",
@@ -4281,8 +4393,21 @@
     "featureDescription": "Per-tenant module toggles — disable hostel/transport/library etc without code deploy",
     "loadingTenants": "Loading tenants...",
     "noTenants": "No tenants",
-    "flagsUpdated": "Feature flags updated",
-    "save": "Save",
+    "flagsUpdated": "فیچر فلیگز اپڈیٹ ہو گئے",
+    "save": "محفوظ کریں",
+    "moduleAccess": "ماڈیول رسائی اور لائسنسنگ",
+    "moduleAccessDescription": "اس اسکول کے لیے فعال ERP ماڈیولز اور صلاحیتوں کا انتظام کریں۔",
+    "modulesUpdated": "ماڈیول رسائی کامیابی کے ساتھ اپڈیٹ ہو گئی!",
+    "updateModulesFailed": "ماڈیول رسائی اپڈیٹ کرنے میں ناکامی",
+    "modulesCategoryCore": "بنیادی تدریس اور داخلے",
+    "modulesCategoryAcademic": "امتحانات اور نصاب",
+    "modulesCategoryFinance": "مالیات، بلنگ اور تنخواہ",
+    "modulesCategoryFacilities": "کیمپس سہولیات اور لاجسٹکس",
+    "enabledCount": "{total} میں سے {enabled} ماڈیولز فعال ہیں",
+    "saveModuleAccess": "ماڈیول رسائی محفوظ کریں",
+    "savingModuleAccess": "اپڈیٹ ہو رہا ہے...",
+    "moduleEnabled": "فعال",
+    "moduleDisabled": "غیر فعال",
     "loadBroadcastsFailed": "Failed to load platform broadcasts",
     "broadcastRemoved": "Broadcast removed",
     "removeBroadcastFailed": "Failed to remove broadcast",
@@ -4913,5 +5038,79 @@
     "generatedOn": "تیاری کی تاریخ: {date}",
     "authorizedSignatory": "مجاز دستخط کنندہ / پرنسپل",
     "viewPerformance": "کارکردگی دیکھیں"
+  },
+  "tenantModules": {
+    "academics": {
+      "title": "تعلیمی انتظام",
+      "description": "کلاسز، سیکشنز، گروپس اور مضامین کا سیٹ اپ"
+    },
+    "admissions": {
+      "title": "داخلے اور معلومات",
+      "description": "طلبہ کے داخلے، انکوائری لیڈز اور آن بورڈنگ"
+    },
+    "attendance": {
+      "title": "حاضری کا نظام",
+      "description": "طلبہ اور عملے کی روزانہ حاضری اور فوری اندراج"
+    },
+    "examinations": {
+      "title": "امتحانات اور گریڈنگ",
+      "description": "امتحانی شیڈول، نتائج کا اندراج اور سوالیہ پرچہ اسٹوڈیو"
+    },
+    "fees": {
+      "title": "فیس بلنگ اور وصولی",
+      "description": "ماہانہ فیس واؤچرز، رعایتیں اور براہ راست وصولی"
+    },
+    "accounting": {
+      "title": "کھاتہ جات اور مالیات",
+      "description": "چارٹ آف اکاؤنٹس، ڈبل انٹری جنرل جرنل اور اخراجات"
+    },
+    "payroll": {
+      "title": "عملہ اور تنخواہ",
+      "description": "عملہ پروفائلز، تنخواہ کے کھاتے اور پے سلپس"
+    },
+    "timetable": {
+      "title": "ٹائم ٹیبل روٹین",
+      "description": "کلاس روٹین، پیریڈ شیڈولنگ اور متبادل اساتذہ"
+    },
+    "calendar": {
+      "title": "اسکول کیلنڈر اور ایونٹس",
+      "description": "تقریبات، تعطیلات اور تعلیمی سرگرمیاں"
+    },
+    "homework": {
+      "title": "ہوم ورک اور اسائنمنٹس",
+      "description": "ڈیجیٹل ہوم ورک اور طلبہ کے جوابات"
+    },
+    "notices": {
+      "title": "نوٹس بورڈ اور اعلانات",
+      "description": "کیمپس کے اعلانات، سرکلرز اور فوری انتباہات"
+    },
+    "leaves": {
+      "title": "چھٹیوں کی درخواستیں",
+      "description": "طلبہ اور عملے کی چھٹیوں کا انتظام اور منظوری"
+    },
+    "transport": {
+      "title": "ٹرانسپورٹ اور گاڑیاں",
+      "description": "بس روٹس، اسٹاپس اور طلبہ کے ٹرانسپورٹ روٹس"
+    },
+    "hostel": {
+      "title": "ہاسٹل اور رہائش",
+      "description": "ہاسٹل عمارتیں، کمرے، بستر اور رہائشی طلبہ"
+    },
+    "library": {
+      "title": "لائبریری اور کتب",
+      "description": "کتابوں کا کیٹلاگ، اجراء اور لیٹ فیس کا حساب"
+    },
+    "inventory": {
+      "title": "اسٹور اور انوینٹری",
+      "description": "کیمپس سامان، اسٹیشنری اور تقسیم کاری"
+    },
+    "certificates": {
+      "title": "اسناد اور سرٹیفکیٹس",
+      "description": "کریکٹر، ٹرانسفر اور تعلیمی سرٹیفکیٹس"
+    },
+    "health": {
+      "title": "صحت اور میڈیکل ریکارڈز",
+      "description": "طلبہ کے طبی ریکارڈز، الرجی اور ہنگامی رابطے"
+    }
   }
 }

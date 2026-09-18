@@ -26,7 +26,14 @@ export function registerPdfFonts() {
     }
     if (typeof process !== "undefined" && typeof process.cwd === "function") {
       try {
-        const fs = require("fs");
+        // Indirect require: Node's `fs` must stay out of the bundler's static
+        // module graph. This module is compiled for the browser too (the PDF
+        // templates render client-side), where a bare `require("fs")` makes
+        // Turbopack/webpack emit "Can't resolve 'fs'". The indirection is
+        // invisible to both bundlers and only executes in Node (SSR / jsdom
+        // tests); browsers take the `/fonts/` URL branch above.
+        const nodeRequire = eval("require") as (id: string) => typeof import("fs");
+        const fs = nodeRequire("fs");
         const localPath = path.join(fontDir, fileName);
         if (fs.existsSync(localPath)) {
           return localPath;
@@ -38,41 +45,40 @@ export function registerPdfFonts() {
     return `${cdnBase}/${subPath}/${fileName}`;
   };
 
+  // Italic variants are aliased to the upright files on purpose: react-pdf
+  // throws "Could not resolve font" for any weight/style combo without an
+  // exact registration, and we ship no true italic TTFs. Aliasing keeps
+  // italic-styled nodes rendering (upright) instead of failing the export.
+  const upright = (regular: string, bold: string, subPath: string) => [
+    { src: getFontSrc(regular, subPath), fontWeight: 400 as const },
+    { src: getFontSrc(bold, subPath), fontWeight: 700 as const },
+    { src: getFontSrc(regular, subPath), fontWeight: 400 as const, fontStyle: "italic" as const },
+    { src: getFontSrc(bold, subPath), fontWeight: 700 as const, fontStyle: "italic" as const },
+  ];
+
   try {
     // 1. Universal English / Latin / Numbers
     Font.register({
       family: "NotoSans",
-      fonts: [
-        { src: getFontSrc("NotoSans-Regular.ttf", "NotoSans"), fontWeight: 400 },
-        { src: getFontSrc("NotoSans-Bold.ttf", "NotoSans"), fontWeight: 700 },
-      ],
+      fonts: upright("NotoSans-Regular.ttf", "NotoSans-Bold.ttf", "NotoSans"),
     });
 
     // 2. Bengali / Bangla (বাংলা) & Taka Symbol (৳)
     Font.register({
       family: "NotoSansBengali",
-      fonts: [
-        { src: getFontSrc("NotoSansBengali-Regular.ttf", "NotoSansBengali"), fontWeight: 400 },
-        { src: getFontSrc("NotoSansBengali-Bold.ttf", "NotoSansBengali"), fontWeight: 700 },
-      ],
+      fonts: upright("NotoSansBengali-Regular.ttf", "NotoSansBengali-Bold.ttf", "NotoSansBengali"),
     });
 
     // 3. Hindi / Devanagari (हिन्दी) & Rupee Symbol (₹)
     Font.register({
       family: "NotoSansDevanagari",
-      fonts: [
-        { src: getFontSrc("NotoSansDevanagari-Regular.ttf", "NotoSansDevanagari"), fontWeight: 400 },
-        { src: getFontSrc("NotoSansDevanagari-Bold.ttf", "NotoSansDevanagari"), fontWeight: 700 },
-      ],
+      fonts: upright("NotoSansDevanagari-Regular.ttf", "NotoSansDevanagari-Bold.ttf", "NotoSansDevanagari"),
     });
 
     // 4. Urdu / Arabic (اردو)
     Font.register({
       family: "NotoSansArabic",
-      fonts: [
-        { src: getFontSrc("NotoSansArabic-Regular.ttf", "NotoSansArabic"), fontWeight: 400 },
-        { src: getFontSrc("NotoSansArabic-Bold.ttf", "NotoSansArabic"), fontWeight: 700 },
-      ],
+      fonts: upright("NotoSansArabic-Regular.ttf", "NotoSansArabic-Bold.ttf", "NotoSansArabic"),
     });
 
     // Disable hyphenation for non-Latin complex scripts

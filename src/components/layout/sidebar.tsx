@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV, APP_NAME } from "@/lib/constants";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getModuleForPath } from "@/lib/permissions";
+import { getModuleKeyForHref } from "@/lib/tenant-modules";
 import { ChevronLeft, GraduationCap, Search, X, ShieldAlert, Building2 } from "lucide-react";
 
 interface SidebarProps {
@@ -70,16 +71,30 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (collapsed) setSearchQuery("");
   }, [collapsed]);
 
-  // Build filtered navigation with permission checks + search filtering
+  // Build filtered navigation with module entitlements + permission checks + search filtering
   const filteredNav = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
 
     return SIDEBAR_NAV.map((group) => {
-      // First filter by permissions
+      // First filter by tenant module licensing and user permissions
       const permissionFiltered = group.items.filter((item) => {
         if (!mounted || isLoading) return true;
         if (!user) return false;
-        if (user.role === "SUPER_ADMIN" || user.role === "SYSTEM_ADMIN") return true;
+        
+        // System admin and platform owner retain full access
+        const isSystemAdmin = user.role === "SUPER_ADMIN" || user.role === "SYSTEM_ADMIN";
+        
+        // Check Tenant-level Module Entitlements
+        if (!isSystemAdmin && user.moduleAccess) {
+          const tenantModule = getModuleKeyForHref(item.href);
+          if (tenantModule && user.moduleAccess[tenantModule] === false) {
+            return false;
+          }
+        }
+
+        if (isSystemAdmin) return true;
+
+        // Check user RBAC permissions
         const moduleName = getModuleForPath(item.href);
         if (!moduleName) return true;
         return hasPermission(user.permissions, moduleName, "read");
@@ -112,10 +127,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
     >
       {/* Brand */}
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+      <div
+        className={cn(
+          "relative flex h-16 items-center border-b border-sidebar-border",
+          collapsed ? "justify-center px-2" : "justify-between px-4"
+        )}
+      >
         <Link href="/" className="flex items-center gap-2.5 overflow-hidden">
           <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-primary-foreground">
-            <Image src="/pathshalapro-app-icon.webp" alt="App Icon" fill className="object-cover scale-125 rounded-lg" />
+            <Image
+              src="/pathshalapro-app-icon.webp"
+              alt="App Icon"
+              fill
+              sizes="32px"
+              className="object-cover scale-125 rounded-lg"
+            />
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
@@ -125,7 +151,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </Link>
         <button
           onClick={onToggle}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+            collapsed &&
+              "absolute -right-3 top-1/2 -translate-y-1/2 rounded-full border border-sidebar-border bg-sidebar shadow-sm"
+          )}
         >
           <ChevronLeft
             className={cn(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SystemAdminSidebar } from "./system-admin-sidebar";
 import { Header } from "./header";
 import { cn } from "@/lib/utils";
@@ -12,8 +12,18 @@ interface SystemAdminShellProps {
 }
 
 export function SystemAdminShell({ children }: SystemAdminShellProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 1024
+  );
   const { user, isLoading } = useAuth();
+
+  // Auto-shrink sidebar according to screen size on open + on resize
+  useEffect(() => {
+    const update = () => setSidebarCollapsed(window.innerWidth < 1024);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
   
   // Strict System Admin Access Check
   const isAuthorized =

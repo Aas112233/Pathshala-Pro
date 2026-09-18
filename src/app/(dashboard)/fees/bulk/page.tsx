@@ -34,6 +34,7 @@ import {
 
 import { ACADEMIC_MONTHS, MONTH_NAMES, SHORT_MONTH_NAMES } from "@/lib/constants";
 import { addCurrency, applyPercentage, roundCurrency } from "@/lib/math-utils";
+import { fuzzyFilter } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 
@@ -101,13 +102,6 @@ export default function BulkFeeEntryPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Set default class once classes are loaded
-  useEffect(() => {
-    if (classes.length > 0 && !selectedClassId) {
-      setSelectedClassId(classes[0].id);
-    }
-  }, [classes, selectedClassId]);
-
   const selectedClass = classes.find((c: any) => c.id === selectedClassId);
   const availableSections = selectedClass?.sections || EMPTY_ARRAY;
 
@@ -154,7 +148,14 @@ export default function BulkFeeEntryPage() {
     queryKey: ["vouchers", "bulk-class", selectedClassId, activeYearId],
     queryFn: async () => {
       if (!selectedClassId) return { data: [] };
-      const res = await fetch(`/api/fees?limit=300`, {
+      const params = new URLSearchParams({
+        classId: selectedClassId,
+        limit: "500",
+      });
+      if (activeYearId) {
+        params.set("academicYearId", activeYearId);
+      }
+      const res = await fetch(`/api/fees?${params.toString()}`, {
         credentials: "include",
       });
       if (!res.ok) return { data: [] };
@@ -271,21 +272,11 @@ export default function BulkFeeEntryPage() {
     selectedMonthIndex,
   ]);
 
-  // Filtered Roster by Search Query
+  // Filtered Roster by Search Query with Fuzzy Ranking
   const displayedRoster = useMemo(() => {
     if (!searchQuery.trim()) return roster;
-    const q = searchQuery.toLowerCase().trim();
-    return roster.filter((r) => {
-      const fullName = `${r.firstName} ${r.lastName}`.toLowerCase();
-      const studentId = (r.studentId || "").toLowerCase();
-      const rollNumber = (r.rollNumber || "").toLowerCase();
-      const section = (r.sectionName || "").toLowerCase();
-      return (
-        fullName.includes(q) ||
-        studentId.includes(q) ||
-        rollNumber.includes(q) ||
-        section.includes(q)
-      );
+    return fuzzyFilter(roster, searchQuery, (r) => {
+      return `${r.firstName} ${r.lastName} ${r.studentId || ""} ${r.rollNumber || ""} ${r.sectionName || ""}`;
     });
   }, [roster, searchQuery]);
 
@@ -298,9 +289,14 @@ export default function BulkFeeEntryPage() {
         credentials: "include",
         body: JSON.stringify(payload),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
-        throw new Error(json.message || "Failed to record bulk payments");
+        const errorMsg =
+          json.message ||
+          json.error?.message ||
+          (typeof json.error === "string" ? json.error : null) ||
+          "Failed to record bulk payments";
+        throw new Error(errorMsg);
       }
       return json.data;
     },
@@ -320,9 +316,10 @@ export default function BulkFeeEntryPage() {
     },
   });
 
-  // Table Helpers
-  const selectedRows = roster.filter((r) => r.isSelected && r.amountToPay > 0);
-  const isAllSelected = roster.length > 0 && roster.every((r) => r.isSelected);
+  // Table Helpers - only selectable students can be toggled/selected
+  const selectableStudents = roster.filter((r) => !r.isAlreadyPaidForTargetMonth && r.remainingDue > 0);
+  const selectedRows = selectableStudents.filter((r) => r.isSelected && r.amountToPay > 0);
+  const isAllSelected = selectableStudents.length > 0 && selectableStudents.every((r) => r.isSelected);
   const totalCollecting = selectedRows.reduce(
     (sum, r) => addCurrency(sum, Number(r.amountToPay) || 0),
     0
@@ -330,10 +327,15 @@ export default function BulkFeeEntryPage() {
 
   const toggleSelectAll = () => {
     const nextVal = !isAllSelected;
-    const nextSelected: Record<string, boolean> = {};
+    const nextSelected: Record<string, boolean> = { ...selectedIds };
     const nextAmounts: Record<string, number> = { ...userAmounts };
 
     roster.forEach((r) => {
+      if (r.isAlreadyPaidForTargetMonth || r.remainingDue <= 0) {
+        nextSelected[r.id] = false;
+        nextAmounts[r.id] = 0;
+        return;
+      }
       nextSelected[r.id] = nextVal;
       if (nextVal) {
         if (!nextAmounts[r.id] || nextAmounts[r.id] === 0) {
@@ -351,12 +353,13 @@ export default function BulkFeeEntryPage() {
 
   const toggleRow = (id: string) => {
     const student = roster.find((r) => r.id === id);
+    if (!student || student.isAlreadyPaidForTargetMonth || student.remainingDue <= 0) return;
     const currentSelected = selectedIds[id] !== undefined ? selectedIds[id] : false;
     const nextSelected = !currentSelected;
 
     setSelectedIds((prev) => ({ ...prev, [id]: nextSelected }));
 
-    if (nextSelected && (!userAmounts[id] || userAmounts[id] === 0) && student) {
+    if (nextSelected && (!userAmounts[id] || userAmounts[id] === 0)) {
       const netMonthly = roundCurrency(student.baseMonthlyFee - student.discountAmount);
       setUserAmounts((prev) => ({
         ...prev,
@@ -368,6 +371,8 @@ export default function BulkFeeEntryPage() {
   };
 
   const updateAmountToPay = (id: string, amount: number) => {
+    const student = roster.find((r) => r.id === id);
+    if (student && (student.isAlreadyPaidForTargetMonth || student.remainingDue <= 0)) return;
     setUserAmounts((prev) => ({ ...prev, [id]: amount }));
     setSelectedIds((prev) => ({ ...prev, [id]: amount > 0 }));
   };
@@ -379,6 +384,11 @@ export default function BulkFeeEntryPage() {
     const nextSelected: Record<string, boolean> = {};
     const nextAmounts: Record<string, number> = { ...userAmounts };
     roster.forEach((r) => {
+      if (r.isAlreadyPaidForTargetMonth || r.remainingDue <= 0) {
+        nextSelected[r.id] = false;
+        nextAmounts[r.id] = 0;
+        return;
+      }
       const sel = idSet.has(r.id);
       nextSelected[r.id] = sel;
       if (sel && (!nextAmounts[r.id] || nextAmounts[r.id] === 0)) {
@@ -482,10 +492,11 @@ export default function BulkFeeEntryPage() {
         <Input
           type="number"
           min="0"
-          placeholder={t("amountPlaceholder")}
+          disabled={row.isAlreadyPaidForTargetMonth || row.remainingDue <= 0}
+          placeholder={row.isAlreadyPaidForTargetMonth ? t("paid") : t("amountPlaceholder")}
           value={row.amountToPay === 0 ? "" : row.amountToPay}
           onChange={(e) => updateAmountToPay(row.id, parseFloat(e.target.value) || 0)}
-          className="h-8 text-xs font-mono font-bold w-36 bg-background border-input focus:ring-primary"
+          className="h-8 text-xs font-mono font-bold w-36 bg-background border-input focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
         />
       ),
     },
@@ -587,6 +598,7 @@ export default function BulkFeeEntryPage() {
       classId: selectedClassId,
       sectionId: selectedSectionId || undefined,
       paymentMethod,
+      month: selectedMonthIndex + 1,
       feeType: `${currentMonthName} Fee (12-Month Ledger)`,
       payments: selectedRows.map((r) => ({
         studentProfileId: r.id,
@@ -824,6 +836,7 @@ export default function BulkFeeEntryPage() {
           columns={bulkColumns}
           selectedIds={roster.filter((r) => r.isSelected).map((r) => r.id)}
           onSelectionChange={handleSelectionChange}
+          isRowSelectable={(row) => !row.isAlreadyPaidForTargetMonth && row.remainingDue > 0}
           isLoading={isLoadingStudents}
           rowClassName={(row) => (row.isSelected ? "bg-primary/5 hover:bg-primary/10" : "opacity-70")}
           emptyState={

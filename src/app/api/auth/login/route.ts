@@ -17,6 +17,8 @@ import {
 } from "@/lib/rate-limit";
 import { setAuthCookie } from "@/lib/auth-cookies";
 import { getEffectivePermissions } from "@/lib/permissions";
+import { getSubscriptionEnforcementState } from "@/lib/subscription-service";
+import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 
 /**
  * POST /api/auth/login
@@ -116,11 +118,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate cryptographically signed JWT NextAuth token
-    const token = await generateAuthToken(user.id, user.tenantId, user.role, user.email, updatedUser.updatedAt.getTime());
+    // Suspension limits product access, not password-authenticated access to renewal guidance.
+    const restricted = user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(user.email)
+      ? (await getSubscriptionEnforcementState(user.tenantId)).blocked
+      : false;
+
+    // Generate cryptographically signed JWT NextAuth token (subscription state is
+    // embedded so the edge middleware can gate blocked tenants on page routes).
+    const token = await generateAuthToken(user.id, user.tenantId, user.role, user.email, updatedUser.updatedAt.getTime(), restricted);
 
     const response = successResponse(
       {
+        redirectTo: restricted ? "/subscription/inactive" : "/",
         user: {
           id: user.id,
           email: user.email,

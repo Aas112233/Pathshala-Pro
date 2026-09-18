@@ -89,12 +89,14 @@ export default function TimetablePage() {
     },
   });
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects", "timetable"],
+    queryKey: ["subjects", "timetable", selectedClass],
     queryFn: async () => {
-      const r = await fetch("/api/subjects", { credentials: "include" });
+      if (!selectedClass) return { data: [] };
+      const r = await fetch(`/api/subjects?classId=${selectedClass}`, { credentials: "include" });
       if (!r.ok) throw new Error("Failed to fetch subjects");
       return r.json();
     },
+    enabled: !!selectedClass,
   });
   const { data: staffData } = useQuery({
     queryKey: ["staff", "timetable"],
@@ -595,7 +597,8 @@ export default function TimetablePage() {
                     value={formData.subjectId}
                     onChange={(v) => setFormData((p) => ({ ...p, subjectId: v }))}
                     options={subjects.map((s: any) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
-                    placeholder={t("subject")}
+                    placeholder={!selectedClass ? t("selectClass") : t("subject")}
+                    disabled={!selectedClass}
                     searchable
                   />
                 </ERPFormField>

@@ -162,6 +162,25 @@ export default function QuestionBankPage() {
     [subjects, classSubjectIds]
   );
 
+  // Fetch class-specific subjects for filter bar
+  const { data: filterClassSubjectsData = [] } = useQuery({
+    queryKey: ["class-subjects", "question-bank-filter", filterClass],
+    queryFn: async () => {
+      if (!filterClass || filterClass === "ALL") return [];
+      const res = await fetch(`/api/class-subjects?classId=${filterClass}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: !!filterClass && filterClass !== "ALL",
+  });
+
+  const filterAvailableSubjects = useMemo(() => {
+    if (!filterClass || filterClass === "ALL") return subjects;
+    const ids = new Set(filterClassSubjectsData.map((cs: any) => cs.subjectId));
+    return subjects.filter((s: any) => ids.has(s.subjectId));
+  }, [filterClass, subjects, filterClassSubjectsData]);
+
   // Fetch questions
   const { data: questionsData, isLoading } = useQuery({
     queryKey: ["questions", filterClass, filterSubject, filterType, filterDifficulty, searchQuery],
@@ -432,7 +451,13 @@ export default function QuestionBankPage() {
             </div>
 
             {/* Class Filter */}
-            <Select value={filterClass} onValueChange={setFilterClass}>
+            <Select
+              value={filterClass}
+              onValueChange={(val) => {
+                setFilterClass(val);
+                setFilterSubject("ALL");
+              }}
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder={t("questionBank.filterAllClasses")} />
               </SelectTrigger>
@@ -453,7 +478,7 @@ export default function QuestionBankPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">{t("questionBank.filterAllSubjects")}</SelectItem>
-                {subjects.map((s: any) => (
+                {filterAvailableSubjects.map((s: any) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name} ({s.code})
                   </SelectItem>

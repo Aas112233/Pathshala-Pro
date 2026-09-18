@@ -15,6 +15,7 @@ import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { toast } from "sonner";
 import { ACADEMIC_MONTHS } from "@/lib/constants";
 import { addCurrency, roundCurrency } from "@/lib/math-utils";
+import { formatStudentName, fuzzyFilter } from "@/lib/utils";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -77,7 +78,14 @@ export default function FeeCollectionPage() {
       return res.json();
     },
   });
-  const studentsList = (studentsData as any)?.data ?? [];
+  const rawStudentsList: any[] = (studentsData as any)?.data ?? [];
+  const studentsList = useMemo(() => {
+    if (!searchTerm.trim()) return rawStudentsList;
+    return fuzzyFilter(rawStudentsList, searchTerm, (s: any) => {
+      const name = formatStudentName(s.firstName, s.lastName, s.firstNameBn, s.lastNameBn);
+      return `${name} ${s.rollNumber || ""} ${s.studentId || ""}`;
+    });
+  }, [rawStudentsList, searchTerm]);
 
   // 2. Fetch Vouchers for Selected Student
   const { data: studentVouchersData, isLoading: isLoadingVouchers } = useQuery({
@@ -87,7 +95,10 @@ export default function FeeCollectionPage() {
       const res = await fetch(`/api/fees?studentProfileId=${selectedStudent.id}&limit=50`, {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to fetch student vouchers");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.message || "Failed to fetch student vouchers");
+      }
       return res.json();
     },
     enabled: !!selectedStudent?.id,
@@ -161,9 +172,14 @@ export default function FeeCollectionPage() {
         body: JSON.stringify(payload),
       });
 
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
-        throw new Error(json.message || "Failed to record payment");
+        const errorMsg =
+          json.message ||
+          json.error?.message ||
+          (typeof json.error === "string" ? json.error : null) ||
+          "Failed to record payment";
+        throw new Error(errorMsg);
       }
       return json.data;
     },
@@ -298,6 +314,13 @@ export default function FeeCollectionPage() {
   // rupee/paisa display would render as 0.10 anyway but a comparison or
   // receipt total would not.
   const changeDue = Math.max(0, roundCurrency(cashNum - payNum));
+
+  // Collection is possible when the student has unpaid vouchers OR the annual
+  // ledger still shows a remaining balance. In the latter case the backend
+  // auto-creates the annual fee voucher on-the-spot, so the terminal must not
+  // be locked just because no invoice row exists yet.
+  const hasOutstandingDue = unpaidVouchers.length > 0 || annualCalculations.remainingDue > 0;
+  const fullPayable = unpaidVouchers.length > 0 ? selectedTotalBalance : annualCalculations.remainingDue;
 
   const { settings } = useTenantSettings();
   const configuredMethods = useMemo(() => {
@@ -776,9 +799,9 @@ export default function FeeCollectionPage() {
                 <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Wallet className="h-4 w-4 text-emerald-600" /> {t("cashierTerminal")}
                 </h3>
-                {selectedTotalBalance > 0 && (
+                {fullPayable > 0 && (
                   <Badge variant="outline" className="font-mono text-xs font-bold text-destructive border-destructive/30">
-                    {t("due")} {formatCurrency(selectedTotalBalance)}
+                    {t("due")} {formatCurrency(fullPayable)}
                   </Badge>
                 )}
               </div>
@@ -787,35 +810,35 @@ export default function FeeCollectionPage() {
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-foreground flex justify-between">
                   <span>{t("paymentAmount")}</span>
-                  {selectedTotalBalance > 0 && (
+                  {fullPayable > 0 && (
                     <span className="text-muted-foreground text-[11px]">
-                      {t("max")} {formatCurrency(selectedTotalBalance)}
+                      {t("max")} {formatCurrency(fullPayable)}
                     </span>
                   )}
                 </label>
 
-                {selectedTotalBalance > 0 && (
+                {fullPayable > 0 && (
                   <div className="flex gap-1.5">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setPaymentAmount(String(selectedTotalBalance))}
+                      onClick={() => setPaymentAmount(String(fullPayable))}
                       className={`flex-1 text-[11px] h-7 font-bold ${
-                        paymentAmount === String(selectedTotalBalance)
+                        paymentAmount === String(fullPayable)
                           ? "border-primary bg-primary/10 text-primary"
                           : ""
                       }`}
                     >
-                      {t("payFull")} ({formatCurrency(selectedTotalBalance)})
+                      {t("payFull")} ({formatCurrency(fullPayable)})
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setPaymentAmount(String(Math.round(selectedTotalBalance / 2)))}
+                      onClick={() => setPaymentAmount(String(Math.round(fullPayable / 2)))}
                       className={`text-[11px] h-7 font-medium ${
-                        paymentAmount === String(Math.round(selectedTotalBalance / 2))
+                        paymentAmount === String(Math.round(fullPayable / 2))
                           ? "border-primary bg-primary/10 text-primary"
                           : ""
                       }`}
@@ -831,7 +854,7 @@ export default function FeeCollectionPage() {
                     placeholder={t("amountReceived")}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    disabled={!selectedStudent || unpaidVouchers.length === 0}
+                    disabled={!selectedStudent || !hasOutstandingDue}
                     className="h-11 text-base font-mono font-bold pr-12"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
@@ -883,7 +906,7 @@ export default function FeeCollectionPage() {
                     placeholder={t("cashPlaceholder")}
                     value={cashTendered}
                     onChange={(e) => setCashTendered(e.target.value)}
-                    disabled={!selectedStudent || unpaidVouchers.length === 0}
+                    disabled={!selectedStudent || !hasOutstandingDue}
                     className="h-9 text-sm font-mono font-bold"
                   />
 
@@ -912,7 +935,7 @@ export default function FeeCollectionPage() {
                   placeholder={t("notePlaceholder")}
                   value={paymentNote}
                   onChange={(e) => setPaymentNote(e.target.value)}
-                  disabled={!selectedStudent || unpaidVouchers.length === 0}
+                  disabled={!selectedStudent || !hasOutstandingDue}
                   className="h-8 text-xs"
                 />
               </div>
@@ -924,7 +947,7 @@ export default function FeeCollectionPage() {
                   onClick={handlePay}
                   disabled={
                     !selectedStudent ||
-                    unpaidVouchers.length === 0 ||
+                    !hasOutstandingDue ||
                     !paymentAmount ||
                     payNum <= 0 ||
                     isGuardedPayment ||

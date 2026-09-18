@@ -197,7 +197,7 @@ export default function EditQuestionPaperStudioPage() {
   });
   const classes = classesData?.data || [];
 
-  // Fetch subjects
+  // Fetch subjects (all fallback)
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects-all'],
     queryFn: async () => {
@@ -207,6 +207,23 @@ export default function EditQuestionPaperStudioPage() {
     },
   });
   const subjects = subjectsData?.data || [];
+
+  // Fetch class-specific subjects
+  const { data: classSubjectsData } = useQuery({
+    queryKey: ['class-subjects', classId],
+    queryFn: async () => {
+      if (!classId) return [];
+      const res = await fetch(`/api/class-subjects?classId=${classId}`);
+      if (!res.ok) throw new Error('Failed to fetch class subjects');
+      const json = await res.json();
+      return (json.data || []).map((cs: any) => ({
+        id: cs.subject?.id || cs.subjectId,
+        name: cs.subject?.name || 'Unknown',
+        code: cs.subject?.code || '',
+      }));
+    },
+    enabled: !!classId,
+  });
 
   // Fetch exams
   const { data: examsData } = useQuery({
@@ -222,13 +239,14 @@ export default function EditQuestionPaperStudioPage() {
   // Filter subjects by selected class
   const filteredSubjects = useMemo(() => {
     if (!classId) return subjects;
-    return subjects.filter((s: any) => !s.classId || s.classId === classId);
-  }, [subjects, classId]);
+    return classSubjectsData || [];
+  }, [subjects, classId, classSubjectsData]);
 
   // Sync Header details with DB selectors
   const handleSelectClass = (newClassId: string) => {
     if (isLocked) return;
     setClassId(newClassId);
+    setSubjectId("");
     const cls = classes.find((c: any) => c.id === newClassId);
     if (cls) {
       setCurrentPaper((prev) => ({
@@ -236,6 +254,7 @@ export default function EditQuestionPaperStudioPage() {
         header: {
           ...prev.header,
           gradeClass: cls.name,
+          subject: "",
         },
       }));
     }
@@ -611,7 +630,8 @@ export default function EditQuestionPaperStudioPage() {
                 }))}
                 value={subjectId || ''}
                 onChange={handleSelectSubject}
-                placeholder="বিষয় নির্বাচন করুন..."
+                placeholder={!classId ? "প্রথমে শ্রেণি নির্বাচন করুন..." : "বিষয় নির্বাচন করুন..."}
+                disabled={!classId}
               />
             </div>
 

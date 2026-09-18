@@ -38,6 +38,17 @@ export async function PUT(
     }
 
     const data = validation.data;
+    if (data.startDate !== undefined || data.endDate !== undefined) {
+      const rangeValidation = updateAcademicHolidaySchema.safeParse({
+        startDate: data.startDate ?? existing.startDate.toISOString(),
+        endDate: data.endDate ?? existing.endDate.toISOString(),
+      });
+      if (!rangeValidation.success) {
+        return validationError(rangeValidation.error.errors.map((err) => ({
+          field: err.path.join("."), code: err.code, message: err.message,
+        })));
+      }
+    }
     const holiday = await prisma.academicHoliday.update({
       where: { id: existing.id },
       data: {

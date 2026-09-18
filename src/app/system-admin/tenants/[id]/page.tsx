@@ -25,6 +25,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { EditTenantModal } from "@/components/system-admin/edit-tenant-modal";
+import { SubscriptionControlPanel } from "@/components/system-admin/subscription-control-panel";
+import { TenantModuleAccessPanel } from "@/components/system-admin/tenant-module-access-panel";
 
 export default function TenantDetailPage() {
   const t = useTranslations();
@@ -36,7 +38,6 @@ export default function TenantDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const fetchTenantDetails = async () => {
     setIsLoading(true);
@@ -80,29 +81,6 @@ export default function TenantDetailPage() {
     } catch {
       toast.error(t("saasAdmin.tenantDetail.supportSessionError"));
       setIsImpersonating(false);
-    }
-  };
-
-  const handleStatusChange = async (newStatus: string) => {
-    if (!tenant) return;
-    setIsUpdatingStatus(true);
-    try {
-      const res = await fetch("/api/system-admin/billing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId: tenant.tenantId, status: newStatus }),
-      });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        toast.success(t("saasAdmin.tenantDetail.statusUpdated", { status: newStatus }));
-        fetchTenantDetails();
-      } else {
-        toast.error(t("saasAdmin.tenantDetail.statusUpdateFailed"));
-      }
-    } catch {
-      toast.error(t("saasAdmin.tenantDetail.networkError"));
-    } finally {
-      setIsUpdatingStatus(false);
     }
   };
 
@@ -263,6 +241,13 @@ export default function TenantDetailPage() {
         </Card>
       </div>
 
+      {/* Tenant Modular Entitlements & Access Management */}
+      <TenantModuleAccessPanel
+        tenantId={tenant.tenantId}
+        initialModules={tenant.moduleAccess || tenant.featureFlags}
+        onUpdated={fetchTenantDetails}
+      />
+
       {/* Grid: Subscription Controls & Institutional Parameters */}
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Subscription & Lifecycle Manager */}
@@ -274,58 +259,8 @@ export default function TenantDetailPage() {
                 SaaS Subscription & Plan Controls
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/60">
-                <div>
-                  <p className="text-xs font-semibold text-foreground">Current Status</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Subscription lifecycle state for this school
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {["ACTIVE", "TRIAL", "SUSPENDED"].map((st) => (
-                    <Button
-                      key={st}
-                      size="sm"
-                      variant={tenant.subscriptionStatus === st ? "default" : "outline"}
-                      onClick={() => handleStatusChange(st)}
-                      disabled={isUpdatingStatus || tenant.subscriptionStatus === st}
-                      className="h-7 text-xs"
-                    >
-                      {st}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
-                  <span className="text-muted-foreground text-[10px] uppercase font-semibold">
-                    Operating Currency
-                  </span>
-                  <p className="font-bold text-foreground">
-                    {tenant.currency} ({tenant.currencySymbol})
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
-                  <span className="text-muted-foreground text-[10px] uppercase font-semibold">
-                    Timezone & Region
-                  </span>
-                  <p className="font-bold text-foreground">{tenant.timezone || "Asia/Karachi"}</p>
-                </div>
-                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
-                  <span className="text-muted-foreground text-[10px] uppercase font-semibold">
-                    Grading Scale
-                  </span>
-                  <p className="font-bold text-foreground">{tenant.gradingSystem || "GPA"}</p>
-                </div>
-                <div className="p-3 rounded-lg border border-border/50 bg-background space-y-1">
-                  <span className="text-muted-foreground text-[10px] uppercase font-semibold">
-                    Standard Date Format
-                  </span>
-                  <p className="font-bold text-foreground">{tenant.dateFormat || "DD/MM/YYYY"}</p>
-                </div>
-              </div>
+            <CardContent className="p-4">
+              <SubscriptionControlPanel tenantId={tenant.tenantId} />
             </CardContent>
           </Card>
         </div>
