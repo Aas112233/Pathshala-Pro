@@ -64,7 +64,7 @@ export function DataTable<TData>({
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-border">
+      <div className="min-h-[460px] overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/30">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -87,11 +87,11 @@ export function DataTable<TData>({
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="h-12">
                   {columns.map((_, j) => (
                     <td key={j} className="px-4 py-3">
-                      <div className="h-4 animate-pulse rounded bg-muted" />
+                      <div className="h-4 animate-pulse rounded bg-muted/60" />
                     </td>
                   ))}
                 </tr>
@@ -137,6 +137,7 @@ export function DataTable<TData>({
             <button
               onClick={() => onPageChange?.(pagination.currentPage - 1)}
               disabled={!pagination.hasPreviousPage || isLoading}
+              aria-label="Previous page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading && pagination.hasPreviousPage ? (
@@ -151,6 +152,7 @@ export function DataTable<TData>({
             <button
               onClick={() => onPageChange?.(pagination.currentPage + 1)}
               disabled={!pagination.hasNextPage || isLoading}
+              aria-label="Next page"
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading && pagination.hasNextPage ? (
