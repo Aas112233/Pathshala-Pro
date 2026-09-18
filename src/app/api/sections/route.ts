@@ -12,6 +12,7 @@ import {
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { fastCache } from "@/lib/fast-memory-cache";
 import { z } from "zod";
 
 const createSectionSchema = z.object({
@@ -65,6 +66,19 @@ export async function GET(request: NextRequest) {
       where.groupId = groupId;
     }
 
+    const cacheKey = `sections:${tenantId}:${page}:${limit}:${search}:${classId || ""}:${groupId || ""}`;
+    const cachedResponse = fastCache.get<{ sections: any[]; totalCount: number; totalPages: number }>(cacheKey);
+    if (cachedResponse) {
+      return paginatedResponse(cachedResponse.sections, {
+        totalCount: cachedResponse.totalCount,
+        currentPage: page,
+        pageSize: limit,
+        totalPages: cachedResponse.totalPages,
+        hasNextPage: page < cachedResponse.totalPages,
+        hasPreviousPage: page > 1,
+      });
+    }
+
     // Get total count
     const [totalCount, sections] = await Promise.all([
       prisma.section.count({ where }),
@@ -90,6 +104,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);
+    fastCache.set(cacheKey, { sections, totalCount, totalPages }, 60);
 
     return paginatedResponse(sections, {
       totalCount,

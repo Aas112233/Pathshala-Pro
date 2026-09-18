@@ -11,6 +11,7 @@ import {
 import { createExamSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 async function generateUniqueExamId(tenantId: string) {
   const latestExam = await prisma.exam.findFirst({
@@ -79,6 +80,12 @@ export async function GET(request: NextRequest) {
       where.isPublished = isPublished === "true";
     }
 
+    const cacheKey = `exams:${tenantId}:${resolvedAcademicYearId}:${type}:${isPublished}`;
+    const cachedExams = fastCache.get<any[]>(cacheKey);
+    if (cachedExams) {
+      return successResponse(cachedExams, "Exams retrieved successfully");
+    }
+
     const exams = await prisma.exam.findMany({
       where,
       include: {
@@ -102,6 +109,8 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { startDate: "desc" },
     });
+
+    fastCache.set(cacheKey, exams, 60);
 
     return successResponse(exams, "Exams retrieved successfully");
   } catch (error) {

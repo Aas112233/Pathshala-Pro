@@ -14,6 +14,7 @@ import { createStaffSchema, updateStaffSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 /**
  * GET /api/staff
@@ -55,6 +56,19 @@ export async function GET(request: NextRequest) {
       where.isActive = isActive === "true";
     }
 
+    const cacheKey = `staff:${tenantId}:${page}:${limit}:${search}:${department}:${isActive}`;
+    const cached = fastCache.get<{ staff: any[]; totalCount: number; totalPages: number }>(cacheKey);
+    if (cached) {
+      return paginatedResponse(cached.staff, {
+        totalCount: cached.totalCount,
+        currentPage: page,
+        pageSize: limit,
+        totalPages: cached.totalPages,
+        hasNextPage: page < cached.totalPages,
+        hasPreviousPage: page > 1,
+      });
+    }
+
     const [totalCount, staff] = await Promise.all([
       prisma.staffProfile.count({ where }),
       prisma.staffProfile.findMany({
@@ -91,6 +105,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);
+    fastCache.set(cacheKey, { staff, totalCount, totalPages }, 60);
 
     return paginatedResponse(staff, {
       totalCount,

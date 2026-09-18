@@ -13,6 +13,13 @@ export interface AuthContext {
   isImpersonated?: boolean;
 }
 
+// Fast in-memory cache for active user lookups (30s TTL) to prevent DB connection pool exhaustion under load
+interface CachedUserEntry {
+  user: User;
+  expiresAt: number;
+}
+const userAuthCache = new Map<string, CachedUserEntry>();
+
 /**
  * Extract and validate user from request headers
  * In production, this validates JWT tokens from the Authorization header using jose
@@ -66,15 +73,35 @@ export async function getAuthContext(
       return null;
     }
 
-    // Validate user exists and is active
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-        tenantId: tenantId,
-      },
-    });
+    // Check in-memory cache first
+    const cacheKey = `${tenantId}:${userId}`;
+    const now = Date.now();
+    const cached = userAuthCache.get(cacheKey);
+
+    let user: User | null = null;
+    if (cached && cached.expiresAt > now) {
+      user = cached.user;
+    } else {
+      // Validate user exists and is active from database
+      user = await prisma.user.findUnique({
+        where: {
+          id: userId,
+          tenantId: tenantId,
+        },
+      });
+
+      if (user && user.isActive) {
+        userAuthCache.set(cacheKey, { user, expiresAt: now + 30000 }); // 30s TTL
+        // Prevent unbounded cache growth
+        if (userAuthCache.size > 2000) {
+          const firstKey = userAuthCache.keys().next().value;
+          if (firstKey) userAuthCache.delete(firstKey);
+        }
+      }
+    }
 
     if (!user || !user.isActive) {
+      userAuthCache.delete(cacheKey);
       return null;
     }
 

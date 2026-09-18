@@ -611,9 +611,17 @@ export interface SubscriptionEnforcementResult {
   status?: string;
 }
 
+const subscriptionEnforcementCache = new Map<string, { result: SubscriptionEnforcementResult; expiresAt: number }>();
+
 export async function getSubscriptionEnforcementState(
   tenantId: string
 ): Promise<SubscriptionEnforcementResult> {
+  const now = Date.now();
+  const cached = subscriptionEnforcementCache.get(tenantId);
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
+  }
+
   const tenant = await prisma.tenant.findUnique({
     where: { tenantId },
     select: {
@@ -631,34 +639,43 @@ export async function getSubscriptionEnforcementState(
 
   if (!tenant) {
     // Unknown tenant: fail closed for tenant APIs.
-    return { blocked: true, reason: "Tenant not found.", status: "EXPIRED" };
+    const res = { blocked: true, reason: "Tenant not found.", status: "EXPIRED" };
+    subscriptionEnforcementCache.set(tenantId, { result: res, expiresAt: now + 30000 });
+    return res;
   }
 
   const subscription = tenant.subscription;
   const status = (tenant.subscriptionStatus || "TRIAL").toUpperCase();
   if (["SUSPENDED", "ARCHIVED", "EXPIRED", "INACTIVE", "CANCELLED", "UNPAID", "PAST_DUE"].includes(status)) {
-    return { blocked: true, reason: "Subscription is not active.", status };
+    const res = { blocked: true, reason: "Subscription is not active.", status };
+    subscriptionEnforcementCache.set(tenantId, { result: res, expiresAt: now + 30000 });
+    return res;
   }
 
   // Evaluate dates on every request; access must not depend on the expiry sweep.
   if (subscription) {
-    const now = Date.now();
     const end = subscription.subscriptionEndAt ?? subscription.currentPeriodEnd;
     const grace = subscription.graceEndsAt;
     const expired = subscription.status === "GRACE"
       ? !grace || grace.getTime() <= now
       : end && end.getTime() <= now && (!grace || grace.getTime() <= now);
     if (BLOCKED_SUBSCRIPTION_STATUSES.has(subscription.status) || expired) {
-      return {
+      const res = {
         blocked: true,
         reason: "Subscription is not active.",
         status: subscription.status,
       };
+      subscriptionEnforcementCache.set(tenantId, { result: res, expiresAt: now + 30000 });
+      return res;
     }
-    return { blocked: false, status: subscription.status };
+    const res = { blocked: false, status: subscription.status };
+    subscriptionEnforcementCache.set(tenantId, { result: res, expiresAt: now + 60000 });
+    return res;
   }
 
-  return { blocked: false, status };
+  const res = { blocked: false, status };
+  subscriptionEnforcementCache.set(tenantId, { result: res, expiresAt: now + 60000 });
+  return res;
 }
 
 export async function evaluateExpiryIfDue(): Promise<void> {

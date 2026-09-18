@@ -64,6 +64,8 @@ export async function assertAcademicYearsOpen(
  * 4. Current active open academic year (by date range or latest non-closed)
  * 5. Latest academic year by start date
  */
+const defaultAcademicYearCache = new Map<string, { yearId: string; expiresAt: number }>();
+
 export async function resolveRequestAcademicYearId(
   request: NextRequest,
   tenantId: string
@@ -77,6 +79,12 @@ export async function resolveRequestAcademicYearId(
   const cookieYear = request.cookies.get("pathshala_academic_year")?.value?.trim();
   if (cookieYear) return cookieYear;
 
+  const nowMs = Date.now();
+  const cached = defaultAcademicYearCache.get(tenantId);
+  if (cached && cached.expiresAt > nowMs) {
+    return cached.yearId;
+  }
+
   const now = new Date();
   const currentByDate = await prisma.academicYear.findFirst({
     where: {
@@ -87,21 +95,29 @@ export async function resolveRequestAcademicYearId(
     },
     select: { id: true },
   });
-  if (currentByDate) return currentByDate.id;
+  if (currentByDate) {
+    defaultAcademicYearCache.set(tenantId, { yearId: currentByDate.id, expiresAt: nowMs + 60000 });
+    return currentByDate.id;
+  }
 
   const latestOpen = await prisma.academicYear.findFirst({
     where: { tenantId, isClosed: false },
     orderBy: { startDate: "desc" },
     select: { id: true },
   });
-  if (latestOpen) return latestOpen.id;
+  if (latestOpen) {
+    defaultAcademicYearCache.set(tenantId, { yearId: latestOpen.id, expiresAt: nowMs + 60000 });
+    return latestOpen.id;
+  }
 
   const latestAny = await prisma.academicYear.findFirst({
     where: { tenantId },
     orderBy: { startDate: "desc" },
     select: { id: true },
   });
-  return latestAny?.id || "";
+  const yearId = latestAny?.id || "";
+  defaultAcademicYearCache.set(tenantId, { yearId, expiresAt: nowMs + 60000 });
+  return yearId;
 }
 
 /**

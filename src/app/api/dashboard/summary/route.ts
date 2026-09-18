@@ -5,6 +5,7 @@ import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { roundCurrency, safePercentage } from "@/lib/math-utils";
 import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 /**
  * GET /api/dashboard/summary
@@ -53,6 +54,12 @@ export async function GET(request: NextRequest) {
     const attendanceWhere: any = { tenantId };
     if (selfScope) attendanceWhere.studentProfileId = { in: selfScope };
 
+    const cacheKey = `dash_summary:${tenantId}:${user.id}:${resolvedAcademicYearId || "def"}:${canReadStudents}:${canReadStaff}:${canReadFees}:${selfScope?.join(",") || "all"}`;
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) {
+      return successResponse(cached);
+    }
+
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const startOfTomorrow = new Date(startOfToday);
@@ -95,7 +102,7 @@ export async function GET(request: NextRequest) {
       else if (g.status === "ABSENT") absent += g._count;
     }
 
-    return successResponse({
+    const summaryData = {
       totalStudents,
       totalStaff,
       fees: {
@@ -110,7 +117,11 @@ export async function GET(request: NextRequest) {
         total: attendanceTotal,
         rate: safePercentage(present, attendanceTotal, 1),
       },
-    });
+    };
+
+    fastCache.set(cacheKey, summaryData, 30); // 30s cache
+
+    return successResponse(summaryData);
   } catch (error) {
     return handleApiError(error, "Failed to load dashboard summary");
   }

@@ -11,6 +11,7 @@ import {
 } from "@/lib/api-response";
 import { createSubjectSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 /**
  * GET /api/subjects
@@ -25,6 +26,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const isActive = searchParams.get("isActive");
     const classId = searchParams.get("classId");
+
+    const cacheKey = `subjects:${tenantId}:${isActive}:${classId || ""}`;
+    const cachedSubjects = fastCache.get<any[]>(cacheKey);
+    if (cachedSubjects) {
+      return successResponse(cachedSubjects, "Subjects retrieved successfully");
+    }
 
     const where: any = { tenantId };
 
@@ -42,6 +49,8 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { name: "asc" },
     });
+
+    fastCache.set(cacheKey, subjects, 60);
 
     return successResponse(subjects, "Subjects retrieved successfully");
   } catch (error) {

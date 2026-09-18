@@ -11,6 +11,7 @@ import { createStudentSchema } from "@/lib/schemas";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
 import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { fastCache } from "@/lib/fast-memory-cache";
 import {
   resolveRequestAcademicYearId,
   ensureStudentAcademicSession,
@@ -122,6 +123,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const cacheKey = `students:${tenantId}:${resolvedAcademicYearId}:${page}:${limit}:${search}:${status}:${gender}:${classId}:${sectionId}:${groupId}:${sortBy}:${sortOrder}`;
+    const cachedResponse = fastCache.get<{ mappedStudents: any[]; totalCount: number; totalPages: number }>(cacheKey);
+    if (cachedResponse) {
+      return paginatedResponse(cachedResponse.mappedStudents, {
+        totalCount: cachedResponse.totalCount,
+        currentPage: page,
+        pageSize: limit,
+        totalPages: cachedResponse.totalPages,
+        hasNextPage: page < cachedResponse.totalPages,
+        hasPreviousPage: page > 1,
+      });
+    }
+
     // Get total count and students
     const [totalCount, students] = await Promise.all([
       prisma.studentProfile.count({ where }),
@@ -209,6 +223,7 @@ export async function GET(request: NextRequest) {
     });
 
     const totalPages = Math.ceil(totalCount / limit);
+    fastCache.set(cacheKey, { mappedStudents, totalCount, totalPages }, 60);
 
     return paginatedResponse(mappedStudents, {
       totalCount,

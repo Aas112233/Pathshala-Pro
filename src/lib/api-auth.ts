@@ -17,6 +17,8 @@ type AccessResult =
   | { authContext: AuthContext; response?: never }
   | { authContext?: never; response: NextResponse };
 
+const tenantModulesCache = new Map<string, { modules: Record<string, boolean>; expiresAt: number }>();
+
 const API_PREFIX = "/api/";
 
 function getApiPathSegments(pathname: string): string[] {
@@ -185,24 +187,30 @@ export async function requireApiAccess(
       };
     }
 
-    // Module licensing & entitlement check
+    // Module licensing & entitlement check with 60s in-memory cache to save DB queries
     const moduleKey = getModuleKeyForApiPath(request.nextUrl.pathname);
     if (moduleKey) {
-      const tenant = await prisma.tenant.findUnique({
-        where: { tenantId: authContext.tenantId },
-        select: {
-          featureFlags: true,
-          featureOverride: {
-            select: {
-              hasHostel: true,
-              hasTransport: true,
-              hasPayroll: true,
+      let resolved = tenantModulesCache.get(authContext.tenantId);
+      const now = Date.now();
+      if (!resolved || resolved.expiresAt <= now) {
+        const tenant = await prisma.tenant.findUnique({
+          where: { tenantId: authContext.tenantId },
+          select: {
+            featureFlags: true,
+            featureOverride: {
+              select: {
+                hasHostel: true,
+                hasTransport: true,
+                hasPayroll: true,
+              },
             },
           },
-        },
-      });
-      const resolved = resolveTenantModules(tenant?.featureFlags, tenant?.featureOverride);
-      if (resolved[moduleKey] === false) {
+        });
+        const modules = resolveTenantModules(tenant?.featureFlags, tenant?.featureOverride);
+        resolved = { modules, expiresAt: now + 60000 };
+        tenantModulesCache.set(authContext.tenantId, resolved);
+      }
+      if (resolved.modules[moduleKey] === false) {
         return {
           response: forbidden(
             `The '${moduleKey}' module is not licensed or enabled for this educational institute.`
