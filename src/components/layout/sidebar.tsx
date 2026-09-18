@@ -183,12 +183,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             {searchQuery ? (
               <button
                 onClick={clearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>
             ) : (
-              <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden items-center gap-0.5 rounded border border-sidebar-border bg-sidebar px-1.5 py-0.5 text-[10px] font-medium text-sidebar-foreground/30 sm:flex">
+              <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden items-center gap-0.5 rounded border border-sidebar-border bg-sidebar px-1.5 py-0.5 text-[10px] font-medium text-sidebar-foreground/70 sm:flex">
                 ⌘K
               </kbd>
             )}
@@ -235,7 +236,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           filteredNav.map((group) => (
             <div key={group.labelKey} className="mb-4">
               {!collapsed && (
-                <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
+                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/75">
                   {t(group.labelKey as any) || group.labelKey}
                 </p>
               )}
@@ -301,7 +302,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Footer */}
       <div className="border-t border-sidebar-border p-3">
         {!collapsed && (
-          <p className="text-xs text-sidebar-foreground/40">v0.1.0</p>
+          <p className="text-xs font-medium text-sidebar-foreground/70">v0.1.0</p>
         )}
       </div>
     </aside>
