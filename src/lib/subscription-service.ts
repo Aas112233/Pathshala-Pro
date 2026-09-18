@@ -611,15 +611,21 @@ export interface SubscriptionEnforcementResult {
   status?: string;
 }
 
-const subscriptionEnforcementCache = new Map<string, { result: SubscriptionEnforcementResult; expiresAt: number }>();
+export const subscriptionEnforcementCache = new Map<string, { result: SubscriptionEnforcementResult; expiresAt: number }>();
+
+export function clearSubscriptionEnforcementCache(): void {
+  subscriptionEnforcementCache.clear();
+}
 
 export async function getSubscriptionEnforcementState(
   tenantId: string
 ): Promise<SubscriptionEnforcementResult> {
   const now = Date.now();
-  const cached = subscriptionEnforcementCache.get(tenantId);
-  if (cached && cached.expiresAt > now) {
-    return cached.result;
+  if (process.env.NODE_ENV !== "test") {
+    const cached = subscriptionEnforcementCache.get(tenantId);
+    if (cached && cached.expiresAt > now) {
+      return cached.result;
+    }
   }
 
   const tenant = await prisma.tenant.findUnique({

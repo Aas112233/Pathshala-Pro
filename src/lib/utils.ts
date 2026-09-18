@@ -111,7 +111,7 @@ export function fuzzyMatch(pattern: string, text: string): { matches: boolean; s
 
   if (pTokens.length > 1) {
     let allTokensMatched = true;
-    let tokenScore = 400;
+    const tokenScore = 400;
 
     for (const pt of pTokens) {
       const matchFound = tTokens.some((tt) => {

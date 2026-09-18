@@ -64,7 +64,11 @@ export async function assertAcademicYearsOpen(
  * 4. Current active open academic year (by date range or latest non-closed)
  * 5. Latest academic year by start date
  */
-const defaultAcademicYearCache = new Map<string, { yearId: string; expiresAt: number }>();
+export const defaultAcademicYearCache = new Map<string, { yearId: string; expiresAt: number }>();
+
+export function clearAcademicYearCache(): void {
+  defaultAcademicYearCache.clear();
+}
 
 export async function resolveRequestAcademicYearId(
   request: NextRequest,
@@ -80,9 +84,11 @@ export async function resolveRequestAcademicYearId(
   if (cookieYear) return cookieYear;
 
   const nowMs = Date.now();
-  const cached = defaultAcademicYearCache.get(tenantId);
-  if (cached && cached.expiresAt > nowMs) {
-    return cached.yearId;
+  if (process.env.NODE_ENV !== "test") {
+    const cached = defaultAcademicYearCache.get(tenantId);
+    if (cached && cached.expiresAt > nowMs) {
+      return cached.yearId;
+    }
   }
 
   const now = new Date();
