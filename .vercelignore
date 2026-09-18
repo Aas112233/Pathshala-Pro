@@ -1,9 +1,90 @@
+# ==============================================================================
+# Pathshala-Pro Production Vercel Ignore File
+# Keeps serverless function bundles small and upload times fast
+# ==============================================================================
+
+# --- Dependencies & Build Artifacts ---
 .next/
+.next*/
 node_modules/
 .turbo/
 .cache/
+build/
+dist/
+out/
+.output/
+
+# --- Version Control & IDEs ---
 .git/
-.workbuddy-ai/
-.agents/
+.github/
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# --- Testing & Quality Assurance Suites ---
+tests/
+test/
+__tests__/
+*.test.ts
+*.test.tsx
+*.test.js
+*.spec.ts
+*.spec.tsx
+*.spec.js
+vitest.config.ts
+vitest.config.ts.*
 coverage/
+.nyc_output/
+playwright/
+playwright-report/
+cypress/
+
+# --- Local Scripts, Audits & Stress Tests ---
+scripts/
+*.zip
+*.tar.gz
+*.exe
+
+# --- Documentation, Markdown & Spec Files ---
+*.md
+docs/
+specification/
+
+# --- AI, Agent Memory & Tooling Directories ---
+.agents/
+.gemini/
+.claude/
+.cursor/
+.workbuddy-ai/
+.mimocode/
+.lingma/
+.codegraph/
+
+# --- Environment & Secret Files ---
+.env
+.env.*
+!.env.example
+
+# --- Logs, Temporary & OS Files ---
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tmp
+*.temp
+*.bak
+scratch/
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
