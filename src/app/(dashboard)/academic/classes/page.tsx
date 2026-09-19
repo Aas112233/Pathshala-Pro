@@ -379,12 +379,27 @@ export default function ClassesPage() {
               )}
             </Button>
             {canWrite && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(row.original)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={t("actions.edit")}
+                title={t("actions.edit")}
+                onClick={() => handleEdit(row.original)}
+              >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             )}
             {canManage && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(row.original.id)} disabled={deleteMutation.isPending}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={t("actions.delete")}
+                title={t("actions.delete")}
+                onClick={() => handleDelete(row.original.id)}
+                disabled={deleteMutation.isPending}
+              >
                 {deleteMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
               </Button>
             )}
