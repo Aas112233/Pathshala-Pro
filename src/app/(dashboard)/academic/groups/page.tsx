@@ -69,21 +69,6 @@ export default function GroupsPage() {
     },
   });
 
-  // Fetch all subjects from API (global fallback)
-  const { data: subjectsData, isLoading: subjectsLoading } = useQuery({
-    queryKey: ["subjects", "all"],
-    queryFn: async () => {
-      const res = await fetch("/api/subjects?isActive=true");
-      if (!res.ok) throw new Error(t("fetchSubjectsFailed"));
-      return res.json();
-    },
-  });
-
-  const allSubjects: SubjectData[] = useMemo(() => {
-    if (!subjectsData) return [];
-    return ("data" in subjectsData) ? subjectsData.data : [];
-  }, [subjectsData]);
-
   const [formData, setFormData] = useState({
     classId: "",
     name: "",
@@ -547,7 +532,7 @@ export default function GroupsPage() {
                   />
                 </div>
                 <div className="max-h-40 overflow-y-auto">
-                  {subjectsLoading || isClassSubjectsLoading ? (
+                  {isClassSubjectsLoading ? (
                     <p className="p-3 text-xs text-muted-foreground text-center">{t("loadingSubjects")}</p>
                   ) : filteredSubjects.length === 0 ? (
                     <p className="p-3 text-xs text-muted-foreground text-center">{t("noSubjectsFound")}</p>

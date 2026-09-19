@@ -183,7 +183,6 @@ export default function AcademicYearPage() {
 
   // Calculate metrics
   const totalSessions = rawData.length;
-  const activeSessions = rawData.filter((y) => !y.isClosed).length;
   const closedSessions = rawData.filter((y) => y.isClosed).length;
   const currentActive = rawData.find((y) => !y.isClosed)?.label || "None";
 

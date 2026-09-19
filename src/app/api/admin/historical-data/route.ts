@@ -354,7 +354,7 @@ export async function PATCH(request: NextRequest) {
           }
 
           const updateData: any = {};
-          let newObtained = changes.obtainedMarks !== undefined ? Number(changes.obtainedMarks) : previousRecord.obtainedMarks;
+          const newObtained = changes.obtainedMarks !== undefined ? Number(changes.obtainedMarks) : previousRecord.obtainedMarks;
           const maxMarks = previousRecord.maxMarks || 100;
 
           if (changes.obtainedMarks !== undefined) {

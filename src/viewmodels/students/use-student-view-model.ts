@@ -181,10 +181,6 @@ export function useStudentViewModel(): StudentViewModel {
     });
   }, []);
 
-  const toggleSelectAll = useCallback(() => {
-    // filled in after students loaded
-  }, []);
-
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
   }, []);

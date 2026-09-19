@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CURRENCY_LIST } from "@/lib/currencies";
 import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { useOnboardingTemplateOptions } from "@/hooks/use-onboarding-templates";
@@ -54,13 +54,21 @@ const TEMPLATE_ICONS: Record<string, LucideIcon> = {
   CUSTOM: Sliders,
 };
 
+interface ProvisionedTenantData {
+  name: string;
+  tenantId: string;
+  adminEmail: string;
+  academicYear: string;
+  classesCount: number;
+}
+
 export default function PublicOnboardingPage() {
   const router = useRouter();
   const t = useTranslations("onboarding");
   const tc = useTranslations("currencies");
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [provisionedData, setProvisionedData] = useState<any>(null);
+  const [provisionedData, setProvisionedData] = useState<ProvisionedTenantData | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -95,10 +103,11 @@ export default function PublicOnboardingPage() {
     subscriptionStatus: "TRIAL" as "TRIAL" | "ACTIVE",
   });
 
-  const updateField = (key: string, value: any) => {    setFormData((prev) => {
+  const updateField = (key: string, value: unknown) => {
+    setFormData((prev) => {
       const next = { ...prev, [key]: value };
       if (key === "name" && !prev.tenantId) {
-        next.tenantId = generateTenantSlug(value);
+        next.tenantId = generateTenantSlug(String(value ?? ""));
       }
       if (key === "currency") {
         const found = CURRENCY_LIST.find((c) => c.code === value);

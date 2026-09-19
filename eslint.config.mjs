@@ -21,7 +21,20 @@ const eslintConfig = defineConfig([
       "react/no-unescaped-entities": "warn",
     },
   },
-  globalIgnores([".next*/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([
+    ".next*/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "scripts/**",
+    ".claude/**",
+    ".gemini/**",
+    ".cursor/**",
+    ".mimocode/**",
+    ".workbuddy-ai/**",
+    ".bynara/**",
+    "scratch/**",
+  ]),
 ]);
 
 export default eslintConfig;
