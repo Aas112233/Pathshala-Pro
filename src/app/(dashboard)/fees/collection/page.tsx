@@ -20,6 +20,7 @@ import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import Link from "next/link";
 import {
   CreditCard,
   Search,
@@ -38,6 +39,8 @@ import {
   Building2,
   Smartphone,
   History,
+  AlertTriangle,
+  Settings,
 } from "lucide-react";
 
 export default function FeeCollectionPage() {
@@ -47,7 +50,11 @@ export default function FeeCollectionPage() {
   const qc = useQueryClient();
   const { formatCurrency, formatDate, currencySymbol } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
-  const { selectedAcademicYearId: activeYearId } = useAcademicYearContext();
+  const { selectedAcademicYearId: activeYearId, activeAcademicYear, academicYears } = useAcademicYearContext();
+  const activeAcademicYearLabel =
+    academicYears.find((y) => y.id === activeYearId)?.label ||
+    activeAcademicYear?.label ||
+    String(new Date().getFullYear());
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadFees = hasPermission(perms, "fees", "read");
   const canWriteFees = hasPermission(perms, "fees", "write");
@@ -179,6 +186,7 @@ export default function FeeCollectionPage() {
 
   const standardMonthlyFee =
     studentClassStructureData?.totalMonthlyFee || studentClassStructureData?.tuitionFee || 0;
+  const hasFeeStructure = !!studentClassStructureData && standardMonthlyFee > 0;
 
   // 4. Fetch Recent Today Transactions
   const { data: recentTxData, isLoading: isLoadingRecent } = useQuery({
@@ -207,14 +215,14 @@ export default function FeeCollectionPage() {
         unpaidMonthsCount: 0,
       };
     }
-    const baseMonthly = standardMonthlyFee > 0 ? standardMonthlyFee : 2500;
+    const baseMonthly = standardMonthlyFee;
     const totalPaid = allStudentVouchers.reduce(
       (s: number, v: any) => addCurrency(s, v.amountPaid || 0),
       0
     );
     const annualTotalDue = roundCurrency(baseMonthly * 12);
     const remainingDue = roundCurrency(Math.max(0, annualTotalDue - totalPaid));
-    const paidMonthsCount = Math.min(12, Math.floor(totalPaid / baseMonthly));
+    const paidMonthsCount = baseMonthly > 0 ? Math.min(12, Math.floor(totalPaid / baseMonthly)) : 0;
     const unpaidMonthsCount = Math.max(0, 12 - paidMonthsCount);
 
     return {
@@ -236,13 +244,13 @@ export default function FeeCollectionPage() {
       const mV = vouchersByMonth.get(mNum);
       const isPaid = mV
         ? (mV.status === "PAID" || mV.balance <= 0)
-        : (i < annualCalculations.paidMonthsCount);
+        : (annualCalculations.baseMonthly > 0 ? i < annualCalculations.paidMonthsCount : false);
       if (!isPaid) {
         list.push(i);
       }
     }
     return list;
-  }, [selectedStudent, vouchersByMonth, annualCalculations.paidMonthsCount]);
+  }, [selectedStudent, vouchersByMonth, annualCalculations.paidMonthsCount, annualCalculations.baseMonthly]);
 
   // 5. Payment Mutation using Direct 1-Step POS API
   const collectPaymentMutation = useMutation({
@@ -465,6 +473,16 @@ export default function FeeCollectionPage() {
       toast.error(t("selectStudentError"));
       return;
     }
+    const hasUnbilledSelected = selectedMonths.some((m) => !vouchersByMonth.has(m + 1));
+    if (hasUnbilledSelected && !hasFeeStructure) {
+      toast.error(
+        t("noFeeStructureAlert", {
+          className: selectedStudent.class?.name || t("general"),
+          academicYear: activeAcademicYearLabel,
+        })
+      );
+      return;
+    }
     const payNum = parseFloat(paymentAmount || String(selectedTotalBalance));
     if (isNaN(payNum) || payNum <= 0) {
       toast.error(t("validAmountError"));
@@ -563,6 +581,8 @@ export default function FeeCollectionPage() {
   const fullPayable = selectedStudent
     ? (unpaidVouchers.length > 0 ? selectedTotalBalance : annualCalculations.remainingDue)
     : 0;
+  const hasUnbilledSelected = selectedMonths.some((m) => !vouchersByMonth.has(m + 1));
+  const canCollectCurrentSelection = !hasUnbilledSelected || hasFeeStructure;
 
   const { settings } = useTenantSettings();
   const configuredMethods = useMemo(() => {
@@ -775,6 +795,33 @@ export default function FeeCollectionPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Missing Fee Structure Warning Banner */}
+              {!hasFeeStructure && selectedStudent && (
+                <div className="p-3.5 rounded-lg border border-amber-300/80 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">
+                        {t("noFeeStructureAlert", {
+                          className: selectedStudent.class?.name || t("general"),
+                          academicYear: activeAcademicYearLabel,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <Link href="/fees/structures" className="shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px] font-semibold border-amber-400/80 hover:bg-amber-100/50 dark:hover:bg-amber-900/50 gap-1.5"
+                    >
+                      <Settings className="h-3 w-3" /> {t("configureFeeStructure")}
+                    </Button>
+                  </Link>
+                </div>
+              )}
 
               {/* 12-Month Academic Year Tuition Ledger Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1451,6 +1498,7 @@ export default function FeeCollectionPage() {
                     !selectedStudent ||
                     !paymentAmount ||
                     payNum <= 0 ||
+                    !canCollectCurrentSelection ||
                     isGuardedPayment ||
                     collectPaymentMutation.isPending
                   }
@@ -1463,6 +1511,10 @@ export default function FeeCollectionPage() {
                   ) : !selectedStudent ? (
                     <>
                       <User className="h-4 w-4" /> {t("selectStudentPrompt")}
+                    </>
+                  ) : !canCollectCurrentSelection ? (
+                    <>
+                      <AlertTriangle className="h-4 w-4" /> {t("feeStructureRequired")}
                     </>
                   ) : selectedMonths.length > 1 ? (
                     <>

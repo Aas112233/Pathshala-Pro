@@ -115,16 +115,34 @@ export async function POST(request: NextRequest) {
       }
 
       // 3. Compute base monthly fee & concessions
-      let monthlyBaseFee = paymentDecimal;
+      const unbilledMonths = targetMonths.filter(
+        (m) => !existingPeriodVouchers.some((ev) => ev.billingMonth === m)
+      );
+
+      let classStructure = null;
       if (student.classId) {
-        const classStructure = await prisma.classFeeStructure.findFirst({
+        classStructure = await prisma.classFeeStructure.findFirst({
           where: { tenantId, classId: student.classId, academicYearId, isActive: true },
         });
-        if (classStructure) {
-          const total = new Prisma.Decimal((classStructure as any).totalMonthlyFee ?? (classStructure as any).tuitionFee ?? 0);
-          if (!total.isZero()) monthlyBaseFee = total;
+      }
+
+      if (unbilledMonths.length > 0) {
+        if (!classStructure) {
+          return badRequest(
+            "No active fee structure is configured for this class in the selected academic year. Configure the fee structure under Fees > Fee Structures before collecting fees for unbilled months."
+          );
+        }
+        const structTotal = new Prisma.Decimal((classStructure as any).totalMonthlyFee ?? (classStructure as any).tuitionFee ?? 0);
+        if (structTotal.isZero()) {
+          return badRequest(
+            "The active fee structure for this class has a 0 monthly fee. Configure fee heads under Fees > Fee Structures before collecting fees for unbilled months."
+          );
         }
       }
+
+      let monthlyBaseFee = classStructure
+        ? new Prisma.Decimal((classStructure as any).totalMonthlyFee ?? (classStructure as any).tuitionFee ?? 0)
+        : paymentDecimal;
 
       const concessions = await prisma.studentFeeConcession.findMany({
         where: { tenantId, studentProfileId: student.id, isActive: true },
@@ -489,16 +507,24 @@ export async function POST(request: NextRequest) {
     }
 
     // No existing voucher: Create discrete monthly voucher for the target month/year
-    let monthlyBaseFee = paymentDecimal; // fallback
-    if (student.classId) {
-      const classStructure = await prisma.classFeeStructure.findFirst({
-        where: { tenantId, classId: student.classId, academicYearId, isActive: true },
-      });
-      if (classStructure) {
-        const total = new Prisma.Decimal((classStructure as any).totalMonthlyFee ?? (classStructure as any).tuitionFee ?? 0);
-        if (!total.isZero()) monthlyBaseFee = total;
-      }
+    if (!student.classId) {
+      return badRequest("Student has no class assigned. Cannot determine fee structure.");
     }
+    const classStructure = await prisma.classFeeStructure.findFirst({
+      where: { tenantId, classId: student.classId, academicYearId, isActive: true },
+    });
+    if (!classStructure) {
+      return badRequest(
+        "No active fee structure is configured for this class in the selected academic year. Configure the fee structure under Fees > Fee Structures before collecting fees for unbilled months."
+      );
+    }
+    const totalStructFee = new Prisma.Decimal((classStructure as any).totalMonthlyFee ?? (classStructure as any).tuitionFee ?? 0);
+    if (totalStructFee.isZero()) {
+      return badRequest(
+        "The active fee structure for this class has a 0 monthly fee. Configure fee heads under Fees > Fee Structures."
+      );
+    }
+    const monthlyBaseFee = totalStructFee;
 
     // Stacked concessions — tuition-only
     const concessions = await prisma.studentFeeConcession.findMany({

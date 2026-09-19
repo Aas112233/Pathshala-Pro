@@ -351,5 +351,27 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       expect(json.message).toContain("Sara Ahmed has already paid fees for September 2026");
       expect(json.message).toContain("Duplicate payment rejected");
     });
+
+    it("rejects collect-direct when unbilled month has no active class fee structure", async () => {
+      db.classFeeStructure.findFirst.mockResolvedValue(null);
+      db.feeVoucher.findMany.mockResolvedValue([]);
+
+      const req = new NextRequest("http://localhost:3000/api/fees/collect-direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentProfileId: "student-1",
+          billingMonth: 10,
+          billingYear: 2026,
+          amountPaid: 1000,
+          paymentMethod: "CASH",
+        }),
+      });
+
+      const res = (await postCollectDirect(req))!;
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain("No active fee structure is configured for this class");
+    });
   });
 });

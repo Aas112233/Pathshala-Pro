@@ -173,7 +173,10 @@
     "noMonthsSelected": "কোনো মাস নির্বাচিত নেই",
     "monthsCount": "{count} মাস",
     "clickToDeselect": "নির্বাচন বাতিল করতে আবার ক্লিক করুন",
-    "selectStudentPrompt": "ফি সংগ্রহের জন্য শিক্ষার্থী নির্বাচন করুন"
+    "selectStudentPrompt": "ফি সংগ্রহের জন্য শিক্ষার্থী নির্বাচন করুন",
+    "noFeeStructureAlert": "{academicYear} শিক্ষাবর্ষে {className}-এর জন্য কোনো সক্রিয় ফি কাঠামো কনফিগার করা নেই। কনফিগার না করা পর্যন্ত অবিলকৃত মাসের ফি সংগ্রহ করা যাবে না।",
+    "configureFeeStructure": "ফি কাঠামো কনফিগার করুন",
+    "feeStructureRequired": "ফি কাঠামো প্রয়োজন"
   },
   "currencies": {
     "title": "মুদ্রা",
@@ -4330,7 +4333,9 @@
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
     "amountPlaceholder": "০.০০",
-    "monthAlreadyPaid": "{student} এর জন্য {month} মাসের ফি ইতোমধ্যে পরিশোধ করা হয়েছে"
+    "monthAlreadyPaid": "{student} এর জন্য {month} মাসের ফি ইতোমধ্যে পরিশোধ করা হয়েছে",
+    "noFeeStructureAlert": "{academicYear} শিক্ষাবর্ষে {className}-এর জন্য কোনো সক্রিয় ফি কাঠামো কনফিগার করা নেই। কনফিগার না করা পর্যন্ত অবিলকৃত শিক্ষার্থীরা ০.০০ দেখাবে।",
+    "configureFeeStructure": "ফি কাঠামো কনফিগার করুন"
   },
   "subscription": {
     "banner": {

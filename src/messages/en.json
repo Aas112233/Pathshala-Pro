@@ -173,7 +173,10 @@
     "noMonthsSelected": "No Months Selected",
     "monthsCount": "{count} Months",
     "clickToDeselect": "Click again to deselect",
-    "selectStudentPrompt": "Select a student to collect fees"
+    "selectStudentPrompt": "Select a student to collect fees",
+    "noFeeStructureAlert": "No active fee structure is configured for {className} in academic year {academicYear}. Unbilled months cannot be collected until configured.",
+    "configureFeeStructure": "Configure Fee Structure",
+    "feeStructureRequired": "Fee Structure Required"
   },
   "currencies": {
     "title": "Currency",
@@ -4330,7 +4333,9 @@
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
     "amountPlaceholder": "0.00",
-    "monthAlreadyPaid": "Fees for {month} have already been paid for {student}"
+    "monthAlreadyPaid": "Fees for {month} have already been paid for {student}",
+    "noFeeStructureAlert": "No active fee structure is configured for {className} in academic year {academicYear}. Unbilled students show 0.00 until a structure is configured.",
+    "configureFeeStructure": "Configure Fee Structure"
   },
   "subscription": {
     "banner": {

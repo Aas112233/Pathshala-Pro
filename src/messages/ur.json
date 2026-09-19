@@ -173,7 +173,10 @@
     "noMonthsSelected": "کوئی مہینہ منتخب نہیں",
     "monthsCount": "{count} مہینے",
     "clickToDeselect": "غیر منتخب کرنے کے لیے دوبارہ کلک کریں",
-    "selectStudentPrompt": "فیس وصول کرنے کے لیے طالب علم کا انتخاب کریں"
+    "selectStudentPrompt": "فیس وصول کرنے کے لیے طالب علم کا انتخاب کریں",
+    "noFeeStructureAlert": "{academicYear} تعلیمی سال میں {className} کے لیے کوئی فعال فیس اسٹرکچر تشکیل نہیں دیا گیا ہے۔ تشکیل دیے جانے تک غیر بل شدہ مہینوں کی فیس وصول نہیں کی جا سکتی۔",
+    "configureFeeStructure": "فیس اسٹرکچر تشکیل دیں",
+    "feeStructureRequired": "فیس اسٹرکچر درکار ہے"
   },
   "currencies": {
     "title": "کرنسی",
@@ -4330,7 +4333,9 @@
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
     "amountPlaceholder": "0.00",
-    "monthAlreadyPaid": "{student} کی {month} کی فیس پہلے ہی ادا کی جا چکی ہے"
+    "monthAlreadyPaid": "{student} کی {month} کی فیس پہلے ہی ادا کی جا چکی ہے",
+    "noFeeStructureAlert": "{academicYear} تعلیمی سال میں {className} کے لیے کوئی فعال فیس اسٹرکچر تشکیل نہیں دیا گیا ہے۔ تشکیل دیے جانے تک غیر بل شدہ طلبہ 0.00 ظاہر ہوں گے۔",
+    "configureFeeStructure": "فیس اسٹرکچر تشکیل دیں"
   },
   "subscription": {
     "banner": {

@@ -17,6 +17,7 @@ import { useTenantFormatting, useTenantSettings } from "@/components/providers/t
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
+import Link from "next/link";
 import {
   Users,
   Wallet,
@@ -30,6 +31,8 @@ import {
   Calendar,
   Search,
   X,
+  AlertTriangle,
+  Settings,
 } from "lucide-react";
 
 import { ACADEMIC_MONTHS, MONTH_NAMES, SHORT_MONTH_NAMES } from "@/lib/constants";
@@ -141,7 +144,8 @@ export default function BulkFeeEntryPage() {
   });
 
   const classStandardMonthlyFee =
-    structureData?.totalMonthlyFee || structureData?.tuitionFee || 2500;
+    structureData?.totalMonthlyFee || structureData?.tuitionFee || 0;
+  const hasClassFeeStructure = !!structureData && classStandardMonthlyFee > 0;
 
   // 5. Query Open Vouchers for this Class
   const { data: vouchersData } = useQuery({
@@ -738,6 +742,33 @@ export default function BulkFeeEntryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Missing Fee Structure Warning Banner */}
+      {selectedClassId && !hasClassFeeStructure && (
+        <div className="p-3.5 rounded-lg border border-amber-300/80 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">
+                {t("noFeeStructureAlert", {
+                  className: selectedClass?.name || "",
+                  academicYear: selectedYear?.label || String(new Date().getFullYear()),
+                })}
+              </p>
+            </div>
+          </div>
+          <Link href="/fees/structures" className="shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px] font-semibold border-amber-400/80 hover:bg-amber-100/50 dark:hover:bg-amber-900/50 gap-1.5"
+            >
+              <Settings className="h-3 w-3" /> {t("configureFeeStructure")}
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Class Overview Metric Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

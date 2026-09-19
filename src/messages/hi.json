@@ -173,7 +173,10 @@
     "noMonthsSelected": "कोई महीना नहीं चुना गया",
     "monthsCount": "{count} महीने",
     "clickToDeselect": "अचयनित करने के लिए फिर से क्लिक करें",
-    "selectStudentPrompt": "शुल्क जमा करने के लिए छात्र का चयन करें"
+    "selectStudentPrompt": "शुल्क जमा करने के लिए छात्र का चयन करें",
+    "noFeeStructureAlert": "शैक्षणिक वर्ष {academicYear} में {className} के लिए कोई सक्रिय शुल्क संरचना कॉन्फ़िगर नहीं है। कॉन्फ़िगर होने तक अनबिल्ड महीनों का शुल्क जमा नहीं किया जा सकता।",
+    "configureFeeStructure": "शुल्क संरचना कॉन्फ़िगर करें",
+    "feeStructureRequired": "शुल्क संरचना आवश्यक है"
   },
   "currencies": {
     "title": "मुद्रा",
@@ -4330,7 +4333,9 @@
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
     "amountPlaceholder": "0.00",
-    "monthAlreadyPaid": "{student} के लिए {month} का शुल्क पहले ही भुगतान किया जा चुका है"
+    "monthAlreadyPaid": "{student} के लिए {month} का शुल्क पहले ही भुगतान किया जा चुका है",
+    "noFeeStructureAlert": "शैक्षणिक वर्ष {academicYear} में {className} के लिए कोई सक्रिय शुल्क संरचना कॉन्फ़िगर नहीं है। कॉन्फ़िगर होने तक अनबिल्ड छात्र 0.00 दिखेंगे।",
+    "configureFeeStructure": "शुल्क संरचना कॉन्फ़िगर करें"
   },
   "subscription": {
     "banner": {
