@@ -18,7 +18,7 @@ export default async function SystemAdminLayout({
   }));
 
   if (!auth) {
-    redirect("/login?returnUrl=/system-admin");
+    redirect("/login?returnUrl=/system-admin&expired=1");
   }
 
   const isAuthorized =

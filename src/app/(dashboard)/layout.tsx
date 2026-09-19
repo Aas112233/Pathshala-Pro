@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   const auth = await getAuthContext(new NextRequest("http://localhost/", {
     headers: { cookie: cookieStore.toString() },
   }));
-  if (!auth) redirect("/login");
+  if (!auth) redirect("/login?expired=1");
   if (auth.user.role !== "SYSTEM_ADMIN" && !isPlatformOwnerEmail(auth.user.email) && !auth.isImpersonated) {
     const state = await getSubscriptionEnforcementState(auth.tenantId);
     if (state.blocked) redirect("/subscription/inactive");

@@ -22,19 +22,32 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value ||
                 request.headers.get("authorization")?.substring(7);
 
-  // If user is on a public path (e.g. /login) AND has a valid token,
-  // redirect them to the dashboard so they don't get stuck on the login page
+  // Allow public paths (e.g. /login, /verify, /onboarding)
+  // CRITICAL ANTI-LOOP INVARIANT: Never unconditionally redirect away from /login to dashboard at edge.
+  // The edge runtime cannot verify DB freshness (sessionVersion, user deactivation, DB reseeds).
+  // Blind edge redirects from /login -> / cause unrecoverable ERR_TOO_MANY_REDIRECTS when DB rejects session.
   if (isPublicPath) {
-    if (token) {
-      try {
-        await jwtVerify(token, getJwtSecretKey());
-        // Token is valid — redirect away from login to dashboard
-        return NextResponse.redirect(new URL("/", request.url));
-      } catch {
-        // Token is invalid/expired — let them stay on login, clear the bad cookie
+    if (pathname.startsWith("/login")) {
+      const hasExpiryOrLogout =
+        request.nextUrl.searchParams.has("expired") ||
+        request.nextUrl.searchParams.has("logout") ||
+        request.nextUrl.searchParams.get("force") === "1";
+
+      if (hasExpiryOrLogout) {
         const response = NextResponse.next();
         response.cookies.delete("auth_token");
         return response;
+      }
+
+      if (token) {
+        try {
+          await jwtVerify(token, getJwtSecretKey());
+        } catch {
+          // Token is cryptographically invalid/expired — clear the bad cookie
+          const response = NextResponse.next();
+          response.cookies.delete("auth_token");
+          return response;
+        }
       }
     }
     return NextResponse.next();
@@ -83,7 +96,7 @@ export async function proxy(request: NextRequest) {
   } catch (error: any) {
     console.warn("Proxy JWT verification failed:", error?.code || error?.message || error);
     // Invalid/expired token, force a hard re-login by clearing the cookie
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/login?expired=1", request.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete("auth_token");
     return response;

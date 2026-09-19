@@ -63,7 +63,7 @@ export class ApiClient {
     if (!response.ok) {
       // Auto logout on 401, but not if they are just trying to log in
       if (response.status === 401 && typeof window !== 'undefined' && !url.includes('/api/auth/login')) {
-        window.location.href = '/login';
+        window.location.href = '/login?expired=1';
       }
 
       const error = result as ApiErrorResponse;

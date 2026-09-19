@@ -49,16 +49,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Immediately restore cached user on mount (client-side only, after clean hydration)
     try {
-      const cached = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (cached) {
-        const user = JSON.parse(cached) as User;
-        if (user && user.tenantId) {
-          setAuthState({
-            user,
-            tenantId: user.tenantId,
-            moduleAccess: user.moduleAccess ?? null,
-            isLoading: false,
-          });
+      const isExpiredOrLogout =
+        typeof window !== "undefined" &&
+        (window.location.search.includes("expired=1") ||
+         window.location.search.includes("logout=1"));
+
+      if (isExpiredOrLogout) {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      } else {
+        const cached = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (cached) {
+          const user = JSON.parse(cached) as User;
+          if (user && user.tenantId) {
+            setAuthState({
+              user,
+              tenantId: user.tenantId,
+              moduleAccess: user.moduleAccess ?? null,
+              isLoading: false,
+            });
+          }
         }
       }
     } catch {
@@ -121,7 +130,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.push("/login");
         }
       } else {
-        if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
+        const isExpiredOrLogout =
+          typeof window !== "undefined" &&
+          (window.location.search.includes("expired=1") ||
+           window.location.search.includes("logout=1"));
+        if (!isExpiredOrLogout && (pathname.startsWith("/login") || pathname.startsWith("/register"))) {
           router.push("/");
         }
       }
