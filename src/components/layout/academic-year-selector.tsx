@@ -11,7 +11,7 @@ export function AcademicYearSelector() {
     useAcademicYearContext();
 
   if (academicYears.length === 0) {
-    return null;
+    return <div className="hidden md:block h-9 w-[180px] shrink-0" aria-hidden="true" />;
   }
 
   return (
