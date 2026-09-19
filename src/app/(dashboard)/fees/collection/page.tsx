@@ -197,6 +197,16 @@ export default function FeeCollectionPage() {
 
   // 12-Month Annual Ledger Calculations for Selected Student
   const annualCalculations = useMemo(() => {
+    if (!selectedStudent) {
+      return {
+        baseMonthly: 0,
+        totalPaid: 0,
+        annualTotalDue: 0,
+        remainingDue: 0,
+        paidMonthsCount: 0,
+        unpaidMonthsCount: 0,
+      };
+    }
     const baseMonthly = standardMonthlyFee > 0 ? standardMonthlyFee : 2500;
     const totalPaid = allStudentVouchers.reduce(
       (s: number, v: any) => addCurrency(s, v.amountPaid || 0),
@@ -215,10 +225,11 @@ export default function FeeCollectionPage() {
       paidMonthsCount,
       unpaidMonthsCount,
     };
-  }, [standardMonthlyFee, allStudentVouchers]);
+  }, [selectedStudent, standardMonthlyFee, allStudentVouchers]);
 
   // Chronological list of unpaid month indices (0..11)
   const unpaidMonthIndices = useMemo(() => {
+    if (!selectedStudent) return [];
     const list: number[] = [];
     for (let i = 0; i < 12; i++) {
       const mNum = i + 1;
@@ -231,7 +242,7 @@ export default function FeeCollectionPage() {
       }
     }
     return list;
-  }, [vouchersByMonth, annualCalculations.paidMonthsCount]);
+  }, [selectedStudent, vouchersByMonth, annualCalculations.paidMonthsCount]);
 
   // 5. Payment Mutation using Direct 1-Step POS API
   const collectPaymentMutation = useMutation({
@@ -308,13 +319,14 @@ export default function FeeCollectionPage() {
 
   // Calculate selected total balance from vouchers
   const selectedTotalBalance = useMemo(() => {
+    if (!selectedStudent) return 0;
     if (unpaidVouchers.length > 0 && selectedVoucherIds.length > 0) {
       return unpaidVouchers
         .filter((v: any) => selectedVoucherIds.includes(v.id))
         .reduce((sum: number, v: any) => addCurrency(sum, v.balance || 0), 0);
     }
     return annualCalculations.baseMonthly;
-  }, [unpaidVouchers, selectedVoucherIds, annualCalculations.baseMonthly]);
+  }, [selectedStudent, unpaidVouchers, selectedVoucherIds, annualCalculations.baseMonthly]);
 
   // Handle student selection
   const handleSelectStudent = (student: any) => {
@@ -322,9 +334,13 @@ export default function FeeCollectionPage() {
     setIsSearchDropdownOpen(false);
     setSearchTerm("");
     setLastPaymentResult(null);
+    setSelectedVoucherIds([]);
+    setSelectedMonths([]);
+    setInspectingPaidMonth(null);
     setPaymentAmount("");
     setCashTendered("");
-    setInspectingPaidMonth(null);
+    setPaymentNote("");
+    setInvoicesTab("pending");
   };
 
   const handleClearStudent = () => {
@@ -336,6 +352,12 @@ export default function FeeCollectionPage() {
     setPaymentAmount("");
     setCashTendered("");
     setPaymentNote("");
+    setSearchTerm("");
+    setIsSearchDropdownOpen(false);
+    setInvoicesTab("pending");
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
   };
 
   // Initial default: select first unpaid month or current month if unpaid
@@ -537,8 +559,10 @@ export default function FeeCollectionPage() {
   // ledger still shows a remaining balance. In the latter case the backend
   // auto-creates the annual fee voucher on-the-spot, so the terminal must not
   // be locked just because no invoice row exists yet.
-  const hasOutstandingDue = unpaidVouchers.length > 0 || annualCalculations.remainingDue > 0;
-  const fullPayable = unpaidVouchers.length > 0 ? selectedTotalBalance : annualCalculations.remainingDue;
+  const hasOutstandingDue = !!selectedStudent && (unpaidVouchers.length > 0 || annualCalculations.remainingDue > 0);
+  const fullPayable = selectedStudent
+    ? (unpaidVouchers.length > 0 ? selectedTotalBalance : annualCalculations.remainingDue)
+    : 0;
 
   const { settings } = useTenantSettings();
   const configuredMethods = useMemo(() => {
@@ -1436,6 +1460,10 @@ export default function FeeCollectionPage() {
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" /> {t("recordingPayment")}
                     </>
+                  ) : !selectedStudent ? (
+                    <>
+                      <User className="h-4 w-4" /> {t("selectStudentPrompt")}
+                    </>
                   ) : selectedMonths.length > 1 ? (
                     <>
                       <CheckCircle2 className="h-4 w-4" /> {t("collectAmount", { amount: formatCurrency(payNum) })} ({t("monthsCount", { count: selectedMonths.length })})
@@ -1558,10 +1586,6 @@ export default function FeeCollectionPage() {
                   onClick={() => {
                     setIsSuccessModalOpen(false);
                     handleClearStudent();
-                    setSearchTerm("");
-                    setTimeout(() => {
-                      searchInputRef.current?.focus();
-                    }, 50);
                   }}
                   className="bg-primary text-primary-foreground gap-1.5 text-xs font-semibold"
                 >

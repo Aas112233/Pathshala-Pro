@@ -172,7 +172,8 @@
     "monthsSelected": "{count} Months Selected",
     "noMonthsSelected": "No Months Selected",
     "monthsCount": "{count} Months",
-    "clickToDeselect": "Click again to deselect"
+    "clickToDeselect": "Click again to deselect",
+    "selectStudentPrompt": "Select a student to collect fees"
   },
   "currencies": {
     "title": "Currency",

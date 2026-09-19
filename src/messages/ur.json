@@ -172,7 +172,8 @@
     "monthsSelected": "{count} مہینے منتخب",
     "noMonthsSelected": "کوئی مہینہ منتخب نہیں",
     "monthsCount": "{count} مہینے",
-    "clickToDeselect": "غیر منتخب کرنے کے لیے دوبارہ کلک کریں"
+    "clickToDeselect": "غیر منتخب کرنے کے لیے دوبارہ کلک کریں",
+    "selectStudentPrompt": "فیس وصول کرنے کے لیے طالب علم کا انتخاب کریں"
   },
   "currencies": {
     "title": "کرنسی",

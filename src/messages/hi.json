@@ -172,7 +172,8 @@
     "monthsSelected": "{count} महीने चुने गए",
     "noMonthsSelected": "कोई महीना नहीं चुना गया",
     "monthsCount": "{count} महीने",
-    "clickToDeselect": "अचयनित करने के लिए फिर से क्लिक करें"
+    "clickToDeselect": "अचयनित करने के लिए फिर से क्लिक करें",
+    "selectStudentPrompt": "शुल्क जमा करने के लिए छात्र का चयन करें"
   },
   "currencies": {
     "title": "मुद्रा",

@@ -172,7 +172,8 @@
     "monthsSelected": "{count} টি মাস নির্বাচিত",
     "noMonthsSelected": "কোনো মাস নির্বাচিত নেই",
     "monthsCount": "{count} মাস",
-    "clickToDeselect": "নির্বাচন বাতিল করতে আবার ক্লিক করুন"
+    "clickToDeselect": "নির্বাচন বাতিল করতে আবার ক্লিক করুন",
+    "selectStudentPrompt": "ফি সংগ্রহের জন্য শিক্ষার্থী নির্বাচন করুন"
   },
   "currencies": {
     "title": "মুদ্রা",
