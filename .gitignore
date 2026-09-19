@@ -148,6 +148,7 @@ Desktop.ini
 .mimocode/
 .lingma/
 .codegraph/
+.bynara/
 
 # --- Temporary & Scratch Files ---
 *.tmp
