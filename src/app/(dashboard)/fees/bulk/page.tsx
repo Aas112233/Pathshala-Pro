@@ -190,9 +190,17 @@ export default function BulkFeeEntryPage() {
   const roster: StudentRowState[] = useMemo(() => {
     if (!rawStudents.length) return [];
 
-    const openVouchersMap = new Map<string, any>(
-      openVouchers.map((v: any) => [v.studentProfileId, v])
-    );
+    const targetMonth = selectedMonthIndex + 1;
+    const openVouchersMap = new Map<string, any>();
+    for (const v of openVouchers) {
+      if (v.billingMonth === targetMonth) {
+        openVouchersMap.set(v.studentProfileId, v);
+      } else if (!v.billingMonth && v.feeType?.includes("Annual")) {
+        if (!openVouchersMap.has(v.studentProfileId)) {
+          openVouchersMap.set(v.studentProfileId, v);
+        }
+      }
+    }
     const concessionMap = new Map<string, any>(
       concessions.map((c: any) => [c.studentProfileId, c])
     );
@@ -206,9 +214,6 @@ export default function BulkFeeEntryPage() {
 
       if (conc) {
         if (conc.discountType === "PERCENTAGE") {
-          // applyPercentage: half-away-from-zero on the shortest decimal
-          // string — the raw double-round here drifted vs the server's
-          // Decimal(2) result for x.xx5 rates.
           monthlyDiscount = applyPercentage(baseMonthlyFee, Number(conc.discountValue));
         } else {
           monthlyDiscount = Math.min(conc.discountValue, baseMonthlyFee);
@@ -218,17 +223,26 @@ export default function BulkFeeEntryPage() {
       const netMonthly = roundCurrency(Math.max(0, baseMonthlyFee - monthlyDiscount));
       const annualTotalDue = voucher ? voucher.totalDue : roundCurrency(netMonthly * 12);
       const amountPaidSoFar = voucher ? voucher.amountPaid || 0 : 0;
-      const remainingDue = voucher
-        ? voucher.balance
-        : Math.max(0, annualTotalDue - amountPaidSoFar);
 
       const paidMonthsCount = Math.min(12, Math.floor(amountPaidSoFar / (netMonthly || 1)));
       const unpaidMonthsCount = Math.max(0, 12 - paidMonthsCount);
 
+      // Period-scoped duplicate check: verify if the target month is already cleared
+      let isAlreadyPaidForTargetMonth = false;
+      let remainingDue = netMonthly;
+      if (voucher) {
+        if (voucher.billingMonth === targetMonth) {
+          isAlreadyPaidForTargetMonth = voucher.status === "PAID" || voucher.balance <= 0;
+          remainingDue = isAlreadyPaidForTargetMonth ? 0 : voucher.balance;
+        } else if (!voucher.billingMonth && voucher.feeType?.includes("Annual")) {
+          isAlreadyPaidForTargetMonth = voucher.status === "PAID" || voucher.balance <= 0 || paidMonthsCount > selectedMonthIndex;
+          remainingDue = isAlreadyPaidForTargetMonth ? 0 : Math.min(netMonthly, voucher.balance);
+        }
+      }
+
       // Which month is being paid next for this student
       const nextMonthIndex = Math.min(11, paidMonthsCount);
       const targetMonthLabel = MONTH_NAMES[nextMonthIndex] || t("monthFallback");
-      const isAlreadyPaidForTargetMonth = paidMonthsCount > selectedMonthIndex;
 
       // Default amount to pay = 0 unless user enters an amount or clicks an auto-fill button
       const amountToPay =
@@ -599,12 +613,13 @@ export default function BulkFeeEntryPage() {
       sectionId: selectedSectionId || undefined,
       paymentMethod,
       month: selectedMonthIndex + 1,
-      feeType: `${currentMonthName} Fee (12-Month Ledger)`,
+      year: new Date().getFullYear(),
+      feeType: "TUITION",
       payments: selectedRows.map((r) => ({
         studentProfileId: r.id,
         amountPaid: Number(r.amountToPay) || 0,
         feeVoucherId: r.existingVoucherId || undefined,
-        note: `Bulk Class Payment for ${currentMonthName} (${paymentMethod}) - 12 Months Ledger`,
+        note: `Bulk Class Payment for ${currentMonthName} (${paymentMethod})`,
       })),
     };
 

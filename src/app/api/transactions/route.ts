@@ -63,10 +63,15 @@ export async function GET(request: NextRequest) {
       where.isVoided = false;
     }
 
+    const studentProfileId = searchParams.get("studentProfileId");
+    if (studentProfileId) {
+      where.feeVoucher = { ...where.feeVoucher, studentProfileId };
+    }
+
     // C1 self-scoping: transactions reach students through their voucher.
     const selfScope = await getSelfScopedStudentProfileIds(access.authContext);
     if (selfScope) {
-      where.feeVoucher = { studentProfileId: { in: selfScope } };
+      where.feeVoucher = { ...where.feeVoucher, studentProfileId: { in: selfScope } };
     }
 
     // Get total count

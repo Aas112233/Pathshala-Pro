@@ -160,7 +160,19 @@
     "easypaisa": "ईज़ीपैसा",
     "jazzcash": "जैज़कैश",
     "chequeMode": "चेक",
-    "cashPlaceholder": "जैसे 5000"
+    "cashPlaceholder": "जैसे 5000",
+    "partial": "आंशिक",
+    "billingPeriod": "बिलिंग अवधि",
+    "monthAlreadyPaid": "{month} का शुल्क पहले ही पूरी तरह चुकाया जा चुका है।",
+    "paidReceiptsHistory": "भुगतान की गई रसीदें और इतिहास",
+    "pendingInvoices": "लंबित चालान",
+    "recentReceipts": "इस छात्र की दर्ज रसीदें",
+    "monthFeeCleared": "{month} का शुल्क पूर्ण भुगतान हो चुका है",
+    "noPaidHistory": "इस छात्र के लिए अभी तक कोई भुगतान किया गया वाउचर या रसीद नहीं है।",
+    "monthsSelected": "{count} महीने चुने गए",
+    "noMonthsSelected": "कोई महीना नहीं चुना गया",
+    "monthsCount": "{count} महीने",
+    "clickToDeselect": "अचयनित करने के लिए फिर से क्लिक करें"
   },
   "currencies": {
     "title": "मुद्रा",

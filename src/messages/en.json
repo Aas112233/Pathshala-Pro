@@ -160,7 +160,19 @@
     "easypaisa": "EasyPaisa",
     "jazzcash": "JazzCash",
     "chequeMode": "Cheque",
-    "cashPlaceholder": "e.g. 5000"
+    "cashPlaceholder": "e.g. 5000",
+    "partial": "PARTIAL",
+    "billingPeriod": "Billing Period",
+    "monthAlreadyPaid": "Fee for {month} has already been paid in full.",
+    "paidReceiptsHistory": "Paid Receipts & History",
+    "pendingInvoices": "Pending Invoices",
+    "recentReceipts": "Recorded Receipts for this Student",
+    "monthFeeCleared": "{month} Fee Cleared (Paid in Full)",
+    "noPaidHistory": "No paid fee vouchers or receipts recorded yet for this student.",
+    "monthsSelected": "{count} Months Selected",
+    "noMonthsSelected": "No Months Selected",
+    "monthsCount": "{count} Months",
+    "clickToDeselect": "Click again to deselect"
   },
   "currencies": {
     "title": "Currency",

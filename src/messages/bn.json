@@ -160,7 +160,19 @@
     "easypaisa": "ইজিপেইসা",
     "jazzcash": "জ্যাজক্যাশ",
     "chequeMode": "চেক",
-    "cashPlaceholder": "যেমন ৫০০০"
+    "cashPlaceholder": "যেমন ৫০০০",
+    "partial": "আংশিক",
+    "billingPeriod": "বিলিং সময়কাল",
+    "monthAlreadyPaid": "{month} মাসের ফি ইতিমধ্যেই সম্পূর্ণ পরিশোধ করা হয়েছে।",
+    "paidReceiptsHistory": "পরিশোধিত রসিদ ও ইতিহাস",
+    "pendingInvoices": "বকেয়া চালান",
+    "recentReceipts": "এই শিক্ষার্থীর জন্য রেকর্ডকৃত রসিদ",
+    "monthFeeCleared": "{month} মাসের ফি সম্পূর্ণ পরিশোধিত",
+    "noPaidHistory": "এই শিক্ষার্থীর জন্য এখনও কোনো পরিশোধিত ভাউচার বা রসিদ নেই।",
+    "monthsSelected": "{count} টি মাস নির্বাচিত",
+    "noMonthsSelected": "কোনো মাস নির্বাচিত নেই",
+    "monthsCount": "{count} মাস",
+    "clickToDeselect": "নির্বাচন বাতিল করতে আবার ক্লিক করুন"
   },
   "currencies": {
     "title": "মুদ্রা",

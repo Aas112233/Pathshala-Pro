@@ -160,7 +160,19 @@
     "easypaisa": "ایزی پیسہ",
     "jazzcash": "جاز کیش",
     "chequeMode": "چیک",
-    "cashPlaceholder": "مثلاً 5000"
+    "cashPlaceholder": "مثلاً 5000",
+    "partial": "جزوی",
+    "billingPeriod": "بلنگ کا دورانیہ",
+    "monthAlreadyPaid": "{month} کی فیس پہلے ہی مکمل ادا کی جا چکی ہے۔",
+    "paidReceiptsHistory": "ادا شدہ رسیدیں اور تاریخ",
+    "pendingInvoices": "زیر التواء بلز",
+    "recentReceipts": "اس طالب علم کی ریکارڈ شدہ رسیدیں",
+    "monthFeeCleared": "{month} کی فیس مکمل ادا ہو چکی ہے",
+    "noPaidHistory": "اس طالب علم کے لیے ابھی تک کوئی ادا شدہ واؤچر یا رسید نہیں ہے۔",
+    "monthsSelected": "{count} مہینے منتخب",
+    "noMonthsSelected": "کوئی مہینہ منتخب نہیں",
+    "monthsCount": "{count} مہینے",
+    "clickToDeselect": "غیر منتخب کرنے کے لیے دوبارہ کلک کریں"
   },
   "currencies": {
     "title": "کرنسی",
