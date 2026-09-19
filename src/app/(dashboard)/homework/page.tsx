@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -38,10 +39,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 export default function HomeworkPage() {
   const t = useTranslations("homework");
   const common = useTranslations("common");
+  const { formatDate } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "homework", "read");
@@ -242,9 +245,9 @@ export default function HomeworkPage() {
                   title: `New Assignment: ${formData.title.trim()}`,
                   content: `New homework assigned for ${targetClass?.name || "Class"} ${
                     targetSubject ? `(${targetSubject.name})` : ""
-                  }.\n\nInstructions: ${formData.description.trim()}\nDue Date: ${new Date(
+                  }.\n\nInstructions: ${formData.description.trim()}\nDue Date: ${formatDate(
                     formData.dueDate
-                  ).toLocaleDateString()}`,
+                  )}`,
                   category: "ACADEMIC",
                   targetAudience: "STUDENTS",
                   isPinned: false,
@@ -390,7 +393,7 @@ export default function HomeworkPage() {
       header: t("dueDate"),
       cell: ({ row }) => (
         <div className="space-y-1">
-          <div className="text-xs font-mono">{new Date(row.original.dueDate).toLocaleDateString()}</div>
+          <div className="text-xs font-mono">{formatDate(row.original.dueDate)}</div>
           {getUrgencyBadge(row.original.dueDate)}
         </div>
       ),
@@ -680,10 +683,9 @@ export default function HomeworkPage() {
               </div>
 
               <ERPFormField label={t("dueDate")} required error={formErrors.dueDate}>
-                <Input
-                  type="date"
+                <TenantDateInput
                   value={formData.dueDate}
-                  onChange={(e) => setFormData((p) => ({ ...p, dueDate: e.target.value }))}
+                  onChange={(v) => setFormData((p) => ({ ...p, dueDate: v }))}
                 />
               </ERPFormField>
 

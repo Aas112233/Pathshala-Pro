@@ -57,7 +57,8 @@
     "pleaseFillRequired": "অনুগ্রহ করে সমস্ত প্রয়োজনীয় ক্ষেত্র পূরণ করুন।",
     "validationFailed": "হাইলাইট করা ক্ষেত্রগুলি পরীক্ষা করুন।",
     "unsavedChanges": "আপনার অসংরক্ষিত পরিবর্তন রয়েছে। সংরক্ষণ না করে প্রস্থান করতে চান কি?",
-    "downloadFailed": "ডাউনলোড ব্যর্থ"
+    "downloadFailed": "ডাউনলোড ব্যর্থ",
+    "invalidDate": "অবৈধ তারিখ"
   },
   "sidebar": {
     "search": {
@@ -178,7 +179,8 @@
     "OMR": "ওমানি রিয়াল (OMR)",
     "BHD": "বাহরাইনি দিনার (BHD)",
     "MYR": "মালয়েশিয়ান রিঙ্গিত (MYR)",
-    "SGD": "সিঙ্গাপুর ডলার (SGD)"
+    "SGD": "সিঙ্গাপুর ডলার (SGD)",
+    "TRY": "তুর্কি লিরা (TRY)"
   },
   "academicPeriods": {
     "title": "শিক্ষাবর্ষের সময়কাল",
@@ -2128,6 +2130,7 @@
     "description": "এন্টারপ্রাইজ টেলিমেট্রি, স্কুল আইসোলেশন ও বিলিং রাডার।",
     "management": "প্রতিষ্ঠান ব্যবস্থাপনা",
     "tenants": "স্কুল টেন্যান্টস",
+    "templates": "অনবোর্ডিং টেমপ্লেট",
     "searchTenants": "স্কুলের নাম বা টেন্যান্ট ID অনুসন্ধান করুন...",
     "billing": "সাবস্ক্রিপশন ও বিলিং",
     "broadcasts": "প্ল্যাটফর্ম সম্প্রচার",
@@ -2894,6 +2897,11 @@
         "description": "Cambridge pathway with O Level and A Level years",
         "count": "5 Years"
       },
+      "IGCSE_CAMBRIDGE": {
+        "label": "IGCSE কেমব্রিজ",
+        "description": "কেমব্রিজ IGCSE দুই বছরের পথ (শ্রেণি ৯-১০)",
+        "count": "2 বছর"
+      },
       "MADRASA": {
         "label": "Madrasa / Religious Institute",
         "description": "Islamic studies levels with core religious curriculum",
@@ -2938,7 +2946,9 @@
       "completeLaunch": "সম্পন্ন করে স্কুল চালু করুন",
       "timezoneValue": "টাইমজোন:",
       "dateValue": "তারিখ:",
-      "templateValue": "টেমপ্লেট:"
+      "templateValue": "টেমপ্লেট:",
+      "baseMonthlyTuition": "মূল মাসিক বেতন",
+      "baseMonthlyTuitionHint": "0 মানে স্বয়ংক্রিয় সেটআপ এড়িয়ে যান। অন্যথায় প্রতি-শ্রেণির কাঠামো এই পরিমাণ থেকে তৈরি হবে।"
     },
     "timezones": {
       "pakistan": "পাকিস্তান (PKT, UTC+5)",
@@ -4401,6 +4411,58 @@
     "loadingTenants": "Loading tenants...",
     "noTenants": "No tenants",
     "flagsUpdated": "ফিচার ফ্ল্যাগ আপডেট করা হয়েছে",
+    "templates": {
+      "title": "অনবোর্ডিং টেমপ্লেট",
+      "description": "প্রতিটি নতুন স্কুলের জন্য একাডেমিক নকশা। বিল্ট-ইন সম্পাদনা, নকল বা রিসেট করা যায়।",
+      "newTemplate": "নতুন টেমপ্লেট",
+      "editTemplate": "টেমপ্লেট সম্পাদনা",
+      "builtIn": "বিল্ট-ইন",
+      "custom": "কাস্টম",
+      "active": "সক্রিয়",
+      "inactive": "নিষ্ক্রিয়",
+      "searchPlaceholder": "টেমপ্লেট খুঁজুন...",
+      "noTemplates": "কোনো টেমপ্লেট পাওয়া যায়নি",
+      "classes": "শ্রেণি",
+      "sections": "শাখা",
+      "groups": "গ্রুপ",
+      "subjects": "বিষয়",
+      "updated": "আপডেট",
+      "version": "v{version}",
+      "viewEdit": "দেখুন / সম্পাদনা",
+      "duplicate": "নকল করুন",
+      "resetBuiltIn": "বিল্ট-ইনে রিসেট",
+      "deleteTemplate": "মুছুন",
+      "saveChanges": "পরিবর্তন সংরক্ষণ",
+      "cancel": "বাতিল",
+      "saving": "সংরক্ষণ হচ্ছে...",
+      "addClass": "শ্রেণি যোগ করুন",
+      "className": "শ্রেণির নাম",
+      "classCode": "কোড",
+      "sequence": "ক্রম",
+      "sectionList": "শাখা (কমা দিয়ে আলাদা করুন)",
+      "groupList": "স্ট্রিম গ্রুপ (প্রতি লাইন: নাম | সংক্ষিপ্ত)",
+      "subjectList": "বিষয়",
+      "addSubject": "বিষয় যোগ করুন",
+      "subjectName": "বিষয়",
+      "subjectCode": "কোড",
+      "subjectType": "ধরন",
+      "maxMarks": "সর্বোচ্চ",
+      "passMarks": "পাস",
+      "labelField": "প্রদর্শন লেবেল",
+      "descriptionField": "বিবরণ",
+      "codeField": "টেমপ্লেট কোড",
+      "countryField": "দেশ",
+      "categoryField": "বিভাগ",
+      "currencyField": "মুদ্রা",
+      "activeField": "সাইনআপ উইজার্ডে দেখান",
+      "saved": "টেমপ্লেট সংরক্ষিত",
+      "deleted": "টেমপ্লেট মোছা হয়েছে",
+      "duplicated": "টেমপ্লেট নকল হয়েছে",
+      "resetDone": "টেমপ্লেট বিল্ট-ইন সংস্করণে রিসেট হয়েছে",
+      "failed": "কাজ ব্যর্থ হয়েছে",
+      "confirmDelete": "এই কাস্টম টেমপ্লেট মুছবেন? এটি ফেরানো যাবে না।",
+      "confirmReset": "এই টেমপ্লেট বিল্ট-ইন সংস্করণে রিসেট করবেন? আপনার সম্পাদনা হারিয়ে যাবে।"
+    },
     "save": "সংরক্ষণ করুন",
     "moduleAccess": "মডিউল অ্যাক্সেস ও লাইসেন্সিং",
     "moduleAccessDescription": "এই বিদ্যালয়টির জন্য সক্রিয় ইআরপি মডিউল এবং কার্যক্ষমতার সুবিধা পরিচালনা করুন।",
@@ -4510,7 +4572,10 @@
     "failedFetchUsers": "Failed to fetch global users",
     "updateFailed": "Update failed",
     "impersonateFailed": "Impersonate failed",
-    "status": "অবস্থা"
+    "status": "অবস্থা",
+    "resetPassword": "পাসওয়ার্ড রিসেট করুন",
+    "newPassword": "নতুন পাসওয়ার্ড (ঐচ্ছিক)",
+    "passwordPlaceholder": "পরিবর্তন করতে নতুন পাসওয়ার্ড লিখুন (কমপক্ষে ৬ অক্ষর)"
   },
   "verify": {
     "certificate": {

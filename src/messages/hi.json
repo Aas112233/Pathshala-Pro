@@ -57,7 +57,8 @@
     "pleaseFillRequired": "कृपया सभी आवश्यक फ़ील्ड भरें।",
     "validationFailed": "कृपया हाइलाइट किए गए फ़ील्ड जांचें।",
     "unsavedChanges": "आपके कुछ बदलाव सहेजे नहीं गए हैं। क्या आप बिना सहेजे बाहर जाना चाहते हैं?",
-    "downloadFailed": "डाउनलोड विफल"
+    "downloadFailed": "डाउनलोड विफल",
+    "invalidDate": "अमान्य तिथि"
   },
   "sidebar": {
     "search": {
@@ -178,7 +179,8 @@
     "OMR": "ओमानी रियाल (OMR)",
     "BHD": "बहरीनी दिनार (BHD)",
     "MYR": "मलेशियाई रिंगिट (MYR)",
-    "SGD": "सिंगापुर डॉलर (SGD)"
+    "SGD": "सिंगापुर डॉलर (SGD)",
+    "TRY": "तुर्की लीरा (TRY)"
   },
   "academicPeriods": {
     "title": "शैक्षणिक अवधि",
@@ -2128,6 +2130,7 @@
     "description": "एंटरप्राइज टेलीमेट्री, स्कूल अलगाव और बिलिंग रडार।",
     "management": "संस्थान प्रबंधन",
     "tenants": "स्कूल टेनेंट्स",
+    "templates": "ऑनबोर्डिंग टेम्पलेट",
     "searchTenants": "स्कूल का नाम या टेनेंट ID खोजें...",
     "billing": "सदस्यता और बिलिंग",
     "broadcasts": "प्लेटफ़ॉर्म प्रसारण",
@@ -2894,6 +2897,11 @@
         "description": "Cambridge pathway with O Level and A Level years",
         "count": "5 Years"
       },
+      "IGCSE_CAMBRIDGE": {
+        "label": "IGCSE कैम्ब्रिज",
+        "description": "कैम्ब्रिज IGCSE दो वर्षीय मार्ग (कक्षा 9-10)",
+        "count": "2 वर्ष"
+      },
       "MADRASA": {
         "label": "Madrasa / Religious Institute",
         "description": "Islamic studies levels with core religious curriculum",
@@ -2938,7 +2946,9 @@
       "completeLaunch": "पूरा करें और स्कूल शुरू करें",
       "timezoneValue": "टाइमज़ोन:",
       "dateValue": "दिनांक:",
-      "templateValue": "टेम्पलेट:"
+      "templateValue": "टेम्पलेट:",
+      "baseMonthlyTuition": "आधार मासिक शुल्क",
+      "baseMonthlyTuitionHint": "0 का अर्थ है स्वचालित सेटअप छोड़ें। अन्यथा प्रति-कक्षा संरचनाएं इस राशि से बनाई जाएंगी।"
     },
     "timezones": {
       "pakistan": "पाकिस्तान (PKT, UTC+5)",
@@ -4401,6 +4411,58 @@
     "loadingTenants": "Loading tenants...",
     "noTenants": "No tenants",
     "flagsUpdated": "फीचर फ्लैग अपडेट किए गए",
+    "templates": {
+      "title": "ऑनबोर्डिंग टेम्पलेट",
+      "description": "प्रत्येक नए स्कूल के लिए शैक्षणिक खाके। बिल्ट-इन को संपादित, डुप्लिकेट या रीसेट किया जा सकता है।",
+      "newTemplate": "नया टेम्पलेट",
+      "editTemplate": "टेम्पलेट संपादित करें",
+      "builtIn": "बिल्ट-इन",
+      "custom": "कस्टम",
+      "active": "सक्रिय",
+      "inactive": "निष्क्रिय",
+      "searchPlaceholder": "टेम्पलेट खोजें...",
+      "noTemplates": "कोई टेम्पलेट नहीं मिला",
+      "classes": "कक्षाएं",
+      "sections": "अनुभाग",
+      "groups": "समूह",
+      "subjects": "विषय",
+      "updated": "अपडेट",
+      "version": "v{version}",
+      "viewEdit": "देखें / संपादित करें",
+      "duplicate": "डुप्लिकेट",
+      "resetBuiltIn": "बिल्ट-इन पर रीसेट",
+      "deleteTemplate": "हटाएं",
+      "saveChanges": "बदलाव सहेजें",
+      "cancel": "रद्द करें",
+      "saving": "सहेजा जा रहा है...",
+      "addClass": "कक्षा जोड़ें",
+      "className": "कक्षा का नाम",
+      "classCode": "कोड",
+      "sequence": "क्रम",
+      "sectionList": "अनुभाग (अल्पविराम से अलग करें)",
+      "groupList": "स्ट्रीम समूह (प्रति पंक्ति: नाम | संक्षिप्त)",
+      "subjectList": "विषय",
+      "addSubject": "विषय जोड़ें",
+      "subjectName": "विषय",
+      "subjectCode": "कोड",
+      "subjectType": "प्रकार",
+      "maxMarks": "अधिकतम",
+      "passMarks": "उत्तीर्ण",
+      "labelField": "प्रदर्शन लेबल",
+      "descriptionField": "विवरण",
+      "codeField": "टेम्पलेट कोड",
+      "countryField": "देश",
+      "categoryField": "श्रेणी",
+      "currencyField": "मुद्रा",
+      "activeField": "साइनअप विज़ार्ड में दिखाएं",
+      "saved": "टेम्पलेट सहेजा गया",
+      "deleted": "टेम्पलेट हटाया गया",
+      "duplicated": "टेम्पलेट डुप्लिकेट हुआ",
+      "resetDone": "टेम्पलेट बिल्ट-इन संस्करण पर रीसेट हुआ",
+      "failed": "कार्य विफल हुआ",
+      "confirmDelete": "यह कस्टम टेम्पलेट हटाएं? यह वापस नहीं होगा।",
+      "confirmReset": "इस टेम्पलेट को बिल्ट-इन संस्करण पर रीसेट करें? आपके बदलाव खो जाएंगे।"
+    },
     "save": "सहेजें",
     "moduleAccess": "मॉड्यूल पहुंच और लाइसेंसिंग",
     "moduleAccessDescription": "इस विद्यालय के लिए सक्षम ईआरपी मॉड्यूल और कार्यात्मक क्षमताओं का प्रबंधन करें।",
@@ -4510,7 +4572,10 @@
     "failedFetchUsers": "Failed to fetch global users",
     "updateFailed": "Update failed",
     "impersonateFailed": "Impersonate failed",
-    "status": "स्थिति"
+    "status": "स्थिति",
+    "resetPassword": "पासवर्ड रीसेट करें",
+    "newPassword": "नया पासवर्ड (वैकल्पिक)",
+    "passwordPlaceholder": "ओवरराइड करने के लिए नया पासवर्ड दर्ज करें (न्यूनतम 6 वर्ण)"
   },
   "verify": {
     "certificate": {

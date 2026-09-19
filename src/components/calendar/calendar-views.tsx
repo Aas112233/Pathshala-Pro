@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { Clock, MapPin, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CalendarItem } from "@/lib/calendar-service";
@@ -38,6 +39,7 @@ interface ItemChipProps {
 
 export function ItemChip({ item, onSelect, compact = false }: ItemChipProps) {
   const t = useTranslations("calendar");
+  const { formatTime } = useTenantFormatting();
   const Icon = itemIcon(item);
   const start = itemStartDate(item);
   const end = itemEndDate(item);
@@ -58,7 +60,7 @@ export function ItemChip({ item, onSelect, compact = false }: ItemChipProps) {
       <Icon className="h-3 w-3 shrink-0" />
       {!item.isAllDay && (
         <span className="shrink-0 tabular-nums opacity-80">
-          {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          {formatTime(start)}
         </span>
       )}
       <span className="truncate">{itemDisplayTitle(item, t)}</span>
@@ -167,6 +169,7 @@ export function MonthView({ items, anchor, weekStartsOn, onSelectItem, onSelectD
 
 export function WeekView({ items, anchor, weekStartsOn, onSelectItem, onSelectDay }: CalendarViewsProps) {
   const t = useTranslations("calendar");
+  const { formatTime } = useTenantFormatting();
   const locale = useLocale();
   const gridStart = useMemo(() => {
     const diff = (startOfDay(anchor).getDay() - weekStartsOn + 7) % 7;
@@ -236,6 +239,7 @@ export function DayView({
   onSelectItem,
 }: DayViewProps) {
   const t = useTranslations("calendar");
+  const { formatTime } = useTenantFormatting();
   const locale = useLocale();
   const dayItems = useMemo(
     () =>
@@ -298,9 +302,9 @@ export function DayView({
                     ) : (
                       <span className="inline-flex items-center gap-1 tabular-nums">
                         <Clock className="h-3 w-3" />
-                        {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {formatTime(start)}
                         {" – "}
-                        {end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {formatTime(end)}
                       </span>
                     )}
                     {item.location && (
@@ -366,6 +370,7 @@ export function DayView({
 
 export function AgendaView({ items, onSelectItem }: CalendarViewsProps) {
   const t = useTranslations("calendar");
+  const { formatTime } = useTenantFormatting();
   const locale = useLocale();
 
   const groups = useMemo(() => {
@@ -412,7 +417,7 @@ export function AgendaView({ items, onSelectItem }: CalendarViewsProps) {
                   <Icon className="h-4 w-4 shrink-0" />
                   {!item.isAllDay && (
                     <span className="shrink-0 text-xs font-semibold tabular-nums opacity-80">
-                      {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {formatTime(start)}
                     </span>
                   )}
                   <span className="truncate text-sm font-medium text-foreground">

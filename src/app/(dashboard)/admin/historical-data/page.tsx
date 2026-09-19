@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -29,6 +30,7 @@ import { AppDropdown } from "@/components/ui/app-dropdown";
 import { AppModal } from "@/components/ui/app-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -39,6 +41,7 @@ export type DomainType = "promotions" | "exam-results" | "attendance" | "fee-vou
 export default function HistoricalDataPage() {
   const t = useTranslations("historicalData");
   const common = useTranslations("common");
+  const { formatDate } = useTenantFormatting();
   const queryClient = useQueryClient();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
 
@@ -524,7 +527,7 @@ export default function HistoricalDataPage() {
             cell: (row) => (
               <div>
                 <div className="text-sm font-medium">
-                  {row.date ? new Date(row.date).toLocaleDateString() : "-"}
+                  {row.date ? formatDate(row.date) : "-"}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {row.academicYear?.label || "-"}
@@ -980,10 +983,9 @@ export default function HistoricalDataPage() {
               {selectedDomain === "fee-vouchers" && (
                 <>
                   <ERPFormField label="Due Date">
-                    <Input
-                      type="date"
+                    <TenantDateInput
                       value={editFormData.dueDate || ""}
-                      onChange={(e) => setEditFormData({ ...editFormData, dueDate: e.target.value })}
+                      onChange={(v) => setEditFormData({ ...editFormData, dueDate: v })}
                       required
                     />
                   </ERPFormField>

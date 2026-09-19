@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 interface NoticeDetailModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export function NoticeDetailModal({
   notice,
 }: NoticeDetailModalProps) {
   const t = useTranslations("notices");
+  const { formatDate, formatTime } = useTenantFormatting();
   if (!notice) return null;
 
   const isGlobal = notice.scope === "GLOBAL";
@@ -63,7 +65,7 @@ export function NoticeDetailModal({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(
-      `Notice: ${notice.title}\nDate: ${new Date(notice.publishDate).toLocaleDateString()}\n\n${notice.content}`
+      `Notice: ${notice.title}\nDate: ${formatDate(notice.publishDate)}\n\n${notice.content}`
     );
     toast.success(t("copied"));
   };
@@ -74,12 +76,7 @@ export function NoticeDetailModal({
       onClose={onClose}
       title={notice.title}
       subtitle={isGlobal ? "Global Platform Announcement" : `Institutional Circular • ${notice.category}`}
-      description={`Published on ${new Date(notice.publishDate).toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })}`}
+      description={`Published on ${formatDate(notice.publishDate, "D MMMM YYYY")}`}
       maxWidth="3xl"
     >
       <div className="space-y-6">
@@ -109,7 +106,7 @@ export function NoticeDetailModal({
             </span>
             <span className="flex items-center gap-1 font-mono">
               <Clock className="h-3.5 w-3.5" />
-              {new Date(notice.publishDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {formatTime(notice.publishDate)}
             </span>
           </div>
         </div>
@@ -134,7 +131,7 @@ export function NoticeDetailModal({
           {notice.expiresAt && (
             <div className="text-right text-[11px]">
               <span className="text-muted-foreground">Valid until: </span>
-              <span className="font-semibold text-foreground font-mono">{new Date(notice.expiresAt).toLocaleDateString()}</span>
+              <span className="font-semibold text-foreground font-mono">{formatDate(notice.expiresAt)}</span>
             </div>
           )}
         </div>

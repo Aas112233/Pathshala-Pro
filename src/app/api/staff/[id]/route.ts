@@ -18,6 +18,7 @@ import {
   lockedDeleteMessage,
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 /**
  * GET /api/staff/[id]
@@ -192,6 +193,8 @@ export async function PUT(
       },
     });
 
+    fastCache.invalidatePrefix(`staff:${tenantId}`);
+
     return successResponse(updatedStaff, "Staff member updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -236,6 +239,9 @@ export async function DELETE(
     await prisma.staffProfile.delete({
       where: { id },
     });
+
+    fastCache.invalidatePrefix(`staff:${tenantId}`);
+    fastCache.invalidatePrefix(`dash_summary:${tenantId}`);
 
     return successResponse(null, "Staff member deleted successfully");
   } catch (error) {

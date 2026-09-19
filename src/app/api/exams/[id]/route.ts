@@ -20,6 +20,7 @@ import {
   lockedDeleteMessage,
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 /**
  * GET /api/exams/[id]
@@ -285,6 +286,8 @@ export async function PUT(
       void triggerExamResultPublished({ tenantId, examId: id });
     }
 
+    fastCache.invalidatePrefix(`exams:${tenantId}`);
+
     return successResponse(updatedExam, "Exam updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -340,6 +343,8 @@ export async function DELETE(
         where: { id },
       }),
     ]);
+
+    fastCache.invalidatePrefix(`exams:${tenantId}`);
 
     return successResponse(null, "Exam deleted successfully");
   } catch (error) {

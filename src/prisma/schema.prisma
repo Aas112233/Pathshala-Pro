@@ -2144,7 +2144,7 @@ model TenantFeatureOverride {
 model OnboardingTemplate {
   id                   String   @id @default(cuid())
   code                 String   @unique // stable preset code, e.g. K_12
-  label                String
+  label                String? // admin display label; null falls back to built-in i18n
   description          String?
   countryCode          String   @default("INTL") // PK | IN | BD | INTL
   board                String?

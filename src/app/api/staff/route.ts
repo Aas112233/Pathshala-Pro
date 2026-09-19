@@ -240,6 +240,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    fastCache.invalidatePrefix(`staff:${tenantId}`);
+    fastCache.invalidatePrefix(`dash_summary:${tenantId}`);
+
     return successResponse(staff, "Staff member created successfully", 201);
   } catch (error) {
     return handleApiError(error);

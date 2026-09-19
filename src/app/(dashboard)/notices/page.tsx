@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { CreateNoticeModal } from "@/components/notices/create-notice-modal";
 import { NoticeDetailModal } from "@/components/notices/notice-detail-modal";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -45,6 +46,7 @@ const CATEGORY_TABS = [
 export default function NoticesPage() {
   const t = useTranslations("notices");
   const common = useTranslations("common");
+  const { formatDate } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "notices", "read");
@@ -201,7 +203,7 @@ export default function NoticesPage() {
       header: t("date"),
       cell: (row) => (
         <span className="text-xs text-muted-foreground font-mono">
-          {new Date(row.publishDate).toLocaleDateString()}
+          {formatDate(row.publishDate)}
         </span>
       ),
     },
@@ -464,7 +466,7 @@ export default function NoticesPage() {
                     <div className="pt-3 border-t border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3 w-3" />
-                        <span>{new Date(n.publishDate).toLocaleDateString()}</span>
+                        <span>{formatDate(n.publishDate)}</span>
                       </div>
 
                       <div className="flex items-center gap-3">

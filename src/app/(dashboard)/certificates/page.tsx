@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -16,6 +17,7 @@ import { useCertificatesViewModel } from "@/viewmodels/certificates/use-certific
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
 
@@ -124,8 +126,8 @@ export default function CertificatesPage() {
     const studentName = `${s.firstName || student.firstName || ""} ${s.lastName || student.lastName || ""}`.trim() || t("defaultStudent");
     const base = {
       certificateNumber: cert.certificateNumber,
-      issueDate: cert.issueDate ? new Date(cert.issueDate).toLocaleDateString() : new Date().toLocaleDateString(),
-      validUntil: cert.validUntil ? new Date(cert.validUntil).toLocaleDateString() : undefined,
+      issueDate: cert.issueDate ? formatDateWithSettings(cert.issueDate, settings) : formatDateWithSettings(new Date(), settings),
+      validUntil: cert.validUntil ? formatDateWithSettings(cert.validUntil, settings) : undefined,
       studentName,
       fatherName: s.fatherName || student.fatherName || student.guardianName || s.guardianName || undefined,
       admissionNumber: s.studentId || student.studentId || s.admissionNumber || cert.studentProfileId?.slice(0, 8) || "—",
@@ -143,10 +145,10 @@ export default function CertificatesPage() {
       if (type === "TRANSFER") {
         const tcData: any = {
           ...base,
-          admissionDate: student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : base.issueDate,
-          leavingDate: base.validUntil || new Date().toLocaleDateString(),
+          admissionDate: student.admissionDate ? formatDateWithSettings(student.admissionDate, settings) : base.issueDate,
+          leavingDate: base.validUntil || formatDateWithSettings(new Date(), settings),
           lastClassAttended: base.className,
-          dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : undefined,
+          dateOfBirth: student.dateOfBirth ? formatDateWithSettings(student.dateOfBirth, settings) : undefined,
           reasonForLeaving: cert.purpose || cert.remarks || t("transferReason"),
           conduct: cert.remarks ? t("defaultConduct") : t("defaultConduct"),
           guardianName: student.guardianName || undefined,
@@ -155,7 +157,7 @@ export default function CertificatesPage() {
       } else if (type === "CHARACTER") {
         const ccData: any = {
           ...base,
-          sessionFrom: student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : base.academicYear,
+          sessionFrom: student.admissionDate ? formatDateWithSettings(student.admissionDate, settings) : base.academicYear,
           sessionTo: base.issueDate,
           conduct: cert.remarks?.split(",")[0] || t("defaultConduct"),
           characterRating: t("defaultCharacterRating"),
@@ -167,7 +169,7 @@ export default function CertificatesPage() {
         // BONAFIDE, STUDY, OTHER, MARKSHEET fallback to bonafide
         const bcData: any = {
           ...base,
-          dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : undefined,
+          dateOfBirth: student.dateOfBirth ? formatDateWithSettings(student.dateOfBirth, settings) : undefined,
           guardianName: student.guardianName || s.guardianName || undefined,
           purpose: cert.purpose || t("defaultPurpose"),
         };
@@ -205,7 +207,7 @@ export default function CertificatesPage() {
     {
       key: "issueDate",
       header: t("issueDate"),
-      cell: (row) => new Date(row.issueDate as string).toLocaleDateString(),
+      cell: (row) => formatDateWithSettings(row.issueDate as string, settings),
     },
     {
       key: "status",
@@ -302,8 +304,8 @@ export default function CertificatesPage() {
                 <AppDropdown value={formData.certificateType} onChange={(v) => setFormData((p) => ({ ...p, certificateType: v }))} options={CERT_TYPES.map((c) => ({ value: c, label: c.replace("_", " ") }))} />
               </ERPFormField>
               <ERPFormField label={t("certificateNumber")}><Input value={formData.certificateNumber} onChange={(e) => setFormData((p) => ({ ...p, certificateNumber: e.target.value }))} placeholder={t("certificateNumberPlaceholder")} /></ERPFormField>
-              <ERPFormField label={t("issueDate")}><Input type="date" value={formData.issueDate} onChange={(e) => setFormData((p) => ({ ...p, issueDate: e.target.value }))} /></ERPFormField>
-              <ERPFormField label={t("validUntil")}><Input type="date" value={formData.validUntil} onChange={(e) => setFormData((p) => ({ ...p, validUntil: e.target.value }))} /></ERPFormField>
+              <ERPFormField label={t("issueDate")}><TenantDateInput value={formData.issueDate} onChange={(v) => setFormData((p) => ({ ...p, issueDate: v }))} /></ERPFormField>
+              <ERPFormField label={t("validUntil")}><TenantDateInput value={formData.validUntil} onChange={(v) => setFormData((p) => ({ ...p, validUntil: v }))} /></ERPFormField>
               <ERPFormField label={t("purpose")}><Input value={formData.purpose} onChange={(e) => setFormData((p) => ({ ...p, purpose: e.target.value }))} placeholder={t("purpose")} /></ERPFormField>
               <div className="col-span-2">
                 <ERPFormField label={t("remarks")}><textarea value={formData.remarks} onChange={(e) => setFormData((p) => ({ ...p, remarks: e.target.value }))} placeholder={t("remarks")} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></ERPFormField>

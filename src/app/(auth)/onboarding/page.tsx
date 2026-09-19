@@ -6,13 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CURRENCY_LIST } from "@/lib/currencies";
-import { CLASS_TEMPLATE_PRESETS, type ClassTemplatePreset } from "@/lib/schemas";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
+import { useOnboardingTemplateOptions } from "@/hooks/use-onboarding-templates";
 import { generateTenantSlug } from "@/lib/onboarding-templates";
 import { toast } from "sonner";
 import {
@@ -37,7 +39,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const TEMPLATE_ICONS: Record<ClassTemplatePreset, LucideIcon> = {
+const TEMPLATE_ICONS: Record<string, LucideIcon> = {
   K_12: School,
   PRIMARY_1_5: Backpack,
   MIDDLE_6_8: BookOpen,
@@ -74,6 +76,7 @@ export default function PublicOnboardingPage() {
     currency: "PKR",
     currencySymbol: "₨",
     taxRate: 0,
+    baseMonthlyTuition: 0,
     dateFormat: "DD/MM/YYYY",
     timeFormat: "12h" as "12h" | "24h",
     timezone: "Asia/Karachi",
@@ -83,7 +86,7 @@ export default function PublicOnboardingPage() {
     academicYearLabel: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
     academicStartDate: `${new Date().getFullYear()}-08-01`,
     academicEndDate: `${new Date().getFullYear() + 1}-06-30`,
-    classTemplate: "K_12" as ClassTemplatePreset,
+    classTemplate: "K_12",
 
     adminName: "",
     adminEmail: "",
@@ -92,8 +95,7 @@ export default function PublicOnboardingPage() {
     subscriptionStatus: "TRIAL" as "TRIAL" | "ACTIVE",
   });
 
-  const updateField = (key: string, value: any) => {
-    setFormData((prev) => {
+  const updateField = (key: string, value: any) => {    setFormData((prev) => {
       const next = { ...prev, [key]: value };
       if (key === "name" && !prev.tenantId) {
         next.tenantId = generateTenantSlug(value);
@@ -107,6 +109,11 @@ export default function PublicOnboardingPage() {
       return next;
     });
   };
+
+  const { options: templateOptions } = useOnboardingTemplateOptions();
+  const selectedTemplateLabel =
+    templateOptions.find((o) => o.code === formData.classTemplate)?.label ??
+    formData.classTemplate;
 
   const generateRandomPassword = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
@@ -416,6 +423,23 @@ export default function PublicOnboardingPage() {
                   </div>
 
                   <div className="space-y-1.5">
+                    <Label htmlFor="base-tuition" className="text-xs font-semibold">
+                      {t("labels.baseMonthlyTuition")} ({formData.currencySymbol})
+                    </Label>
+                    <Input
+                      id="base-tuition"
+                      type="number"
+                      min="0"
+                      value={formData.baseMonthlyTuition}
+                      onChange={(e) => updateField("baseMonthlyTuition", parseFloat(e.target.value) || 0)}
+                      className="h-10 text-sm"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {t("labels.baseMonthlyTuitionHint")}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">{t("labels.systemTimezone")}</Label>
                     <AppDropdown
                       value={formData.timezone}
@@ -444,6 +468,9 @@ export default function PublicOnboardingPage() {
                         { value: "DD-MM-YYYY", label: t("dateFormats.dmyDash") },
                       ]}
                     />
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      {formatDateWithSettings(new Date(), { dateFormat: formData.dateFormat })}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -477,11 +504,11 @@ export default function PublicOnboardingPage() {
                     <Label htmlFor="acad-start" className="text-xs font-semibold">
                       {t("startDate")} <span className="text-destructive">*</span>
                     </Label>
-                    <Input
+                    <TenantDateInput
                       id="acad-start"
-                      type="date"
                       value={formData.academicStartDate}
-                      onChange={(e) => updateField("academicStartDate", e.target.value)}
+                      onChange={(v) => updateField("academicStartDate", v)}
+                      dateFormat={formData.dateFormat}
                       className="h-10 text-sm"
                     />
                   </div>
@@ -490,11 +517,11 @@ export default function PublicOnboardingPage() {
                     <Label htmlFor="acad-end" className="text-xs font-semibold">
                       {t("endDate")} <span className="text-destructive">*</span>
                     </Label>
-                    <Input
+                    <TenantDateInput
                       id="acad-end"
-                      type="date"
                       value={formData.academicEndDate}
-                      onChange={(e) => updateField("academicEndDate", e.target.value)}
+                      onChange={(v) => updateField("academicEndDate", v)}
+                      dateFormat={formData.dateFormat}
                       className="h-10 text-sm"
                     />
                   </div>
@@ -503,15 +530,15 @@ export default function PublicOnboardingPage() {
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold">{t("gradeStructureLabel")}</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-                    {CLASS_TEMPLATE_PRESETS.map((preset) => {
-                      const IconComp = TEMPLATE_ICONS[preset];
-                      const isSelected = formData.classTemplate === preset;
+                    {templateOptions.map((opt) => {
+                      const IconComp = TEMPLATE_ICONS[opt.code] ?? GraduationCap;
+                      const isSelected = formData.classTemplate === opt.code;
 
                       return (
                         <button
-                          key={preset}
+                          key={opt.code}
                           type="button"
-                          onClick={() => updateField("classTemplate", preset)}
+                          onClick={() => updateField("classTemplate", opt.code)}
                           className={`flex flex-col text-left p-3.5 rounded-xl border transition-all text-xs cursor-pointer ${
                             isSelected
                               ? "border-primary bg-primary/5 ring-1 ring-primary"
@@ -526,12 +553,12 @@ export default function PublicOnboardingPage() {
                               variant={isSelected ? "default" : "outline"}
                               className={`text-[10px] py-0 ${isSelected ? "bg-primary" : ""}`}
                             >
-                              {t(`templates.${preset}.count`)}
+                              {opt.count}
                             </Badge>
                           </div>
-                          <span className="font-bold text-foreground text-sm">{t(`templates.${preset}.label`)}</span>
+                          <span className="font-bold text-foreground text-sm">{opt.label}</span>
                           <span className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                            {t(`templates.${preset}.description`)}
+                            {opt.description}
                           </span>
                         </button>
                       );
@@ -642,7 +669,7 @@ export default function PublicOnboardingPage() {
                     </span>
                     <p className="font-bold text-foreground">{formData.academicYearLabel}</p>
                     <p className="text-muted-foreground">
-                      {t("labels.templateValue")} {t(`templates.${formData.classTemplate}.label`)}
+                      {t("labels.templateValue")} {selectedTemplateLabel}
                     </p>
                   </div>
 

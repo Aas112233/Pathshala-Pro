@@ -209,6 +209,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    fastCache.invalidatePrefix(`sections:${tenantId}`);
+
     return successResponse(newSection, "Section created successfully", 201);
   } catch (error) {
     return handleApiError(error);

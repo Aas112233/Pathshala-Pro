@@ -30,6 +30,7 @@ import { useLocale } from "next-intl";
 import { useStudents, useStudentPerformance } from "@/hooks/use-queries";
 import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -339,7 +340,7 @@ export default function StudentPerformancePage() {
               <span>•</span>
               <span>{t("officialTranscript")}</span>
               <span>•</span>
-              <span>{t("generatedOn", { date: new Date().toLocaleDateString() })}</span>
+              <span>{t("generatedOn", { date: formatDateWithSettings(new Date(), settings) })}</span>
             </div>
           </div>
 

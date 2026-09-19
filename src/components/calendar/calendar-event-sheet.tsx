@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Switch } from "@/components/ui/switch";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -224,20 +225,17 @@ export function CalendarEventSheet({
             </ERPFormField>
 
             <ERPFormField label={t("startDate")} required error={errors.startDate}>
-              <Input
-                type="date"
+              <TenantDateInput
                 value={form.startDate}
-                onChange={(e) => setField("startDate", e.target.value)}
+                onChange={(v) => setField("startDate", v)}
                 aria-invalid={Boolean(errors.startDate)}
               />
             </ERPFormField>
 
             <ERPFormField label={t("endDate")} error={errors.endDate}>
-              <Input
-                type="date"
+              <TenantDateInput
                 value={form.endDate}
-                onChange={(e) => setField("endDate", e.target.value)}
-                min={form.startDate}
+                onChange={(v) => setField("endDate", v)}
                 disabled={!form.startDate}
               />
             </ERPFormField>
@@ -307,13 +305,11 @@ export function CalendarEventSheet({
               />
             </ERPFormField>
 
-            {isRecurring && (
+              {isRecurring && (
               <ERPFormField label={t("recurrenceUntil")} error={errors.recurrenceEndDate}>
-                <Input
-                  type="date"
+                <TenantDateInput
                   value={form.recurrenceEndDate}
-                  onChange={(e) => setField("recurrenceEndDate", e.target.value)}
-                  min={form.startDate}
+                  onChange={(v) => setField("recurrenceEndDate", v)}
                   disabled={!form.startDate}
                 />
               </ERPFormField>

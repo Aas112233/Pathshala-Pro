@@ -8,8 +8,9 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Textarea } from "@/components/ui/textarea";
-import { isValidBirthDate, isValidDateInput, todayDateString } from "@/lib/date-validation";
+import { isValidBirthDate, isValidDateInput } from "@/lib/date-validation";
 import { clsx } from "clsx";
 import { toast } from "sonner";
 import { ImagePreviewModal } from "@/components/shared/image-preview-modal";
@@ -559,13 +560,10 @@ export function StudentFormModal({
                 </ERPFormField>
 
                 <ERPFormField label={t("dateOfBirth")} error={errors.dateOfBirth} htmlFor="student-dateOfBirth">
-                  <Input
+                  <TenantDateInput
                     id="student-dateOfBirth"
-                    type="date"
-                    name="dateOfBirth"
                     value={formData.dateOfBirth}
-                    max={todayDateString()}
-                    onChange={handleChange}
+                    onChange={(v) => handleDropdownChange("dateOfBirth", v)}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>

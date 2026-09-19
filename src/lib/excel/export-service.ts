@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { addCurrency, roundCurrency } from "@/lib/math-utils";
 
 export interface FeeDaybookRow {
@@ -230,7 +231,7 @@ export async function exportAcademicTabulationSheetToExcel(
   // Header Title
   worksheet.addRow(["Pathshala-Pro Academic Systems"]);
   worksheet.addRow([`Master Tabulation Sheet - Class: ${cls?.name || classId}`]);
-  worksheet.addRow([`Export Date: ${new Date().toLocaleDateString()}`]);
+  worksheet.addRow([`Export Date: ${formatDateWithSettings(new Date())}`]);
   worksheet.addRow([]);
 
   // Aggregate results per student

@@ -6,6 +6,7 @@ import { TopSheet } from "@/components/ui/top-sheet";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
@@ -311,11 +312,10 @@ export function BatchInvoiceModal({
               <Label htmlFor="due-dt" className="text-xs font-semibold">
                 {t("dueDateLabel")} ({selectedMonthName})
               </Label>
-              <Input
+              <TenantDateInput
                 id="due-dt"
-                type="date"
                 value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                onChange={(v) => setFormData({ ...formData, dueDate: v })}
                 className="h-10 text-xs"
               />
             </div>

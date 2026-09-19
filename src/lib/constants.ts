@@ -90,6 +90,11 @@ export const SYSTEM_ADMIN_NAV: NavGroup[] = [
         icon: School,
       },
       {
+        titleKey: "systemAdmin.templates",
+        href: "/system-admin/templates",
+        icon: Layers,
+      },
+      {
         titleKey: "systemAdmin.billing",
         href: "/system-admin/billing",
         icon: Receipt,

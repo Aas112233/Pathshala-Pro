@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { GraduationCap, Plus, Users, UserCheck, IdCard, FileText } from "lucide-react";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -208,7 +209,7 @@ export default function StudentsPage() {
         rollNumber: s.rollNumber || "-",
         className: (s.class as any)?.name || s.classId || "-",
         section: (s as any).section?.name || "-",
-        dateOfBirth: s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString() : "-",
+        dateOfBirth: s.dateOfBirth ? formatDateWithSettings(s.dateOfBirth, settings) : "-",
         gender: s.gender || "-",
         bloodGroup: s.bloodGroup,
         guardianName: s.guardianName || "-",

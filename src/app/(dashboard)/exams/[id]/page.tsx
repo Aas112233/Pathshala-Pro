@@ -10,6 +10,7 @@ import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -492,24 +493,22 @@ export default function EditExamPage() {
 
             <ERPFormGrid cols={2}>
               <ERPFormField label={t('startDate')} required error={formErrors.startDate} htmlFor="startDate">
-                <Input
+                <TenantDateInput
                   id="startDate"
-                  type="date"
                   value={formData.startDate}
-                  onChange={(e) => {
-                    setFormData({ ...formData, startDate: e.target.value });
+                  onChange={(v) => {
+                    setFormData({ ...formData, startDate: v });
                     if (formErrors.startDate) setFormErrors((prev) => ({ ...prev, startDate: undefined }));
                   }}
                   aria-invalid={Boolean(formErrors.startDate)}
                 />
               </ERPFormField>
               <ERPFormField label={t('endDate')} required error={formErrors.endDate} htmlFor="endDate">
-                <Input
+                <TenantDateInput
                   id="endDate"
-                  type="date"
                   value={formData.endDate}
-                  onChange={(e) => {
-                    setFormData({ ...formData, endDate: e.target.value });
+                  onChange={(v) => {
+                    setFormData({ ...formData, endDate: v });
                     if (formErrors.endDate) setFormErrors((prev) => ({ ...prev, endDate: undefined }));
                   }}
                   aria-invalid={Boolean(formErrors.endDate)}

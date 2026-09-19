@@ -10,6 +10,7 @@ import { AppDropdown } from "@/components/ui/app-dropdown";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useUpdateUser } from "@/hooks/use-queries";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { toast } from "sonner";
 import {
   ShieldCheck,
@@ -110,6 +111,7 @@ interface PresetButton {
 
 export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps) {
   const t = useTranslations("users");
+  const { formatDate } = useTenantFormatting();
   const updateMutation = useUpdateUser(user?.id || "");
   const { user: authUser } = useAuth();
   const [permissions, setPermissions] = useState<PermState>({});
@@ -387,7 +389,7 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
               </div>
               {user.lastLoginAt && (
                 <span className="text-[10px] text-muted-foreground hidden sm:inline-block">
-                  Last login: {new Date(user.lastLoginAt).toLocaleDateString()}
+                  Last login: {formatDate(user.lastLoginAt)}
                 </span>
               )}
             </div>

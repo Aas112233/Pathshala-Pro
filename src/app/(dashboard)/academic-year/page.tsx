@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
@@ -413,11 +414,10 @@ export default function AcademicYearPage() {
                 required
                 helperText={t("startDateHelper")}
               >
-                <Input
-                  type="date"
+                <TenantDateInput
                   value={formData.startDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startDate: e.target.value })
+                  onChange={(v) =>
+                    setFormData({ ...formData, startDate: v })
                   }
                   disabled={isSubmitting}
                   required
@@ -429,11 +429,10 @@ export default function AcademicYearPage() {
                 required
                 helperText={t("endDateHelper")}
               >
-                <Input
-                  type="date"
+                <TenantDateInput
                   value={formData.endDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
+                  onChange={(v) =>
+                    setFormData({ ...formData, endDate: v })
                   }
                   disabled={isSubmitting}
                   required

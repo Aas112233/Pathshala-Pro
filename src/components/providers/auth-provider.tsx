@@ -139,14 +139,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    // Clear client auth state
+    // Clear client auth state, keeping isLoading: true while redirecting to prevent
+    // flash of NotAuthorizedScreen or unauthorized content before the page unloads
     localStorage.removeItem(AUTH_STORAGE_KEY);
 
     setAuthState({
       user: null,
       tenantId: null,
       moduleAccess: null,
-      isLoading: false,
+      isLoading: true,
     });
 
     try {

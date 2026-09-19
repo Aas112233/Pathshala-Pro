@@ -19,6 +19,7 @@ import {
 } from "@/viewmodels/hostel/use-hostel-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { usePDFExport, type HostelManifestPDFData, type HostelResident } from "@/hooks/use-pdf-export";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -188,7 +189,7 @@ export default function HostelPage() {
       roomType: a.room?.roomType || "GENERAL",
       guardianName: a.studentProfile?.guardianName,
       guardianPhone: a.studentProfile?.guardianContact,
-      allocationDate: new Date(a.createdAt || Date.now()).toLocaleDateString(),
+      allocationDate: formatDateWithSettings(a.createdAt || Date.now(), settings),
     }));
 
     const manifestData: HostelManifestPDFData = {
@@ -201,7 +202,7 @@ export default function HostelPage() {
       totalCapacity: totalCap,
       totalOccupied: hostelAllocs.length,
       totalRooms: hostelRoomsList.length,
-      generatedDate: new Date().toLocaleDateString(),
+      generatedDate: formatDateWithSettings(new Date(), settings),
       residents,
     };
 

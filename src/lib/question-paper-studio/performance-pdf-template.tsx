@@ -2,6 +2,7 @@
 import { Document, Page, View, Text, StyleSheet, Image } from "@react-pdf/renderer";
 import { StudentPerformanceOverview } from "@/lib/student-performance";
 import { getPdfFontFamily, pdfTextSample } from "@/lib/pdf-fonts";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 
 export interface PerformancePDFSchoolInfo {
   name: string;
@@ -448,7 +449,7 @@ export function StudentPerformancePDF({
               Session: {performance.academicYear.label}
             </Text>
             <Text style={styles.reportDateText}>
-              Generated: {new Date().toLocaleDateString()}
+              Generated: {formatDateWithSettings(new Date())}
             </Text>
           </View>
         </View>

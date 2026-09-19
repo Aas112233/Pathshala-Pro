@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { ERPDataTable, type ColumnDef as ERPColumnDef } from "@/components/ui/erp-data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -373,20 +374,18 @@ export default function AttendancePage() {
               <div className="flex flex-wrap gap-4 mt-4">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium">{t('dateRange.from')}:</label>
-                  <Input
-                    type="date"
+                  <TenantDateInput
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={setStartDate}
                     className="w-[180px]"
                   />
                 </div>
 
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium">{t('dateRange.to')}:</label>
-                  <Input
-                    type="date"
+                  <TenantDateInput
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={setEndDate}
                     className="w-[180px]"
                   />
                 </div>

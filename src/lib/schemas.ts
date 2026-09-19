@@ -479,10 +479,13 @@ export const onboardInstituteSchema = z.object({
   academicYearLabel: z.string().min(4, "Academic year label is required"),
   academicStartDate: z.string().min(1, "Academic start date is required"),
   academicEndDate: z.string().min(1, "Academic end date is required"),
-  classTemplate: z.enum(CLASS_TEMPLATE_PRESETS).default("K_12"),
+  // Template preset code: a built-in preset, an active DB template code, or a
+  // custom code resolved at provisioning time (unknown codes are rejected).
+  classTemplate: z.string().min(1).max(32).default("K_12"),
   academicStructure: z.array(onboardAcademicStructureItemSchema).max(20).optional(),
   fiscalYearStartMonth: z.number().int().min(1).max(12).optional(),
   feeStructures: z.array(onboardFeeStructureItemSchema).max(30).optional(),
+  baseMonthlyTuition: z.number().nonnegative().default(0),
 
   adminName: z.string().min(2, "Admin name must be at least 2 characters"),
   adminEmail: z.preprocess(

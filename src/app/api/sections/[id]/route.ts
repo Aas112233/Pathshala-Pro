@@ -18,6 +18,7 @@ import {
   lockedDeleteMessage,
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 const updateSectionSchema = z.object({
   classId: z.string().min(1, "Class is required").optional(),
@@ -148,6 +149,8 @@ export async function PUT(
       },
     });
 
+    fastCache.invalidatePrefix(`sections:${tenantId}`);
+
     return successResponse(updatedSection, "Section updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -191,6 +194,8 @@ export async function DELETE(
     }
 
     await prisma.section.delete({ where: { id } });
+
+    fastCache.invalidatePrefix(`sections:${tenantId}`);
 
     return successResponse(null, "Section deleted successfully");
   } catch (error) {

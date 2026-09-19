@@ -4,6 +4,7 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { successResponse, unauthorized, badRequest, handleApiError } from "@/lib/api-response";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+import { hashPassword } from "@/lib/auth";
 
 /**
  * GET /api/system-admin/users
@@ -91,7 +92,7 @@ export async function PATCH(request: NextRequest) {
     if (!id) return badRequest("User id is required");
 
     const body = await request.json();
-    const { isActive, role, accessLevel } = body;
+    const { isActive, role, accessLevel, password } = body;
 
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) return badRequest("User not found");
@@ -102,12 +103,21 @@ export async function PATCH(request: NextRequest) {
       if (superCount <= 1) return badRequest("Cannot demote the last active SUPER_ADMIN");
     }
 
+    let hash: string | undefined = undefined;
+    if (password) {
+      if (typeof password !== "string" || password.length < 6) {
+        return badRequest("Password must be at least 6 characters long");
+      }
+      hash = await hashPassword(password);
+    }
+
     const updated = await prisma.user.update({
       where: { id },
       data: {
         isActive: typeof isActive === "boolean" ? isActive : undefined,
         role: role || undefined,
         accessLevel: typeof accessLevel === "number" ? accessLevel : undefined,
+        ...(hash ? { hash } : {}),
       },
       select: { id: true, email: true, role: true, accessLevel: true, isActive: true, tenantId: true },
     });

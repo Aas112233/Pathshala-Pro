@@ -185,6 +185,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    fastCache.invalidatePrefix(`classes:${tenantId}`);
+
     return successResponse(newClass, "Class created successfully", 201);
   } catch (error) {
     return handleApiError(error);

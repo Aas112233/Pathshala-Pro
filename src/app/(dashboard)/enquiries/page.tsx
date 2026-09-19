@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -46,6 +48,7 @@ function statusColor(s: string) {
 
 export default function EnquiriesPage() {
   const t = useTranslations("enquiries");
+  const { formatDate } = useTenantFormatting();
   const tCommon = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
@@ -199,7 +202,7 @@ export default function EnquiriesPage() {
         if (!v) return <span className="text-muted-foreground">—</span>;
         const d = new Date(v);
         const overdue = d < new Date() && v;
-        return <span className={overdue ? "text-rose-600 font-medium" : ""}>{d.toLocaleDateString()}</span>;
+        return <span className={overdue ? "text-rose-600 font-medium" : ""}>{formatDate(v)}</span>;
       },
     },
     {
@@ -417,7 +420,7 @@ export default function EnquiriesPage() {
                 <AppDropdown value={formData.status} onChange={(v) => setFormData((p) => ({ ...p, status: v }))} options={STATUSES.map((s) => ({ value: s, label: s }))} placeholder={t("selectStatus")} />
               </ERPFormField>
               <ERPFormField label={t("followUpDate")}>
-                <Input type="date" value={formData.followUpDate} onChange={(e) => setFormData((p) => ({ ...p, followUpDate: e.target.value }))} />
+                <TenantDateInput value={formData.followUpDate} onChange={(v) => setFormData((p) => ({ ...p, followUpDate: v }))} />
               </ERPFormField>
               <div className="col-span-2">
                 <ERPFormField label={t("notes")}>

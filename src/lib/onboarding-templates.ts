@@ -18,7 +18,8 @@ export interface TemplateSubjectDef {
 export interface TemplateGroupDef {
   name: string;
   shortName: string;
-  subjectCodes: string[];
+  /** Stream subject codes — defaults to the class's full subject list when omitted. */
+  subjectCodes?: string[];
 }
 
 export interface TemplateClassDef {
@@ -84,7 +85,7 @@ export const COUNTRY_EDUCATION_SYSTEMS: Record<"PK" | "IN" | "BD", CountryEducat
   },
 };
 
-export function getClassTemplateDefinitions(template: ClassTemplatePreset): TemplateClassDef[] {
+export function getClassTemplateDefinitions(template: string): TemplateClassDef[] {
   const commonSubjects: TemplateSubjectDef[] = [
     { name: "English Language", code: "ENG", type: "THEORY" },
     { name: "Mathematics", code: "MATH", type: "THEORY" },
@@ -118,7 +119,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 9 (SSC-I / Matric)",
           code: "PK-SSC-9",
           sequence: 1,
-          sections: ["Science Group", "Computer Group", "General Arts Group"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Group", shortName: "SCI" },
+            { name: "Computer Group", shortName: "CMP" },
+            { name: "General Arts Group", shortName: "ART" },
+          ],
           ageGroup: "14-15 years",
           subjects: [
             { name: "English", nameI18n: { en: "English", ur: "انگریزی" }, code: "ENG-9", type: "THEORY", totalMarks: 150, passMarks: 50 },
@@ -135,7 +141,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 10 (SSC-II / Matric)",
           code: "PK-SSC-10",
           sequence: 2,
-          sections: ["Science Group", "Computer Group", "General Arts Group"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Group", shortName: "SCI" },
+            { name: "Computer Group", shortName: "CMP" },
+            { name: "General Arts Group", shortName: "ART" },
+          ],
           ageGroup: "15-16 years",
           subjects: [
             { name: "English", nameI18n: { en: "English", ur: "انگریزی" }, code: "ENG-10", type: "THEORY", totalMarks: 150, passMarks: 50 },
@@ -152,7 +163,13 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 11 (HSSC-I / Intermediate)",
           code: "PK-HSSC-11",
           sequence: 3,
-          sections: ["Pre-Medical", "Pre-Engineering", "ICS Computer Science", "I.Com (Commerce)"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Pre-Medical", shortName: "MED" },
+            { name: "Pre-Engineering", shortName: "ENG" },
+            { name: "ICS Computer Science", shortName: "ICS" },
+            { name: "I.Com (Commerce)", shortName: "COM" },
+          ],
           ageGroup: "16-17 years",
           subjects: [
             { name: "English Compulsory", nameI18n: { en: "English Compulsory", ur: "انگریزی لازمی" }, code: "ENG-11", type: "THEORY", totalMarks: 200, passMarks: 66 },
@@ -168,7 +185,13 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 12 (HSSC-II / Intermediate)",
           code: "PK-HSSC-12",
           sequence: 4,
-          sections: ["Pre-Medical", "Pre-Engineering", "ICS Computer Science", "I.Com (Commerce)"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Pre-Medical", shortName: "MED" },
+            { name: "Pre-Engineering", shortName: "ENG" },
+            { name: "ICS Computer Science", shortName: "ICS" },
+            { name: "I.Com (Commerce)", shortName: "COM" },
+          ],
           ageGroup: "17-18 years",
           subjects: [
             { name: "English Compulsory", nameI18n: { en: "English Compulsory", ur: "انگریزی لازمی" }, code: "ENG-12", type: "THEORY", totalMarks: 200, passMarks: 66 },
@@ -223,7 +246,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 11 (CBSE Senior Secondary)",
           code: "IN-CBSE-11",
           sequence: 3,
-          sections: ["Science Stream (PCM/PCB)", "Commerce Stream", "Humanities / Arts"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Stream (PCM/PCB)", shortName: "SCI" },
+            { name: "Commerce Stream", shortName: "COM" },
+            { name: "Humanities / Arts", shortName: "HUM" },
+          ],
           ageGroup: "16-17 years",
           subjects: [
             { name: "English Core", nameI18n: { en: "English Core", hi: "अंग्रेज़ी कोर" }, code: "CBSE-301", type: "THEORY", totalMarks: 100, passMarks: 33 },
@@ -240,7 +268,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 12 (CBSE Senior Secondary)",
           code: "IN-CBSE-12",
           sequence: 4,
-          sections: ["Science Stream (PCM/PCB)", "Commerce Stream", "Humanities / Arts"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Stream (PCM/PCB)", shortName: "SCI" },
+            { name: "Commerce Stream", shortName: "COM" },
+            { name: "Humanities / Arts", shortName: "HUM" },
+          ],
           ageGroup: "17-18 years",
           subjects: [
             { name: "English Core", nameI18n: { en: "English Core", hi: "अंग्रेज़ी कोर" }, code: "CBSE-301", type: "THEORY", totalMarks: 100, passMarks: 33 },
@@ -296,7 +329,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 9 (SSC - ৯ম শ্রেণি)",
           code: "BD-SSC-9",
           sequence: 9,
-          sections: ["Science Stream (বিজ্ঞান)", "Business Studies (ব্যবসায় শিক্ষা)", "Humanities (মানবিক)"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Stream (বিজ্ঞান)", shortName: "SCI" },
+            { name: "Business Studies (ব্যবসায় শিক্ষা)", shortName: "BIZ" },
+            { name: "Humanities (মানবিক)", shortName: "HUM" },
+          ],
           ageGroup: "14-15 years",
           subjects: [
             { name: "Bangla (Paper I & II)", nameI18n: { en: "Bangla (Paper I & II)", bn: "বাংলা (প্রথম ও দ্বিতীয় পত্র)" }, code: "BD-101-SSC", type: "THEORY", totalMarks: 200, passMarks: 66 },
@@ -315,7 +353,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 10 (SSC - ১০ম শ্রেণি)",
           code: "BD-SSC-10",
           sequence: 10,
-          sections: ["Science Stream (বিজ্ঞান)", "Business Studies (ব্যবসায় শিক্ষা)", "Humanities (মানবিক)"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Stream (বিজ্ঞান)", shortName: "SCI" },
+            { name: "Business Studies (ব্যবসায় শিক্ষা)", shortName: "BIZ" },
+            { name: "Humanities (মানবিক)", shortName: "HUM" },
+          ],
           ageGroup: "15-16 years",
           subjects: [
             { name: "Bangla (Paper I & II)", nameI18n: { en: "Bangla (Paper I & II)", bn: "বাংলা (প্রথম ও দ্বিতীয় পত্র)" }, code: "BD-101-SSC", type: "THEORY", totalMarks: 200, passMarks: 66 },
@@ -335,7 +378,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 11 (HSC - ১ম বর্ষ)",
           code: "BD-HSC-11",
           sequence: 11,
-          sections: ["Science Stream (বিজ্ঞান)", "Business Studies (ব্যবসায় শিক্ষা)", "Humanities (মানবিক)"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Stream (বিজ্ঞান)", shortName: "SCI" },
+            { name: "Business Studies (ব্যবসায় শিক্ষা)", shortName: "BIZ" },
+            { name: "Humanities (মানবিক)", shortName: "HUM" },
+          ],
           ageGroup: "16-17 years",
           subjects: [
             { name: "Bangla 1st Paper", nameI18n: { en: "Bangla 1st Paper", bn: "বাংলা ১ম পত্র" }, code: "BD-101-HSC", type: "THEORY", totalMarks: 100, passMarks: 33 },
@@ -351,7 +399,12 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Class 12 (HSC - ২য় বর্ষ)",
           code: "BD-HSC-12",
           sequence: 12,
-          sections: ["Science Stream (বিজ্ঞান)", "Business Studies (ব্যবসায় শিক্ষা)", "Humanities (মানবিক)"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science Stream (বিজ্ঞান)", shortName: "SCI" },
+            { name: "Business Studies (ব্যবসায় শিক্ষা)", shortName: "BIZ" },
+            { name: "Humanities (মানবিক)", shortName: "HUM" },
+          ],
           ageGroup: "17-18 years",
           subjects: [
             { name: "Bangla 1st Paper", nameI18n: { en: "Bangla 1st Paper", bn: "বাংলা ১ম পত্র" }, code: "BD-101-HSC", type: "THEORY", totalMarks: 100, passMarks: 33 },
@@ -421,14 +474,26 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "Grade 11 (HSSC-I / Intermediate)",
           code: "HSSC-1",
           sequence: 1,
-          sections: ["FSc Pre-Medical", "FSc Pre-Engineering", "ICS Computer Science", "I.Com"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "FSc Pre-Medical", shortName: "MED" },
+            { name: "FSc Pre-Engineering", shortName: "ENG" },
+            { name: "ICS Computer Science", shortName: "ICS" },
+            { name: "I.Com", shortName: "COM" },
+          ],
           subjects: commonSubjects,
         },
         {
           name: "Grade 12 (HSSC-II / Intermediate)",
           code: "HSSC-2",
           sequence: 2,
-          sections: ["FSc Pre-Medical", "FSc Pre-Engineering", "ICS Computer Science", "I.Com"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "FSc Pre-Medical", shortName: "MED" },
+            { name: "FSc Pre-Engineering", shortName: "ENG" },
+            { name: "ICS Computer Science", shortName: "ICS" },
+            { name: "I.Com", shortName: "COM" },
+          ],
           subjects: commonSubjects,
         },
       ];
@@ -438,8 +503,8 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
         { name: "O-Level Year 1 (Grade 9)", code: "O1", sequence: 1, sections: ["Section A"], subjects: commonSubjects },
         { name: "O-Level Year 2 (Grade 10)", code: "O2", sequence: 2, sections: ["Section A"], subjects: commonSubjects },
         { name: "O-Level Year 3 (Grade 11)", code: "O3", sequence: 3, sections: ["Section A"], subjects: commonSubjects },
-        { name: "A-Level Year 1 (AS)", code: "A1", sequence: 4, sections: ["Science", "Business"], subjects: commonSubjects },
-        { name: "A-Level Year 2 (A2)", code: "A2", sequence: 5, sections: ["Science", "Business"], subjects: commonSubjects },
+        { name: "A-Level Year 1 (AS)", code: "A1", sequence: 4, sections: ["Section A", "Section B"], groups: [{ name: "Science", shortName: "SCI" }, { name: "Business", shortName: "BIZ" }], subjects: commonSubjects },
+        { name: "A-Level Year 2 (A2)", code: "A2", sequence: 5, sections: ["Section A", "Section B"], groups: [{ name: "Science", shortName: "SCI" }, { name: "Business", shortName: "BIZ" }], subjects: commonSubjects },
       ];
 
     case "IGCSE_CAMBRIDGE":
@@ -448,7 +513,11 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "IGCSE Year 1 (Grade 9)",
           code: "IGCSE-1",
           sequence: 1,
-          sections: ["Science", "Business"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science", shortName: "SCI" },
+            { name: "Business", shortName: "BIZ" },
+          ],
           ageGroup: "14-15 years",
           subjects: [
             { name: "English as a Second Language", code: "IG-ESL", type: "THEORY", totalMarks: 100, passMarks: 40 },
@@ -464,7 +533,11 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
           name: "IGCSE Year 2 (Grade 10)",
           code: "IGCSE-2",
           sequence: 2,
-          sections: ["Science", "Business"],
+          sections: ["Section A", "Section B"],
+          groups: [
+            { name: "Science", shortName: "SCI" },
+            { name: "Business", shortName: "BIZ" },
+          ],
           ageGroup: "15-16 years",
           subjects: [
             { name: "English as a Second Language", code: "IG-ESL", type: "THEORY", totalMarks: 100, passMarks: 40 },
@@ -503,8 +576,8 @@ export function getClassTemplateDefinitions(template: ClassTemplatePreset): Temp
         { name: "Grade 6", code: "GR-6", sequence: 9, sections: ["Section A"], subjects: commonSubjects },
         { name: "Grade 7", code: "GR-7", sequence: 10, sections: ["Section A"], subjects: commonSubjects },
         { name: "Grade 8", code: "GR-8", sequence: 11, sections: ["Section A"], subjects: commonSubjects },
-        { name: "Grade 9", code: "GR-9", sequence: 12, sections: ["Science", "Arts"], subjects: commonSubjects },
-        { name: "Grade 10", code: "GR-10", sequence: 13, sections: ["Science", "Arts"], subjects: commonSubjects },
+        { name: "Grade 9", code: "GR-9", sequence: 12, sections: ["Section A", "Section B"], groups: [{ name: "Science", shortName: "SCI" }, { name: "Arts", shortName: "ART" }], subjects: commonSubjects },
+        { name: "Grade 10", code: "GR-10", sequence: 13, sections: ["Section A", "Section B"], groups: [{ name: "Science", shortName: "SCI" }, { name: "Arts", shortName: "ART" }], subjects: commonSubjects },
       ];
   }
 }

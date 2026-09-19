@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { getPdfFontFamily } from "./pdf-fonts";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 
 export interface LibraryIssueSlipData {
   schoolName: string;
@@ -294,7 +295,7 @@ export function LibraryIssueSlipDocument({ data }: { data: LibraryIssueSlipData 
             <Text style={styles.sigLabel}>Borrower Signature</Text>
           </View>
           <Text style={{ fontSize: 7, color: "#94a3b8" }}>
-            Generated on {new Date().toLocaleDateString()} · Pathshala-Pro ERP
+            Generated on {formatDateWithSettings(new Date())} · Pathshala-Pro ERP
           </Text>
           <View style={styles.signatureBox}>
             <View style={styles.sigLine} />

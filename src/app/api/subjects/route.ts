@@ -100,6 +100,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    fastCache.invalidatePrefix(`subjects:${tenantId}`);
+
     return successResponse(subject, "Subject created successfully", 201);
   } catch (error) {
     return handleApiError(error);

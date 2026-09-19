@@ -18,6 +18,7 @@ import {
   lockedDeleteMessage,
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 /**
  * GET /api/subjects/[id]
@@ -127,6 +128,8 @@ export async function PUT(
       data,
     });
 
+    fastCache.invalidatePrefix(`subjects:${tenantId}`);
+
     return successResponse(updatedSubject, "Subject updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -171,6 +174,8 @@ export async function DELETE(
     await prisma.subject.delete({
       where: { id },
     });
+
+    fastCache.invalidatePrefix(`subjects:${tenantId}`);
 
     return successResponse(null, "Subject deleted successfully");
   } catch (error) {

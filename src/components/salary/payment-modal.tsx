@@ -7,6 +7,7 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import type { PaymentDTO, SalaryLedgerWithDetails } from "@/types/entities";
 
 interface PaymentModalProps {
@@ -203,12 +204,10 @@ export function PaymentModal({
 
             {/* Payment Date */}
             <ERPFormField label={t("ui.payment.paymentDate")} required htmlFor="paymentDate">
-              <Input
+              <TenantDateInput
                 id="paymentDate"
-                type="date"
-                name="paymentDate"
                 value={formData.paymentDate}
-                onChange={handleChange}
+                onChange={(v) => handleDropdownChange("paymentDate", v)}
                 disabled={isLoading}
                 aria-invalid={Boolean(errors.paymentDate)}
               />

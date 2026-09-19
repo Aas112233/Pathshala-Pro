@@ -8,6 +8,7 @@ import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
@@ -33,6 +34,7 @@ import {
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { useExcelExport } from "@/hooks/use-excel-export";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import type { ExcelColumn } from "@/lib/excel-exporter";
@@ -227,7 +229,7 @@ export default function AccountingStatementsPage() {
         { label: t("closingBalance"), value: fmt(stmt.closingBalance) },
       ],
       records: entries.map((entry: any) => ({
-        date: new Date(entry.date).toLocaleDateString(),
+        date: formatDateWithSettings(entry.date, settings),
         refId: entry.refId,
         description: entry.description,
         debit: fmt(entry.debit),
@@ -259,7 +261,7 @@ export default function AccountingStatementsPage() {
       header: t("dateHeader"),
       cell: (row) => (
         <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-          {new Date(row.date).toLocaleDateString()}
+          {formatDateWithSettings(row.date, settings)}
         </span>
       ),
     },
@@ -471,11 +473,10 @@ export default function AccountingStatementsPage() {
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("fromDate")}
                 </Label>
-                <Input
+                <TenantDateInput
                   id="start-date"
-                  type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={setStartDate}
                   className="h-10 text-xs"
                 />
               </div>
@@ -485,11 +486,10 @@ export default function AccountingStatementsPage() {
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("toDate")}
                 </Label>
-                <Input
+                <TenantDateInput
                   id="end-date"
-                  type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={setEndDate}
                   className="h-10 text-xs"
                 />
               </div>

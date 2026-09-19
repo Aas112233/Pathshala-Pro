@@ -343,3 +343,53 @@ export async function seedTenantClassFeeStructures(
   const res = await tx.classFeeStructure.createMany({ data: rows, skipDuplicates: true });
   return res.count;
 }
+
+/**
+ * Derive per-class fee rows from a single base monthly tuition, scaled mildly
+ * by class level (higher classes pay more). Returns [] when the base is 0 so
+ * provisioning creates no zero-bill traps — explicit wizard rows always win.
+ */
+export function deriveDefaultFeeStructures(
+  classDefinitions: Array<{ code: string; sequence: number }>,
+  baseMonthlyTuition: number
+): Array<{ classCode: string; tuitionFee: number }> {
+  if (!baseMonthlyTuition || baseMonthlyTuition <= 0) return [];
+  const sorted = [...classDefinitions].sort((a, b) => a.sequence - b.sequence);
+  return sorted.map((def, idx) => ({
+    classCode: def.code,
+    // +4% per level, rounded to whole currency units
+    tuitionFee: Math.max(0, Math.round((baseMonthlyTuition * (1 + 0.04 * idx)))),
+  }));
+}
+
+/**
+ * 8. Default Expense Categories Seeder — expense creation requires a valid
+ * categoryId, so a fresh tenant cannot record its first expense without these.
+ */
+export const DEFAULT_EXPENSE_CATEGORIES: Array<{ code: string; name: string; description: string }> = [
+  { code: "EXP-SAL", name: "Staff Salaries", description: "Teaching and support staff payroll" },
+  { code: "EXP-UTL", name: "Utilities", description: "Electricity, gas, water, internet" },
+  { code: "EXP-RNT", name: "Building Rent", description: "Campus and facility rent" },
+  { code: "EXP-MNT", name: "Maintenance & Repairs", description: "Building, furniture and equipment upkeep" },
+  { code: "EXP-STN", name: "Stationery & Supplies", description: "Office and classroom supplies" },
+  { code: "EXP-PRN", name: "Printing & Exams", description: "Question papers, report cards, printing" },
+  { code: "EXP-FUL", name: "Fuel & Transport", description: "Vehicle fuel and maintenance" },
+  { code: "EXP-LAB", name: "Lab & Library", description: "Lab consumables, books, library upkeep" },
+  { code: "EXP-EVT", name: "Events & Functions", description: "Annual day, sports, ceremonies" },
+  { code: "EXP-MSC", name: "Miscellaneous", description: "Unclassified operational spend" },
+];
+
+export async function seedTenantExpenseCategories(tx: Prisma.TransactionClient, tenantId: string) {
+  const data = DEFAULT_EXPENSE_CATEGORIES.map((cat) => ({
+    tenantId,
+    name: cat.name,
+    code: cat.code,
+    description: cat.description,
+    isActive: true,
+  }));
+
+  return tx.expenseCategory.createMany({
+    data,
+    skipDuplicates: true,
+  });
+}

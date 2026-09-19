@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { NextIntlClientProvider, useLocale, useMessages } from "next-intl";
 import { downloadBlob } from "@/lib/download-blob";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 // Type-only: erased at build, costs zero bundle bytes. The template
 // *components* are NOT imported here — they load on click via loadPdfTemplates.
 import type {
@@ -621,7 +622,7 @@ export function usePDFExport() {
     generatedAt?: string
   ) => {
     const { InventoryStockReportTemplate } = await loadPdfTemplates();
-    const document = <InventoryStockReportTemplate school={school} items={items} generatedAt={generatedAt || new Date().toLocaleDateString()} />;
+    const document = <InventoryStockReportTemplate school={school} items={items} generatedAt={generatedAt || formatDateWithSettings(new Date())} />;
     return generatePDF(document, `Inventory_Stock_${Date.now()}.pdf`);
   }, [generatePDF]);
 

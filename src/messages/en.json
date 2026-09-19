@@ -57,7 +57,8 @@
     "pleaseFillRequired": "Please fill in all required fields.",
     "validationFailed": "Please check the highlighted fields.",
     "unsavedChanges": "You have unsaved changes. Are you sure you want to leave without saving?",
-    "downloadFailed": "Download failed"
+    "downloadFailed": "Download failed",
+    "invalidDate": "Invalid date"
   },
   "sidebar": {
     "search": {
@@ -178,7 +179,8 @@
     "OMR": "Omani Rial (OMR)",
     "BHD": "Bahraini Dinar (BHD)",
     "MYR": "Malaysian Ringgit (MYR)",
-    "SGD": "Singapore Dollar (SGD)"
+    "SGD": "Singapore Dollar (SGD)",
+    "TRY": "Turkish Lira (TRY)"
   },
   "academicPeriods": {
     "title": "Academic Period",
@@ -2181,6 +2183,7 @@
     "description": "Enterprise-grade telemetry, tenant isolation, billing and infrastructure radar.",
     "management": "Institute Management",
     "tenants": "Institute Tenants",
+    "templates": "Onboarding Templates",
     "searchTenants": "Search by school name or tenant ID...",
     "billing": "Subscriptions & Billing",
     "broadcasts": "Platform Broadcasts",
@@ -2894,6 +2897,11 @@
         "description": "Cambridge pathway with O Level and A Level years",
         "count": "5 Years"
       },
+      "IGCSE_CAMBRIDGE": {
+        "label": "IGCSE Cambridge",
+        "description": "Cambridge IGCSE two-year pathway (Grades 9-10)",
+        "count": "2 Years"
+      },
       "MADRASA": {
         "label": "Madrasa / Religious Institute",
         "description": "Islamic studies levels with core religious curriculum",
@@ -2938,7 +2946,9 @@
       "completeLaunch": "Complete & Launch School",
       "timezoneValue": "Timezone:",
       "dateValue": "Date:",
-      "templateValue": "Template:"
+      "templateValue": "Template:",
+      "baseMonthlyTuition": "Base Monthly Tuition",
+      "baseMonthlyTuitionHint": "0 skips auto-setup. Otherwise per-class structures are scaled from this amount."
     },
     "timezones": {
       "pakistan": "Pakistan (PKT, UTC+5)",
@@ -4401,6 +4411,58 @@
     "loadingTenants": "Loading tenants...",
     "noTenants": "No tenants",
     "flagsUpdated": "Feature flags updated",
+    "templates": {
+      "title": "Onboarding Templates",
+      "description": "Academic blueprints provisioned for every new school. Built-ins mirror the code and can be edited, duplicated, or reset.",
+      "newTemplate": "New Template",
+      "editTemplate": "Edit Template",
+      "builtIn": "Built-in",
+      "custom": "Custom",
+      "active": "Active",
+      "inactive": "Inactive",
+      "searchPlaceholder": "Search templates...",
+      "noTemplates": "No templates found",
+      "classes": "classes",
+      "sections": "sections",
+      "groups": "groups",
+      "subjects": "subjects",
+      "updated": "Updated",
+      "version": "v{version}",
+      "viewEdit": "View / Edit",
+      "duplicate": "Duplicate",
+      "resetBuiltIn": "Reset to built-in",
+      "deleteTemplate": "Delete",
+      "saveChanges": "Save Changes",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "addClass": "Add Class",
+      "className": "Class name",
+      "classCode": "Code",
+      "sequence": "Seq",
+      "sectionList": "Sections (comma separated)",
+      "groupList": "Stream groups (one per line: Name | SHORT)",
+      "subjectList": "Subjects",
+      "addSubject": "Add subject",
+      "subjectName": "Subject",
+      "subjectCode": "Code",
+      "subjectType": "Type",
+      "maxMarks": "Max",
+      "passMarks": "Pass",
+      "labelField": "Display label",
+      "descriptionField": "Description",
+      "codeField": "Template code",
+      "countryField": "Country",
+      "categoryField": "Category",
+      "currencyField": "Currency",
+      "activeField": "Offer in signup wizard",
+      "saved": "Template saved",
+      "deleted": "Template deleted",
+      "duplicated": "Template duplicated",
+      "resetDone": "Template reset to built-in version",
+      "failed": "Operation failed",
+      "confirmDelete": "Delete this custom template? This cannot be undone.",
+      "confirmReset": "Reset this template to its built-in version? Your edits will be lost."
+    },
     "save": "Save",
     "moduleAccess": "Module Access & Entitlements",
     "moduleAccessDescription": "Manage licensed ERP modules and functional capabilities enabled for this school instance.",
@@ -4510,7 +4572,10 @@
     "failedFetchUsers": "Failed to fetch global users",
     "updateFailed": "Update failed",
     "impersonateFailed": "Impersonate failed",
-    "status": "Status"
+    "status": "Status",
+    "resetPassword": "Reset Password",
+    "newPassword": "New Password (Optional)",
+    "passwordPlaceholder": "Enter new password to override (min. 6 chars)"
   },
   "verify": {
     "certificate": {

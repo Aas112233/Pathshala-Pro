@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export default function TransportPage() {
   const t = useTranslations("transport");
   const tCommon = useTranslations("common");
   const common = useTranslations("common");
+  const { formatDate } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "transport", "read");
@@ -270,7 +272,7 @@ export default function TransportPage() {
       capacity: route.vehicle?.capacity || 40,
       stops: route.stops || [],
       students: manifestStudents,
-      generatedDate: new Date().toLocaleDateString(),
+      generatedDate: formatDate(new Date()),
     };
 
     exportTransportManifestPDF(manifestData);

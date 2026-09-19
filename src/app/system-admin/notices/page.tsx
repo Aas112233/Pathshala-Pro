@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp
 
 export default function SystemAdminNoticesPage() {
   const t = useTranslations("systemAdminPages");
+  const { formatDate } = useTenantFormatting();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -173,7 +175,7 @@ export default function SystemAdminNoticesPage() {
       header: t("published"),
       cell: (row) => (
         <span className="text-xs text-muted-foreground font-mono">
-          {new Date(row.publishDate).toLocaleDateString()}
+          {formatDate(row.publishDate)}
         </span>
       ),
     },

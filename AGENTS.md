@@ -114,9 +114,10 @@ npm run prisma:seed  # seed data
 
 ### 8. Date, Month, and Fiscal Year Selectors
 - Standardize all date / month / year pickers using unified reusable components:
+  - **Date Field:** `TenantDateInput` (`@/components/ui/tenant-date-input`) — NEVER use raw `<input type="date">`; native pickers render in browser locale and cannot follow the tenant setting. `TenantDateInput` renders the API-configured `dateFormat` (DD/MM/YYYY by default) and reports ISO `yyyy-mm-dd`, so it is a drop-in replacement with zero state-shape change.
   - **Month Picker:** `AppDropdown` with localized months (`MONTH_NAMES` or `MONTHS`).
   - **Year Picker:** `AppDropdown` with dynamic fiscal year arrays.
-  - **Date Picker:** Input with tenant date formatting (`DD/MM/YYYY`, `MM/DD/YYYY`, `YYYY-MM-DD`).
+  - **Date Display:** `formatDate` from `useTenantFormatting()` — NEVER `toLocaleDateString()`.
 
 ---
 

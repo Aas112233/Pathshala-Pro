@@ -5,6 +5,7 @@ import { TopSheet } from "@/components/ui/top-sheet";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -158,10 +159,9 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
           {/* Expense Date */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Expense Date *</Label>
-            <Input
-              type="date"
+            <TenantDateInput
               value={formData.expenseDate}
-              onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, expenseDate: v })}
               className="h-10 text-sm"
               required
             />

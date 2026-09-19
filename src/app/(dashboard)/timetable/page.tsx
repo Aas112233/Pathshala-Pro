@@ -16,6 +16,7 @@ import { useTimetableViewModel } from "@/viewmodels/timetable/use-timetable-view
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
 import {
@@ -146,7 +147,7 @@ export default function TimetablePage() {
       })),
       periods: effPeriods,
     };
-    const res = await exportTimetablePDF(school, data, new Date().toLocaleDateString());
+    const res = await exportTimetablePDF(school, data, formatDateWithSettings(new Date(), settings));
     if(res.success) toast.success(t("pdfDownloadSuccess")); else toast.error(tCommon("downloadFailed"));
   };
 

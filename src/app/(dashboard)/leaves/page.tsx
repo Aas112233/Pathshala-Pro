@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -22,6 +24,7 @@ export default function LeavesPage() {
   const t = useTranslations("leaves");
   const tCommon = useTranslations("common");
   const common = useTranslations("common");
+  const { formatDate } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "leaves", "read");
@@ -162,7 +165,7 @@ export default function LeavesPage() {
       header: t("duration"),
       cell: ({ row }) => (
         <div className="text-xs">
-          <p>{new Date(row.original.fromDate).toLocaleDateString()} → {new Date(row.original.toDate).toLocaleDateString()}</p>
+          <p>{formatDate(row.original.fromDate)} → {formatDate(row.original.toDate)}</p>
           <p className="text-muted-foreground">{getDuration(row.original.fromDate, row.original.toDate)}</p>
         </div>
       ),
@@ -255,8 +258,8 @@ export default function LeavesPage() {
                 <AppDropdown value={formData.leaveType} onChange={(v) => setFormData((p) => ({ ...p, leaveType: v }))} options={[{ value: "SICK", label: t("sick") }, { value: "CASUAL", label: t("casual") }, { value: "EMERGENCY", label: t("emergency") }, { value: "OTHER", label: t("other") }]} />
               </ERPFormField>
               <div />
-              <ERPFormField label={t("fromDate")} required error={formErrors.fromDate}><Input type="date" value={formData.fromDate} onChange={(e) => setFormData((p) => ({ ...p, fromDate: e.target.value }))} /></ERPFormField>
-              <ERPFormField label={t("toDate")} required error={formErrors.toDate}><Input type="date" value={formData.toDate} onChange={(e) => setFormData((p) => ({ ...p, toDate: e.target.value }))} /></ERPFormField>
+              <ERPFormField label={t("fromDate")} required error={formErrors.fromDate}><TenantDateInput value={formData.fromDate} onChange={(v) => setFormData((p) => ({ ...p, fromDate: v }))} /></ERPFormField>
+              <ERPFormField label={t("toDate")} required error={formErrors.toDate}><TenantDateInput value={formData.toDate} onChange={(v) => setFormData((p) => ({ ...p, toDate: v }))} /></ERPFormField>
               <div className="col-span-2">
                 <ERPFormField label={t("reason")} required error={formErrors.reason}><textarea value={formData.reason} onChange={(e) => setFormData((p) => ({ ...p, reason: e.target.value }))} placeholder={t("reason")} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></ERPFormField>
               </div>

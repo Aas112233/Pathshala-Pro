@@ -1,13 +1,13 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { CalendarDays, Clock, MapPin, Pencil, Repeat, User } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CalendarItem } from "@/lib/calendar-service";
-import { formatCurrencyWithSettings, type TenantSettings } from "@/lib/tenant-settings";
+import { formatCurrencyWithSettings, formatDateWithSettings, formatTimeWithSettings, type TenantSettings } from "@/lib/tenant-settings";
 import { itemColorClass, itemIcon, itemStartDate, itemEndDate } from "./calendar-utils";
 
 interface EventDetailDialogProps {
@@ -30,7 +30,6 @@ const SOURCE_LABEL_KEYS: Record<string, string> = {
 
 export function EventDetailDialog({ item, onClose, onEdit, canWrite, settings }: EventDetailDialogProps) {
   const t = useTranslations("calendar");
-  const locale = useLocale();
 
   if (!item) return null;
 
@@ -40,12 +39,12 @@ export function EventDetailDialog({ item, onClose, onEdit, canWrite, settings }:
   const isSameDay = start.toDateString() === end.toDateString();
 
   const dateText = isSameDay
-    ? new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(start)
-    : `${new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(start)} – ${new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(end)}`;
+    ? formatDateWithSettings(start, settings, "D MMMM YYYY")
+    : `${formatDateWithSettings(start, settings, "D MMMM YYYY")} – ${formatDateWithSettings(end, settings, "D MMMM YYYY")}`;
 
   const timeText = item.isAllDay
     ? t("allDay")
-    : `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    : `${formatTimeWithSettings(start, settings)} – ${formatTimeWithSettings(end, settings)}`;
 
   return (
     <Dialog open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>

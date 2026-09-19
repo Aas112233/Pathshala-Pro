@@ -21,6 +21,7 @@ import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Package, Plus, Pencil, Trash2, Search, AlertTriangle, Boxes, TrendingUp, ArrowDownToLine, ArrowUpFromLine, Printer, Download } from "lucide-react";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
 
@@ -116,7 +117,7 @@ export default function InventoryPage() {
   const handleStockReport = async () => {
     const school = { name: settings.name||"Pathshala Pro School", address: settings.address||"", phone: settings.phone||"", email: settings.email||"", logoUrl: settings.logoUrl };
     const stockItems = items.map((it:any)=>({ code: it.code, name: it.name, category: it.category, unit: it.unit, quantity: it.quantity, minStockLevel: it.minStockLevel, location: it.location, costPrice: it.costPrice||0 }));
-    const res = await exportInventoryStockPDF(school, stockItems, new Date().toLocaleDateString());
+    const res = await exportInventoryStockPDF(school, stockItems, formatDateWithSettings(new Date(), settings));
     if(res.success) toast.success(t("stockPdfSuccess")); else toast.error(tCommon("downloadFailed"));
   };
 
@@ -177,7 +178,7 @@ export default function InventoryPage() {
       return <span className={`text-sm font-mono font-semibold ${sign === "-" ? "text-destructive" : "text-emerald-600"}`}>{sign}{row.original.quantity}</span>;
     }},
     { accessorKey: "reference", header: t("reference"), cell: ({ getValue }) => (getValue() as string) || "—" },
-    { accessorKey: "createdAt", header: t("date"), cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString() },
+    { accessorKey: "createdAt", header: t("date"), cell: ({ getValue }) => formatDateWithSettings(getValue() as string, settings) },
     {
       id: "actions",
       header: t("actions"),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { 
@@ -44,6 +45,7 @@ interface Tenant {
 
 export default function TenantsPage() {
   const t = useTranslations();
+  const { formatDate } = useTenantFormatting();
   const router = useRouter();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,7 +191,7 @@ export default function TenantsPage() {
                               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                             </button>
                             <p className="text-[10px] text-muted-foreground">
-                              {new Date(tenant.createdAt).toLocaleDateString()}
+                              {formatDate(tenant.createdAt)}
                             </p>
                           </div>
                         </div>

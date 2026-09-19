@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { downloadBlob } from "@/lib/download-blob";
 import { exportToExcel, ReportTemplates, type ExcelExportOptions, type ExcelColumn } from "@/lib/excel-exporter";
 
@@ -22,6 +23,7 @@ interface ExportParams {
 }
 
 export function useExcelExport(options: UseExcelExportOptions = {}) {
+  const { formatDate } = useTenantFormatting();
   const {
     fileName = "report",
     schoolName = "Pathshala Pro School",
@@ -39,11 +41,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
         schoolAddress,
         schoolPhone,
         schoolEmail,
-        reportDate: new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
+        reportDate: formatDate(new Date(), "D MMMM YYYY"),
         dateRange: params.dateRange,
         columns: params.columns,
         data: params.data,

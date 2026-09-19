@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { Activity, CalendarClock, CheckCircle2, Clock, FileClock, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -45,6 +46,7 @@ export function SubscriptionHistoryTimeline({
   loading?: boolean;
 }) {
   const t = useTranslations("saasAdmin.tenantDetail");
+  const { formatDate } = useTenantFormatting();
 
   if (loading) {
     return (
@@ -104,7 +106,7 @@ export function SubscriptionHistoryTimeline({
                 )}
                 {item.subscriptionEndAt && (
                   <span>
-                    {t("endsOnInline", { date: new Date(item.subscriptionEndAt).toLocaleDateString() })}
+                    {t("endsOnInline", { date: formatDate(item.subscriptionEndAt) })}
                   </span>
                 )}
               </div>

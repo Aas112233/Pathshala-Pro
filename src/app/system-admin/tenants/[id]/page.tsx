@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import { TenantModuleAccessPanel } from "@/components/system-admin/tenant-module
 
 export default function TenantDetailPage() {
   const t = useTranslations();
+  const { formatDate } = useTenantFormatting();
   const params = useParams();
   const router = useRouter();
   const tenantId = params.id as string;
@@ -138,7 +140,7 @@ export default function TenantDetailPage() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground font-mono mt-0.5">
-              Tenant ID: {tenant.tenantId} • Created: {new Date(tenant.createdAt).toLocaleDateString()}
+              Tenant ID: {tenant.tenantId} • Created: {formatDate(tenant.createdAt)}
             </p>
           </div>
         </div>
@@ -292,7 +294,7 @@ export default function TenantDetailPage() {
                         {u.role}
                       </Badge>
                       <p className="text-[10px] text-muted-foreground">
-                        {u.lastLoginAt ? `Login: ${new Date(u.lastLoginAt).toLocaleDateString()}` : "Never logged in"}
+                        {u.lastLoginAt ? `Login: ${formatDate(u.lastLoginAt)}` : "Never logged in"}
                       </p>
                     </div>
                   </div>

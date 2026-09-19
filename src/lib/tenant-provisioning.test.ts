@@ -5,8 +5,13 @@ import {
   seedTenantFiscalCalendar,
   seedTenantVoucherSequences,
   seedTenantPromotionRules,
+  seedTenantGroups,
+  seedTenantClassFeeStructures,
+  seedTenantExpenseCategories,
+  deriveDefaultFeeStructures,
   DEFAULT_CHART_OF_ACCOUNTS,
   DEFAULT_FEE_HEADS,
+  DEFAULT_EXPENSE_CATEGORIES,
 } from "@/lib/tenant-provisioning";
 
 describe("Multi-Tenant Provisioning & Bootstrapping", () => {
@@ -172,6 +177,150 @@ describe("Multi-Tenant Provisioning & Bootstrapping", () => {
       expect(createdData[3].classId).toBe("c-12");
       expect(createdData[3].nextClassId).toBeNull();
       expect(createdData[3].allowConditionalPromotion).toBe(false);
+    });
+  });
+
+  describe("seedTenantGroups", () => {
+    it("creates stream groups per class and links matching sections", async () => {
+      const createdGroups: any[] = [];
+      const updatedSections: any[] = [];
+      const mockTx: any = {
+        group: {
+          create: async (payload: any) => {
+            const row = { id: `g-${createdGroups.length}`, ...payload.data };
+            createdGroups.push(row);
+            return row;
+          },
+        },
+        section: {
+          update: async (payload: any) => {
+            updatedSections.push(payload);
+            return payload;
+          },
+        },
+      };
+
+      const classesById = new Map([["IGCSE-1", { id: "c-ig1", code: "IGCSE-1" }]]);
+      const groupsByClassCode = new Map([
+        [
+          "IGCSE-1",
+          [
+            { name: "Science", shortName: "SCI", subjectCodes: ["PHY", "CHE"] },
+            { name: "Business", shortName: "BIZ", subjectCodes: ["ACC", "ECO"] },
+          ],
+        ],
+      ]);
+      const sectionIdsByClassCode = new Map([
+        [
+          "IGCSE-1",
+          [
+            { id: "s-sci", name: "Science" },
+            { id: "s-biz", name: "Business" },
+          ],
+        ],
+      ]);
+
+      const count = await seedTenantGroups(
+        mockTx,
+        "school-dhaka-01",
+        classesById,
+        groupsByClassCode,
+        sectionIdsByClassCode
+      );
+      expect(count).toBe(2);
+      expect(createdGroups[0].classId).toBe("c-ig1");
+      expect(createdGroups[0].subjects).toEqual(["PHY", "CHE"]);
+      // Sections with matching names get linked
+      expect(updatedSections).toHaveLength(2);
+      expect(updatedSections[0].data.groupId).toBe("g-0");
+    });
+
+    it("skips classes with no group definitions", async () => {
+      const mockTx: any = {
+        group: { create: async () => { throw new Error("should not create"); } },
+        section: { update: async () => ({}) },
+      };
+      const count = await seedTenantGroups(
+        mockTx,
+        "school-dhaka-01",
+        new Map([["GR-1", { id: "c-g1", code: "GR-1" }]]),
+        new Map(),
+        new Map()
+      );
+      expect(count).toBe(0);
+    });
+  });
+
+  describe("deriveDefaultFeeStructures", () => {
+    it("returns [] for a zero base (no zero-bill traps)", () => {
+      expect(
+        deriveDefaultFeeStructures([{ code: "GR-1", sequence: 1 }], 0)
+      ).toEqual([]);
+    });
+
+    it("scales tuition mildly by class level", () => {
+      const rows = deriveDefaultFeeStructures(
+        [
+          { code: "GR-1", sequence: 1 },
+          { code: "GR-10", sequence: 10 },
+        ],
+        3000
+      );
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({ classCode: "GR-1", tuitionFee: 3000 });
+      expect(rows[1].tuitionFee).toBeGreaterThan(rows[0].tuitionFee);
+    });
+  });
+
+  describe("seedTenantClassFeeStructures", () => {
+    it("seeds one structure per class with summed totals and skips unknown codes", async () => {
+      let createdData: any[] = [];
+      const mockTx: any = {
+        classFeeStructure: {
+          createMany: async (payload: any) => {
+            createdData = payload.data;
+            return { count: payload.data.length };
+          },
+        },
+      };
+
+      const classIdsByCode = new Map([
+        ["GR-9", "c-9"],
+        ["GR-10", "c-10"],
+      ]);
+      const count = await seedTenantClassFeeStructures(mockTx, "school-lahore-01", "ay-2026", classIdsByCode, [
+        { classCode: "GR-9", tuitionFee: 3000, examFee: 500 },
+        { classCode: "NOPE", tuitionFee: 9999 },
+      ]);
+      expect(count).toBe(1);
+      expect(createdData[0]).toMatchObject({
+        tenantId: "school-lahore-01",
+        academicYearId: "ay-2026",
+        classId: "c-9",
+        tuitionFee: 3000,
+        examFee: 500,
+        totalMonthlyFee: 3500,
+      });
+    });
+  });
+
+  describe("seedTenantExpenseCategories", () => {
+    it("seeds the default operational categories", async () => {
+      let createdData: any[] = [];
+      const mockTx: any = {
+        expenseCategory: {
+          createMany: async (payload: any) => {
+            createdData = payload.data;
+            return { count: payload.data.length };
+          },
+        },
+      };
+
+      const res = await seedTenantExpenseCategories(mockTx, "school-dhaka-01");
+      expect(res.count).toBe(DEFAULT_EXPENSE_CATEGORIES.length);
+      expect(createdData[0].tenantId).toBe("school-dhaka-01");
+      const salaries = createdData.find((c) => c.code === "EXP-SAL");
+      expect(salaries?.isActive).toBe(true);
     });
   });
 });

@@ -6,7 +6,8 @@ import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-f
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isValidBirthDate, isValidDateInput, todayDateString } from "@/lib/date-validation";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
+import { isValidBirthDate, isValidDateInput } from "@/lib/date-validation";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { clsx } from "clsx";
@@ -208,6 +209,14 @@ export function StaffFormModal({
   const handleDropdownChange = useCallback((name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);
+
+  const handleDateChange = useCallback((name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  }, [errors]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -525,13 +534,10 @@ export function StaffFormModal({
                 </ERPFormField>
 
                 <ERPFormField label="Date of Birth" error={errors.dateOfBirth} htmlFor="dateOfBirth">
-                  <Input
+                  <TenantDateInput
                     id="dateOfBirth"
-                    type="date"
-                    name="dateOfBirth"
                     value={formData.dateOfBirth}
-                    max={todayDateString()}
-                    onChange={handleChange}
+                    onChange={(v) => handleDateChange("dateOfBirth", v)}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
@@ -575,23 +581,19 @@ export function StaffFormModal({
                 </ERPFormField>
 
                 <ERPFormField label="Hire Date" required error={errors.hireDate} htmlFor="hireDate">
-                  <Input
+                  <TenantDateInput
                     id="hireDate"
-                    type="date"
-                    name="hireDate"
                     value={formData.hireDate}
-                    onChange={handleChange}
+                    onChange={(v) => handleDateChange("hireDate", v)}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.hireDate)}
                   />
                 </ERPFormField>
                 <ERPFormField label="Joining Date" htmlFor="joiningDate">
-                  <Input
+                  <TenantDateInput
                     id="joiningDate"
-                    type="date"
-                    name="joiningDate"
                     value={formData.joiningDate}
-                    onChange={handleChange}
+                    onChange={(v) => handleDateChange("joiningDate", v)}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>

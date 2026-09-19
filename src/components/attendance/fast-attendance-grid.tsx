@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -204,10 +205,9 @@ export function FastAttendanceGrid({
 
           {/* Quick Filters */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <Input
-              type="date"
+            <TenantDateInput
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={setSelectedDate}
               className="h-9 w-36 text-xs bg-background"
             />
 

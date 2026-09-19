@@ -18,6 +18,7 @@ import {
   lockedDeleteMessage,
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 const updateClassSchema = z.object({
   name: z.string().min(2, "Class name must be at least 2 characters").optional(),
@@ -156,6 +157,8 @@ export async function PUT(
       },
     });
 
+    fastCache.invalidatePrefix(`classes:${tenantId}`);
+
     return successResponse(updatedClass, "Class updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -201,6 +204,8 @@ export async function DELETE(
     await prisma.class.delete({
       where: { id },
     });
+
+    fastCache.invalidatePrefix(`classes:${tenantId}`);
 
     return successResponse(null, "Class deleted successfully");
   } catch (error) {

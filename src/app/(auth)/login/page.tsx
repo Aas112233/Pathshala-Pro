@@ -73,6 +73,16 @@ export default function LoginPage() {
   };
 
 
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const returnUrl = searchParams?.get("returnUrl");
+  const isSessionExpired = searchParams?.get("expired") === "1";
+
+  useEffect(() => {
+    if (isSessionExpired) {
+      toast.error("Your session expired. Please sign in again.");
+    }
+  }, [isSessionExpired]);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -86,7 +96,16 @@ export default function LoginPage() {
         if (!result.error) {
           login(result.data.user);
           toast.success(t("welcomeToast"));
-          window.location.replace(result.data.redirectTo === "/subscription/inactive" ? "/subscription/inactive" : "/");
+
+          // Safe internal target redirect
+          let destination = "/";
+          if (result.data.redirectTo === "/subscription/inactive") {
+            destination = "/subscription/inactive";
+          } else if (returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//")) {
+            destination = returnUrl;
+          }
+
+          window.location.replace(destination);
         }
       } catch (error) {
         const message =

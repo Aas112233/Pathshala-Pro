@@ -10,6 +10,7 @@ import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -259,9 +260,9 @@ export default function ExamsPage() {
     const examStart = new Date(exam.startDate);
     const sched = (exam.subjects || []).map((sub: any, idx: number) => {
       const d = new Date(examStart); d.setDate(d.getDate()+idx);
-      return { date: d.toLocaleDateString(), day: d.toLocaleDateString(undefined,{weekday:"short"}), subject: sub.subject?.name || sub.subjectId || `Subject ${idx+1}`, subjectCode: sub.subject?.code || sub.subjectId?.slice(0,6) || "-", time: "10:00 AM - 01:00 PM", venue: "Main Examination Hall" };
+      return { date: formatDate(d), day: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()], subject: sub.subject?.name || sub.subjectId || `Subject ${idx+1}`, subjectCode: sub.subject?.code || sub.subjectId?.slice(0,6) || "-", time: "10:00 AM - 01:00 PM", venue: "Main Examination Hall" };
     });
-    return sched.length>0? sched: [{ date: new Date(exam.startDate).toLocaleDateString(), day:"Mon", subject:"General", subjectCode:"-", time:"10:00 AM - 01:00 PM", venue:"Main Hall"}];
+    return sched.length>0? sched: [{ date: formatDate(exam.startDate), day:"Mon", subject:"General", subjectCode:"-", time:"10:00 AM - 01:00 PM", venue:"Main Hall"}];
   };
 
   const handleAdmitCard = async (exam: Exam, batch=false) => {
@@ -278,9 +279,9 @@ export default function ExamsPage() {
           examName: exam.name, examType: exam.type, academicYear: exam.academicYear?.label || String(new Date(exam.startDate).getFullYear()),
           rollNumber: st.rollNumber || `R-${String(i+1).padStart(3,"0")}`, admissionNumber: st.studentId || st.id?.slice(0,8) || `STU${i}`,
           studentName: `${st.firstName||""} ${st.lastName||""}`.trim()||`Student ${i+1}`, fatherName: st.guardianName||undefined,
-          className: st.class?.name || "Class 10", section: st.section?.name, dateOfBirth: st.dateOfBirth? new Date(st.dateOfBirth).toLocaleDateString():undefined,
+          className: st.class?.name || "Class 10", section: st.section?.name, dateOfBirth: st.dateOfBirth? formatDate(st.dateOfBirth):undefined,
           photoUrl: st.profilePictureUrl, examCenter: school.name, centerCode:"CENTER-01", schedule,
-          admitCardNumber:`ADMIT-${exam.examId}-${st.rollNumber||i}`, issueDate: new Date().toLocaleDateString(),
+          admitCardNumber:`ADMIT-${exam.examId}-${st.rollNumber||i}`, issueDate: formatDate(new Date()),
         }));
         const res = await exportBatchAdmitCardsPDF(school, cards as any, typeof window!=="undefined"? window.location.origin: undefined);
         if (res.success) toast.success(t("batchAdmitCardsDownloaded", { count: cards.length })); else toast.error(t("pdfFailed"));
@@ -292,9 +293,9 @@ export default function ExamsPage() {
           examName: exam.name, examType: exam.type, academicYear: exam.academicYear?.label || String(new Date(exam.startDate).getFullYear()),
           rollNumber: baseStudent.rollNumber||"R-001", admissionNumber: baseStudent.studentId||baseStudent.id||"STU001",
           studentName: `${baseStudent.firstName||""} ${baseStudent.lastName||""}`.trim()||"Demo Student", fatherName: baseStudent.guardianName||undefined,
-          className: baseStudent.class?.name||"Class 10", section: baseStudent.section?.name, dateOfBirth: baseStudent.dateOfBirth? new Date(baseStudent.dateOfBirth).toLocaleDateString():undefined,
+          className: baseStudent.class?.name||"Class 10", section: baseStudent.section?.name, dateOfBirth: baseStudent.dateOfBirth? formatDate(baseStudent.dateOfBirth):undefined,
           photoUrl: baseStudent.profilePictureUrl, examCenter: school.name, centerCode:"CENTER-01", schedule,
-          admitCardNumber:`ADMIT-${exam.examId}-${baseStudent.rollNumber||"001"}`, issueDate: new Date().toLocaleDateString(),
+          admitCardNumber:`ADMIT-${exam.examId}-${baseStudent.rollNumber||"001"}`, issueDate: formatDate(new Date()),
         };
         const verificationUrl = typeof window!=="undefined"? `${window.location.origin}/verify/certificate/${exam.id}`:undefined;
         const res = await exportExamAdmitCardPDF(school, admitData, verificationUrl);
@@ -318,10 +319,10 @@ export default function ExamsPage() {
       const transcript:any = {
         studentName: `${base.firstName||""} ${base.lastName||""}`.trim()||"Demo Student",
         fatherName: base.guardianName||base.fatherName, motherName: base.motherName, admissionNumber: base.studentId||"STU001", rollNumber: base.rollNumber||"R-001",
-        dateOfBirth: base.dateOfBirth? new Date(base.dateOfBirth).toLocaleDateString():undefined, gender: base.gender, photoUrl: base.profilePictureUrl,
+        dateOfBirth: base.dateOfBirth? formatDate(base.dateOfBirth):undefined, gender: base.gender, photoUrl: base.profilePictureUrl,
         years: [{ academicYear: exam.academicYear?.label || new Date(exam.startDate).getFullYear().toString(), className: base.class?.name||"Class 10", section: base.section?.name, rollNumber: base.rollNumber||"R-001", examName: exam.name, subjects, totalMax, totalObtained, percentage, gpa, grade: gpa>=3.6?"A":gpa>=3?"B":"C", result:"PASSED" }],
         cumulativeGpa: gpa, cumulativePercentage: percentage, overallGrade: gpa>=3.6?"A":gpa>=3?"B":"C",
-        issueDate: new Date().toLocaleDateString(), transcriptNumber: `TR-${exam.examId}-${base.rollNumber||"001"}`,
+        issueDate: formatDate(new Date()), transcriptNumber: `TR-${exam.examId}-${base.rollNumber||"001"}`,
       };
       const url = typeof window!=="undefined"? `${window.location.origin}/verify/certificate/${exam.id}`:undefined;
       const res = await exportTranscriptPDF(school, transcript, url);
@@ -742,24 +743,22 @@ export default function ExamsPage() {
 
             <ERPFormGrid cols={2}>
               <ERPFormField label={t('startDate')} required error={formErrors.startDate} htmlFor="startDate">
-                <Input
+                <TenantDateInput
                   id="startDate"
-                  type="date"
                   value={formData.startDate}
-                  onChange={(e) => {
-                    setFormData({ ...formData, startDate: e.target.value });
+                  onChange={(v) => {
+                    setFormData({ ...formData, startDate: v });
                     if (formErrors.startDate) setFormErrors((prev) => ({ ...prev, startDate: undefined }));
                   }}
                   aria-invalid={Boolean(formErrors.startDate)}
                 />
               </ERPFormField>
               <ERPFormField label={t('endDate')} required error={formErrors.endDate} htmlFor="endDate">
-                <Input
+                <TenantDateInput
                   id="endDate"
-                  type="date"
                   value={formData.endDate}
-                  onChange={(e) => {
-                    setFormData({ ...formData, endDate: e.target.value });
+                  onChange={(v) => {
+                    setFormData({ ...formData, endDate: v });
                     if (formErrors.endDate) setFormErrors((prev) => ({ ...prev, endDate: undefined }));
                   }}
                   aria-invalid={Boolean(formErrors.endDate)}

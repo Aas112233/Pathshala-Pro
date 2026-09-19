@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { getPdfFontFamily, pdfTextSample } from "./pdf-fonts";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 
 export interface HostelResident {
   rollNumber: string;
@@ -283,7 +284,7 @@ export function HostelManifestPDFDocument({ data }: { data: HostelManifestPDFDat
             <Text style={styles.sigLabel}>Hostel Warden Signature</Text>
           </View>
           <Text style={{ fontSize: 7, color: "#94a3b8" }}>
-            Generated on {new Date().toLocaleDateString()} · Pathshala-Pro ERP
+            Generated on {formatDateWithSettings(new Date())} · Pathshala-Pro ERP
           </Text>
           <View style={styles.sigBox}>
             <View style={styles.sigLine} />

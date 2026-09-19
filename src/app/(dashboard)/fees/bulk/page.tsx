@@ -68,7 +68,7 @@ export default function BulkFeeEntryPage() {
   const t = useTranslations("bulkFees");
   const tCommon = useTranslations("common");
   const qc = useQueryClient();
-  const { formatCurrency, currencySymbol } = useTenantFormatting();
+  const { formatCurrency, currencySymbol, formatDate } = useTenantFormatting();
   const { settings } = useTenantSettings();
   const { exportFeeVouchersPDF } = usePDFExport();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
@@ -577,7 +577,7 @@ export default function BulkFeeEntryPage() {
       schoolName: settings.name || "Pathshala Pro School",
       schoolAddress: settings.address, schoolCode: (settings as any).schoolCode,
       currencySymbol, voucherId: r.existingVoucherId || `VCH-${r.studentId}-${Date.now().toString().slice(-5)}`,
-      issueDate: new Date().toLocaleDateString(), dueDate: new Date(Date.now()+7*86400000).toLocaleDateString(),
+      issueDate: formatDate(new Date()), dueDate: formatDate(new Date(Date.now()+7*86400000)),
       studentName: `${r.firstName} ${r.lastName}`, studentId: r.studentId, rollNumber: r.rollNumber,
       className: r.className, sectionName: r.sectionName, feeType: `${currentMonthName} Fee`,
       academicYear: selectedYear?.label || new Date().getFullYear().toString(),

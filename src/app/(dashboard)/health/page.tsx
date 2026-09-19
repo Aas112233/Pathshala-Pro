@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -24,6 +26,7 @@ export default function HealthPage() {
   const t = useTranslations("health");
   const tCommon = useTranslations("common");
   const common = useTranslations("common");
+  const { formatDate } = useTenantFormatting();
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canRead = hasPermission(perms, "health", "read");
@@ -169,7 +172,7 @@ export default function HealthPage() {
       header: t("lastCheckupDate"),
       cell: ({ getValue }) => {
         const v = getValue() as string | null;
-        return v ? new Date(v).toLocaleDateString() : <span className="text-muted-foreground text-xs">—</span>;
+        return v ? formatDate(v) : <span className="text-muted-foreground text-xs">—</span>;
       },
     },
     {
@@ -237,7 +240,7 @@ export default function HealthPage() {
               <ERPFormField label={t("weight")}><Input type="number" step="0.1" value={formData.weightKg} onChange={(e) => setFormData((p) => ({ ...p, weightKg: e.target.value }))} placeholder={t("weight")} /></ERPFormField>
               <ERPFormField label={t("visionLeft")}><Input value={formData.visionLeft} onChange={(e) => setFormData((p) => ({ ...p, visionLeft: e.target.value }))} placeholder={t("visionLeft")} /></ERPFormField>
               <ERPFormField label={t("visionRight")}><Input value={formData.visionRight} onChange={(e) => setFormData((p) => ({ ...p, visionRight: e.target.value }))} placeholder={t("visionRight")} /></ERPFormField>
-              <ERPFormField label={t("lastCheckupDate")}><Input type="date" value={formData.lastCheckupDate} onChange={(e) => setFormData((p) => ({ ...p, lastCheckupDate: e.target.value }))} /></ERPFormField>
+              <ERPFormField label={t("lastCheckupDate")}><TenantDateInput value={formData.lastCheckupDate} onChange={(v) => setFormData((p) => ({ ...p, lastCheckupDate: v }))} /></ERPFormField>
               <div className="col-span-2">
                 <ERPFormField label={t("remarks")}><textarea value={formData.remarks} onChange={(e) => setFormData((p) => ({ ...p, remarks: e.target.value }))} placeholder={t("remarks")} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></ERPFormField>
               </div>

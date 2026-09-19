@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -130,18 +131,15 @@ export function HolidayManagerSheet({
                   />
                 </ERPFormField>
                 <ERPFormField label={t("startDate")} required error={errors.startDate}>
-                  <Input
-                    type="date"
+                  <TenantDateInput
                     value={form.startDate}
-                    onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                    onChange={(v) => setForm({ ...form, startDate: v })}
                   />
                 </ERPFormField>
                 <ERPFormField label={t("endDate")} required error={errors.endDate}>
-                  <Input
-                    type="date"
+                  <TenantDateInput
                     value={form.endDate}
-                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                    min={form.startDate || undefined}
+                    onChange={(v) => setForm({ ...form, endDate: v })}
                     disabled={!form.startDate}
                   />
                 </ERPFormField>

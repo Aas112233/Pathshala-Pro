@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, Users, Search, Filter, ArrowLeftRight, Power } from "lucide-react";
+import { ShieldCheck, Users, Search, Filter, ArrowLeftRight, Power, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ interface GlobalUser {
 
 export default function SystemAdminUsersPage() {
   const t = useTranslations("systemAdminPages");
+  const { formatDate } = useTenantFormatting();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -39,6 +41,7 @@ export default function SystemAdminUsersPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editRole, setEditRole] = useState("");
   const [editActive, setEditActive] = useState(true);
+  const [newPassword, setNewPassword] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["system-admin-users", { page, search, tenantFilter, roleFilter }],
@@ -68,6 +71,7 @@ export default function SystemAdminUsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["system-admin-users"] });
       toast.success(t("userUpdated"));
+      setNewPassword("");
       setIsSheetOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
@@ -134,15 +138,40 @@ export default function SystemAdminUsersPage() {
     {
       key: "login",
       header: t("lastLogin"),
-      cell: (row: GlobalUser) => <span className="text-xs text-muted-foreground">{row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleDateString() : "—"}</span>,
+      cell: (row: GlobalUser) => <span className="text-xs text-muted-foreground">{row.lastLoginAt ? formatDate(row.lastLoginAt) : "—"}</span>,
     },
     {
       key: "actions",
       header: t("userActions"),
       cell: (row: GlobalUser) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => { setEditUser(row); setEditRole(row.role); setEditActive(row.isActive); setIsSheetOpen(true); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px]"
+            onClick={() => {
+              setEditUser(row);
+              setEditRole(row.role);
+              setEditActive(row.isActive);
+              setNewPassword("");
+              setIsSheetOpen(true);
+            }}
+          >
             {t("edit")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px] text-amber-600 hover:text-amber-700"
+            onClick={() => {
+              setEditUser(row);
+              setEditRole(row.role);
+              setEditActive(row.isActive);
+              setNewPassword("");
+              setIsSheetOpen(true);
+            }}
+          >
+            <KeyRound className="h-3 w-3 mr-1" /> {t("resetPassword")}
           </Button>
           <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => updateMutation.mutate({ id: row.id, payload: { isActive: !row.isActive } })}>
             <Power className="h-3 w-3 mr-1" /> {t(row.isActive ? "deactivate" : "activate")}
@@ -188,17 +217,40 @@ export default function SystemAdminUsersPage() {
 
       <TopSheet
         isOpen={isSheetOpen}
-        onClose={() => setIsSheetOpen(false)}
+        onClose={() => {
+          setIsSheetOpen(false);
+          setNewPassword("");
+        }}
         title={`Edit ${editUser?.email ?? ""}`}
         description={t("editUserDescription")}
         maxWidth="lg"
         footer={
           <div className="flex justify-end gap-2 w-full">
-            <Button variant="outline" onClick={() => setIsSheetOpen(false)}>{t("cancel")}</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsSheetOpen(false);
+                setNewPassword("");
+              }}
+            >
+              {t("cancel")}
+            </Button>
             <Button
               onClick={() => {
                 if (!editUser) return;
-                updateMutation.mutate({ id: editUser.id, payload: { role: editRole, isActive: editActive } });
+                const trimmedPassword = newPassword.trim();
+                if (trimmedPassword && trimmedPassword.length < 6) {
+                  toast.error("Password must be at least 6 characters");
+                  return;
+                }
+                const payload: { role: string; isActive: boolean; password?: string } = {
+                  role: editRole,
+                  isActive: editActive,
+                };
+                if (trimmedPassword) {
+                  payload.password = trimmedPassword;
+                }
+                updateMutation.mutate({ id: editUser.id, payload });
               }}
               disabled={updateMutation.isPending}
             >
@@ -229,6 +281,19 @@ export default function SystemAdminUsersPage() {
               <AppDropdown value={editActive ? "true" : "false"} onChange={(v) => setEditActive(v === "true")} options={[{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} />
             </ERPFormField>
           </ERPFormGrid>
+        </ERPFormSection>
+
+        <ERPFormSection title={t("resetPassword")}>
+          <ERPFormField label={t("newPassword")}>
+            <Input
+              type="password"
+              placeholder={t("passwordPlaceholder")}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="text-xs"
+              autoComplete="new-password"
+            />
+          </ERPFormField>
         </ERPFormSection>
       </TopSheet>
     </div>

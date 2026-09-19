@@ -18,7 +18,7 @@ export const STRUCTURE_ERROR = {
  * Throws Error with STRUCTURE_ERROR codes so the route can return a 400.
  */
 export function resolveAcademicStructure(
-  template: ClassTemplatePreset,
+  template: string,
   override?: OnboardAcademicStructureItem[] | null
 ): TemplateClassDef[] {
   if (!override || override.length === 0) {
@@ -39,6 +39,11 @@ export function resolveAcademicStructure(
     code: item.code.trim(),
     sequence: item.sequence,
     sections: item.sections,
+    groups: (item.groups ?? []).map((g) => ({
+      name: g.name.trim(),
+      shortName: g.shortName.trim(),
+      subjectCodes: g.subjects ?? [],
+    })),
     subjects: item.subjects.map(
       (s): TemplateSubjectDef => ({
         name: s.name.trim(),

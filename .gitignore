@@ -154,3 +154,5 @@ Desktop.ini
 *.temp
 *.bak
 scratch/
+k6.exe 
+test-out.txt

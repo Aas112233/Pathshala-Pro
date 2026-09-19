@@ -18,6 +18,7 @@ import {
   type TemplateClassDef,
 } from "@/lib/onboarding-templates";
 import { resolveAcademicStructure, STRUCTURE_ERROR } from "@/lib/onboarding-structure";
+import { resolveOnboardingTemplateClasses } from "@/lib/onboarding-template-store";
 import {
   seedTenantChartOfAccounts,
   seedTenantFeeHeads,
@@ -26,6 +27,8 @@ import {
   seedTenantPromotionRules,
   seedTenantGroups,
   seedTenantClassFeeStructures,
+  seedTenantExpenseCategories,
+  deriveDefaultFeeStructures,
 } from "@/lib/tenant-provisioning";
 import bcrypt from "bcryptjs";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
@@ -160,6 +163,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Resolve the class template: explicit structure override wins, else the
+    // active DB template, else the built-in code definitions.
+    const dbTemplateClasses = await resolveOnboardingTemplateClasses(data.classTemplate ?? "K_12");
+    if (!dbTemplateClasses) {
+      return badRequest(`Unknown class template '${data.classTemplate}'.`);
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(data.adminPassword, 10);
 
@@ -231,11 +241,10 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // 4. Seed Initial Class Structure & Sections (template or wizard override)
-        const classDefinitions = resolveAcademicStructure(
-          data.classTemplate ?? "K_12",
-          data.academicStructure
-        );
+        // 4. Seed Initial Class Structure & Sections (override, DB template, or built-ins)
+        const classDefinitions = data.academicStructure?.length
+          ? resolveAcademicStructure(data.classTemplate ?? "K_12", data.academicStructure)
+          : dbTemplateClasses;
         const uniqueSubjectsMap = new Map<string, TemplateClassDef["subjects"][number]>();
         for (const def of classDefinitions) {
           for (const sub of def.subjects) {
@@ -264,6 +273,8 @@ export async function POST(request: NextRequest) {
         let createdClassesCount = 0;
         let createdSectionsCount = 0;
         const createdClassesList: Array<{ id: string; classNumber: number; name: string }> = [];
+        const classIdsByCode = new Map<string, string>();
+        const sectionIdsByClassCode = new Map<string, Array<{ id: string; name: string }>>();
 
         for (const def of classDefinitions) {
           const cls = await tx.class.create({
@@ -276,6 +287,7 @@ export async function POST(request: NextRequest) {
           });
           createdClassesCount++;
           createdClassesList.push({ id: cls.id, classNumber: def.sequence, name: def.name });
+          classIdsByCode.set(def.code, cls.id);
 
           const sectionPromises = def.sections.map((secName, secIdx) => {
             const shortName =
@@ -291,7 +303,11 @@ export async function POST(request: NextRequest) {
               },
             });
           });
-          await Promise.all(sectionPromises);
+          const createdSections = await Promise.all(sectionPromises);
+          sectionIdsByClassCode.set(
+            def.code,
+            createdSections.map((s) => ({ id: s.id, name: s.name }))
+          );
           createdSectionsCount += def.sections.length;
 
           const classSubjectPromises = def.subjects.map((sub, subIdx) => {
@@ -314,11 +330,51 @@ export async function POST(request: NextRequest) {
         const provisioningTx = tx as unknown as Prisma.TransactionClient;
         await seedTenantPromotionRules(provisioningTx, newTenant.tenantId, academicYear.id, createdClassesList);
 
+        // 5b. Seed Stream Groups (template streams; auto-links matching sections)
+        const groupsByClassCode = new Map<string, Array<{ name: string; shortName: string; subjectCodes: string[] }>>();
+        for (const def of classDefinitions) {
+          if (def.groups?.length) {
+            groupsByClassCode.set(
+              def.code,
+              def.groups.map((g) => ({
+                name: g.name,
+                shortName: g.shortName,
+                subjectCodes: g.subjectCodes?.length
+                  ? g.subjectCodes
+                  : def.subjects.map((s) => s.code),
+              }))
+            );
+          }
+        }
+        const groupsCount = await seedTenantGroups(
+          provisioningTx,
+          newTenant.tenantId,
+          new Map([...classIdsByCode].map(([code, id]) => [code, { id, code }])),
+          groupsByClassCode,
+          sectionIdsByClassCode
+        );
+
+        // 5c. Seed Class Fee Structures (explicit wizard rows, else scaled defaults)
+        const feeInputs =
+          data.feeStructures?.length
+            ? data.feeStructures
+            : deriveDefaultFeeStructures(classDefinitions, data.baseMonthlyTuition ?? 0);
+        const feeStructuresCount = await seedTenantClassFeeStructures(
+          provisioningTx,
+          newTenant.tenantId,
+          academicYear.id,
+          classIdsByCode,
+          feeInputs
+        );
+
         // 6. Seed Standard 5-Tier Chart of Accounts
         await seedTenantChartOfAccounts(provisioningTx, newTenant.tenantId, newTenant.currency);
 
         // 7. Seed Default Fee Heads
         await seedTenantFeeHeads(provisioningTx, newTenant.tenantId);
+
+        // 7b. Seed Default Expense Categories (expense entry requires one)
+        await seedTenantExpenseCategories(provisioningTx, newTenant.tenantId);
 
         // 8. Seed Fiscal Year and 12 Financial Periods Calendar
         const fiscalYearStartMonth = (data as any).fiscalYearStartMonth || (newTenant.currency === "INR" ? 4 : 7);
@@ -334,6 +390,8 @@ export async function POST(request: NextRequest) {
           seededStats: {
             classes: createdClassesCount,
             sections: createdSectionsCount,
+            groups: groupsCount,
+            feeStructures: feeStructuresCount,
           },
         };
       },
@@ -353,6 +411,8 @@ export async function POST(request: NextRequest) {
         academicYear: result.academicYear.label,
         classesCount: result.seededStats.classes,
         sectionsCount: result.seededStats.sections,
+        groupsCount: result.seededStats.groups,
+        feeStructuresCount: result.seededStats.feeStructures,
         subscriptionStatus: result.tenant.subscriptionStatus,
       },
       "Institute onboarded and provisioned successfully!",

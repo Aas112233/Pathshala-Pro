@@ -36,6 +36,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { ClassGradebookMatrix } from "@/components/exams/class-gradebook-matrix";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -930,9 +931,9 @@ export default function ExamResultsPage() {
       const gpa = 3.4;
       const transcript:any = {
         studentName: `${base.firstName||""} ${base.lastName||""}`.trim()||"Demo Student", admissionNumber: base.studentId||"STU001", rollNumber: base.rollNumber||"R-001",
-        dateOfBirth: base.dateOfBirth? new Date(base.dateOfBirth).toLocaleDateString():undefined, photoUrl: base.profilePictureUrl,
+        dateOfBirth: base.dateOfBirth? formatDateWithSettings(base.dateOfBirth, settings):undefined, photoUrl: base.profilePictureUrl,
         years:[{ academicYear: exam?.academicYear?.label || new Date().getFullYear().toString(), className: base.class?.name||"Class 10", section: base.section?.name, rollNumber: base.rollNumber||"R-001", examName: exam?.name||"Final Exam", subjects, totalMax, totalObtained, percentage, gpa, grade:"A", result:"PASSED"}],
-        cumulativeGpa:gpa, cumulativePercentage:percentage, overallGrade:"A", issueDate: new Date().toLocaleDateString(), transcriptNumber:`TR-${Date.now().toString().slice(-6)}`,
+        cumulativeGpa:gpa, cumulativePercentage:percentage, overallGrade:"A", issueDate: formatDateWithSettings(new Date(), settings), transcriptNumber:`TR-${Date.now().toString().slice(-6)}`,
       };
       const url = typeof window!=="undefined"? `${window.location.origin}/verify/certificate/TR` : undefined;
       const res = await exportTranscriptPDF(school, transcript, url);

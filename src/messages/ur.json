@@ -57,7 +57,8 @@
     "pleaseFillRequired": "براہ کرم تمام مطلوبہ خانے پر کریں۔",
     "validationFailed": "براہ کرم نمایاں کردہ خانے چیک کریں۔",
     "unsavedChanges": "آپ کی کچھ تبدیلیاں محفوظ نہیں ہوئیں۔ کیا آپ محفوظ کیے بغیر باہر جانا چاہتے ہیں؟",
-    "downloadFailed": "ڈاؤن لوڈ ناکام"
+    "downloadFailed": "ڈاؤن لوڈ ناکام",
+    "invalidDate": "غلط تاریخ"
   },
   "sidebar": {
     "search": {
@@ -178,7 +179,8 @@
     "OMR": "عمانی ریال (OMR)",
     "BHD": "بحرینی دینار (BHD)",
     "MYR": "ملائیشین رنگٹ (MYR)",
-    "SGD": "سنگاپور ڈالر (SGD)"
+    "SGD": "سنگاپور ڈالر (SGD)",
+    "TRY": "ترک لیرا (TRY)"
   },
   "academicPeriods": {
     "title": "تعلیمی دورانیہ",
@@ -2128,6 +2130,7 @@
     "description": "انٹرپرائز ٹیلی میٹری، اسکول تنہائی اور بلنگ مانیٹرنگ۔",
     "management": "ادارہ جاتی انتظام",
     "tenants": "اسکول ٹیننٹس",
+    "templates": "آن بورڈنگ ٹیمپلیٹس",
     "searchTenants": "اسکول کا نام یا ٹیننٹ ID تلاش کریں...",
     "billing": "سبسکرپشن اور بلنگ",
     "broadcasts": "پلیٹ فارم نشریات",
@@ -2894,6 +2897,11 @@
         "description": "O Level اور A Level سالوں کے ساتھ کیمبرج راہ",
         "count": "5 سال"
       },
+      "IGCSE_CAMBRIDGE": {
+        "label": "آئی جی سی ایس ای کیمبرج",
+        "description": "کیمبرج IGCSE دو سالہ راہ (گریڈ 9-10)",
+        "count": "2 سال"
+      },
       "MADRASA": {
         "label": "مدرسہ / مذہبی ادارہ",
         "description": "بنیادی مذہبی نصاب کے ساتھ اسلامیات کی سطحیں",
@@ -2938,7 +2946,9 @@
       "completeLaunch": "مکمل کریں اور اسکول شروع کریں",
       "timezoneValue": "ٹائم زون:",
       "dateValue": "تاریخ:",
-      "templateValue": "ٹیمپلیٹ:"
+      "templateValue": "ٹیمپلیٹ:",
+      "baseMonthlyTuition": "بنیادی ماہانہ فیس",
+      "baseMonthlyTuitionHint": "0 کا مطلب خودکار سیٹ اپ چھوڑ دیں۔ ورنہ فی جماعت ڈھانچے اس رقم سے بنائے جائیں گے۔"
     },
     "timezones": {
       "pakistan": "پاکستان (PKT، UTC+5)",
@@ -4401,6 +4411,58 @@
     "loadingTenants": "Loading tenants...",
     "noTenants": "No tenants",
     "flagsUpdated": "فیچر فلیگز اپڈیٹ ہو گئے",
+    "templates": {
+      "title": "آن بورڈنگ ٹیمپلیٹس",
+      "description": "ہر نئے اسکول کے لیے تعلیمی خاکے۔ بلٹ ان میں ترمیم، نقل یا ری سیٹ کی جا سکتی ہے۔",
+      "newTemplate": "نیا ٹیمپلیٹ",
+      "editTemplate": "ٹیمپلیٹ میں ترمیم",
+      "builtIn": "بلٹ ان",
+      "custom": "حسب ضرورت",
+      "active": "فعال",
+      "inactive": "غیر فعال",
+      "searchPlaceholder": "ٹیمپلیٹس تلاش کریں...",
+      "noTemplates": "کوئی ٹیمپلیٹ نہیں ملا",
+      "classes": "جماعتیں",
+      "sections": "سیکشن",
+      "groups": "گروپس",
+      "subjects": "مضامین",
+      "updated": "اپڈیٹ",
+      "version": "v{version}",
+      "viewEdit": "دیکھیں / ترمیم",
+      "duplicate": "نقل بنائیں",
+      "resetBuiltIn": "بلٹ ان پر ری سیٹ",
+      "deleteTemplate": "حذف کریں",
+      "saveChanges": "تبدیلیاں محفوظ کریں",
+      "cancel": "منسوخ کریں",
+      "saving": "محفوظ ہو رہا ہے...",
+      "addClass": "جماعت شامل کریں",
+      "className": "جماعت کا نام",
+      "classCode": "کوڈ",
+      "sequence": "ترتیب",
+      "sectionList": "سیکشن (کاما سے الگ کریں)",
+      "groupList": "اسٹریم گروپس (فی سطر: نام | مخفف)",
+      "subjectList": "مضامین",
+      "addSubject": "مضمون شامل کریں",
+      "subjectName": "مضمون",
+      "subjectCode": "کوڈ",
+      "subjectType": "قسم",
+      "maxMarks": "زیادہ سے زیادہ",
+      "passMarks": "پاس",
+      "labelField": "ڈسپلے لیبل",
+      "descriptionField": "تفصیل",
+      "codeField": "ٹیمپلیٹ کوڈ",
+      "countryField": "ملک",
+      "categoryField": "زمرہ",
+      "currencyField": "کرنسی",
+      "activeField": "سائن اپ وزرڈ میں پیش کریں",
+      "saved": "ٹیمپلیٹ محفوظ ہو گیا",
+      "deleted": "ٹیمپلیٹ حذف ہو گیا",
+      "duplicated": "ٹیمپلیٹ کی نقل بن گئی",
+      "resetDone": "ٹیمپلیٹ بلٹ ان ورژن پر ری سیٹ ہو گیا",
+      "failed": "عمل ناکام ہوا",
+      "confirmDelete": "یہ حسب ضرورت ٹیمپلیٹ حذف کریں؟ یہ واپس نہیں ہوگا۔",
+      "confirmReset": "اس ٹیمپلیٹ کو بلٹ ان ورژن پر ری سیٹ کریں؟ آپ کی ترامیم ضائع ہو جائیں گی۔"
+    },
     "save": "محفوظ کریں",
     "moduleAccess": "ماڈیول رسائی اور لائسنسنگ",
     "moduleAccessDescription": "اس اسکول کے لیے فعال ERP ماڈیولز اور صلاحیتوں کا انتظام کریں۔",
@@ -4510,7 +4572,10 @@
     "failedFetchUsers": "Failed to fetch global users",
     "updateFailed": "Update failed",
     "impersonateFailed": "Impersonate failed",
-    "status": "حالت"
+    "status": "حالت",
+    "resetPassword": "پاس ورڈ ری سیٹ کریں",
+    "newPassword": "نیا پاس ورڈ (اختیاری)",
+    "passwordPlaceholder": "نیا پاس ورڈ درج کریں (کم از کم 6 حروف)"
   },
   "verify": {
     "certificate": {

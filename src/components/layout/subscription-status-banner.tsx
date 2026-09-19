@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Clock, CreditCard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 interface SubscriptionView {
   tenantId: string;
@@ -34,6 +35,7 @@ interface SubscriptionView {
  */
 export function SubscriptionStatusBanner() {
   const t = useTranslations("subscription");
+  const { formatDate } = useTenantFormatting();
   const router = useRouter();
 
   const { data } = useQuery({
@@ -68,7 +70,7 @@ export function SubscriptionStatusBanner() {
           <span className="font-semibold">{t("banner.graceTitle")}</span>
           <span className="text-rose-700 dark:text-rose-300">
             {data.graceEndsAt
-              ? t("banner.graceEndsOn", { date: new Date(data.graceEndsAt).toLocaleDateString() })
+              ? t("banner.graceEndsOn", { date: formatDate(data.graceEndsAt) })
               : t("banner.graceActive")}
           </span>
         </div>
@@ -85,7 +87,7 @@ export function SubscriptionStatusBanner() {
           <span className="font-semibold">{t("banner.endingSoonTitle")}</span>
           <span className="text-amber-700 dark:text-amber-300">
             {data.subscriptionEndAt
-              ? t("banner.endsOn", { date: new Date(data.subscriptionEndAt).toLocaleDateString() })
+              ? t("banner.endsOn", { date: formatDate(data.subscriptionEndAt) })
               : t("banner.daysLeft", { days: String(data.daysRemaining) })}
           </span>
         </div>

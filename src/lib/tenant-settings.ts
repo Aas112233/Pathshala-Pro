@@ -146,6 +146,74 @@ export function formatDateWithSettings(
   }
 }
 
+function isRealCalendarDate(year: number, month: number, day: number): boolean {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return day <= daysInMonth;
+}
+
+function toISODate(year: number, month: number, day: number): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+/**
+ * Parse a tenant-formatted date string back to ISO yyyy-mm-dd.
+ * Returns "" for empty/invalid input (never throws). Defaults to DD/MM/YYYY.
+ */
+export function parseDateWithSettings(
+  text: string,
+  settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS
+): string {
+  const raw = (text ?? "").trim();
+  if (!raw) return "";
+  const dateFormat = settings.dateFormat || DEFAULT_TENANT_SETTINGS.dateFormat;
+
+  const numeric = (s: string) => {
+    const n = parseInt(s, 10);
+    return isNaN(n) ? -1 : n;
+  };
+
+  let y = -1;
+  let m = -1;
+  let d = -1;
+
+  if (dateFormat === "YYYY-MM-DD") {
+    const parts = raw.split("-");
+    if (parts.length !== 3) return "";
+    y = numeric(parts[0]);
+    m = numeric(parts[1]);
+    d = numeric(parts[2]);
+    if (parts[0].length !== 4) return "";
+  } else if (dateFormat === "DD-MM-YYYY") {
+    const parts = raw.split("-");
+    if (parts.length !== 3) return "";
+    d = numeric(parts[0]);
+    m = numeric(parts[1]);
+    y = numeric(parts[2]);
+    if (parts[2].length !== 4) return "";
+  } else if (dateFormat === "MM/DD/YYYY") {
+    const parts = raw.split("/");
+    if (parts.length !== 3) return "";
+    m = numeric(parts[0]);
+    d = numeric(parts[1]);
+    y = numeric(parts[2]);
+    if (parts[2].length !== 4) return "";
+  } else {
+    // DD/MM/YYYY (default)
+    const parts = raw.split("/");
+    if (parts.length !== 3) return "";
+    d = numeric(parts[0]);
+    m = numeric(parts[1]);
+    y = numeric(parts[2]);
+    if (parts[2].length !== 4) return "";
+  }
+
+  if (!isRealCalendarDate(y, m, d)) return "";
+  return toISODate(y, m, d);
+}
+
 export function formatTimeWithSettings(
   date: Date | string | null | undefined,
   settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS,

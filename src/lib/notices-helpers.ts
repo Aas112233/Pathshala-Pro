@@ -1,3 +1,5 @@
+import { formatDateWithSettings } from "./tenant-settings";
+
 export type NotificationCategoryGroup = "ALL" | "ACADEMIC" | "FEES" | "URGENT" | "GENERAL";
 
 export interface NoticeItem {
@@ -198,5 +200,5 @@ export function formatNoticeRelativeTime(dateInput: string | Date | null | undef
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
 
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatDateWithSettings(date);
 }

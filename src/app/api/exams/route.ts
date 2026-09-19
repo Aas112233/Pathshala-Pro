@@ -277,6 +277,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    fastCache.invalidatePrefix(`exams:${tenantId}`);
+
     return successResponse(exam, "Exam created successfully", 201);
   } catch (error) {
     return handleApiError(error);

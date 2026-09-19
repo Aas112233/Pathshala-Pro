@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { Users, Plus, IdCard, FileText } from "lucide-react";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -206,9 +207,9 @@ export default function StaffPage() {
       designation: s.designation||"-",
       department: s.department||"-",
       phone: s.phone, email: s.email, bloodGroup: s.bloodGroup,
-      joiningDate: s.hireDate ? new Date(s.hireDate).toLocaleDateString() : undefined,
+      joiningDate: s.hireDate ? formatDateWithSettings(s.hireDate, settings) : undefined,
       photoUrl: s.profilePictureUrl,
-      validUntil: new Date(new Date().setFullYear(new Date().getFullYear()+1)).toLocaleDateString(),
+      validUntil: formatDateWithSettings(new Date(new Date().setFullYear(new Date().getFullYear()+1)), settings),
     }));
     const res = await exportStaffIDCardsPDF(school, data, new Date().getFullYear().toString(), typeof window!=="undefined"? window.location.origin: undefined);
     if(res.success) toast.success(t("staffIdCardsDownloaded", { count: data.length }));

@@ -6,6 +6,7 @@ import { TopSheet } from "@/components/ui/top-sheet";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -243,11 +244,10 @@ export function CreateNoticeModal({
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
               Optional Expiration Date
             </Label>
-            <Input
+            <TenantDateInput
               id="notice-expiry"
-              type="date"
               value={formData.expiresAt}
-              onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, expiresAt: v })}
               className="h-9 text-xs"
             />
             <p className="text-[10px] text-muted-foreground">Notice will auto-archive after this date.</p>

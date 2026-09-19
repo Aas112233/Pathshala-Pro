@@ -2,6 +2,7 @@
 
 import { Document, Page, Text, View, StyleSheet, pdf } from "@react-pdf/renderer";
 import { useCallback } from "react";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import type { SalaryLedgerWithDetails } from "@/types/entities";
 
 interface SalarySlipProps {
@@ -249,7 +250,7 @@ export function SalarySlip({
             <View style={styles.row}>
               <Text style={styles.label}>Payment Date:</Text>
               <Text style={styles.value}>
-                {new Date(salary.paidAt).toLocaleDateString()}
+                {formatDateWithSettings(salary.paidAt)}
               </Text>
             </View>
           )}
@@ -278,7 +279,7 @@ export function SalarySlip({
         {/* Footer */}
         <View style={styles.footer}>
           <Text>This is a computer-generated document. No signature is required.</Text>
-          <Text>Generated on {new Date().toLocaleDateString()}</Text>
+          <Text>Generated on {formatDateWithSettings(new Date())}</Text>
         </View>
       </Page>
     </Document>

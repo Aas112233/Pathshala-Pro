@@ -5,6 +5,7 @@ import { TopSheet } from "@/components/ui/top-sheet";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -363,11 +364,10 @@ export function CreateBroadcastModal({
             <Label htmlFor="broadcast-expiry" className="text-xs font-semibold">
               Auto-Expire & Remove Banner
             </Label>
-            <Input
+            <TenantDateInput
               id="broadcast-expiry"
-              type="date"
               value={formData.expiresAt}
-              onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, expiresAt: v })}
               className="h-8 text-xs w-48"
             />
           </div>

@@ -6,6 +6,7 @@ import { User, Users, Briefcase, CheckCircle2, XCircle, Clock } from "lucide-rea
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStudents, useStaff } from "@/hooks/use-queries";
@@ -197,10 +198,9 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
         {/* Date and Search */}
         <div className="flex gap-4">
           <div className="flex-1">
-            <Input
-              type="date"
+            <TenantDateInput
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={setSelectedDate}
               className="w-full"
             />
           </div>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -16,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useBooksViewModel, useBookIssuesViewModel } from "@/viewmodels/library/use-library-view-model";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useTenantSettings, useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { usePDFExport, type LibraryIssueSlipData } from "@/hooks/use-pdf-export";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -146,9 +148,9 @@ export default function LibraryPage() {
     const slipData: LibraryIssueSlipData = {
       schoolName: settings?.name?.trim() || "Pathshala Pro Academy",
       slipNumber: `LIB-${new Date().getFullYear()}-${issue.id.slice(0, 6).toUpperCase()}`,
-      issueDate: new Date(issue.issueDate).toLocaleDateString(),
-      dueDate: new Date(issue.dueDate).toLocaleDateString(),
-      returnDate: issue.returnDate ? new Date(issue.returnDate).toLocaleDateString() : undefined,
+      issueDate: formatDateWithSettings(issue.issueDate, settings),
+      dueDate: formatDateWithSettings(issue.dueDate, settings),
+      returnDate: issue.returnDate ? formatDateWithSettings(issue.returnDate, settings) : undefined,
       borrowerName: issue.borrowerName,
       borrowerIdNo: issue.borrowerIdNo,
       borrowerType: issue.borrowerType,
@@ -242,7 +244,7 @@ export default function LibraryPage() {
         return (
           <div>
             <span className={`text-xs font-semibold ${overdue ? "text-rose-600 font-bold" : "text-foreground"}`}>
-              {d.toLocaleDateString()}
+              {formatDateWithSettings(d, settings)}
             </span>
             {overdue && <p className="text-[10px] text-rose-500 font-bold">OVERDUE</p>}
           </div>
@@ -297,7 +299,7 @@ export default function LibraryPage() {
     const pendingBooks = overdue ? 1 : 0;
     const clearanceData: any = {
       certificateNumber: `CLR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
-      issueDate: new Date().toLocaleDateString(),
+      issueDate: formatDateWithSettings(new Date(), settings),
       studentName: borrower.name,
       admissionNumber: borrower.id,
       rollNumber: borrower.id,
@@ -508,7 +510,7 @@ export default function LibraryPage() {
               </ERPFormField>
               <ERPFormField label={t("borrower")} required error={issueErrors.borrowerName}><Input value={issueForm.borrowerName} onChange={(e) => setIssueForm((p) => ({ ...p, borrowerName: e.target.value }))} placeholder={t("borrower")} /></ERPFormField>
               <ERPFormField label="Borrower ID" required error={issueErrors.borrowerIdNo}><Input value={issueForm.borrowerIdNo} onChange={(e) => setIssueForm((p) => ({ ...p, borrowerIdNo: e.target.value }))} placeholder="Roll No / Staff ID" /></ERPFormField>
-              <ERPFormField label={t("dueDate")} required error={issueErrors.dueDate}><Input type="date" value={issueForm.dueDate} onChange={(e) => setIssueForm((p) => ({ ...p, dueDate: e.target.value }))} /></ERPFormField>
+              <ERPFormField label={t("dueDate")} required error={issueErrors.dueDate}><TenantDateInput value={issueForm.dueDate} onChange={(v) => setIssueForm((p) => ({ ...p, dueDate: v }))} /></ERPFormField>
             </ERPFormGrid>
           </ERPFormSection>
         </form>

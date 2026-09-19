@@ -21,6 +21,7 @@ import {
   resolveRequestAcademicYearId,
   ensureStudentAcademicSession,
 } from "@/lib/academic-year-guards";
+import { fastCache } from "@/lib/fast-memory-cache";
 
 /**
  * GET /api/students/[id]
@@ -291,6 +292,8 @@ export async function PUT(
       });
     }
 
+    fastCache.invalidatePrefix(`students:${tenantId}`);
+
     return successResponse(updatedStudent, "Student updated successfully");
   } catch (error) {
     return handleApiError(error, "Failed to update student");
@@ -336,6 +339,9 @@ export async function DELETE(
     await prisma.studentProfile.delete({
       where: { id },
     });
+
+    fastCache.invalidatePrefix(`students:${tenantId}`);
+    fastCache.invalidatePrefix(`dash_summary:${tenantId}`);
 
     return successResponse(null, "Student deleted successfully");
   } catch (error) {

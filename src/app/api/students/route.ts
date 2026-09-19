@@ -482,6 +482,9 @@ export async function POST(request: NextRequest) {
       return createdStudent;
     });
 
+    fastCache.invalidatePrefix(`students:${tenantId}`);
+    fastCache.invalidatePrefix(`dash_summary:${tenantId}`);
+
     return successResponse(student, "Student created successfully", 201);
   } catch (error) {
     return handleApiError(error, "Failed to create student");

@@ -8,6 +8,7 @@ import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TopSheet } from "@/components/ui/top-sheet";
@@ -405,11 +406,11 @@ export default function TransactionsPage() {
             />
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Input type="date" value={filters.fromDate} onChange={(e) => setFilters({ fromDate: e.target.value })} className="bg-background" />
+              <TenantDateInput value={filters.fromDate} onChange={(v) => setFilters({ fromDate: v })} className="bg-background" />
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Input type="date" value={filters.toDate} onChange={(e) => setFilters({ toDate: e.target.value })} className="bg-background" />
+              <TenantDateInput value={filters.toDate} onChange={(v) => setFilters({ toDate: v })} className="bg-background" />
             </div>
           </div>
           {hasActiveFilters && (

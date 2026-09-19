@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -71,12 +71,12 @@ export function ReportFilters({
     { value: "OVERDUE", label: t("filters.overdue") },
   ];
 
-  const handleFromDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onFilterChange({ ...filters, fromDate: e.target.value });
+  const handleFromDateChange = (iso: string) => {
+    onFilterChange({ ...filters, fromDate: iso });
   };
 
-  const handleToDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onFilterChange({ ...filters, toDate: e.target.value });
+  const handleToDateChange = (iso: string) => {
+    onFilterChange({ ...filters, toDate: iso });
   };
 
   const handleClassChange = (value: string) => {
@@ -116,9 +116,8 @@ export function ReportFilters({
           {/* From Date */}
           <div className="space-y-2">
             <Label htmlFor="fromDate">{t("filters.fromDate")}</Label>
-            <Input
+            <TenantDateInput
               id="fromDate"
-              type="date"
               value={filters.fromDate}
               onChange={handleFromDateChange}
             />
@@ -127,9 +126,8 @@ export function ReportFilters({
           {/* To Date */}
           <div className="space-y-2">
             <Label htmlFor="toDate">{t("filters.toDate")}</Label>
-            <Input
+            <TenantDateInput
               id="toDate"
-              type="date"
               value={filters.toDate}
               onChange={handleToDateChange}
             />

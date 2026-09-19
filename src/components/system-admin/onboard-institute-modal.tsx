@@ -4,13 +4,15 @@ import { useState } from "react";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CURRENCY_LIST } from "@/lib/currencies";
-import { CLASS_TEMPLATE_PRESETS, type ClassTemplatePreset } from "@/lib/schemas";
+import { type ClassTemplatePreset } from "@/lib/schemas";
+import { useOnboardingTemplateOptions } from "@/hooks/use-onboarding-templates";
 import { generateTenantSlug } from "@/lib/onboarding-templates";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -122,6 +124,10 @@ const TEMPLATE_DESCRIPTIONS: Record<
   },
 };
 
+const TEMPLATE_ICONS: Record<string, LucideIcon> = Object.fromEntries(
+  Object.entries(TEMPLATE_DESCRIPTIONS).map(([code, info]) => [code, info.icon])
+);
+
 export function OnboardInstituteModal({
   isOpen,
   onClose,
@@ -159,7 +165,7 @@ export function OnboardInstituteModal({
     academicYearLabel: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
     academicStartDate: `${new Date().getFullYear()}-08-01`,
     academicEndDate: `${new Date().getFullYear() + 1}-06-30`,
-    classTemplate: "K_12" as ClassTemplatePreset,
+    classTemplate: "K_12",
 
     // Step 4
     adminName: "",
@@ -184,6 +190,12 @@ export function OnboardInstituteModal({
       return next;
     });
   };
+
+  const { options: templateOptions } = useOnboardingTemplateOptions();
+  const selectedTemplateLabel =
+    templateOptions.find((o) => o.code === formData.classTemplate)?.label ??
+    TEMPLATE_DESCRIPTIONS[formData.classTemplate as ClassTemplatePreset]?.label ??
+    formData.classTemplate;
 
   const generateRandomPassword = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
@@ -590,11 +602,11 @@ export function OnboardInstituteModal({
               <Label htmlFor="ay-start" className="text-xs font-semibold">
                 Session Start Date <span className="text-destructive">*</span>
               </Label>
-              <Input
+              <TenantDateInput
                 id="ay-start"
-                type="date"
                 value={formData.academicStartDate}
-                onChange={(e) => updateField("academicStartDate", e.target.value)}
+                onChange={(v) => updateField("academicStartDate", v)}
+                dateFormat={formData.dateFormat}
                 className="h-10 text-sm"
               />
             </div>
@@ -603,11 +615,11 @@ export function OnboardInstituteModal({
               <Label htmlFor="ay-end" className="text-xs font-semibold">
                 Session End Date <span className="text-destructive">*</span>
               </Label>
-              <Input
+              <TenantDateInput
                 id="ay-end"
-                type="date"
                 value={formData.academicEndDate}
-                onChange={(e) => updateField("academicEndDate", e.target.value)}
+                onChange={(v) => updateField("academicEndDate", v)}
+                dateFormat={formData.dateFormat}
                 className="h-10 text-sm"
               />
             </div>
@@ -622,16 +634,15 @@ export function OnboardInstituteModal({
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-              {CLASS_TEMPLATE_PRESETS.map((preset) => {
-                const info = TEMPLATE_DESCRIPTIONS[preset];
-                const isSelected = formData.classTemplate === preset;
-                const IconComp = info.icon;
+              {templateOptions.map((opt) => {
+                const IconComp = TEMPLATE_ICONS[opt.code] ?? GraduationCap;
+                const isSelected = formData.classTemplate === opt.code;
 
                 return (
                   <button
-                    key={preset}
+                    key={opt.code}
                     type="button"
-                    onClick={() => updateField("classTemplate", preset)}
+                    onClick={() => updateField("classTemplate", opt.code)}
                     className={`flex flex-col text-left p-3.5 rounded-lg border transition-all text-xs ${
                       isSelected
                         ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary"
@@ -643,12 +654,12 @@ export function OnboardInstituteModal({
                         <IconComp className="h-4 w-4" />
                       </div>
                       <Badge variant={isSelected ? "default" : "outline"} className="text-[10px] py-0">
-                        {info.count}
+                        {opt.count}
                       </Badge>
                     </div>
-                    <span className="font-semibold text-foreground text-sm">{info.label}</span>
+                    <span className="font-semibold text-foreground text-sm">{opt.label}</span>
                     <span className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                      {info.description}
+                      {opt.description}
                     </span>
                   </button>
                 );
@@ -782,7 +793,7 @@ export function OnboardInstituteModal({
                 <div className="text-sm space-y-1">
                   <p className="font-semibold text-foreground">Session: {formData.academicYearLabel}</p>
                   <p className="text-xs text-muted-foreground">
-                    Template: {TEMPLATE_DESCRIPTIONS[formData.classTemplate].label}
+                    Template: {selectedTemplateLabel}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Dates: {formData.academicStartDate} to {formData.academicEndDate}

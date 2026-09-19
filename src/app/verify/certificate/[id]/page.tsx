@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { formatDateWithSettings } from "@/lib/tenant-settings";
 import { X, Check, AlertCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -84,8 +85,8 @@ export default async function VerifyCertificatePage({ params }: { params: Promis
             <Field label="Roll Number" value={cert.studentProfile?.rollNumber || "—"} mono />
             <Field label="Class" value={cert.studentProfile?.class?.name || "—"} />
             <Field label="Section" value={cert.studentProfile?.section?.name || "—"} />
-            <Field label="Issue Date" value={new Date(cert.issueDate).toLocaleDateString()} />
-            <Field label="Valid Until" value={cert.validUntil ? new Date(cert.validUntil).toLocaleDateString() : "No expiry"} />
+            <Field label="Issue Date" value={formatDateWithSettings(cert.issueDate)} />
+            <Field label="Valid Until" value={cert.validUntil ? formatDateWithSettings(cert.validUntil) : "No expiry"} />
             {cert.purpose ? <div className="sm:col-span-2"><Field label="Purpose" value={cert.purpose} /></div> : null}
           </div>
 
@@ -98,7 +99,7 @@ export default async function VerifyCertificatePage({ params }: { params: Promis
           <p className="mt-6 text-center text-xs text-slate-400">This verification is public and does not require login. If details look incorrect, contact the issuing institution.</p>
         </div>
 
-        <p className="mt-4 text-center text-xs text-slate-400">Verification ID: <span className="font-mono">{cert.id}</span> • {new Date().toLocaleDateString()}</p>
+        <p className="mt-4 text-center text-xs text-slate-400">Verification ID: <span className="font-mono">{cert.id}</span> • {formatDateWithSettings(new Date())}</p>
       </main>
     </div>
   );
