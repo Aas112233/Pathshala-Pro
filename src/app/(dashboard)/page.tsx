@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/erp-data-table";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { NoticeDetailModal } from "@/components/notices/notice-detail-modal";
+import { fuzzyFilter } from "@/lib/utils";
 
 export default function DashboardPage() {
   const t = useTranslations();
@@ -53,6 +54,7 @@ export default function DashboardPage() {
   } = useTenantFormatting();
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<(string | number)[]>([]);
+  const [studentTableSearch, setStudentTableSearch] = useState("");
   const [viewingNotice, setViewingNotice] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -114,6 +116,17 @@ export default function DashboardPage() {
   const totalStaff = summary?.totalStaff ?? 0;
   const totalFeesCount = summary?.fees.totalCount ?? 0;
   const recentStudents = (studentsResponse as any)?.data || [];
+  // Client-side typo-tolerant search over the loaded recent rows
+  // (the box previously accepted input but filtered nothing).
+  const filteredRecentStudents = React.useMemo(
+    () =>
+      fuzzyFilter(
+        recentStudents,
+        studentTableSearch,
+        (s: any) => `${s.firstName ?? ""} ${s.lastName ?? ""} • ${s.studentId ?? ""} • ${s.rollNumber ?? ""}`
+      ),
+    [recentStudents, studentTableSearch]
+  );
   const recentTransactions = (transactionsResponse as any)?.data || [];
 
   // Server-computed financial + attendance aggregates (today's attendance).
@@ -557,10 +570,12 @@ export default function DashboardPage() {
         <ERPDataTable<any>
           title={t("dashboard.studentEnrollments")}
           subtitle={`${t("dashboard.recentAdmissions")} · ${academicSessionLabel}`}
-          data={recentStudents}
+          data={filteredRecentStudents}
           columns={studentColumns}
           keyExtractor={(row) => row.id}
           searchPlaceholder={t("students.searchPlaceholder")}
+          searchValue={studentTableSearch}
+          onSearchChange={setStudentTableSearch}
           selectedIds={selectedStudentIds}
           onSelectionChange={setSelectedStudentIds}
           filterLabel={t("common.filter")}

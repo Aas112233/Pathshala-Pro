@@ -273,6 +273,7 @@
     "reportsAndNotices": "Reports & Notices",
     "users": "Users & Access",
     "settings": "School Settings",
+    "historicalData": "Historical Data & Archives",
     "promotions": "Student Promotions",
     "promotionRules": "Promotion Rules",
     "subjects": "Subjects",
@@ -1097,7 +1098,13 @@
     "failedStatus": "FAILED",
     "notAvailable": "N/A",
     "gradebookSummary": "Cohort results, automatic merit rankings, and 1-click batch PDF export",
-    "transcriptPDF": "Transcript PDF"
+    "transcriptPDF": "Transcript PDF",
+    "importMarks": "Import Marks",
+    "downloadTemplate": "Template",
+    "templateDownloaded": "Marks template downloaded",
+    "importSummary": "Imported {matched} marks, skipped {skipped}",
+    "importNoMatch": "No rows matched the class roster by roll number or student ID",
+    "importInvalidFile": "Could not read the file. Use the downloaded template format"
   },
   "salary": {
     "title": "Salary / Payroll",
@@ -5112,5 +5119,49 @@
       "title": "Health & Medical",
       "description": "Student health records, emergency contacts, medical conditions, and allergies"
     }
+  },
+  "historicalData": {
+    "title": "Historical Data & Relational Archive",
+    "description": "Administrative break-glass hub to search, edit, and archive immutable historical relational records.",
+    "accessNotice": "School Admin Exclusive: This control plane allows auditing and modifying relational data locked in past academic sessions.",
+    "domains": {
+      "promotions": "Past Class Promotions",
+      "examResults": "Finalized Exam Marks",
+      "attendance": "Historical Attendance",
+      "feeVouchers": "Past Fee Invoices"
+    },
+    "searchPlaceholder": "Search by student name, ID, roll number, or code...",
+    "academicYear": "Academic Year",
+    "allYears": "All Academic Sessions",
+    "status": "Status",
+    "allStatuses": "All Statuses",
+    "active": "Active",
+    "archived": "Archived",
+    "editRecord": "Edit Historical Record",
+    "archiveRecord": "Archive Record",
+    "restoreRecord": "Restore Record",
+    "student": "Student",
+    "classSection": "Class / Section",
+    "session": "Session",
+    "score": "Score / Marks",
+    "grade": "Grade",
+    "statusLabel": "Status",
+    "details": "Details",
+    "actions": "Actions",
+    "mandatoryReason": "Administrative Justification Reason (Required)",
+    "mandatoryReasonPlaceholder": "Explain why this historical record is being modified or archived...",
+    "impactWarning": "Audit Warning: Modifying this record affects past transcripts and historical reporting. All changes are permanently recorded in the system audit log.",
+    "saveChanges": "Apply Historical Correction",
+    "saving": "Applying Correction...",
+    "confirmArchive": "Confirm Archive",
+    "confirmArchiveDesc": "Archiving this record soft-locks it from routine roll sheets while preserving referential database integrity. You can restore it anytime.",
+    "confirmRestore": "Confirm Restoration",
+    "confirmRestoreDesc": "This record will be un-archived and restored to its historical state.",
+    "archiveSuccess": "Record archived successfully",
+    "restoreSuccess": "Record restored successfully",
+    "editSuccess": "Historical correction applied successfully",
+    "errorOccurred": "Failed to complete operation",
+    "noRecordsFound": "No historical records found matching the criteria.",
+    "selectDomainFirst": "Select a domain above to inspect and manage historical records."
   }
 }

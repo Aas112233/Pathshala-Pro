@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     const staffId = searchParams.get("staffId") || "";
     const status = searchParams.get("status") || "";
     const classId = searchParams.get("classId") || "";
+    const search = searchParams.get("search")?.trim() || "";
     const academicYearIdParam = searchParams.get("academicYearId");
     const resolvedAcademicYearId = academicYearIdParam
       ? academicYearIdParam.trim()
@@ -70,7 +71,27 @@ export async function GET(request: NextRequest) {
     }
 
     if (classId) {
-      if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
+    // Text search over student / staff name + ID (the records search box
+    // previously sent `search` but it was ignored). Token-based: every token
+    // must match at least one person field, so "Karim Abdul" works.
+    // Top-level AND avoids clobbering the classId/self-scope relation filters.
+    if (search) {
+      const searchTerms = search.split(/\s+/).filter(Boolean);
+      const perTerm = (s: string) => ({
+        OR: [
+          { studentProfile: { firstName: { contains: s, mode: "insensitive" } } },
+          { studentProfile: { lastName: { contains: s, mode: "insensitive" } } },
+          { studentProfile: { studentId: { contains: s, mode: "insensitive" } } },
+          { studentProfile: { rollNumber: { contains: s, mode: "insensitive" } } },
+          { staffProfile: { firstName: { contains: s, mode: "insensitive" } } },
+          { staffProfile: { lastName: { contains: s, mode: "insensitive" } } },
+          { staffProfile: { staffId: { contains: s, mode: "insensitive" } } },
+        ],
+      });
+      where.AND = [...(where.AND ?? []), ...searchTerms.map(perTerm)];
+    }
+
+    if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
         where.studentProfile = {
           academicSessions: {
             some: {

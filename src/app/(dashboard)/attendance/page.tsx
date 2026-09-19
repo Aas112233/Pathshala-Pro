@@ -125,11 +125,21 @@ export default function AttendancePage() {
     {
       key: "id",
       header: t('tableColumns.id'),
-      cell: (row) => (
-        <span className="text-sm text-muted-foreground">
-          {row.studentProfile?.studentId || row.staffProfile?.staffId || "-"}
-        </span>
-      ),
+      cell: (row) => {
+        const student = row.studentProfile;
+        const staff = row.staffProfile;
+        const primary = student?.rollNumber || staff?.staffId || "-";
+        const secondary =
+          student?.studentId && student.studentId !== student?.rollNumber
+            ? student.studentId
+            : null;
+        return (
+          <span className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{primary}</span>
+            {secondary && <span className="ml-1.5 text-xs">({secondary})</span>}
+          </span>
+        );
+      },
     },
     {
       key: "status",

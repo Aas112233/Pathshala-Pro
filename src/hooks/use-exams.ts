@@ -45,6 +45,8 @@ export interface Exam {
       code: string;
     };
   }>;
+  /** Eligible classes derived server-side via ClassSubject intersection. */
+  classIds?: string[];
   createdAt: string;
   updatedAt: string;
 }

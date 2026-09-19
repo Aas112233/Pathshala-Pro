@@ -28,6 +28,7 @@ describe("getPermissionModuleForApiPath", () => {
     expect(getPermissionModuleForApiPath("/api/promotions/calculate")).toBe("exams");
     expect(getPermissionModuleForApiPath("/api/class-subjects")).toBe("academic");
     expect(getPermissionModuleForApiPath("/api/reports/attendance")).toBe("attendance");
+    expect(getPermissionModuleForApiPath("/api/admin/historical-data")).toBe("historical-data");
   });
 
   it("returns null for auth-only routes", () => {

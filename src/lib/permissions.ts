@@ -41,7 +41,8 @@ export type Permission =
   | "portal:student:self"
   | "portal:parent:self"
   // System Management
-  | "system:manage";
+  | "system:manage"
+  | "historical:manage";
 
 export type UserRole =
   | "PLATFORM_OWNER"
@@ -66,7 +67,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
-    "portal:student:self", "portal:parent:self", "system:manage",
+    "portal:student:self", "portal:parent:self", "system:manage", "historical:manage",
   ],
   SUPER_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
@@ -74,7 +75,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
-    "portal:student:self", "portal:parent:self", "system:manage",
+    "portal:student:self", "portal:parent:self", "system:manage", "historical:manage",
   ],
   SYSTEM_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
@@ -82,7 +83,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
-    "system:manage",
+    "system:manage", "historical:manage",
   ],
   INSTITUTE_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
@@ -90,7 +91,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
-    "system:manage",
+    "system:manage", "historical:manage",
   ],
   ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
@@ -98,7 +99,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
-    "system:manage",
+    "system:manage", "historical:manage",
   ],
   SCHOOL_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
@@ -106,7 +107,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
-    "system:manage",
+    "system:manage", "historical:manage",
   ],
   PRINCIPAL: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
@@ -169,6 +170,7 @@ export const ALL_PERMISSION_MODULES = [
   "certificates",
   "health",
   "calendar",
+  "historical-data",
 ] as const;
 
 export const FULL_ACCESS_PERMISSIONS: UserPermissions = Object.fromEntries(
@@ -224,6 +226,7 @@ const PERMISSION_MODULE_GRANTS: Record<Permission, ReadonlyArray<[string, Permis
   "portal:student:self": [["attendance", "read"], ["fees", "read"], ["transactions", "read"], ["homework", "read"]],
   "portal:parent:self": [["attendance", "read"], ["fees", "read"], ["transactions", "read"], ["homework", "read"]],
   "system:manage": [["users", "manage"], ["settings", "manage"]],
+  "historical:manage": [["historical-data", "manage"]],
 };
 
 // Principal hierarchy: Level 1 (highest) → 7 (lowest)
@@ -547,6 +550,11 @@ export function getModuleForPath(path: string): string | null {
       return "health";
     case "calendar":
       return "calendar";
+    case "admin":
+      if (segments[1] === "historical-data") return "historical-data";
+      return "settings";
+    case "historical-data":
+      return "historical-data";
     default:
       return baseRoute;
   }

@@ -52,17 +52,25 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Text search on student name / studentId
+    // Token-based matching (mirrors /api/students): every token must match at
+    // least one field, so out-of-order queries like "Karim Abdul" work.
     if (search && search.trim()) {
+      const searchTerms = search.trim().split(/\s+/).filter(Boolean);
+      const perTerm = (s: string) => ({
+        OR: [
+          { firstName: { contains: s, mode: "insensitive" } },
+          { lastName: { contains: s, mode: "insensitive" } },
+          { firstNameBn: { contains: s, mode: "insensitive" } },
+          { lastNameBn: { contains: s, mode: "insensitive" } },
+          { studentId: { contains: s, mode: "insensitive" } },
+          { rollNumber: { contains: s, mode: "insensitive" } },
+        ],
+      });
       where.studentProfile = {
         ...(where.studentProfile || {}),
-        OR: [
-          { firstName: { contains: search.trim(), mode: "insensitive" } },
-          { lastName: { contains: search.trim(), mode: "insensitive" } },
-          { firstNameBn: { contains: search.trim(), mode: "insensitive" } },
-          { lastNameBn: { contains: search.trim(), mode: "insensitive" } },
-          { studentId: { contains: search.trim(), mode: "insensitive" } },
-        ],
+        ...(searchTerms.length === 1
+          ? perTerm(searchTerms[0])
+          : { AND: searchTerms.map(perTerm) }),
       };
     }
 

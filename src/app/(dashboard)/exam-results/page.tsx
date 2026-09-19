@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
@@ -25,18 +25,27 @@ import {
   Trophy,
   Lock,
   FileSpreadsheet,
+  FileDown,
+  Upload,
   X,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { downloadBlob } from "@/lib/download-blob";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { ClassGradebookMatrix } from "@/components/exams/class-gradebook-matrix";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { useUnsavedChanges } from "@/providers/unsaved-changes-provider";
+import {
+  mapSheetRows,
+  applyImportedMarks,
+  buildMarksTemplateRows,
+  type ImportMarkRow,
+} from "@/lib/marks-import";
 
 interface StudentMark {
   studentProfileId: string;
@@ -102,6 +111,10 @@ export default function ExamResultsPage() {
   const [studentMarks, setStudentMarks] = useState<StudentMark[]>([]);
   const [isExportingTabulation, setIsExportingTabulation] = useState(false);
   const [isFormReady, setIsFormReady] = useState(false);
+  // Keyboard-first entry: one ref per row input; import flow state
+  const markInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Fetch exams
   const { data: examsData } = useQuery({
@@ -169,13 +182,26 @@ export default function ExamResultsPage() {
   );
 
   // Build filter dropdown options from the exams data (already fetched)
-  const listClassFilterOptions = useMemo(() => [
-    { value: "", label: t("filterAllClasses") || "All Classes" },
-    ...classes.map((c: any) => ({
-      value: c.id,
-      label: c.name,
-    })),
-  ], [classes, t]);
+  // Class cascades from the selected exam: an exam is eligible for the classes
+  // whose curriculum (ClassSubject) intersects the exam's subjects (Exam
+  // carries no direct classId — classIds are attached server-side).
+  const selectedFilterExamObj = useMemo(
+    () => exams.find((e: any) => e.id === filterExam),
+    [exams, filterExam]
+  );
+  const listClassFilterOptions = useMemo(() => {
+    const eligible: string[] | undefined = selectedFilterExamObj?.classIds;
+    const visible = eligible && eligible.length > 0
+      ? classes.filter((c: any) => eligible.includes(c.id))
+      : classes;
+    return [
+      { value: "", label: t("filterAllClasses") || "All Classes" },
+      ...visible.map((c: any) => ({
+        value: c.id,
+        label: c.name,
+      })),
+    ];
+  }, [classes, selectedFilterExamObj, t]);
 
   const listExamFilterOptions = useMemo(() => [
     { value: "", label: t("filterAllExams") },
@@ -193,12 +219,15 @@ export default function ExamResultsPage() {
       const res = await fetch(`/api/class-subjects?classId=${filterClass}`);
       if (!res.ok) return [];
       const json = await res.json();
-      return (json.data || []).map((cs: any) => cs.subject).filter(Boolean);
+      // Preserve the Subject FK id (nested subject carries no id) for filter values.
+      return (json.data || [])
+        .map((cs: any) => ({ id: cs.subjectId, name: cs.subject?.name }))
+        .filter((s: any) => s.id && s.name);
     },
     enabled: !!filterClass,
   });
 
-  // Build subject filter from exams' subjects (scoped by filterClass if set)
+  // Build subject filter from exams' subjects (scoped by exam + class when set)
   const listSubjectFilterOptions = useMemo(() => {
     if (filterClass && filterClassSubjectsData && filterClassSubjectsData.length > 0) {
       return [
@@ -210,19 +239,22 @@ export default function ExamResultsPage() {
       ];
     }
 
+    const examsInScope = filterExam
+      ? exams.filter((e: any) => e.id === filterExam)
+      : filterClass && selectedFilterExamObj?.classIds && selectedFilterExamObj.classIds.length > 0
+        ? exams.filter((e: any) => (e.classIds ?? []).includes(filterClass))
+        : exams;
     const map = new Map<string, string>();
-    exams.forEach((e: any) => {
-      if (filterClass && e.classId && e.classId !== filterClass) return;
+    examsInScope.forEach((e: any) => {
       e.subjects?.forEach((es: any) => {
-        const subj = es.subject;
-        if (subj?.id && subj?.name) map.set(subj.id, subj.name);
+        if (es?.subjectId && es?.subject?.name) map.set(es.subjectId, es.subject.name);
       });
     });
     return [
       { value: "", label: t("filterAllSubjects") },
       ...Array.from(map.entries()).map(([id, name]) => ({ value: id, label: name })),
     ];
-  }, [exams, filterClass, filterClassSubjectsData, t]);
+  }, [exams, filterClass, filterExam, filterClassSubjectsData, selectedFilterExamObj, t]);
 
   const listStatusFilterOptions = useMemo(
     () => [
@@ -309,6 +341,14 @@ export default function ExamResultsPage() {
     () => examSubjects.find((s: any) => s.id === selectedSubject),
     [examSubjects, selectedSubject]
   );
+
+  // Roster hydration in progress: all three selectors picked but the
+  // students/results queries haven't resolved yet (auto-hydration path).
+  const isHydratingMarks =
+    !!selectedExam &&
+    !!selectedClass &&
+    !!selectedSubject &&
+    (studentsLoading || existingResultsLoading);
 
   // Auto-transition to marks entry table as soon as Exam, Class, and Subject are chosen
   // ponytail: wait for both students and existingResults to load before hydrating marks — avoids empty form after refresh
@@ -443,6 +483,110 @@ export default function ExamResultsPage() {
     );
   };
 
+  // Keyboard-first entry: Enter/Down jumps to the next editable row, Up to
+  // the previous one (locked/absent rows are skipped, focus selects text).
+  const focusMarkRow = (index: number, dir: 1 | -1) => {
+    let i = index + dir;
+    while (i >= 0 && i < studentMarks.length) {
+      const row = studentMarks[i];
+      const el = markInputRefs.current[i];
+      if (el && !row.isLocked && !row.isAbsent && canWriteResults) {
+        el.focus();
+        el.select();
+        return;
+      }
+      i += dir;
+    }
+  };
+
+  const handleMarkKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Enter" || e.key === "ArrowDown") {
+      e.preventDefault();
+      focusMarkRow(index, 1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      focusMarkRow(index, -1);
+    }
+  };
+
+  // Bulk import: Excel template download + Excel upload matched by roll/ID.
+  const handleTemplateDownload = async () => {
+    try {
+      const ExcelJS = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Marks");
+      ws.columns = [
+        { header: "rollNumber", key: "roll", width: 14 },
+        { header: "studentId", key: "sid", width: 16 },
+        { header: "studentName", key: "name", width: 28 },
+        { header: "obtainedMarks", key: "marks", width: 15 },
+        { header: "absent", key: "absent", width: 12 },
+      ];
+      ws.getRow(1).font = { bold: true };
+      for (const cells of buildMarksTemplateRows(studentMarks).slice(1)) {
+        ws.addRow(cells);
+      }
+      const buffer = await wb.xlsx.writeBuffer();
+      downloadBlob(
+        new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+        "marks-template.xlsx"
+      );
+      toast.success(t("templateDownloaded"));
+    } catch {
+      toast.error(t("importInvalidFile"));
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const max = selectedSubjectInfo?.maxMarks;
+    if (!max) {
+      toast.error(t("pleaseSelectAll"));
+      return;
+    }
+    if (!/\.xlsx?$/i.test(file.name)) {
+      toast.error(t("importInvalidFile"));
+      return;
+    }
+    setIsImporting(true);
+    try {
+      // Heavy parser loads on demand so the page bundle stays lean.
+      const ExcelJS = await import("exceljs");
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await file.arrayBuffer());
+      const ws = wb.worksheets[0];
+      if (!ws) throw new Error("empty workbook");
+      const grid: string[][] = [];
+      ws.eachRow((row) => {
+        const vals: string[] = [];
+        row.eachCell({ includeEmpty: true }, (cell) =>
+          vals.push(String(cell.value ?? "").trim())
+        );
+        grid.push(vals);
+      });
+      const rows: ImportMarkRow[] = mapSheetRows(grid);
+      if (rows.length === 0) {
+        toast.error(t("importNoMatch"));
+        return;
+      }
+      const { updated, matched, skipped } = applyImportedMarks(studentMarks, rows, max);
+      if (matched === 0) {
+        toast.error(t("importNoMatch"));
+        return;
+      }
+      setStudentMarks(updated);
+      toast.success(t("importSummary", { matched, skipped }));
+    } catch {
+      toast.error(t("importInvalidFile"));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // Save exam results
   const saveMutation = useMutation({
     mutationFn: async (results: any[]) => {
@@ -515,17 +659,18 @@ export default function ExamResultsPage() {
     saveMutation.mutate(results);
   };
 
-  // Handle back to list
+  // Handle back to list — always reset the full entry state so reopening
+  // starts from a clean selection screen instead of rehydrating the
+  // previous marks (the auto-hydration effect would otherwise rebuild the
+  // old table from the still-set selections + cached students).
   const handleBack = () => {
     setIsFormOpen(false);
     setIsFormReady(false);
     setStudentMarks([]);
-    if (editingResult) {
-      setSelectedExam("");
-      setSelectedClass("");
-      setSelectedSubject("");
-      setEditingResult(null);
-    }
+    setSelectedExam("");
+    setSelectedClass("");
+    setSelectedSubject("");
+    setEditingResult(null);
   };
 
   // Handle edit result
@@ -591,13 +736,25 @@ export default function ExamResultsPage() {
     })),
   ];
 
-  const classOptions = [
-    { value: "", label: t("selectClass") },
-    ...classes.map((c: any) => ({
-      value: c.id,
-      label: `${c.name} (Class ${c.classNumber})`,
-    })),
-  ];
+  const classOptions = useMemo(() => {
+    const eligible: string[] | undefined = selectedExamObj?.classIds;
+    let visible = eligible && eligible.length > 0
+      ? classes.filter((c: any) => eligible.includes(c.id))
+      : classes;
+    // Never hide a class that is already selected (e.g. edit flow or stale
+    // cache) — otherwise the dropdown would show a blank value.
+    if (selectedClass && !visible.some((c: any) => c.id === selectedClass)) {
+      const current = classes.find((c: any) => c.id === selectedClass);
+      if (current) visible = [current, ...visible];
+    }
+    return [
+      { value: "", label: t("selectClass") },
+      ...visible.map((c: any) => ({
+        value: c.id,
+        label: `${c.name} (Class ${c.classNumber})`,
+      })),
+    ];
+  }, [classes, selectedExamObj, selectedClass, t]);
 
   const subjectOptions = [
     { value: "", label: t("selectSubject") },
@@ -634,13 +791,21 @@ export default function ExamResultsPage() {
   // ─── DataTable columns for list view ───
   const listColumns: ColumnDef<any>[] = [
     {
-      accessorKey: "studentProfile.studentId",
+      accessorKey: "studentProfile.rollNumber",
       header: t("rollNumber"),
-      cell: ({ row }) => (
-        <span className="font-medium">
-          {row.original.studentProfile?.studentId || "-"}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const sp = row.original.studentProfile;
+        return (
+          <span className="font-medium">
+            {sp?.rollNumber || "-"}
+            {sp?.studentId && sp.studentId !== sp?.rollNumber && (
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                ({sp.studentId})
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "studentProfile.firstName",
@@ -886,7 +1051,11 @@ export default function ExamResultsPage() {
                 <div className="w-48">
                   <AppDropdown
                     value={filterExam}
-                    onChange={setFilterExam}
+                    onChange={(val) => {
+                      setFilterExam(val);
+                      setFilterClass("");
+                      setFilterSubject("");
+                    }}
                     options={listExamFilterOptions}
                     placeholder={t("filterAllExams")}
                     searchable
@@ -957,10 +1126,38 @@ export default function ExamResultsPage() {
           description={`${selectedExamObj?.name} — ${selectedSubjectInfo?.name} (${t("maxMarks")}: ${selectedSubjectInfo?.maxMarks ?? "-"})`}
           icon={ClipboardCheck}
         >
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {t("back")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleTemplateDownload} title={t("downloadTemplate")}>
+              <FileDown className="mr-2 h-4 w-4" />
+              {t("downloadTemplate")}
+            </Button>
+            {canWriteResults && (
+              <Button
+                variant="outline"
+                onClick={() => importFileRef.current?.click()}
+                disabled={isImporting || saveMutation.isPending}
+                title={t("importMarks")}
+              >
+                {isImporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" />
+                )}
+                {t("importMarks")}
+              </Button>
+            )}
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <Button variant="outline" onClick={handleBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t("back")}
+            </Button>
+          </div>
         </PageHeader>
 
         {!isAuthLoading && !canReadResults ? (
@@ -1015,7 +1212,7 @@ export default function ExamResultsPage() {
 
                     return (
                       <div
-                        key={student.studentProfileId}
+                        key={student.studentProfileId || student.studentId || `student-row-${index}`}
                         className={`grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors hover:bg-muted/30 ${isFailing
                           ? "bg-red-50/50 dark:bg-red-950/10"
                           : ""
@@ -1053,6 +1250,10 @@ export default function ExamResultsPage() {
                               handleMarksChange(index, e.target.value)
                             }
                             onFocus={(e) => e.target.select()}
+                            onKeyDown={(e) => handleMarkKeyDown(e, index)}
+                            ref={(el) => {
+                              markInputRefs.current[index] = el;
+                            }}
                             min={0}
                             max={maxMarks || undefined}
                             step="0.5"
@@ -1287,6 +1488,7 @@ export default function ExamResultsPage() {
                     value={selectedExam}
                     onChange={(val) => {
                       setSelectedExam(val);
+                      setSelectedClass("");
                       setSelectedSubject("");
                     }}
                     options={examOptions}
@@ -1325,18 +1527,22 @@ export default function ExamResultsPage() {
 
           {/* Guidance Card */}
           <div className="bg-card rounded-lg border border-border p-8 shadow-sm">
-            <div className="flex flex-col items-center justify-center text-center py-6">
-              <ClipboardCheck className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {!selectedExam
-                  ? t("selectExamFirst")
-                  : !selectedClass
-                    ? t("selectClassToLoad")
-                    : !selectedSubject
-                      ? t("selectSubjectToEnter")
-                      : t("enterMarksForStudents")}
-              </p>
-            </div>
+            {isHydratingMarks ? (
+              <TableSkeleton rows={6} />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center py-6">
+                <ClipboardCheck className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  {!selectedExam
+                    ? t("selectExamFirst")
+                    : !selectedClass
+                      ? t("selectClassToLoad")
+                      : !selectedSubject
+                        ? t("selectSubjectToEnter")
+                        : t("enterMarksForStudents")}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1389,11 +1595,12 @@ export default function ExamResultsPage() {
                   !selectedExam ||
                   !selectedClass ||
                   !selectedSubject ||
-                  studentsLoading
+                  studentsLoading ||
+                  existingResultsLoading
                 }
                 className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 shadow-lg"
               >
-                {studentsLoading ? (
+                {studentsLoading || existingResultsLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {t("loadingStudents")}

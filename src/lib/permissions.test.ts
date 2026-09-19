@@ -111,6 +111,7 @@ describe("Permissions Engine & RBAC Matrix", () => {
       expect(getModuleForPath("/settings")).toBe("settings");
       expect(getModuleForPath("/academic")).toBe("academic");
       expect(getModuleForPath("/academic-year")).toBe("academic");
+      expect(getModuleForPath("/admin/historical-data")).toBe("historical-data");
     });
 
     it("securely default-denies unknown subpaths by returning base segment", () => {
@@ -313,6 +314,15 @@ describe("Capability gates the module tier cannot express", () => {
     }
     for (const role of ["PRINCIPAL", "MANAGER", "ACCOUNTANT", "ACADEMIC_COORDINATOR", "TEACHER", "CLERK"]) {
       expect(hasRolePermission(role, "system:manage"), role).toBe(false);
+    }
+  });
+
+  it("strictly restricts historical:manage to School Admins and Platform Admins", () => {
+    for (const role of ["ADMIN", "SCHOOL_ADMIN", "INSTITUTE_ADMIN", "SUPER_ADMIN", "SYSTEM_ADMIN", "PLATFORM_OWNER"]) {
+      expect(hasRolePermission(role, "historical:manage"), role).toBe(true);
+    }
+    for (const role of ["PRINCIPAL", "MANAGER", "ACCOUNTANT", "ACADEMIC_COORDINATOR", "TEACHER", "CLERK", "STUDENT", "PARENT"]) {
+      expect(hasRolePermission(role, "historical:manage"), role).toBe(false);
     }
   });
 });

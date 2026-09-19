@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
         { feeType: { contains: search, mode: "insensitive" } },
         { studentProfile: { firstName: { contains: search, mode: "insensitive" } } },
         { studentProfile: { lastName: { contains: search, mode: "insensitive" } } },
+        { studentProfile: { studentId: { contains: search, mode: "insensitive" } } },
+        { studentProfile: { rollNumber: { contains: search, mode: "insensitive" } } },
       ];
     }
 

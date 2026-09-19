@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStudents, useStaff } from "@/hooks/use-queries";
+import { fuzzyFilter } from "@/lib/utils";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 
 interface MarkAttendanceModalProps {
@@ -130,9 +131,10 @@ export function MarkAttendanceModal({ isOpen, onClose }: MarkAttendanceModalProp
     }
   };
 
-  const filteredList = attendanceList.filter(entry =>
-    entry.name.toLowerCase().includes(search.toLowerCase()) ||
-    entry.rollOrStaffId.toLowerCase().includes(search.toLowerCase())
+  const filteredList = fuzzyFilter(
+    attendanceList,
+    search,
+    (entry) => `${entry.name} • ${entry.rollOrStaffId}`
   );
 
   const presentCount = attendanceList.filter(e => e.status === "PRESENT").length;

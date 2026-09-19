@@ -37,6 +37,7 @@ import {
   HeartPulse,
   FileQuestion,
   Database,
+  History,
   type LucideIcon,
 } from "lucide-react";
 
@@ -385,6 +386,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.settings",
         href: "/settings",
         icon: Settings,
+      },
+      {
+        titleKey: "nav.historicalData",
+        href: "/admin/historical-data",
+        icon: History,
       },
     ],
   },

@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { studentProfile: { firstName: { contains: search, mode: "insensitive" } } },
         { studentProfile: { lastName: { contains: search, mode: "insensitive" } } },
+        { studentProfile: { rollNumber: { contains: search, mode: "insensitive" } } },
         { staffProfile: { firstName: { contains: search, mode: "insensitive" } } },
+        { staffProfile: { staffId: { contains: search, mode: "insensitive" } } },
         { reason: { contains: search, mode: "insensitive" } },
       ];
     }

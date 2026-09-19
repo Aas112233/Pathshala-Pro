@@ -119,6 +119,9 @@ export function getPermissionModuleForApiPath(pathname: string): string | null {
       if (subresource === "exams") return "exams";
       if (subresource === "salary") return "salary";
       return "settings";
+    case "admin":
+      if (subresource === "historical-data") return "historical-data";
+      return "settings";
     case "system-admin":
     case "tenants":
       return "settings";

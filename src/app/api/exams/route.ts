@@ -80,7 +80,9 @@ export async function GET(request: NextRequest) {
       where.isPublished = isPublished === "true";
     }
 
-    const cacheKey = `exams:${tenantId}:${resolvedAcademicYearId}:${type}:${isPublished}`;
+    // v2: payload now carries per-exam classIds (bumped so pre-existing
+    // cached entries without classIds are never served).
+    const cacheKey = `exams:v2:${tenantId}:${resolvedAcademicYearId}:${type}:${isPublished}`;
     const cachedExams = fastCache.get<any[]>(cacheKey);
     if (cachedExams) {
       return successResponse(cachedExams, "Exams retrieved successfully");
@@ -110,9 +112,44 @@ export async function GET(request: NextRequest) {
       orderBy: { startDate: "desc" },
     });
 
-    fastCache.set(cacheKey, exams, 60);
+    // Derive eligible classes per exam via curriculum intersection:
+    // Exam has no direct classId, but at creation its subjects are picked from
+    // one class's ClassSubject roster, so the originating class teaches ALL of
+    // the exam's subjects. Requiring ALL (not just ANY) keeps the cascade
+    // narrow when core subjects are shared across classes.
+    const allSubjectIds = [...new Set(exams.flatMap((e) => e.subjects.map((s) => s.subjectId)))];
+    const classSubjects = allSubjectIds.length > 0
+      ? await prisma.classSubject.findMany({
+          where: { tenantId, subjectId: { in: allSubjectIds } },
+          select: { classId: true, subjectId: true },
+        })
+      : [];
+    const subjectToClasses = new Map<string, Set<string>>();
+    for (const cs of classSubjects) {
+      const set = subjectToClasses.get(cs.subjectId) ?? new Set<string>();
+      set.add(cs.classId);
+      subjectToClasses.set(cs.subjectId, set);
+    }
+    const examsWithClasses = exams.map((e) => {
+      const examSubjectIds = [...new Set(e.subjects.map((s) => s.subjectId))];
+      if (examSubjectIds.length === 0) return { ...e, classIds: [] as string[] };
+      const taughtCount = new Map<string, number>();
+      for (const sid of examSubjectIds) {
+        for (const cid of subjectToClasses.get(sid) ?? []) {
+          taughtCount.set(cid, (taughtCount.get(cid) ?? 0) + 1);
+        }
+      }
+      return {
+        ...e,
+        classIds: [...taughtCount.entries()]
+          .filter(([, n]) => n === examSubjectIds.length)
+          .map(([cid]) => cid),
+      };
+    });
 
-    return successResponse(exams, "Exams retrieved successfully");
+    fastCache.set(cacheKey, examsWithClasses, 60);
+
+    return successResponse(examsWithClasses, "Exams retrieved successfully");
   } catch (error) {
     return handleApiError(error);
   }
