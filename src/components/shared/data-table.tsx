@@ -50,8 +50,8 @@ export function DataTable<TData>({
   return (
     <div className={cn("space-y-3", className)}>
       {/* Search */}
-      {onSearch && (
-        <div className="relative max-w-sm">
+      {onSearch ? (
+        <div className="relative max-w-sm h-10">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
@@ -61,7 +61,7 @@ export function DataTable<TData>({
             className="h-10 w-full rounded-lg border border-input bg-background pl-10 pr-4 text-sm text-foreground outline-none ring-ring transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
-      )}
+      ) : null}
 
       {/* Table */}
       <div className="min-h-[460px] overflow-hidden rounded-lg border border-border">
@@ -127,46 +127,48 @@ export function DataTable<TData>({
       </div>
 
       {/* Pagination */}
-      {pagination && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing page {pagination.currentPage} of {pagination.totalPages}
-            {" "}({pagination.totalCount} total)
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onPageChange?.(pagination.currentPage - 1)}
-              disabled={!pagination.hasPreviousPage || isLoading}
-              aria-label="Previous page"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isLoading && pagination.hasPreviousPage ? (
-                <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
-            </button>
-            <button
-              onClick={() => onPageChange?.(pagination.currentPage + 1)}
-              disabled={!pagination.hasNextPage || isLoading}
-              aria-label="Next page"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isLoading && pagination.hasNextPage ? (
-                <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="flex h-9 items-center justify-between">
+        {pagination ? (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Showing page {pagination.currentPage} of {pagination.totalPages}
+              {" "}({pagination.totalCount} total)
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onPageChange?.(pagination.currentPage - 1)}
+                disabled={!pagination.hasPreviousPage || isLoading}
+                aria-label="Previous page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoading && pagination.hasPreviousPage ? (
+                  <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <ChevronLeft className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                onClick={() => onPageChange?.(pagination.currentPage + 1)}
+                disabled={!pagination.hasNextPage || isLoading}
+                aria-label="Next page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoading && pagination.hasNextPage ? (
+                  <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

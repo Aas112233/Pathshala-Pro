@@ -129,14 +129,14 @@ export function Header() {
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/95 px-6 backdrop-blur-md">
       {/* Left - Module & Breadcrumb Context */}
       <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
-        <div className="hidden sm:flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary w-fit max-w-full">
-          <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span className="whitespace-nowrap tracking-tight">{institutionName}</span>
-        </div>
-        <div className="h-4 w-[1px] bg-border/80 hidden sm:block shrink-0" />
-        <h1 className="text-base font-bold tracking-tight text-foreground whitespace-nowrap">
+        <h1 className="text-base font-bold tracking-tight text-foreground whitespace-nowrap shrink-0">
           {t(breadcrumbKey as any) || t("nav.dashboard")}
         </h1>
+        <div className="h-4 w-[1px] bg-border/80 hidden sm:block shrink-0" />
+        <div className="hidden sm:flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary w-fit max-w-full truncate">
+          <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span className="whitespace-nowrap tracking-tight truncate">{institutionName}</span>
+        </div>
       </div>
 
       {/* Right - Global Actions */}
