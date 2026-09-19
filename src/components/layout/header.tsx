@@ -156,6 +156,7 @@ export function Header() {
               localeOpen && "bg-muted text-foreground"
             )}
             title={t("settings.language")}
+            aria-label={t("settings.language")}
           >
             <Globe className="h-3.5 w-3.5 text-primary" />
             <span className="hidden sm:inline">{localeNames[currentLocale]}</span>
