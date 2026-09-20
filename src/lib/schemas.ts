@@ -1056,3 +1056,19 @@ export const updateOnboardingTemplateSchema = createOnboardingTemplateSchema
 
 export type CreateOnboardingTemplateInput = z.infer<typeof createOnboardingTemplateSchema>;
 export type UpdateOnboardingTemplateInput = z.infer<typeof updateOnboardingTemplateSchema>;
+
+// Superadmin tenant force-delete (irreversible full wipe) confirmation payload.
+// The 3-step UI collects these incrementally; the API requires all of them.
+export const forceDeleteTenantSchema = z.object({
+  confirmTenantId: z.string().min(1, "Tenant ID confirmation is required"),
+  confirmName: z.string().min(1, "Tenant name confirmation is required"),
+  acknowledged: z
+    .boolean()
+    .refine((v) => v === true, { message: "You must acknowledge irreversible data loss" }),
+  reason: z
+    .string()
+    .min(8, "A deletion reason (min 8 characters) is required")
+    .max(500, "Reason must be 500 characters or less"),
+});
+
+export type ForceDeleteTenantInput = z.infer<typeof forceDeleteTenantSchema>;

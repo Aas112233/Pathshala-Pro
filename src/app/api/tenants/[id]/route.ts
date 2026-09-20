@@ -6,12 +6,15 @@ import {
   notFound,
   badRequest,
   handleApiError,
+  safeParseBody,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { logAuditEvent } from "@/lib/audit-logger";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 import { getTenantSubscription } from "@/lib/subscription-service";
 import { resolveTenantModules } from "@/lib/tenant-modules";
+import { forceDeleteTenantSchema } from "@/lib/schemas";
+import { forceDeleteTenant, isProtectedTenantId } from "@/lib/superadmin-service";
 
 /**
  * GET /api/tenants/[id]
@@ -222,7 +225,10 @@ export async function PUT(
 
 /**
  * DELETE /api/tenants/[id]
- * Suspend or purge a tenant (Strictly Platform SuperAdmin only)
+ * Default: suspend the tenant (Strictly Platform SuperAdmin only).
+ * Hard wipe: DELETE /api/tenants/[id]?mode=hard with a validated
+ * forceDeleteTenantSchema body (typed tenant ID + name confirmations,
+ * explicit acknowledgement, and reason). Irreversible.
  */
 export async function DELETE(
   request: NextRequest,
@@ -250,6 +256,72 @@ export async function DELETE(
 
     if (!existingTenant) {
       return notFound("Tenant was not found.");
+    }
+
+    // Irreversible full wipe — triple-confirmed by the 3-step UI.
+    if (request.nextUrl.searchParams.get("mode") === "hard") {
+      if (isProtectedTenantId(existingTenant.tenantId) || isProtectedTenantId(id)) {
+        return badRequest("The platform SYSTEM tenant can never be deleted.", [
+          {
+            field: "confirmTenantId",
+            code: "protected",
+            message: "The platform SYSTEM tenant is protected from deletion.",
+          },
+        ]);
+      }
+
+      const bodyResult = await safeParseBody(request, forceDeleteTenantSchema);
+      if (!bodyResult.success) return bodyResult.errorResponse;
+      const { confirmTenantId, confirmName, reason } = bodyResult.data;
+
+      if (confirmTenantId.trim() !== existingTenant.tenantId) {
+        return badRequest(
+          `[Field 'confirmTenantId', Code: mismatch] Typed tenant ID does not match '${existingTenant.tenantId}'.`,
+          [
+            {
+              field: "confirmTenantId",
+              code: "mismatch",
+              message: `Typed tenant ID does not match '${existingTenant.tenantId}'.`,
+            },
+          ]
+        );
+      }
+
+      if (confirmName.trim() !== existingTenant.name) {
+        return badRequest(
+          `[Field 'confirmName', Code: mismatch] Typed school name does not match '${existingTenant.name}'.`,
+          [
+            {
+              field: "confirmName",
+              code: "mismatch",
+              message: `Typed school name does not match '${existingTenant.name}'.`,
+            },
+          ]
+        );
+      }
+
+      const forwarded = request.headers.get("x-forwarded-for");
+      const ipAddress = forwarded?.split(",")[0]?.trim() || undefined;
+
+      const result = await prisma.$transaction(
+        async (tx) =>
+          forceDeleteTenant(tx as any, {
+            tenantId: existingTenant.tenantId,
+            reason: reason.trim(),
+            context: {
+              adminUserId: user.id,
+              adminEmail: user.email,
+              ipAddress,
+              userAgent: request.headers.get("user-agent") || undefined,
+            },
+          }),
+        { maxWait: 20000, timeout: 120000 }
+      );
+
+      return successResponse(
+        result,
+        `School ${existingTenant.name} and all of its data have been permanently deleted.`
+      );
     }
 
     // Safety guard: Mark as SUSPENDED rather than hard delete if records exist

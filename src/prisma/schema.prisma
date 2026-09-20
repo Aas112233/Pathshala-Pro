@@ -2039,6 +2039,7 @@ enum SuperAdminActionType {
   PLAN_CHANGE
   FEATURE_FLAG_CHANGE
   MAINTENANCE_TOGGLE
+  TENANT_FORCE_DELETE
 }
 
 model SubscriptionPlan {

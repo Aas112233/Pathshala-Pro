@@ -24,8 +24,10 @@ import {
   Layers,
   ShieldCheck,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { EditTenantModal } from "@/components/system-admin/edit-tenant-modal";
+import { ForceDeleteTenantModal } from "@/components/system-admin/force-delete-tenant-modal";
 import { SubscriptionControlPanel } from "@/components/system-admin/subscription-control-panel";
 import { TenantModuleAccessPanel } from "@/components/system-admin/tenant-module-access-panel";
 
@@ -39,6 +41,7 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
   const fetchTenantDetails = async () => {
@@ -310,6 +313,36 @@ export default function TenantDetailPage() {
         onClose={() => setIsEditModalOpen(false)}
         tenant={tenant}
         onSuccess={fetchTenantDetails}
+      />
+
+      {/* Danger Zone: irreversible tenant wipe */}
+      <Card className="border border-destructive/30 shadow-xs">
+        <CardHeader className="pb-3 border-b border-destructive/20">
+          <CardTitle className="text-sm font-bold flex items-center gap-2 text-destructive">
+            <ShieldAlert className="h-4 w-4" />
+            {t("systemAdmin.forceDelete.dangerZoneTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {t("systemAdmin.forceDelete.dangerZoneDescription", { name: tenant.name })}
+          </p>
+          <Button
+            variant="destructive"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="text-xs gap-1.5 h-9 shrink-0"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {t("systemAdmin.forceDelete.dangerZoneButton")}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <ForceDeleteTenantModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        tenant={tenant}
+        onSuccess={() => router.push("/system-admin/tenants")}
       />
     </div>
   );

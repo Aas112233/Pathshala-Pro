@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { TenantActionsDropdown } from "@/components/layout/tenant-actions-dropdown";
 import { OnboardInstituteModal } from "@/components/system-admin/onboard-institute-modal";
 import { EditTenantModal } from "@/components/system-admin/edit-tenant-modal";
+import { ForceDeleteTenantModal } from "@/components/system-admin/force-delete-tenant-modal";
 
 interface Tenant {
   id: string;
@@ -52,6 +53,7 @@ export default function TenantsPage() {
   const [search, setSearch] = useState("");
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<any>(null);
+  const [deletingTenant, setDeletingTenant] = useState<any>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -222,6 +224,7 @@ export default function TenantsPage() {
                         <TenantActionsDropdown
                           tenant={tenant}
                           onEdit={(t) => setEditingTenant(t)}
+                          onForceDelete={(t) => setDeletingTenant(t)}
                         />
                       </TableCell>
                     </TableRow>
@@ -243,6 +246,13 @@ export default function TenantsPage() {
         isOpen={!!editingTenant}
         onClose={() => setEditingTenant(null)}
         tenant={editingTenant}
+        onSuccess={fetchData}
+      />
+
+      <ForceDeleteTenantModal
+        isOpen={!!deletingTenant}
+        onClose={() => setDeletingTenant(null)}
+        tenant={deletingTenant}
         onSuccess={fetchData}
       />
     </div>
