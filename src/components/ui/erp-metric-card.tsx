@@ -4,6 +4,7 @@ import { MoreHorizontal, ArrowUpRight, ArrowDownRight, RefreshCw, ArrowRight } f
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./skeleton";
+import { Button } from "./button";
 
 export interface MetricBreakdown {
   label: string;
@@ -35,12 +36,12 @@ export interface ERPMetricCardProps {
 }
 
 const colorMap = {
-  emerald: { bg: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" },
-  amber: { bg: "bg-amber-500", text: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500" },
-  rose: { bg: "bg-rose-500", text: "text-rose-600 dark:text-rose-400", bar: "bg-rose-500" },
-  cyan: { bg: "bg-cyan-500", text: "text-cyan-600 dark:text-cyan-400", bar: "bg-cyan-500" },
-  indigo: { bg: "bg-teal-500", text: "text-teal-600 dark:text-teal-400", bar: "bg-teal-500" },
-  purple: { bg: "bg-purple-500", text: "text-purple-600 dark:text-purple-400", bar: "bg-purple-500" },
+  emerald: { bg: "bg-[var(--metric-emerald)]", text: "text-[var(--metric-emerald)]", bar: "bg-[var(--metric-emerald)]" },
+  amber: { bg: "bg-[var(--metric-amber)]", text: "text-[var(--metric-amber)]", bar: "bg-[var(--metric-amber)]" },
+  rose: { bg: "bg-[var(--metric-rose)]", text: "text-[var(--metric-rose)]", bar: "bg-[var(--metric-rose)]" },
+  cyan: { bg: "bg-[var(--metric-cyan)]", text: "text-[var(--metric-cyan)]", bar: "bg-[var(--metric-cyan)]" },
+  indigo: { bg: "bg-[var(--metric-indigo)]", text: "text-[var(--metric-indigo)]", bar: "bg-[var(--metric-indigo)]" },
+  purple: { bg: "bg-[var(--metric-purple)]", text: "text-[var(--metric-purple)]", bar: "bg-[var(--metric-purple)]" },
   slate: { bg: "bg-muted", text: "text-muted-foreground", bar: "bg-muted" },
 };
 
@@ -115,22 +116,27 @@ export function ERPMetricCard({
 
           <div className="flex items-center gap-1.5">
             {detailsLink || onDetailsClick ? (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onDetailsClick}
-                className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                className="h-auto px-1.5 text-xs font-medium text-primary hover:text-primary/80 hover:bg-transparent"
               >
                 DETAILS
-              </button>
+              </Button>
             ) : null}
 
             {onOptionsClick && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={onOptionsClick}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/60 hover:bg-muted hover:text-foreground transition-colors"
+                className="h-7 w-7 text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+                aria-label="Options"
                 title="Options"
               >
                 <MoreHorizontal className="h-4 w-4" />
-              </button>
+              </Button>
             )}
 
             {Icon && (
@@ -154,8 +160,8 @@ export function ERPMetricCard({
               className={cn(
                 "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold",
                 trend.isPositive !== false
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                  ? "bg-[var(--status-success-bg)] text-[var(--status-success-text)]"
+                  : "bg-[var(--status-error-bg)] text-[var(--status-error-text)]"
               )}
             >
               {trend.isPositive !== false ? (
@@ -198,14 +204,15 @@ export function ERPMetricCard({
       {(actionLabel || lastUpdated) && (
         <div className="mt-5 pt-3 border-t border-border/50 flex items-center justify-between">
           {actionLabel ? (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onAction}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors group/action cursor-pointer"
+              className="h-auto px-1 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-transparent group/action"
             >
               <span>{actionLabel}</span>
               <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-transform group-hover/action:translate-x-0.5 group-hover/action:text-primary" />
-            </button>
+            </Button>
           ) : null}
           {lastUpdated ? (
             <div className="flex items-center justify-between text-[11px] text-muted-foreground/70">

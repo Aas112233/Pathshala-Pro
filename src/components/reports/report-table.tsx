@@ -18,8 +18,12 @@ import { cn } from "@/lib/utils";
 import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import type { ColumnDef } from "@tanstack/react-table";
-import { flexRender } from "@tanstack/react-table";
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  type ColumnDef,
+} from "@tanstack/react-table";
 
 interface ReportTableProps<TData> {
   title?: string;
@@ -109,6 +113,12 @@ export function ReportTable<TData>({
     }
   };
 
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   return (
     <Card className={cn(className)}>
       {(title || showExport) && (
@@ -153,15 +163,17 @@ export function ReportTable<TData>({
         <div className="rounded-md border">
           <Table>
             <TableHeader>
-              <TableRow>
-                {columns.map((column: any, columnIndex) => (
-                  <TableHead key={columnIndex}>
-                    {typeof column.header === "function"
-                      ? column.header({ column, header: column, table: {} as any })
-                      : column.header}
-                  </TableHead>
-                ))}
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
               {isLoading ? (
@@ -170,7 +182,7 @@ export function ReportTable<TData>({
                     <TableSkeleton rows={6} />
                   </TableCell>
                 </TableRow>
-              ) : data.length === 0 ? (
+              ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
@@ -180,41 +192,13 @@ export function ReportTable<TData>({
                   </TableCell>
                 </TableRow>
               ) : (
-                data.map((row, rowIndex) => (
-                  <TableRow key={rowIndex}>
-                    {columns.map((column: any, columnIndex) => {
-                      const getVal = () =>
-                        column.accessorFn
-                          ? column.accessorFn(row)
-                          : column.accessorKey
-                          ? (row as any)[column.accessorKey as string]
-                          : undefined;
-
-                      const cellContext = {
-                        getValue: <TValue = unknown,>() => getVal() as TValue,
-                        renderValue: <TValue = unknown,>() => getVal() as TValue,
-                        row: {
-                          original: row,
-                          index: rowIndex,
-                          getValue: (key: string) => (row as any)[key],
-                        },
-                        cell: {
-                          id: `${rowIndex}_${column.id || column.accessorKey || columnIndex}`,
-                          getValue: getVal,
-                          row: { original: row, index: rowIndex },
-                        },
-                        column,
-                        table: {} as any,
-                      };
-
-                      return (
-                        <TableCell key={columnIndex}>
-                          {column.cell
-                            ? flexRender(column.cell, cellContext)
-                            : (getVal() ?? "")}
-                        </TableCell>
-                      );
-                    })}
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))
               )}

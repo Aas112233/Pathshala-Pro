@@ -3,9 +3,9 @@ import designTokens, { getColor } from "@/lib/design-tokens";
 
 describe("Design Tokens & System", () => {
   it("exports valid color tokens", () => {
-    expect(designTokens.colors.primary[500]).toBe("#3b82f6");
-    expect(getColor("primary.500")).toBe("#3b82f6");
-    expect(designTokens.colors.secondary[500]).toBe("#22c55e");
+    expect(designTokens.colors.primary[500]).toBe("var(--primary)");
+    expect(getColor("primary.500")).toBe("var(--primary)");
+    expect(designTokens.colors.secondary[500]).toBe("var(--secondary)");
   });
 
   it("exports valid typography and border radius tokens", () => {

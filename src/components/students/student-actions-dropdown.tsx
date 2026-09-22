@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useTranslations } from "next-intl";
-import { MoreVertical, Pencil, Trash2, Eye, User, Loader2, TrendingUp } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Eye, TrendingUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { StudentProfile } from "@/types/entities";
 
 interface StudentActionsDropdownProps {
@@ -24,7 +25,9 @@ export function StudentActionsDropdown({
   const t = useTranslations("students");
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -37,6 +40,16 @@ export function StudentActionsDropdown({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useLayoutEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: rect.right - 160,
+      });
+    }
+  }, [isOpen]);
+
   const handleAction = (callback?: (student: StudentProfile) => void) => {
     setIsOpen(false);
     callback?.(student);
@@ -44,53 +57,65 @@ export function StudentActionsDropdown({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
+      <Button
+        ref={triggerRef}
+        variant="ghost"
+        size="icon-sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         aria-label={t("actions.studentActions")}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
       >
         <MoreVertical className="h-4 w-4" />
-      </button>
+      </Button>
 
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-1 z-50 min-w-[160px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
+          className="fixed z-50 min-w-[160px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
           style={{
-            position: "fixed",
-            top: `${dropdownRef.current?.getBoundingClientRect().bottom || 0 + 4}px`,
-            left: `${(dropdownRef.current?.getBoundingClientRect().right || 0) - 160}px`,
+            top: `${dropdownPos.top}px`,
+            left: `${dropdownPos.left}px`,
           }}
         >
-          <div className="p-1">
+          <div className="p-1" role="menu">
             {onView && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted"
                 onClick={() => handleAction(onView)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <Eye className="h-4 w-4" />
                 <span>{t("actions.viewDetails")}</span>
-              </button>
+              </Button>
             )}
             {onViewPerformance && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted"
                 onClick={() => handleAction(onViewPerformance)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span>{t("actions.viewPerformance")}</span>
-              </button>
+              </Button>
             )}
             {onEdit && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted"
                 onClick={() => handleAction(onEdit)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
               >
                 <Pencil className="h-4 w-4" />
                 <span>{t("actions.edit")}</span>
-              </button>
+              </Button>
             )}
             {onDelete && (
-              <button
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full justify-start gap-2 rounded-md px-3 py-2 text-sm hover:bg-destructive/10"
                 onClick={async () => {
                   setIsDeleting(true);
                   try {
@@ -101,11 +126,10 @@ export function StudentActionsDropdown({
                   }
                 }}
                 disabled={isDeleting}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               >
                 {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 <span>{isDeleting ? t("actions.deleting") : t("actions.delete")}</span>
-              </button>
+              </Button>
             )}
           </div>
         </div>

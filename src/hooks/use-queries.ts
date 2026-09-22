@@ -18,6 +18,7 @@ import {
 } from "@/lib/api-client";
 import type { PaginationParams, SearchParams } from "@/types/api";
 import type { CreateUserPayload, UpdateUserPayload } from "@/types/users";
+import type { CreateStudentDTO, UpdateStudentDTO } from "@/viewmodels/students/use-student-view-model";
 
 interface QueryHookOptions {
   enabled?: boolean;
@@ -201,7 +202,7 @@ export function useStudents(
 
 export function useStudent(id: string) {
   return useQuery({
-    queryKey: ["student", id],
+    queryKey: ["students", id],
     queryFn: () => studentsApi.get(id),
     enabled: !!id,
   });
@@ -218,7 +219,7 @@ export function useStudentPerformance(id: string, academicYearId?: string) {
 export function useCreateStudent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => studentsApi.create(data),
+    mutationFn: (data: CreateStudentDTO) => studentsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
     },
@@ -228,10 +229,10 @@ export function useCreateStudent() {
 export function useUpdateStudent(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => studentsApi.update(id, data),
+    mutationFn: (data: UpdateStudentDTO) => studentsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      queryClient.invalidateQueries({ queryKey: ["student", id] });
+      queryClient.invalidateQueries({ queryKey: ["students", id] });
     },
   });
 }

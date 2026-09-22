@@ -43,7 +43,9 @@ export function ReportMetricCard({
           <p
             className={cn(
               "mt-2 text-xs",
-              trend.isPositive ? "text-green-600" : "text-red-600"
+              trend.isPositive
+                ? "text-[var(--status-success-text)]"
+                : "text-[var(--status-error-text)]"
             )}
           >
             {trend.isPositive ? "+" : "-"}

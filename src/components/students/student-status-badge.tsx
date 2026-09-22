@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { StudentStatus } from "@/types/entities";
 
 interface StudentStatusBadgeProps {
@@ -7,33 +7,22 @@ interface StudentStatusBadgeProps {
   className?: string;
 }
 
-const statusConfig: Record<StudentStatus, { label: string; variant: string }> = {
-  ACTIVE: { label: "Active", variant: "success" },
-  INACTIVE: { label: "Inactive", variant: "secondary" },
-  GRADUATED: { label: "Graduated", variant: "info" },
-  TRANSFERRED: { label: "Transferred", variant: "warning" },
-};
-
 export function StudentStatusBadge({ status, className }: StudentStatusBadgeProps) {
   const t = useTranslations("students");
-  const config = statusConfig[status] || statusConfig.ACTIVE;
 
-  const variantClasses = {
-    success: "bg-green-100 text-green-800 border-green-200",
-    secondary: "bg-muted text-muted-foreground border-border",
-    info: "bg-blue-100 text-blue-800 border-blue-200",
-    warning: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  const labelMap: Record<StudentStatus, string> = {
+    ACTIVE: t("active"),
+    INACTIVE: t("inactive"),
+    GRADUATED: t("graduated"),
+    TRANSFERRED: t("transferred"),
   };
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        variantClasses[config.variant as keyof typeof variantClasses],
-        className
-      )}
-    >
-      {t(config.label.toLowerCase())}
-    </span>
+    <StatusBadge
+      status={status}
+      domain="student"
+      label={labelMap[status] ?? t("active")}
+      className={className}
+    />
   );
 }

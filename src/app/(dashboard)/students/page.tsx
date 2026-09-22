@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
-import { ERPDataTable, ERPUserCell, ERPStatusPill } from "@/components/ui/erp-data-table";
 import { Button } from "@/components/ui/button";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { GraduationCap, Plus, Users, UserCheck, IdCard, FileText } from "lucide-react";
@@ -226,7 +225,7 @@ export default function StudentsPage() {
     const res = await exportAdmissionFormPDF(school, new Date().getFullYear().toString(), `ADM-${Date.now().toString().slice(-6)}`);
     if (res.success) toast.success(t("admissionFormDownloaded"));
     else toast.error(t("admissionFormFailed"));
-  }, [settings, exportAdmissionFormPDF]);
+  }, [settings, exportAdmissionFormPDF, t]);
 
   return (
     <div className="space-y-6">

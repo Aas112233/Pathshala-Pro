@@ -358,17 +358,17 @@ export function LineChart({
   const maxValue = Math.max(...data.map((d) => d.value));
   const minValue = Math.min(...data.map((d) => d.value));
   const range = maxValue - minValue || 1;
-  const width = 100;
+  const width = 500;
   const padding = 50;
 
   const points = data.map((point, index) => {
-    const x = padding + (index / (data.length - 1)) * (width - padding * 2);
+    const x = padding + (index / Math.max(data.length - 1, 1)) * (width - padding * 2);
     const y = height - padding - ((point.value - minValue) / range) * (height - padding * 2);
     return { x, y, ...point };
   });
 
   const pathData = points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
     .join(" ");
 
   return (

@@ -167,9 +167,9 @@ export function ERPDataTable<T>({
           {onFilterClick && (
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={onFilterClick}
-              className="relative h-9 gap-1.5 rounded-md border-border/80 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="relative gap-1.5 rounded-md border-border/80 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <Filter className="h-3.5 w-3.5" />
               <span>{filterLabel}</span>
@@ -196,9 +196,9 @@ export function ERPDataTable<T>({
 
           {actionLabel && (
             <Button
-              size="sm"
+              size="lg"
               onClick={onActionClick}
-              className="h-9 gap-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+              className="gap-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
             >
               {actionIcon || <Plus className="h-3.5 w-3.5" />}
               <span>{actionLabel}</span>
@@ -334,21 +334,21 @@ export function ERPDataTable<T>({
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 disabled={page <= 1 || isLoading}
                 aria-label={paginationLabels?.previous}
                 onClick={() => onPageChange(page - 1)}
-                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+                className="rounded-lg text-muted-foreground hover:text-foreground"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 disabled={page >= totalPages || isLoading}
                 aria-label={paginationLabels?.next}
                 onClick={() => onPageChange(page + 1)}
-                className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+                className="rounded-lg text-muted-foreground hover:text-foreground"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
@@ -411,10 +411,10 @@ export function ERPStatusPill({
   const styles: Record<string, string> = {
     dark: "bg-foreground text-background font-medium",
     subtle: "border border-border/80 bg-muted/40 text-foreground font-medium",
-    emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium",
-    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium",
-    rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-medium",
-    indigo: "bg-primary/10 text-primary border border-primary/20 font-medium",
+    emerald: "bg-[var(--status-emerald-bg)] text-[var(--status-emerald-text)] border-[var(--status-emerald-border)] font-medium",
+    amber: "bg-[var(--status-amber-bg)] text-[var(--status-amber-text)] border-[var(--status-amber-border)] font-medium",
+    rose: "bg-[var(--status-error-bg)] text-[var(--status-error-text)] border-[var(--status-error-border)] font-medium",
+    indigo: "bg-[var(--status-info-bg)] text-[var(--status-info-text)] border-[var(--status-info-border)] font-medium",
   };
 
   return (

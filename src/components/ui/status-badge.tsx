@@ -6,15 +6,15 @@ import type { ReactNode } from "react";
  * Each variant maps to a Tailwind color-class set (bg + text + border).
  */
 const variantClasses = {
-  success:  "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-  error:    "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-  warning:  "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
-  info:     "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-  neutral:  "bg-muted text-muted-foreground border-border",
-  emerald:  "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
-  amber:    "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
-  orange:   "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-  purple:   "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
+  success:  "bg-[var(--status-success-bg)] text-[var(--status-success-text)] border-[var(--status-success-border)]",
+  error:    "bg-[var(--status-error-bg)] text-[var(--status-error-text)] border-[var(--status-error-border)]",
+  warning:  "bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border-[var(--status-warning-border)]",
+  info:     "bg-[var(--status-info-bg)] text-[var(--status-info-text)] border-[var(--status-info-border)]",
+  neutral:  "bg-[var(--status-neutral-bg)] text-[var(--status-neutral-text)] border-[var(--status-neutral-border)]",
+  emerald:  "bg-[var(--status-emerald-bg)] text-[var(--status-emerald-text)] border-[var(--status-emerald-border)]",
+  amber:    "bg-[var(--status-amber-bg)] text-[var(--status-amber-text)] border-[var(--status-amber-border)]",
+  orange:   "bg-[var(--status-orange-bg)] text-[var(--status-orange-text)] border-[var(--status-orange-border)]",
+  purple:   "bg-[var(--status-purple-bg)] text-[var(--status-purple-text)] border-[var(--status-purple-border)]",
 } as const;
 
 export type StatusVariant = keyof typeof variantClasses;

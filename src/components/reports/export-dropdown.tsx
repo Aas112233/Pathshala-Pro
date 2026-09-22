@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, FileSpreadsheet, FileText, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
 
 export interface ExportOption {
@@ -51,12 +52,13 @@ export function ExportDropdown({ onExport, disabled = false }: ExportDropdownPro
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
+      <Button
+        variant="outline"
         onClick={() => setOpen(!open)}
         disabled={disabled}
         className={cn(
-          "inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm transition-colors",
-          "hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "inline-flex items-center gap-2 rounded-lg border-border bg-background px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm",
+          "hover:bg-muted hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
           open && "bg-muted text-foreground"
         )}
@@ -64,23 +66,25 @@ export function ExportDropdown({ onExport, disabled = false }: ExportDropdownPro
         <Download className="h-4 w-4" />
         {t("actions.export")}
         <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-      </button>
+      </Button>
 
       {open && (
         <div className="absolute right-0 z-50 mt-2 min-w-[200px] rounded-lg border bg-popover p-1 shadow-lg animate-in fade-in zoom-in-95">
           {exportOptions.map((option) => (
-            <button
+            <Button
               key={option.value}
+              variant="ghost"
+              size="sm"
               onClick={() => handleSelect(option.value)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+                "flex w-full justify-start gap-3 rounded-md px-3 py-2.5 text-sm",
                 "hover:bg-accent hover:text-accent-foreground",
                 "focus:bg-accent focus:text-accent-foreground focus:outline-none"
               )}
             >
               <span className="text-muted-foreground">{option.icon}</span>
               <span>{option.label}</span>
-            </button>
+            </Button>
           ))}
         </div>
       )}

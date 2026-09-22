@@ -23,7 +23,6 @@ import { useExcelExport } from "@/hooks/use-excel-export";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
-import { colors } from "@/lib/design-tokens";
 import { toast } from "sonner";
 
 interface FeeVoucher {
@@ -315,10 +314,10 @@ export default function FeeReportPage() {
               <BarChart
                 title={tFee("voucherStatusDistribution")}
                 data={[
-                  { label: tFee("paid"), value: statusCounts.PAID, color: colors.secondary[500] },
-                  { label: tFee("pending"), value: statusCounts.PENDING, color: colors.accent.amber },
-                  { label: tFee("partial"), value: statusCounts.PARTIAL, color: "var(--chart-1)" },
-                  { label: tFee("overdue"), value: statusCounts.OVERDUE, color: colors.accent.red },
+                  { label: tFee("paid"), value: statusCounts.PAID, color: "var(--status-success-bg)" },
+                  { label: tFee("pending"), value: statusCounts.PENDING, color: "var(--status-warning-bg)" },
+                  { label: tFee("partial"), value: statusCounts.PARTIAL, color: "var(--status-info-bg)" },
+                  { label: tFee("overdue"), value: statusCounts.OVERDUE, color: "var(--status-error-bg)" },
                 ]}
                 horizontal
                 height={240}

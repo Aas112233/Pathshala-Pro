@@ -13,6 +13,7 @@ import {
   Undo2,
   Redo2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 function sanitizeHtml(html: string): string {
   // Allow only safe inline formatting tags — strip everything else (script, style, etc.)
@@ -177,20 +178,53 @@ export function RichTextField({
     <div className={`rounded-md border border-input bg-background focus-within:ring-1 focus-within:ring-primary overflow-hidden ${className}`}>
       {/* Toolbar — compact, enterprise, icon-only with active toggle */}
       <div className="flex flex-wrap items-center gap-0.5 px-1.5 py-1 bg-muted/40 border-b border-border">
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("bold"); }} className={`p-1 rounded ${active.bold ? btnActive : btnIdle}`} title="Bold (Ctrl+B)" aria-pressed={active.bold}><Bold className="h-3.5 w-3.5" /></button>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("italic"); }} className={`p-1 rounded ${active.italic ? btnActive : btnIdle}`} title="Italic (Ctrl+I)" aria-pressed={active.italic}><Italic className="h-3.5 w-3.5" /></button>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("underline"); }} className={`p-1 rounded ${active.underline ? btnActive : btnIdle}`} title="Underline (Ctrl+U)" aria-pressed={active.underline}><Underline className="h-3.5 w-3.5" /></button>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("strikeThrough"); }} className={`p-1 rounded ${active.strike ? btnActive : btnIdle}`} title="Strikethrough" aria-pressed={active.strike}><Strikethrough className="h-3.5 w-3.5" /></button>
+        <Button type="button" variant="ghost" size="icon-xs" aria-pressed={active.bold}
+          title="Bold (Ctrl+B)"
+          className={active.bold ? btnActive : btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("bold"); }}><Bold className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon-xs" aria-pressed={active.italic}
+          title="Italic (Ctrl+I)"
+          className={active.italic ? btnActive : btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("italic"); }}><Italic className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon-xs" aria-pressed={active.underline}
+          title="Underline (Ctrl+U)"
+          className={active.underline ? btnActive : btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("underline"); }}><Underline className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon-xs" aria-pressed={active.strike}
+          title="Strikethrough"
+          className={active.strike ? btnActive : btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("strikeThrough"); }}><Strikethrough className="h-3.5 w-3.5" /></Button>
         <span className="w-px h-4 bg-border mx-0.5" />
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("subscript"); }} className={`p-1 rounded ${active.sub ? btnActive : btnIdle}`} title="Subscript (H₂O) — click again to return to normal" aria-pressed={active.sub}><Subscript className="h-3.5 w-3.5" /></button>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("superscript"); }} className={`p-1 rounded ${active.sup ? btnActive : btnIdle}`} title="Superscript (x²) — click again to return to normal" aria-pressed={active.sup}><Superscript className="h-3.5 w-3.5" /></button>
+        <Button type="button" variant="ghost" size="icon-xs" aria-pressed={active.sub}
+          title="Subscript (H₂O) — click again to return to normal"
+          className={active.sub ? btnActive : btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("subscript"); }}><Subscript className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon-xs" aria-pressed={active.sup}
+          title="Superscript (x²) — click again to return to normal"
+          className={active.sup ? btnActive : btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("superscript"); }}><Superscript className="h-3.5 w-3.5" /></Button>
         <span className="w-px h-4 bg-border mx-0.5" />
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("insertUnorderedList"); }} className="p-1 rounded hover:bg-muted text-foreground" title="Bullet list"><List className="h-3.5 w-3.5" /></button>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("insertOrderedList"); }} className="p-1 rounded hover:bg-muted text-foreground" title="Numbered list"><ListOrdered className="h-3.5 w-3.5" /></button>
+        <Button type="button" variant="ghost" size="icon-xs"
+          title="Bullet list"
+          className={btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("insertUnorderedList"); }}><List className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon-xs"
+          title="Numbered list"
+          className={btnIdle}
+          onMouseDown={(e) => { e.preventDefault(); exec("insertOrderedList"); }}><ListOrdered className="h-3.5 w-3.5" /></Button>
         <span className="w-px h-4 bg-border mx-0.5" />
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("removeFormat"); updateActive(); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Clear formatting"><Eraser className="h-3.5 w-3.5" /></button>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("undo"); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Undo"><Undo2 className="h-3.5 w-3.5" /></button>
-        <button type="button" onMouseDown={(e) => { e.preventDefault(); exec("redo"); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Redo"><Redo2 className="h-3.5 w-3.5" /></button>
+        <Button type="button" variant="ghost" size="icon-xs"
+          title="Clear formatting"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground"
+          onMouseDown={(e) => { e.preventDefault(); exec("removeFormat"); updateActive(); }}><Eraser className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon-xs"
+          title="Undo"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground"
+          onMouseDown={(e) => { e.preventDefault(); exec("undo"); }}><Undo2 className="h-3.5 w-3.5" /></Button>
+        <Button type="button" variant="ghost" size="icon-xs"
+          title="Redo"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground"
+          onMouseDown={(e) => { e.preventDefault(); exec("redo"); }}><Redo2 className="h-3.5 w-3.5" /></Button>
       </div>
       <div
         ref={ref}
