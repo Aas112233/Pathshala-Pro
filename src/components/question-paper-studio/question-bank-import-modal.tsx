@@ -1,21 +1,14 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionItem, ExamSection } from '@/types/exam-studio';
 import { AppDropdown } from '@/components/ui/app-dropdown';
-import {
-  Search,
-  BookOpen,
-  Filter,
-  Plus,
-  Check,
-  X,
-  Layers,
-  Loader2,
-  FileQuestion,
-  Sparkles,
-} from 'lucide-react';
+import { AppModal } from '@/components/ui/app-modal';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Search, BookOpen, Plus, Loader2, FileQuestion } from 'lucide-react';
 
 interface QuestionBankImportModalProps {
   isOpen: boolean;
@@ -134,47 +127,46 @@ export function QuestionBankImportModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  const allSelected = questionPool.length > 0 && selectedQuestionIds.size === questionPool.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-card text-card-foreground border border-border w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-muted/40">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 text-primary rounded-md">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-foreground">
-                প্রশ্ন ব্যাংক থেকে ইমপোর্ট করুন (Import from Question Bank)
-              </h2>
-              <p className="text-[11px] text-muted-foreground">
-                Browse and select pre-authored institutional questions
-              </p>
-            </div>
+    <AppModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="প্রশ্ন ব্যাংক থেকে ইমপোর্ট করুন (Import from Question Bank)"
+      description="Browse and select pre-authored institutional questions"
+      icon={<BookOpen className="h-4 w-4" />}
+      maxWidth="4xl"
+      footer={
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-medium text-muted-foreground">
+            {selectedQuestionIds.size}টি প্রশ্ন নির্বাচিত হয়েছে
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onClose}>
+              বাতিল (Cancel)
+            </Button>
+            <Button onClick={handleImport} disabled={selectedQuestionIds.size === 0}>
+              <Plus className="h-3.5 w-3.5" />
+              <span>প্রশ্নপত্রে যুক্ত করুন ({selectedQuestionIds.size})</span>
+            </Button>
+          </div>
         </div>
-
+      }
+    >
+      <div className="space-y-3 text-xs">
         {/* Filter Controls Bar */}
-        <div className="p-4 border-b border-border bg-muted/20 space-y-3 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+        <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-4">
             {/* Search Input */}
             <div className="relative sm:col-span-2">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="প্রশ্ন, অধ্যায় বা টপিক দিয়ে খুঁজুন..."
-                className="w-full pl-8 pr-3 py-1.5 bg-background border border-input rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                placeholder="প্রশ্ন, অধ্যায় বা টপিক দিয়ে খুঁজুন..."
+                className="h-8 pl-8 pr-3 text-xs"
               />
             </div>
 
@@ -211,7 +203,7 @@ export function QuestionBankImportModal({
           </div>
 
           {/* Target Section Selector */}
-          <div className="flex items-center justify-between gap-4 pt-1 flex-wrap">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold text-muted-foreground">
                 টার্গেট বিভাগ (Target Section):
@@ -224,57 +216,55 @@ export function QuestionBankImportModal({
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                className="text-[11px] text-primary hover:underline font-semibold"
-              >
-                {selectedQuestionIds.size === questionPool.length && questionPool.length > 0
-                  ? 'সবগুলো বাতিল করুন'
-                  : 'সবগুলো সিলেক্ট করুন'}
-              </button>
-            </div>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              onClick={handleSelectAll}
+              className="h-auto p-0 text-[11px]"
+            >
+              {allSelected ? 'সবগুলো বাতিল করুন' : 'সবগুলো সিলেক্ট করুন'}
+            </Button>
           </div>
         </div>
 
         {/* Question Pool List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 text-xs">
+        <div className="space-y-2.5">
           {isLoading ? (
-            <div className="py-16 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <span>প্রশ্ন ব্যাংক থেকে ডেটা লোড হচ্ছে...</span>
             </div>
           ) : questionPool.length === 0 ? (
-            <div className="py-16 text-center text-muted-foreground space-y-2">
-              <FileQuestion className="w-8 h-8 mx-auto opacity-40" />
-              <p>কোনো প্রশ্ন পাওয়া যায়নি। ফিল্টার পরিবর্তন করে পুনরায় চেষ্টা করুন।</p>
+            <div className="space-y-2 py-16 text-center text-muted-foreground">
+              <FileQuestion className="mx-auto h-8 w-8 opacity-40" />
+              <p>কোনো প্রশ্ন পাওয়া যায়নি। ফিল্টার পরিবর্তন করে পুনরায় চেষ্টা করুন।</p>
             </div>
           ) : (
             questionPool.map((q) => {
               const isSelected = selectedQuestionIds.has(q.id);
               return (
-                <div
+                <label
                   key={q.id}
-                  onClick={() => handleToggleSelect(q.id)}
-                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  htmlFor={`qbank-${q.id}`}
+                  className={`block cursor-pointer rounded-lg border p-3 transition-all ${
                     isSelected
                       ? 'border-primary bg-primary/5 shadow-xs'
                       : 'border-border bg-card hover:bg-muted/40'
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      id={`qbank-${q.id}`}
                       checked={isSelected}
-                      onChange={() => {}} // Handled by container onClick
-                      className="mt-0.5 rounded border-input text-primary focus:ring-primary"
+                      onCheckedChange={() => handleToggleSelect(q.id)}
+                      className="mt-0.5"
                     />
 
                     <div className="flex-1 space-y-1">
                       {/* Chapter & Tags */}
-                      <div className="flex items-center gap-2 flex-wrap text-[10px]">
-                        <span className="px-1.5 py-0.5 bg-muted rounded font-semibold text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                        <span className="rounded bg-muted px-1.5 py-0.5 font-semibold text-muted-foreground">
                           {q.type}
                         </span>
                         {q.chapter && (
@@ -282,26 +272,26 @@ export function QuestionBankImportModal({
                             অধ্যায়: <span className="font-medium text-foreground">{q.chapter}</span>
                           </span>
                         )}
-                        <span className="font-mono text-primary font-bold">
+                        <span className="font-mono font-bold text-primary">
                           [{q.marks} নম্বর]
                         </span>
                       </div>
 
                       {/* Stimulus */}
                       {q.stimulus && (
-                        <div className="p-2 bg-muted/40 border-l-2 border-primary rounded text-[11px] italic text-muted-foreground line-clamp-2">
+                        <div className="line-clamp-2 rounded border-l-2 border-primary bg-muted/40 p-2 text-[11px] italic text-muted-foreground">
                           {q.stimulus}
                         </div>
                       )}
 
                       {/* Question Text */}
-                      <div className="font-semibold text-foreground text-xs leading-snug">
+                      <div className="text-xs font-semibold leading-snug text-foreground">
                         {q.questionText}
                       </div>
 
                       {/* Options / Subquestions preview */}
                       {Array.isArray(q.options) && q.options.length > 0 && (
-                        <div className="grid grid-cols-2 gap-1 text-[11px] text-muted-foreground pt-1">
+                        <div className="grid grid-cols-2 gap-1 pt-1 text-[11px] text-muted-foreground">
                           {q.options.slice(0, 4).map((opt: any, idx: number) => (
                             <div key={idx} className="truncate">
                               ({opt.id || idx + 1}) {opt.text}
@@ -311,38 +301,12 @@ export function QuestionBankImportModal({
                       )}
                     </div>
                   </div>
-                </div>
+                </label>
               );
             })
           )}
         </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-border bg-muted/40 flex items-center justify-between">
-          <div className="text-xs text-muted-foreground font-medium">
-            {selectedQuestionIds.size}টি প্রশ্ন নির্বাচিত হয়েছে
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 border border-input hover:bg-muted text-foreground rounded text-xs font-semibold transition-colors"
-            >
-              বাতিল (Cancel)
-            </button>
-            <button
-              type="button"
-              onClick={handleImport}
-              disabled={selectedQuestionIds.size === 0}
-              className="px-4 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>প্রশ্নপত্রে যুক্ত করুন ({selectedQuestionIds.size})</span>
-            </button>
-          </div>
-        </div>
       </div>
-    </div>
+    </AppModal>
   );
 }

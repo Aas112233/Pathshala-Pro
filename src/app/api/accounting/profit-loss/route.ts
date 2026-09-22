@@ -71,9 +71,9 @@ export async function GET(request: NextRequest) {
     const incomeByType: Record<string, number> = {};
 
     transactions.forEach((tx) => {
-      totalFeeRevenue = addCurrency(totalFeeRevenue, tx.amountPaid);
+      totalFeeRevenue = addCurrency(totalFeeRevenue, Number(tx.amountPaid));
       const type = tx.feeVoucher?.feeType || "TUITION";
-      incomeByType[type] = addCurrency(incomeByType[type] || 0, tx.amountPaid);
+      incomeByType[type] = addCurrency(incomeByType[type] || 0, Number(tx.amountPaid));
     });
 
     // Payroll expenses
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       // Incomes in this month
       const monthIncome = transactions
         .filter((tx) => new Date(tx.timestamp).getMonth() === i)
-        .reduce((sum, tx) => addCurrency(sum, tx.amountPaid), 0);
+        .reduce((sum, tx) => addCurrency(sum, Number(tx.amountPaid)), 0);
 
       // Salaries in this month
       const monthSalary = salaryLedgers

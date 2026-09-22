@@ -367,7 +367,7 @@ export async function getGlobalPlatformTelemetry(
     },
     financials: {
       totalPlatformTransactions: totalTransactions,
-      totalRevenueProcessed: transactionSum._sum?.amountPaid || 0,
+      totalRevenueProcessed: Number(transactionSum._sum?.amountPaid || 0),
     },
   };
 }

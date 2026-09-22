@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     const attended = attendance.filter((item) => ["PRESENT", "LATE", "HALF_DAY"].includes(item.status));
     const attendancePercentage = attendance.length ? Math.round((attended.length / attendance.length) * 1000) / 10 : null;
     const today = dayName(now);
-    const totalDue = fees.reduce((sum, fee) => sum + fee.balance, 0);
+    const totalDue = fees.reduce((sum, fee) => sum + Number(fee.balance), 0);
 
     return successResponse({
       role: user.role,

@@ -29,6 +29,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
     bankName: "",
     branchName: "",
     accountType: "CHECKING" as "CHECKING" | "SAVINGS" | "PETTY_CASH",
+    accountCode: "",
     openingBalance: "0",
   });
 
@@ -43,20 +44,22 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
     createAccountMutation.mutate(
       {
         ...formData,
+        accountCode: formData.accountCode.trim() || undefined,
         openingBalance: parseFloat(formData.openingBalance) || 0,
         currency: currencyCode,
       },
       {
-        onSuccess: () => {
-          toast.success(t("accounting.accountsForm.created"));
-          setFormData({
-            accountName: "",
-            accountNumber: "",
-            bankName: "",
-            branchName: "",
-            accountType: "CHECKING",
-            openingBalance: "0",
-          });
+          onSuccess: () => {
+            toast.success(t("accounting.accountsForm.created"));
+            setFormData({
+              accountName: "",
+              accountNumber: "",
+              bankName: "",
+              branchName: "",
+              accountType: "CHECKING",
+              accountCode: "",
+              openingBalance: "0",
+            });
           onClose();
           if (onSuccess) onSuccess();
         },
@@ -147,6 +150,17 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
               onChange={(e) => setFormData({ ...formData, openingBalance: e.target.value })}
               className="h-10 text-sm font-semibold"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("accounting.accountsForm.glCodeLabel")}</Label>
+            <Input
+              placeholder={t("accounting.accountsForm.glCodePlaceholder")}
+              value={formData.accountCode}
+              onChange={(e) => setFormData({ ...formData, accountCode: e.target.value.replace(/[^0-9]/g, "").slice(0, 6) })}
+              className="h-10 text-sm font-mono"
+            />
+            <p className="text-[11px] text-muted-foreground">{t("accounting.accountsForm.glCodeHint")}</p>
           </div>
         </div>
 

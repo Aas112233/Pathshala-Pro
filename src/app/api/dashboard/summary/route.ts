@@ -107,9 +107,9 @@ export async function GET(request: NextRequest) {
       totalStaff,
       fees: {
         totalCount: feeAgg._count,
-        totalDue: roundCurrency(feeAgg._sum.totalDue ?? 0),
-        amountPaid: roundCurrency(feeAgg._sum.amountPaid ?? 0),
-        balance: roundCurrency(feeAgg._sum.balance ?? 0),
+        totalDue: roundCurrency(Number(feeAgg._sum.totalDue ?? 0)),
+        amountPaid: roundCurrency(Number(feeAgg._sum.amountPaid ?? 0)),
+        balance: roundCurrency(Number(feeAgg._sum.balance ?? 0)),
       },
       attendance: {
         present,

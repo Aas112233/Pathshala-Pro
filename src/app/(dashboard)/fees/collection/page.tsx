@@ -89,6 +89,10 @@ export default function FeeCollectionPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
   const [cashTendered, setCashTendered] = useState<string>("");
   const [paymentNote, setPaymentNote] = useState<string>("");
+  const [walletAmount, setWalletAmount] = useState<string>("");
+  const [autoApplyWallet, setAutoApplyWallet] = useState<boolean>(false);
+  const [chequeNumber, setChequeNumber] = useState<string>("");
+  const [paymentReference, setPaymentReference] = useState<string>("");
   const [lastPaymentResult, setLastPaymentResult] = useState<any | null>(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
@@ -264,6 +268,10 @@ export default function FeeCollectionPage() {
       billingMonth,
       billingMonths,
       billingYear,
+      walletAmount,
+      autoApplyWallet,
+      chequeNumber,
+      reference,
     }: {
       voucherId?: string;
       voucherIds?: string[];
@@ -274,6 +282,10 @@ export default function FeeCollectionPage() {
       billingMonth?: number;
       billingMonths?: number[];
       billingYear?: number;
+      walletAmount?: number;
+      autoApplyWallet?: boolean;
+      chequeNumber?: string;
+      reference?: string;
     }) => {
       const payload = {
         feeVoucherId: voucherId || undefined,
@@ -287,6 +299,10 @@ export default function FeeCollectionPage() {
         billingMonth,
         billingMonths,
         billingYear,
+        walletAmount: walletAmount || undefined,
+        autoApplyWallet: autoApplyWallet || undefined,
+        chequeNumber: chequeNumber || undefined,
+        reference: reference || undefined,
       };
 
       const res = await fetch("/api/fees/collect-direct", {
@@ -318,6 +334,10 @@ export default function FeeCollectionPage() {
       setPaymentAmount("");
       setCashTendered("");
       setPaymentNote("");
+      setWalletAmount("");
+      setAutoApplyWallet(false);
+      setChequeNumber("");
+      setPaymentReference("");
       setSelectedMonths([]);
     },
     onError: (err: any) => {
@@ -348,6 +368,10 @@ export default function FeeCollectionPage() {
     setPaymentAmount("");
     setCashTendered("");
     setPaymentNote("");
+    setWalletAmount("");
+    setAutoApplyWallet(false);
+    setChequeNumber("");
+    setPaymentReference("");
     setInvoicesTab("pending");
   };
 
@@ -360,6 +384,10 @@ export default function FeeCollectionPage() {
     setPaymentAmount("");
     setCashTendered("");
     setPaymentNote("");
+    setWalletAmount("");
+    setAutoApplyWallet(false);
+    setChequeNumber("");
+    setPaymentReference("");
     setSearchTerm("");
     setIsSearchDropdownOpen(false);
     setInvoicesTab("pending");
@@ -488,6 +516,13 @@ export default function FeeCollectionPage() {
       toast.error(t("validAmountError"));
       return;
     }
+    const walletNum = parseFloat(walletAmount) || 0;
+    const splitArgs = {
+      walletAmount: walletNum > 0 ? walletNum : undefined,
+      autoApplyWallet: autoApplyWallet || undefined,
+      chequeNumber: chequeNumber.trim() || undefined,
+      reference: paymentReference.trim() || undefined,
+    };
 
     if (selectedMonths.length > 1) {
       void runPayment(async () => {
@@ -499,6 +534,8 @@ export default function FeeCollectionPage() {
           billingMonths: selectedMonths.map((m) => m + 1),
           billingYear: selectedYear,
           voucherIds: selectedVoucherIds,
+          chequeNumber: splitArgs.chequeNumber,
+          reference: splitArgs.reference,
         });
       });
     } else if (selectedMonths.length === 1) {
@@ -520,6 +557,7 @@ export default function FeeCollectionPage() {
           note: paymentNote,
           billingMonth: mIdx + 1,
           billingYear: selectedYear,
+          ...splitArgs,
         });
       });
     } else {
@@ -532,6 +570,7 @@ export default function FeeCollectionPage() {
           method: paymentMethod,
           note: paymentNote,
           billingYear: selectedYear,
+          ...splitArgs,
         });
       });
     }
@@ -593,7 +632,7 @@ export default function FeeCollectionPage() {
   }, [settings.paymentMethods]);
 
   const paymentModes = useMemo(() => {
-    return configuredMethods.map((m) => {
+    const modes = configuredMethods.map((m) => {
       let icon = Smartphone;
       let color = "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800";
 
@@ -619,7 +658,21 @@ export default function FeeCollectionPage() {
         instructions: m.instructions,
       };
     });
-  }, [configuredMethods]);
+    // Advance wallet as tender: full-wallet or split with the selected method.
+    modes.push({
+      id: "WALLET_CREDIT",
+      label: t("walletMethod"),
+      icon: Wallet,
+      color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800",
+      isCash: false,
+      instructions: t("walletMethodHint"),
+    });
+    return modes;
+  }, [configuredMethods, t]);
+
+  const ONLINE_METHOD_CODES = ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"];
+  const showReferenceInput = ONLINE_METHOD_CODES.includes(paymentMethod);
+  const showSplitBox = selectedStudent && paymentMethod !== "WALLET_CREDIT" && paymentMethod !== "CHEQUE" && selectedMonths.length <= 1;
 
   const currentMode = paymentModes.find((m) => m.id === paymentMethod);
   const isCashMode = currentMode?.isCash ?? (paymentMethod === "CASH");
@@ -1438,8 +1491,65 @@ export default function FeeCollectionPage() {
                 </div>
               </div>
 
-              {/* 3. Cash Calculator (if cash) */}
-              {isCashMode && (
+              {/* 2b. Cheque number (required for CHEQUE) */}
+              {paymentMethod === "CHEQUE" && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">{t("chequeNumber")} *</label>
+                  <Input
+                    type="text"
+                    placeholder={t("chequeNumberPlaceholder")}
+                    value={chequeNumber}
+                    onChange={(e) => setChequeNumber(e.target.value)}
+                    disabled={!selectedStudent}
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+              )}
+
+              {/* 2c. External reference (required for online methods) */}
+              {showReferenceInput && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">{t("paymentReference")} *</label>
+                  <Input
+                    type="text"
+                    placeholder={t("paymentReferencePlaceholder")}
+                    value={paymentReference}
+                    onChange={(e) => setPaymentReference(e.target.value)}
+                    disabled={!selectedStudent}
+                    className="h-9 text-sm font-mono"
+                  />
+                </div>
+              )}
+
+              {/* 2d. Split tender: advance-wallet leg */}
+              {showSplitBox && (
+                <div className="p-3 rounded-lg border border-violet-200/80 bg-violet-50/40 dark:bg-violet-950/20 dark:border-violet-800/60 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-foreground">{t("walletSplitTitle")}</span>
+                    <label className="flex items-center gap-1.5 text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoApplyWallet}
+                        onChange={(e) => setAutoApplyWallet(e.target.checked)}
+                        disabled={!selectedStudent}
+                        className="h-3.5 w-3.5 accent-violet-600"
+                      />
+                      {t("autoApplyWallet")}
+                    </label>
+                  </div>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder={t("walletAmountPlaceholder")}
+                    value={walletAmount}
+                    onChange={(e) => setWalletAmount(e.target.value)}
+                    disabled={!selectedStudent || autoApplyWallet}
+                    className="h-9 text-sm font-mono font-bold"
+                  />
+                </div>
+              )}
+
+              {/* 3. Cash Calculator (if cash) */}              {isCashMode && (
                 <div className="p-3 rounded-lg border border-border/80 bg-muted/20 space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">{t("cashHanded")}</span>

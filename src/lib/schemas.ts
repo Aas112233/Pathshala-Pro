@@ -153,6 +153,7 @@ export const paymentMethodSchema = z.enum([
   "BKASH",
   "NAGAD",
   "UPI",
+  "WALLET_CREDIT",
   "OTHER",
 ]);
 
@@ -163,6 +164,8 @@ export const createTransactionSchema = z.object({
   paymentMethod: paymentMethodSchema.or(z.string().min(1)),
   receiptNumber: z.string().min(1, "Receipt number is required"),
   note: z.string().optional(),
+  chequeNumber: z.string().max(50).optional(),
+  reference: z.string().max(100).optional(),
 });
 
 export const updateTransactionSchema = createTransactionSchema.partial();
@@ -535,6 +538,7 @@ export const createBankAccountSchema = z.object({
   bankName: z.string().min(2, "Bank name is required"),
   branchName: z.string().optional(),
   accountType: z.enum(["CHECKING", "SAVINGS", "PETTY_CASH"]).default("CHECKING"),
+  accountCode: z.string().regex(/^\d{1,6}$/, "accountCode must be a numeric GL account code").optional(),
   openingBalance: z.number().min(0).default(0),
   currency: z.string().default("PKR"),
 });

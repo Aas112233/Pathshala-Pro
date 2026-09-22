@@ -12,6 +12,10 @@ interface AppModalProps {
   onClose: () => void;
   title: string;
   description?: string;
+  /** Optional leading icon rendered in a primary-tinted badge beside the title. */
+  icon?: React.ReactNode;
+  /** Optional sticky footer rendered below the scrollable content. */
+  footer?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | 'full';
@@ -24,6 +28,8 @@ export function AppModal({
   onClose,
   title,
   description,
+  icon,
+  footer,
   children,
   className,
   maxWidth = 'md'
@@ -128,11 +134,18 @@ export function AppModal({
       >
         {/* Header */}
         <div className="flex items-start justify-between pb-4 mb-4 border-b border-border/60">
-          <div className="space-y-1">
-            <h2 id="app-modal-title" className="text-lg font-bold tracking-tight text-foreground">{title}</h2>
-            {description && (
-              <p id="app-modal-description" className="text-xs text-muted-foreground">{description}</p>
+          <div className="flex items-center gap-2.5">
+            {icon && (
+              <div className="shrink-0 rounded-md bg-primary/10 p-1.5 text-primary">
+                {icon}
+              </div>
             )}
+            <div className="space-y-1">
+              <h2 id="app-modal-title" className="text-lg font-bold tracking-tight text-foreground">{title}</h2>
+              {description && (
+                <p id="app-modal-description" className="text-xs text-muted-foreground">{description}</p>
+              )}
+            </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 -mr-1 -mt-1 text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
@@ -144,6 +157,13 @@ export function AppModal({
         <div className="max-h-[75vh] overflow-y-auto px-0.5">
           {children}
         </div>
+
+        {/* Sticky Footer */}
+        {footer && (
+          <div className="mt-4 border-t border-border/60 pt-4">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body

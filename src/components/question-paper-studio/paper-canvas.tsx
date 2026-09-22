@@ -19,6 +19,7 @@ import {
 import { ExamPaperStudioModel as ExamPaper, QuestionItem, ExamSection } from '@/types/exam-studio';
 import { QuestionCard } from '@/components/question-paper-studio/question-card';
 import { formatNumeral } from '@/lib/question-paper-studio/bengali-numerals';
+import { Button } from '@/components/ui/button';
 import { Plus, Layers, Trash2, Edit3, BookOpen, Scissors } from 'lucide-react';
 
 interface PaperCanvasProps {
@@ -542,24 +543,28 @@ export function PaperCanvas({
 
             {/* Section Actions (Add Manual & Import from Bank) */}
             <div className="no-print pt-2 flex items-center justify-center gap-2 flex-wrap">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="xs"
                 onClick={() => onAddQuestion(section.sectionId)}
-                className="px-2.5 py-1 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded shadow-xs flex items-center gap-1.5 transition-colors"
+                className="bg-white text-gray-700 hover:bg-gray-100 border-gray-300 dark:bg-white dark:text-gray-700 dark:hover:bg-gray-100 dark:border-gray-300"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{labels.addManualQ}</span>
-              </button>
+              </Button>
 
               {onOpenQuestionBank && (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="xs"
                   onClick={() => onOpenQuestionBank(section.sectionId)}
-                  className="px-2.5 py-1 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded shadow-xs flex items-center gap-1.5 transition-colors"
+                  className="bg-white text-gray-700 hover:bg-gray-100 border-gray-300 dark:bg-white dark:text-gray-700 dark:hover:bg-gray-100 dark:border-gray-300"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>{labels.importBank}</span>
-                </button>
+                </Button>
               )}
             </div>
           </section>
@@ -590,14 +595,16 @@ export function PaperCanvas({
 
         {/* Global Add Section Button */}
         <div className="no-print pt-4 border-t border-dashed border-gray-300 flex justify-center">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="xs"
             onClick={handleAddSection}
-            className="px-3 py-1.5 text-xs font-semibold text-gray-700 hover:text-black bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-md flex items-center gap-1.5 shadow-2xs"
+            className="bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-black border-gray-300 dark:bg-gray-50 dark:text-gray-700 dark:hover:bg-gray-100 dark:border-gray-300"
           >
             <Layers className="w-3.5 h-3.5" />
             <span>{labels.addSection}</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>

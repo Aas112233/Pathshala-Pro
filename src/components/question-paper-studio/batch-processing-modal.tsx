@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ExamPaperStudioModel as ExamPaper, QuestionItem } from '@/types/exam-studio';
-import { Layers, Shuffle, Check, X, FileText, Copy } from 'lucide-react';
+import { Layers, Shuffle, FileText } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { AppModal } from '@/components/ui/app-modal';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface BatchProcessingModalProps {
   isOpen: boolean;
@@ -18,24 +21,8 @@ export function BatchProcessingModal({
   onClose,
   onApplySet,
 }: BatchProcessingModalProps) {
-  const [selectedSets, setSelectedSets] = useState<string[]>([
-    'ক-সেট (পদ্মা)',
-    'খ-সেট (মেঘনা)',
-    'গ-সেট (যমুনা)',
-  ]);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
   const [shuffleMCQOptions, setShuffleMCQOptions] = useState(true);
-  const [generateTeacherKey, setGenerateTeacherKey] = useState(true);
-
-  if (!isOpen) return null;
-
-  const toggleSet = (setName: string) => {
-    if (selectedSets.includes(setName)) {
-      setSelectedSets(selectedSets.filter((s) => s !== setName));
-    } else {
-      setSelectedSets([...selectedSets, setName]);
-    }
-  };
 
   // ponytail: Fisher-Yates unbiased vs sort(() => 0.5 - Math.random())
   const shuffle = <T,>(arr: T[]): T[] => {
@@ -117,110 +104,92 @@ export function BatchProcessingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-card text-card-foreground border border-border w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-muted/40">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 text-primary rounded-md">
-              <Layers className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-foreground">
-                মাল্টিপল সেট ও শাফলিং ইঞ্জিন (Batch Sets)
-              </h2>
-              <p className="text-[11px] text-muted-foreground">
-                Generate Question Sets with Shuffled Orders & Teacher Keys
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-5 space-y-4 text-xs">
-          {/* Shuffling Options */}
-          <div className="space-y-2 p-3 bg-muted/30 border border-border rounded-lg">
-            <div className="font-semibold text-foreground flex items-center gap-1.5">
-              <Shuffle className="w-3.5 h-3.5 text-primary" />
-              <span>শাফলিং কনফিগারেশন (Randomization Rules)</span>
-            </div>
-
-            <label className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={shuffleQuestions}
-                onChange={(e) => setShuffleQuestions(e.target.checked)}
-                className="rounded border-input text-primary focus:ring-primary"
-              />
-              <span>প্রশ্নের ক্রম এলোমেলো করুন (Shuffle Question Order)</span>
-            </label>
-
-            <label className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={shuffleMCQOptions}
-                onChange={(e) => setShuffleMCQOptions(e.target.checked)}
-                className="rounded border-input text-primary focus:ring-primary"
-              />
-              <span>MCQ বিকল্প (ক, খ, গ, ঘ) অদলবদল করুন (Shuffle MCQ Options)</span>
-            </label>
-          </div>
-
-          {/* Quick Apply Set Selector */}
-          <div>
-            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              তাত্ক্ষণিক সেট রূপান্তর (Apply Shuffled Set)
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {['ক-সেট (পদ্মা)', 'খ-সেট (মেঘনা)', 'গ-সেট (যমুনা)'].map((setName) => (
-                <button
-                  key={setName}
-                  type="button"
-                  onClick={() => handleApplySingleSet(setName)}
-                  className="p-2.5 border border-border hover:border-primary bg-card hover:bg-primary/5 rounded-lg text-left transition-all group"
-                >
-                  <div className="font-semibold text-foreground group-hover:text-primary">
-                    {setName}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    র‍্যান্ডম প্রশ্ন সেট চালু করুন
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Teacher Solution Sheet Generator */}
-          <div className="pt-2 border-t border-border">
-            <button
-              type="button"
-              onClick={handleGenerateTeacherKey}
-              className="w-full py-2 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-md text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
-            >
-              <FileText className="w-3.5 h-3.5 text-amber-600" />
-              <span>শিক্ষক কপি ও উত্তরমালা ভিউ চালু করুন (Teacher Answer Key)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-border bg-muted/40 flex items-center justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 border border-input hover:bg-muted text-foreground rounded text-xs font-semibold transition-colors"
-          >
+    <AppModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="মাল্টিপল সেট ও শাফলিং ইঞ্জিন (Batch Sets)"
+      description="Generate Question Sets with Shuffled Orders & Teacher Keys"
+      icon={<Layers className="h-4 w-4" />}
+      maxWidth="lg"
+      footer={
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={onClose}>
             বন্ধ করুন (Close)
-          </button>
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4 text-xs">
+        {/* Shuffling Options */}
+        <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+          <div className="flex items-center gap-1.5 font-semibold text-foreground">
+            <Shuffle className="h-3.5 w-3.5 text-primary" />
+            <span>শাফলিং কনফিগারেশন (Randomization Rules)</span>
+          </div>
+
+          <label
+            htmlFor="batch-shuffle-questions"
+            className="flex cursor-pointer items-center gap-2 pt-1 text-muted-foreground hover:text-foreground"
+          >
+            <Checkbox
+              id="batch-shuffle-questions"
+              checked={shuffleQuestions}
+              onCheckedChange={(checked) => setShuffleQuestions(checked === true)}
+            />
+            <span>প্রশ্নের ক্রম এলোমেলো করুন (Shuffle Question Order)</span>
+          </label>
+
+          <label
+            htmlFor="batch-shuffle-mcq-options"
+            className="flex cursor-pointer items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <Checkbox
+              id="batch-shuffle-mcq-options"
+              checked={shuffleMCQOptions}
+              onCheckedChange={(checked) => setShuffleMCQOptions(checked === true)}
+            />
+            <span>MCQ বিকল্প (ক, খ, গ, ঘ) অদলবদল করুন (Shuffle MCQ Options)</span>
+          </label>
+        </div>
+
+        {/* Quick Apply Set Selector */}
+        <div>
+          <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            তাত্ক্ষণিক সেট রূপান্তর (Apply Shuffled Set)
+          </label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {['ক-সেট (পদ্মা)', 'খ-সেট (মেঘনা)', 'গ-সেট (যমুনা)'].map((setName) => (
+              <Button
+                key={setName}
+                type="button"
+                variant="outline"
+                onClick={() => handleApplySingleSet(setName)}
+                className="group h-auto flex-col items-start gap-0 whitespace-normal p-2.5 text-left hover:border-primary hover:bg-primary/5"
+              >
+                <div className="font-semibold text-foreground group-hover:text-primary">
+                  {setName}
+                </div>
+                <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                  র‍্যান্ডম প্রশ্ন সেট চালু করুন
+                </div>
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Teacher Solution Sheet Generator */}
+        <div className="border-t border-border pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGenerateTeacherKey}
+            className="w-full"
+          >
+            <FileText className="h-3.5 w-3.5 text-[var(--status-warning-text)]" />
+            <span>শিক্ষক কপি ও উত্তরমালা ভিউ চালু করুন (Teacher Answer Key)</span>
+          </Button>
         </div>
       </div>
-    </div>
+    </AppModal>
   );
 }

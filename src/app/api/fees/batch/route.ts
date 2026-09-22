@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
 
         const voucherId = await getNextVoucherNumber(tx, tenantId, "SALES_FEE", currentYear);
 
-        // Idempotent upsert via natural key (student + period + feeType) — Decimal calc, Float store (2dp)
+        // Idempotent upsert via natural key (student + period + feeType) — Decimal calc, Decimal store (2dp)
         try {
           await tx.feeVoucher.create({
             data: {
@@ -234,13 +234,13 @@ export async function POST(request: NextRequest) {
               feeType: data.feeType || "TUITION",
               billingMonth,
               billingYear,
-              baseAmount: Number(baseAmount.toFixed(2)),
-              discountAmount: Number(discountAmount.toFixed(2)),
-              arrears: Number(arrears.toFixed(2)),
-              lateFine: 0,
-              totalDue: Number(totalDue.toFixed(2)),
-              amountPaid: 0,
-              balance: Number(totalDue.toFixed(2)),
+              baseAmount: baseAmount.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+              discountAmount: discountAmount.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+              arrears: arrears.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+              lateFine: new Prisma.Decimal(0),
+              totalDue: totalDue.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+              amountPaid: new Prisma.Decimal(0),
+              balance: totalDue.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
               dueDate,
               status: "PENDING",
             },

@@ -183,8 +183,8 @@ export async function PUT(
       where: { id },
       data: {
         ...data,
-        totalDue: Number(totalDue.toFixed(2)),
-        balance: Number(balance.toFixed(2)),
+        totalDue: totalDue.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+        balance: balance.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
         status,
       },
       include: {

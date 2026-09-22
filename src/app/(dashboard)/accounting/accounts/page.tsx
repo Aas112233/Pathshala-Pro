@@ -5,10 +5,11 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Plus, CreditCard, Wallet, Landmark, ArrowUpRight } from "lucide-react";
-import { useBankAccounts } from "@/hooks/use-queries";
+import { Building2, Plus, CreditCard, Wallet, Landmark, ArrowUpRight, ArrowRightLeft } from "lucide-react";
+import { useBankAccounts, useDeposits } from "@/hooks/use-queries";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { AddAccountModal } from "@/components/accounting/add-account-modal";
+import { RecordDepositSheet } from "@/components/accounting/record-deposit-sheet";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
@@ -17,6 +18,7 @@ export default function AccountsPage() {
   const t = useTranslations();
   const { formatCurrency } = useTenantFormatting();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadAccounting = hasPermission(perms, "accounting", "read");
@@ -25,6 +27,8 @@ export default function AccountsPage() {
 
   const { data: accountsResponse, isLoading } = useBankAccounts();
   const accounts = (accountsResponse as any)?.data || [];
+  const { data: depositsResponse } = useDeposits({ limit: 10 });
+  const deposits = (depositsResponse as any)?.data || [];
 
   const totalLiquidity = accounts.reduce((acc: number, a: any) => acc + (a.currentBalance || 0), 0);
 
@@ -55,6 +59,12 @@ export default function AccountsPage() {
           >
             <Plus className="h-4 w-4" />
             {t("accounting.accounts.addAccount")}
+          </Button>
+        )}
+        {canWriteAccounting && (
+          <Button variant="outline" onClick={() => setIsDepositOpen(true)} className="gap-2">
+            <ArrowRightLeft className="h-4 w-4" />
+            {t("accounting.deposits.recordDeposit")}
           </Button>
         )}
       </PageHeader>
@@ -146,9 +156,16 @@ export default function AccountsPage() {
                     </div>
                   </div>
 
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    {accountTypeLabel(acc.accountType)}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      {accountTypeLabel(acc.accountType)}
+                    </Badge>
+                    {acc.accountCode && (
+                      <Badge variant="outline" className="text-[10px] font-mono border-emerald-200 bg-emerald-500/10 text-emerald-700">
+                        GL {acc.accountCode}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 
@@ -183,6 +200,38 @@ export default function AccountsPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
       />
+      <RecordDepositSheet
+        isOpen={isDepositOpen}
+        onClose={() => setIsDepositOpen(false)}
+        accounts={accounts}
+      />
+
+      {/* Recent deposits */}
+      {deposits.length > 0 && (
+        <Card className="border border-border/80 shadow-xs">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <ArrowRightLeft className="h-4 w-4 text-primary" />
+              {t("accounting.deposits.recentDeposits")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="divide-y divide-border/50">
+              {deposits.map((d: any) => (
+                <div key={d.id} className="flex items-center justify-between py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs font-semibold truncate">{d.entryNumber}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{d.narration}</p>
+                  </div>
+                  <span className="font-mono text-sm font-bold shrink-0">
+                    {formatCurrency(Number(d.totalDebit ?? 0))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

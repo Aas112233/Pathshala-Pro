@@ -125,6 +125,32 @@ export function useTransactionViewModel() {
     [deleteMutation]
   );
 
+  const clearMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { status: "CLEARED" | "BOUNCED"; chequeNumber?: string; reason?: string } }) =>
+      transactionsApi.clearCheque(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success(t("chequeClearedMsg"));
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || t("clearFailed"));
+      throw err;
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data?: { reference?: string; reason?: string } }) =>
+      transactionsApi.verify(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success(t("receiptVerified"));
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || t("verifyFailed"));
+      throw err;
+    },
+  });
+
   return {
     transactions,
     isLoading,
@@ -142,5 +168,9 @@ export function useTransactionViewModel() {
     refresh: refetch,
     deleteTransaction,
     isDeleting: deleteMutation.isPending,
+    clearCheque: clearMutation.mutateAsync,
+    isClearing: clearMutation.isPending,
+    verifyReceipt: verifyMutation.mutateAsync,
+    isVerifying: verifyMutation.isPending,
   };
 }

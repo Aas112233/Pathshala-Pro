@@ -5,7 +5,7 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { z } from "zod";
 import { paymentMethodSchema } from "@/lib/schemas";
-import { postLegacyFeeInvoiceAccrual, postLegacyFeePaymentJournal, computeStackedConcession } from "@/lib/fee-service";
+import { postLegacyFeeInvoiceAccrual, postCollectionJournal, computeStackedConcession } from "@/lib/fee-service";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
 import { Prisma } from "@prisma/client";
 
@@ -24,7 +24,17 @@ const bulkFeePaymentSchema = z.object({
     amountPaid: z.number().finite().positive("Amount paid must be greater than 0"),
     feeVoucherId: z.string().optional(),
     note: z.string().max(1000).optional(),
+    chequeNumber: z.string().max(50).optional(),
+    reference: z.string().max(100).optional(),
   })).min(1).max(100),
+}).superRefine((data, ctx) => {
+  if (data.paymentMethod === "CHEQUE" && data.payments.some((p) => !p.chequeNumber)) {
+    ctx.addIssue({ code: "custom", message: "Cheque number is required for every CHEQUE payment.", path: ["payments"] });
+  }
+  const onlineMethods = ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"];
+  if (onlineMethods.includes(data.paymentMethod) && data.payments.some((p) => !p.reference)) {
+    ctx.addIssue({ code: "custom", message: `External reference (UTR/transaction id) is required for every ${data.paymentMethod} payment.`, path: ["payments"] });
+  }
 });
 
 export async function POST(request: NextRequest) {
@@ -151,7 +161,7 @@ export async function POST(request: NextRequest) {
         let existingV: any = item.feeVoucherId ? voucherById.get(item.feeVoucherId) : voucherByStudentAndMonth.get(item.studentProfileId);
 
         if (existingV) {
-          if (existingV.status === "PAID" || existingV.balance <= 0) {
+          if (existingV.status === "PAID" || new Prisma.Decimal(existingV.balance).lessThanOrEqualTo(0)) {
             throw ApiError.badRequest(
               `${studentName} has already paid fees for ${monthName} ${currentYear} (${existingV.voucherId}). Duplicate payment rejected.`
             );
@@ -160,7 +170,7 @@ export async function POST(request: NextRequest) {
           // Check for legacy annual voucher
           const legacyV = legacyVoucherByStudent.get(item.studentProfileId);
           if (legacyV) {
-            if (legacyV.status === "PAID" || legacyV.balance <= 0) {
+            if (legacyV.status === "PAID" || new Prisma.Decimal(legacyV.balance).lessThanOrEqualTo(0)) {
               throw ApiError.badRequest(
                 `${studentName} has already cleared the full annual fees for this academic year (${legacyV.voucherId}). Duplicate payment rejected.`
               );
@@ -171,7 +181,7 @@ export async function POST(request: NextRequest) {
 
         // Lock existing voucher inside transaction if paying down an existing one
         if (existingV) {
-          const lockedRows = await tx.$queryRaw<Array<{ id: string; totalDue: number; amountPaid: number; voucherId: string }>>`
+          const lockedRows = await tx.$queryRaw<Array<{ id: string; totalDue: Prisma.Decimal; amountPaid: Prisma.Decimal; voucherId: string }>>`
             SELECT id, "totalDue", "amountPaid", "voucherId"
             FROM "FeeVoucher"
             WHERE id = ${existingV.id} AND "tenantId" = ${tenantId}
@@ -200,8 +210,8 @@ export async function POST(request: NextRequest) {
           await tx.feeVoucher.update({
             where: { id: existingV.id },
             data: {
-              amountPaid: { increment: Number(appliedToInvoice.toFixed(2)) },
-              balance: Number(newBalance.toFixed(2)),
+              amountPaid: { increment: appliedToInvoice.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP) },
+              balance: newBalance.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
               status: newStatus,
             },
           });
@@ -214,17 +224,20 @@ export async function POST(request: NextRequest) {
               tenantId,
               transactionId,
               feeVoucherId: existingV.id,
-              amountPaid: Number(payDec.toFixed(2)),
-              appliedToInvoice: Number(appliedToInvoice.toFixed(2)),
-              excessToWallet: Number(excessToWallet.toFixed(2)),
+              amountPaid: payDec.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+              appliedToInvoice: appliedToInvoice.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+              excessToWallet: excessToWallet.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
               paymentMethod: data.paymentMethod || "CASH",
               receiptNumber,
               collectedById: user.id,
+              chequeNumber: item.chequeNumber || undefined,
+              chequeStatus: data.paymentMethod === "CHEQUE" ? "PENDING" : undefined,
+              reference: item.reference || undefined,
               note: item.note || `Bulk Class Collection (${data.paymentMethod || "CASH"}) - Paid: ${newAmountPaid.toFixed(2)}/${totalDue.toFixed(2)}`,
             },
           });
 
-          await postLegacyFeePaymentJournal(tx as any, {
+          await postCollectionJournal(tx as any, {
             tenantId,
             studentProfileId: item.studentProfileId,
             feeVoucherId: existingV.id,
@@ -235,6 +248,7 @@ export async function POST(request: NextRequest) {
             receiptNumber,
             executedById: user.id,
             note: item.note,
+            transactionId: t.id,
           });
 
           results.push({ studentProfileId: item.studentProfileId, transactionId: t.id, voucherId: existingV.id });
@@ -273,13 +287,13 @@ export async function POST(request: NextRequest) {
             feeType: "TUITION",
             billingMonth: targetMonth,
             billingYear: currentYear,
-            baseAmount: Number(monthlyBase.toFixed(2)),
-            discountAmount: Number(monthlyDiscount.toFixed(2)),
+            baseAmount: monthlyBase.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            discountAmount: monthlyDiscount.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
             arrears: 0,
             lateFine: 0,
-            totalDue: Number(totalDue.toFixed(2)),
-            amountPaid: Number(appliedToInvoice.toFixed(2)),
-            balance: Number(balance.toFixed(2)),
+            totalDue: totalDue.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            amountPaid: appliedToInvoice.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            balance: balance.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
             dueDate: new Date(Date.now() + 30 * 86400000),
             status,
           },
@@ -298,7 +312,25 @@ export async function POST(request: NextRequest) {
         const receiptNumber = await getNextVoucherNumber(tx as any, tenantId, "RECEIPT");
         const transactionId = `TXN-${receiptNumber}`;
 
-        await postLegacyFeePaymentJournal(tx as any, {
+        const t = await tx.transaction.create({
+          data: {
+            tenantId,
+            transactionId,
+            feeVoucherId: v.id,
+            amountPaid: payDec.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            appliedToInvoice: appliedToInvoice.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            excessToWallet: excessToWallet.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+            paymentMethod: data.paymentMethod || "CASH",
+            receiptNumber,
+            collectedById: user.id,
+            chequeNumber: item.chequeNumber || undefined,
+            chequeStatus: data.paymentMethod === "CHEQUE" ? "PENDING" : undefined,
+            reference: item.reference || undefined,
+            note: item.note || `Bulk Class Collection for ${monthName} ${currentYear} (${data.paymentMethod || "CASH"})`,
+          },
+        });
+
+        await postCollectionJournal(tx as any, {
           tenantId,
           studentProfileId: item.studentProfileId,
           feeVoucherId: v.id,
@@ -309,21 +341,7 @@ export async function POST(request: NextRequest) {
           receiptNumber,
           executedById: user.id,
           note: item.note,
-        });
-
-        const t = await tx.transaction.create({
-          data: {
-            tenantId,
-            transactionId,
-            feeVoucherId: v.id,
-            amountPaid: Number(payDec.toFixed(2)),
-            appliedToInvoice: Number(appliedToInvoice.toFixed(2)),
-            excessToWallet: Number(excessToWallet.toFixed(2)),
-            paymentMethod: data.paymentMethod || "CASH",
-            receiptNumber,
-            collectedById: user.id,
-            note: item.note || `Bulk Class Collection for ${monthName} ${currentYear} (${data.paymentMethod || "CASH"})`,
-          },
+          transactionId: t.id,
         });
 
         results.push({ studentProfileId: item.studentProfileId, transactionId: t.id, voucherId: v.id });

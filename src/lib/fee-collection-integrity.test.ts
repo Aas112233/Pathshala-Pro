@@ -9,6 +9,7 @@ const db = vi.hoisted(() => ({
   class: { findFirst: vi.fn() },
   section: { findFirst: vi.fn() },
   feeVoucher: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+  studentWalletLedger: { findFirst: vi.fn(), create: vi.fn() },
   classFeeStructure: { findFirst: vi.fn() },
   studentFeeConcession: { findMany: vi.fn() },
   transaction: { create: vi.fn() },
@@ -68,6 +69,8 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       balance: 0,
     });
     db.tenant.findUnique.mockResolvedValue({ featureFlags: {} });
+    db.studentWalletLedger.findFirst.mockResolvedValue(null);
+    db.studentWalletLedger.create.mockResolvedValue({ id: "wl-1" });
     db.$transaction.mockImplementation(async (cb: any) => cb(db));
   });
 
@@ -193,12 +196,12 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       expect(db.feeVoucher.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "vouch-partial" },
-          data: expect.objectContaining({
-            status: "PAID",
-            balance: 0,
-          }),
+          data: expect.objectContaining({ status: "PAID" }),
         })
       );
+      // Decimal money truth: stored balance is a Decimal, not a float number.
+      const updateArg = (db.feeVoucher.update as any).mock.calls[0][0];
+      expect(updateArg.data.balance.toString()).toBe("0");
     });
 
     it("successfully collects payments for multiple selected months in a single transaction", async () => {
@@ -305,12 +308,14 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
             billingMonth: 9,
             billingYear: 2026,
             feeType: "TUITION",
-            totalDue: 1000,
-            amountPaid: 1000,
             status: "PAID",
           }),
         })
       );
+      // Decimal money truth: totals are Decimals, not float numbers.
+      const createArg = (db.feeVoucher.create as any).mock.calls[0][0];
+      expect(createArg.data.totalDue.toString()).toBe("1000");
+      expect(createArg.data.amountPaid.toString()).toBe("1000");
     });
 
     it("identifies and blocks the batch when one student among multiple has already paid", async () => {
@@ -372,6 +377,93 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       expect(res.status).toBe(400);
       const json = await res.json();
       expect(json.message).toContain("No active fee structure is configured for this class");
+    });
+
+    it("rejects split tender when walletAmount covers the whole payment", async () => {
+      const req = new NextRequest("http://localhost:3000/api/fees/collect-direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentProfileId: "student-1",
+          feeVoucherId: "vouch-part",
+          amountPaid: 1000,
+          paymentMethod: "CASH",
+          walletAmount: 1000,
+        }),
+      });
+
+      const res = (await postCollectDirect(req))!;
+      expect(res.status).toBe(422);
+      const json = await res.json();
+      expect(JSON.stringify(json)).toContain("WALLET_CREDIT");
+    });
+
+    it("redirects to WALLET_CREDIT when auto-apply covers the payment in full", async () => {
+      db.studentWalletLedger.findFirst.mockResolvedValueOnce({ balanceAfter: 5000 });
+
+      const req = new NextRequest("http://localhost:3000/api/fees/collect-direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentProfileId: "student-1",
+          feeVoucherId: "vouch-part",
+          amountPaid: 1000,
+          paymentMethod: "CASH",
+          autoApplyWallet: true,
+        }),
+      });
+
+      const res = (await postCollectDirect(req))!;
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain("WALLET_CREDIT");
+    });
+
+    it("splits tender across wallet + cash legs with one receipt", async () => {
+      db.feeVoucher.findUnique.mockResolvedValueOnce({
+        id: "vouch-split",
+        voucherId: "SAL-2026-SPLIT",
+        status: "PENDING",
+        balance: 1000,
+        totalDue: 1000,
+        feeType: "TUITION",
+        billingMonth: 9,
+        billingYear: 2026,
+      });
+      db.$queryRaw.mockResolvedValueOnce([
+        { id: "vouch-split", totalDue: 1000, amountPaid: 0, voucherId: "SAL-2026-SPLIT", feeType: "TUITION", billingMonth: 9, billingYear: 2026 },
+      ]);
+      db.studentWalletLedger.findFirst.mockResolvedValue({ balanceAfter: 1000 });
+      db.chartOfAccount.findMany.mockResolvedValue([
+        { id: "acc-cash", code: "1020", isActive: true },
+        { id: "acc-ar", code: "1030", isActive: true },
+        { id: "acc-wallet", code: "2050", isActive: true },
+      ]);
+      db.feeVoucher.update.mockResolvedValue({ id: "vouch-split", status: "PAID", balance: 0 });
+
+      const req = new NextRequest("http://localhost:3000/api/fees/collect-direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentProfileId: "student-1",
+          feeVoucherId: "vouch-split",
+          amountPaid: 1000,
+          paymentMethod: "CASH",
+          walletAmount: 300,
+        }),
+      });
+
+      const res = (await postCollectDirect(req))!;
+      expect(res.status).toBe(201);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      // Two legs, one receipt number.
+      expect(db.transaction.create).toHaveBeenCalledTimes(2);
+      const methods = (db.transaction.create as any).mock.calls.map((c: any) => c[0].data.paymentMethod);
+      expect(methods).toContain("WALLET_CREDIT");
+      expect(methods).toContain("CASH");
+      const amounts = (db.transaction.create as any).mock.calls.map((c: any) => Number(c[0].data.amountPaid));
+      expect(amounts.sort()).toEqual([300, 700]);
     });
   });
 });

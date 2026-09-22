@@ -4,14 +4,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   BookOpen,
-  FileDown,
   Printer,
   Settings,
   Plus,
   Shuffle,
   GraduationCap,
-  Layers,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface OmniPaletteProps {
   isOpen: boolean;
@@ -30,6 +30,15 @@ export function OmniPalette({ isOpen, onClose, onSelectAction }: OmniPaletteProp
       setQuery('');
       setSelectedIndex(0);
     }
+  }, [isOpen]);
+
+  // Lock background scroll while the palette is open
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -183,8 +192,14 @@ export function OmniPalette({ isOpen, onClose, onSelectAction }: OmniPaletteProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-100">
-      <div className="bg-card text-card-foreground border border-border w-full max-w-xl rounded-xl shadow-2xl overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-100"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card text-card-foreground border border-border w-full max-w-xl rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Search Bar */}
         <div className="p-3 border-b border-border flex items-center gap-3 bg-muted/20">
           <Search className="w-4 h-4 text-muted-foreground ml-1" />
@@ -216,18 +231,20 @@ export function OmniPalette({ isOpen, onClose, onSelectAction }: OmniPaletteProp
               const Icon = act.icon;
               const isSelected = index === selectedIndex;
               return (
-                <button
+                <Button
                   key={act.id}
                   type="button"
+                  variant="ghost"
                   onClick={() => {
                     onSelectAction(act.id);
                     onClose();
                   }}
-                  className={`w-full p-2.5 rounded-lg flex items-center justify-between text-left transition-colors ${
+                  className={cn(
+                    'h-auto w-full justify-between p-2.5 text-left',
                     isSelected
-                      ? 'bg-primary text-primary-foreground font-semibold'
-                      : 'hover:bg-muted text-foreground'
-                  }`}
+                      ? 'bg-primary font-semibold text-primary-foreground hover:bg-primary hover:text-primary-foreground'
+                      : 'text-foreground hover:bg-muted'
+                  )}
                 >
                   <div className="flex items-center gap-2.5 truncate">
                     <Icon className="w-4 h-4 shrink-0 opacity-80" />
@@ -252,7 +269,7 @@ export function OmniPalette({ isOpen, onClose, onSelectAction }: OmniPaletteProp
                       </kbd>
                     )}
                   </div>
-                </button>
+                </Button>
               );
             })
           )}

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import {
   successResponse,
   paginatedResponse,
@@ -152,6 +153,15 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
+    // Every non-cash receipt must carry a traceable external reference.
+    if (data.paymentMethod === "CHEQUE" && !data.chequeNumber) {
+      return badRequest("Cheque number is required for CHEQUE payments");
+    }
+    const onlineMethods = ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"];
+    if (onlineMethods.includes(data.paymentMethod) && !data.reference) {
+      return badRequest(`External reference (UTR/transaction id) is required for ${data.paymentMethod} payments`);
+    }
+
     // 1. Server-side duplicate prevention (3-second re-entry guard, distributed)
     const dedupeKey = `TX_PAY_${tenantId}_${data.feeVoucherId}_${data.amountPaid}`;
     if (!(await dedupeRequestAsync(dedupeKey, 3000))) {
@@ -189,14 +199,16 @@ export async function POST(request: NextRequest) {
       return badRequest(`Cannot make payment for ${feeVoucher.status} voucher`);
     }
 
-    // Validate payment amount
-    if (data.amountPaid <= 0) {
+    // Validate payment amount (Decimal-safe: voucher balance is Decimal(15,2))
+    const payDec = new Prisma.Decimal(data.amountPaid);
+    const voucherBalance = new Prisma.Decimal((feeVoucher as any).balance);
+    if (payDec.lessThanOrEqualTo(0)) {
       return badRequest("Payment amount must be positive");
     }
 
-    if (data.amountPaid > feeVoucher.balance) {
+    if (payDec.greaterThan(voucherBalance)) {
       return badRequest(
-        `Payment amount (${data.amountPaid}) exceeds balance due (${feeVoucher.balance})`
+        `Payment amount (${payDec.toFixed(2)}) exceeds balance due (${voucherBalance.toFixed(2)})`
       );
     }
 
@@ -206,11 +218,11 @@ export async function POST(request: NextRequest) {
           id: data.feeVoucherId,
           tenantId,
           status: { notIn: ["PAID", "CANCELLED"] },
-          balance: { gte: data.amountPaid },
+          balance: { gte: payDec.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP) },
         },
         data: {
-          amountPaid: { increment: data.amountPaid },
-          balance: { decrement: data.amountPaid },
+          amountPaid: { increment: payDec.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP) },
+          balance: { decrement: payDec.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP) },
         },
       });
       if (updatedVoucher.count !== 1) throw new Error("Payment exceeds the current voucher balance");
@@ -220,10 +232,15 @@ export async function POST(request: NextRequest) {
           tenantId,
           transactionId: data.transactionId,
           feeVoucherId: data.feeVoucherId,
-          amountPaid: data.amountPaid,
+          amountPaid: payDec.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+          appliedToInvoice: payDec.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+          excessToWallet: new Prisma.Decimal(0),
           paymentMethod: data.paymentMethod,
           receiptNumber: data.receiptNumber,
           collectedById: user.id,
+          chequeNumber: data.chequeNumber || undefined,
+          chequeStatus: data.paymentMethod === "CHEQUE" ? "PENDING" : undefined,
+          reference: data.reference || undefined,
           note: data.note || undefined,
         },
         include: {
@@ -231,7 +248,27 @@ export async function POST(request: NextRequest) {
           collectedBy: { select: { id: true, name: true, email: true } },
         },
       });
-      const finalStatus = voucher.balance <= 0 ? "PAID" : "PARTIAL";
+      const finalStatus = new Prisma.Decimal((voucher as any).balance).lessThanOrEqualTo(0) ? "PAID" : "PARTIAL";
+      // Every receipt must leave a GL trail — post the collection journal in
+      // the same atomic transaction and link it back to the transaction row.
+      const { postCollectionJournal } = await import("@/lib/fee-service");
+      const { journalEntryId } = await postCollectionJournal(tx as any, {
+        tenantId,
+        studentProfileId: (voucher as any).studentProfileId,
+        feeVoucherId: data.feeVoucherId,
+        amount: payDec,
+        appliedToInvoice: payDec,
+        excessToWallet: new Prisma.Decimal(0),
+        paymentMethod: data.paymentMethod,
+        receiptNumber: data.receiptNumber,
+        executedById: user.id,
+        note: data.note || undefined,
+        transactionId: transaction.id,
+      });
+      await tx.transaction.update({
+        where: { id: transaction.id },
+        data: { journalEntryId },
+      });
       const finalVoucher = await tx.feeVoucher.update({
         where: { id: data.feeVoucherId, tenantId },
         data: { status: finalStatus },

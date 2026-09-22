@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
+import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
@@ -31,8 +32,9 @@ import {
   Settings,
   HelpCircle,
   Users,
+  Loader2,
 } from "lucide-react";
-import { useFees, useDeleteFee } from "@/hooks/use-queries";
+import { useFees, useDeleteFee, useWaiveFine } from "@/hooks/use-queries";
 import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -102,6 +104,31 @@ export default function FeesPage() {
   const classesList = (classesResponse as any)?.data || [];
 
   const deleteMutation = useDeleteFee();
+  const waiveMutation = useWaiveFine();
+  const [waiveTarget, setWaiveTarget] = useState<any | null>(null);
+  const [waiveAmount, setWaiveAmount] = useState("");
+  const [waiveReason, setWaiveReason] = useState("");
+
+  const openWaive = (voucher: any) => {
+    setWaiveTarget(voucher);
+    setWaiveAmount(String(Number(voucher.lateFine ?? 0)));
+    setWaiveReason("");
+  };
+
+  const submitWaive = () => {
+    if (!waiveTarget) return;
+    const amt = parseFloat(waiveAmount);
+    waiveMutation.mutate(
+      { voucherId: waiveTarget.id, data: { ...(Number.isFinite(amt) && amt > 0 ? { amount: amt } : {}), ...(waiveReason.trim() ? { reason: waiveReason.trim() } : {}) } },
+      {
+        onSuccess: () => {
+          toast.success(t("fineWaived"));
+          setWaiveTarget(null);
+        },
+        onError: (err: any) => toast.error(err.message || t("waiveFailed")),
+      }
+    );
+  };
 
   // KPI Calculations
   const totalInvoiced = rawFees.reduce((s: number, v: any) => s + (v.totalDue || 0), 0);
@@ -263,6 +290,17 @@ export default function FeesPage() {
                 title={t("deleteVoucher")}
               >
                 <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canManageFees && Number(item.lateFine ?? 0) > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openWaive(item)}
+                className="h-7 w-7 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                title={t("waiveFine")}
+              >
+                <Percent className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>
@@ -620,6 +658,49 @@ export default function FeesPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Waive late fine (TopSheet) */}
+      <TopSheet
+        isOpen={!!waiveTarget}
+        onClose={() => setWaiveTarget(null)}
+        title={t("waiveFine")}
+        description={waiveTarget ? `${waiveTarget.voucherId} • ${t("outstandingFine")}: ${formatCurrency(Number(waiveTarget.lateFine ?? 0))}` : ""}
+        maxWidth="lg"
+        footer={
+          <div className="flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setWaiveTarget(null)} disabled={waiveMutation.isPending}>
+              {tCommon("cancel")}
+            </Button>
+            <Button onClick={submitWaive} disabled={waiveMutation.isPending || !waiveAmount} className="gap-2">
+              {waiveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Percent className="h-3.5 w-3.5" />}
+              {t("waiveFine")}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("waiveAmount")}</Label>
+            <Input
+              type="number"
+              min="0"
+              max={Number(waiveTarget?.lateFine ?? 0)}
+              value={waiveAmount}
+              onChange={(e) => setWaiveAmount(e.target.value)}
+              className="h-10 font-mono font-bold"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("waiveReason")}</Label>
+            <Input
+              value={waiveReason}
+              onChange={(e) => setWaiveReason(e.target.value)}
+              placeholder={t("waiveReasonPlaceholder")}
+              className="h-10"
+            />
+          </div>
+        </div>
+      </TopSheet>
         </>
       )}
     </div>

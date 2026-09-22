@@ -256,6 +256,27 @@ export const transactionsApi = {
 
   delete: (id: string) =>
     api.delete<any>(`/api/transactions/${id}`),
+
+  clearCheque: (id: string, data: { status: "CLEARED" | "BOUNCED"; chequeNumber?: string; reason?: string }) =>
+    api.post<any>(`/api/transactions/${id}/clear`, data),
+
+  verify: (id: string, data?: { reference?: string; reason?: string }) =>
+    api.post<any>(`/api/transactions/${id}/verify`, data ?? {}),
+};
+
+// Fee late-fine API
+export const feeFineApi = {
+  waive: (voucherId: string, data?: { amount?: number; reason?: string }) =>
+    api.post<any>(`/api/fees/${voucherId}/waive-fine`, data ?? {}),
+};
+
+// Cash deposits API
+export const depositsApi = {
+  list: (params?: SearchParams) =>
+    api.get<any[]>("/api/accounting/deposits", params),
+
+  create: (data: { fromCode?: string; toCode: string; amount: number; note?: string }) =>
+    api.post<any>("/api/accounting/deposits", data),
 };
 
 // Staff API

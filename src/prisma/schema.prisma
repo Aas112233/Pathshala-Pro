@@ -264,13 +264,13 @@ model FeeVoucher {
   feeType           String
   billingMonth      Int?
   billingYear       Int?
-  baseAmount        Float
-  discountAmount    Float     @default(0)
-  arrears           Float     @default(0)
-  lateFine          Float     @default(0)
-  totalDue          Float
-  amountPaid        Float     @default(0)
-  balance           Float
+  baseAmount        Decimal   @db.Decimal(15, 2)
+  discountAmount    Decimal   @default(0.00) @db.Decimal(15, 2)
+  arrears           Decimal   @default(0.00) @db.Decimal(15, 2)
+  lateFine          Decimal   @default(0.00) @db.Decimal(15, 2)
+  totalDue          Decimal   @db.Decimal(15, 2)
+  amountPaid        Decimal   @default(0.00) @db.Decimal(15, 2)
+  balance           Decimal   @db.Decimal(15, 2)
   dueDate           DateTime
   status            String    @default("PENDING")
   journalEntryId    String?
@@ -299,14 +299,20 @@ model Transaction {
   tenantId         String
   transactionId    String
   feeVoucherId     String
-  amountPaid       Float
-  appliedToInvoice Float     @default(0)
-  excessToWallet   Float     @default(0)
+  amountPaid       Decimal   @db.Decimal(15, 2)
+  appliedToInvoice Decimal   @default(0.00) @db.Decimal(15, 2)
+  excessToWallet   Decimal   @default(0.00) @db.Decimal(15, 2)
   paymentMethod    String
   receiptNumber    String
   journalEntryId   String?
   collectedById    String
   note             String?
+  chequeNumber     String?
+  chequeStatus     String? // PENDING | CLEARED | BOUNCED (CHEQUE payments only)
+  clearedAt        DateTime?
+  reference        String? // External UTR / gateway transaction id (non-cash methods)
+  verifiedAt       DateTime? // Online-method verification timestamp
+  verifiedById     String? // User who verified the online receipt
   isVoided         Boolean   @default(false)
   voidedAt         DateTime?
   timestamp        DateTime  @default(now())
@@ -968,6 +974,7 @@ model BankAccount {
   bankName       String
   branchName     String?
   accountType    String   @default("CHECKING") // CHECKING, SAVINGS, PETTY_CASH
+  accountCode    String? // Link to ChartOfAccount.code (e.g. "1010", "1020") for GL-synced balances
   openingBalance Float    @default(0)
   currentBalance Float    @default(0)
   currency       String   @default("PKR")
@@ -978,6 +985,7 @@ model BankAccount {
   tenant Tenant @relation(fields: [tenantId], references: [tenantId])
 
   @@index([tenantId, isActive])
+  @@index([tenantId, accountCode])
 }
 
 model Notice {

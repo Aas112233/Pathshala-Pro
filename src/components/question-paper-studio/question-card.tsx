@@ -7,6 +7,7 @@ import { QuestionItem, LayoutSettings } from '@/types/exam-studio';
 import { formatNumeral, getCQPartLabels, getOptionLabel } from '@/lib/question-paper-studio/bengali-numerals';
 import { GripVertical, Edit3, Trash2, Copy, Image as ImageIcon } from 'lucide-react';
 import { renderRichText } from '@/components/ui/rich-text-field';
+import { Button } from '@/components/ui/button';
 
 interface QuestionCardProps {
   question: QuestionItem;
@@ -58,30 +59,34 @@ export function QuestionCard({ question, layout, onEdit, onDelete, onDuplicate }
           isRTL ? 'left-2' : 'right-2'
         } opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 bg-card border border-border px-1.5 py-0.5 rounded-md shadow-xs z-10`}
       >
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onEdit(question)}
-          className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded text-xs flex items-center gap-1"
           title="Edit Question"
         >
           <Edit3 className="w-3.5 h-3.5" strokeWidth={1.25} />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onDuplicate(question)}
-          className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded text-xs"
           title="Duplicate Question"
         >
           <Copy className="w-3.5 h-3.5" strokeWidth={1.25} />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => onDelete(question.id)}
-          className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded text-xs"
           title="Delete Question"
+          className="text-[var(--status-error-text)] hover:bg-[var(--status-error-bg)] hover:text-[var(--status-error-text)]"
         >
           <Trash2 className="w-3.5 h-3.5" strokeWidth={1.25} />
-        </button>
+        </Button>
         <div
           {...attributes}
           {...listeners}

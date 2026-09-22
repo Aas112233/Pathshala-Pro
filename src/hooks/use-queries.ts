@@ -15,6 +15,8 @@ import {
   bankAccountsApi,
   feeHeadsApi,
   profitLossApi,
+  depositsApi,
+  feeFineApi,
 } from "@/lib/api-client";
 import type { PaginationParams, SearchParams } from "@/types/api";
 import type { CreateUserPayload, UpdateUserPayload } from "@/types/users";
@@ -396,6 +398,18 @@ export function useDeleteFee() {
   });
 }
 
+export function useWaiveFine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ voucherId, data }: { voucherId: string; data?: { amount?: number; reason?: string } }) =>
+      feeFineApi.waive(voucherId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["vouchers"] });
+    },
+  });
+}
+
 // Transactions hooks
 export function useTransactions(params?: PaginationParams, options?: QueryHookOptions) {
   return useQuery({
@@ -727,6 +741,27 @@ export function useCreateBankAccount() {
   return useMutation({
     mutationFn: (data: any) => bankAccountsApi.create(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bankAccounts"] });
+    },
+  });
+}
+
+// Deposits hooks (cash -> bank CONTRA journals)
+export function useDeposits(params?: PaginationParams, options?: QueryHookOptions) {
+  return useQuery({
+    queryKey: ["deposits", params],
+    queryFn: () => depositsApi.list(params),
+    ...options,
+  });
+}
+
+export function useCreateDeposit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { toCode: string; fromCode?: string; amount: number; note?: string }) =>
+      depositsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deposits"] });
       queryClient.invalidateQueries({ queryKey: ["bankAccounts"] });
     },
   });

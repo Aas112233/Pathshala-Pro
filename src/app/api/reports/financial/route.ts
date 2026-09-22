@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const totalIncome = txAggregate._sum.amountPaid || 0;
+    const totalIncome = Number(txAggregate._sum.amountPaid || 0);
     const netBalance = totalIncome - totalExpenses;
 
     const categoryBreakdown = Array.from(categoryMap.entries()).map(([category, amount]) => ({

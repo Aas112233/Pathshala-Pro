@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { ExamPaperStudioModel as ExamPaper } from '@/types/exam-studio';
-import { Award, CheckCircle2, AlertTriangle, PieChart, Sparkles, X } from 'lucide-react';
+import { Award, CheckCircle2, AlertTriangle, PieChart } from 'lucide-react';
+import { AppModal } from '@/components/ui/app-modal';
+import { Button } from '@/components/ui/button';
 
 interface CognitiveBalanceMeterProps {
   paper: ExamPaper;
@@ -64,182 +66,154 @@ export function CognitiveBalanceMeter({ paper, isOpen, onClose }: CognitiveBalan
     };
   }, [paper]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-card text-card-foreground border border-border w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-muted/40">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 text-primary rounded-md">
-              <PieChart className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-foreground">
-                ব্লুমস ট্যাক্সনমি ও মান ভারসাম্য (Cognitive Balance)
-              </h2>
-              <p className="text-[11px] text-muted-foreground">
-                NCTB Examination Standards & Difficulty Distribution
-              </p>
+    <AppModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="ব্লুমস ট্যাক্সনমি ও মান ভারসাম্য (Cognitive Balance)"
+      description="NCTB Examination Standards & Difficulty Distribution"
+      icon={<PieChart className="h-4 w-4" />}
+      maxWidth="lg"
+      footer={
+        <div className="flex justify-end">
+          <Button onClick={onClose}>ঠিক আছে (Close)</Button>
+        </div>
+      }
+    >
+      <div className="space-y-5 text-xs">
+        {/* Marks Budget Summary */}
+        <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3.5">
+          <div>
+            <span className="block text-[11px] font-semibold text-muted-foreground">
+              নম্বর বাজেট স্থিতি (Marks Budget)
+            </span>
+            <div className="mt-0.5 font-mono text-lg font-bold text-foreground">
+              {stats.totalMarks} / {stats.targetMarks} Marks
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div>
+            {stats.isMarksBalanced ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--status-success-text)]">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>সঠিকভাবে বণ্টিত</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 rounded-full border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--status-warning-text)]">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span>
+                  {stats.totalMarks > stats.targetMarks
+                    ? `+${stats.totalMarks - stats.targetMarks} নম্বর অতিরিক্ত`
+                    : `${stats.targetMarks - stats.totalMarks} নম্বর ঘাটতি`}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="p-5 space-y-5 text-xs overflow-y-auto max-h-[80vh]">
-          {/* Marks Budget Summary */}
-          <div className="p-3.5 bg-muted/30 border border-border rounded-xl flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground block">
-                নম্বর বাজেট স্থিতি (Marks Budget)
-              </span>
-              <div className="text-lg font-bold font-mono text-foreground mt-0.5">
-                {stats.totalMarks} / {stats.targetMarks} Marks
-              </div>
-            </div>
-            <div>
-              {stats.isMarksBalanced ? (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-full font-semibold text-xs">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>সঠিকভাবে বণ্টিত</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full font-semibold text-xs">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>
-                    {stats.totalMarks > stats.targetMarks
-                      ? `+${stats.totalMarks - stats.targetMarks} নম্বর অতিরিক্ত`
-                      : `${stats.targetMarks - stats.totalMarks} নম্বর ঘাটতি`}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Bloom's Taxonomy Breakdown */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                <Award className="w-3.5 h-3.5 text-primary" />
-                <span>জ্ঞানীয় দক্ষতার অনুপাত (Cognitive Levels)</span>
-              </h3>
-              <span className="text-[10px] text-muted-foreground font-medium">NCTB প্রমিত অনুপাত</span>
-            </div>
-
-            <div className="space-y-2">
-              {/* Knowledge */}
-              <div>
-                <div className="flex justify-between text-[11px] mb-1">
-                  <span className="font-medium text-foreground">জ্ঞানমূলক (Knowledge) — ৪০% টার্গেট</span>
-                  <span className="font-mono font-bold text-foreground">{stats.cognitive.knowledge}%</span>
-                </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    style={{ width: `${stats.cognitive.knowledge}%` }}
-                    className="h-full bg-blue-500 rounded-full transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Comprehension */}
-              <div>
-                <div className="flex justify-between text-[11px] mb-1">
-                  <span className="font-medium text-foreground">অনুধাবনমূলক (Comprehension) — ৩০% টার্গেট</span>
-                  <span className="font-mono font-bold text-foreground">{stats.cognitive.comprehension}%</span>
-                </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    style={{ width: `${stats.cognitive.comprehension}%` }}
-                    className="h-full bg-emerald-500 rounded-full transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Application */}
-              <div>
-                <div className="flex justify-between text-[11px] mb-1">
-                  <span className="font-medium text-foreground">প্রয়োগমূলক (Application) — ২০% টার্গেট</span>
-                  <span className="font-mono font-bold text-foreground">{stats.cognitive.application}%</span>
-                </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    style={{ width: `${stats.cognitive.application}%` }}
-                    className="h-full bg-amber-500 rounded-full transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Higher Order */}
-              <div>
-                <div className="flex justify-between text-[11px] mb-1">
-                  <span className="font-medium text-foreground">উচ্চতর দক্ষতা (Higher Order) — ১০% টার্গেট</span>
-                  <span className="font-mono font-bold text-foreground">{stats.cognitive.higherOrder}%</span>
-                </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    style={{ width: `${stats.cognitive.higherOrder}%` }}
-                    className="h-full bg-purple-500 rounded-full transition-all"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Difficulty Breakdown */}
-          <div className="space-y-3 pt-3 border-t border-border">
-            <h3 className="font-bold text-foreground text-xs">
-              কাঠিন্যের ভারসাম্য (Difficulty Split)
+        {/* Bloom's Taxonomy Breakdown */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+              <Award className="h-3.5 w-3.5 text-primary" />
+              <span>জ্ঞানীয় দক্ষতার অনুপাত (Cognitive Levels)</span>
             </h3>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                  সহজ (Easy)
-                </div>
-                <div className="text-base font-bold text-emerald-700 dark:text-emerald-300 font-mono mt-0.5">
-                  {stats.difficulty.easy}%
-                </div>
-              </div>
+            <span className="text-[10px] font-medium text-muted-foreground">NCTB প্রমিত অনুপাত</span>
+          </div>
 
-              <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                  পরিমিত (Medium)
-                </div>
-                <div className="text-base font-bold text-amber-700 dark:text-amber-300 font-mono mt-0.5">
-                  {stats.difficulty.medium}%
-                </div>
+          <div className="space-y-2">
+            {/* Knowledge */}
+            <div>
+              <div className="mb-1 flex justify-between text-[11px]">
+                <span className="font-medium text-foreground">জ্ঞানমূলক (Knowledge) — ৪০% টার্গেট</span>
+                <span className="font-mono font-bold text-foreground">{stats.cognitive.knowledge}%</span>
               </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  style={{ width: `${stats.cognitive.knowledge}%` }}
+                  className="h-full rounded-full bg-[var(--metric-indigo)] transition-all"
+                />
+              </div>
+            </div>
 
-              <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg">
-                <div className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
-                  কঠিন (Hard)
-                </div>
-                <div className="text-base font-bold text-rose-700 dark:text-rose-300 font-mono mt-0.5">
-                  {stats.difficulty.hard}%
-                </div>
+            {/* Comprehension */}
+            <div>
+              <div className="mb-1 flex justify-between text-[11px]">
+                <span className="font-medium text-foreground">অনুধাবনমূলক (Comprehension) — ৩০% টার্গেট</span>
+                <span className="font-mono font-bold text-foreground">{stats.cognitive.comprehension}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  style={{ width: `${stats.cognitive.comprehension}%` }}
+                  className="h-full rounded-full bg-[var(--metric-emerald)] transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Application */}
+            <div>
+              <div className="mb-1 flex justify-between text-[11px]">
+                <span className="font-medium text-foreground">প্রয়োগমূলক (Application) — ২০% টার্গেট</span>
+                <span className="font-mono font-bold text-foreground">{stats.cognitive.application}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  style={{ width: `${stats.cognitive.application}%` }}
+                  className="h-full rounded-full bg-[var(--metric-amber)] transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Higher Order */}
+            <div>
+              <div className="mb-1 flex justify-between text-[11px]">
+                <span className="font-medium text-foreground">উচ্চতর দক্ষতা (Higher Order) — ১০% টার্গেট</span>
+                <span className="font-mono font-bold text-foreground">{stats.cognitive.higherOrder}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  style={{ width: `${stats.cognitive.higherOrder}%` }}
+                  className="h-full rounded-full bg-[var(--metric-purple)] transition-all"
+                />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-border bg-muted/40 flex items-center justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded text-xs font-semibold shadow-xs transition-colors"
-          >
-            ঠিক আছে (Close)
-          </button>
+        {/* Difficulty Breakdown */}
+        <div className="space-y-3 border-t border-border pt-3">
+          <h3 className="text-xs font-bold text-foreground">
+            কাঠিন্যের ভারসাম্য (Difficulty Split)
+          </h3>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-bg)] p-2.5">
+              <div className="text-[10px] font-semibold text-[var(--status-success-text)]">
+                সহজ (Easy)
+              </div>
+              <div className="mt-0.5 font-mono text-base font-bold text-[var(--status-success-text)]">
+                {stats.difficulty.easy}%
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-2.5">
+              <div className="text-[10px] font-semibold text-[var(--status-warning-text)]">
+                পরিমিত (Medium)
+              </div>
+              <div className="mt-0.5 font-mono text-base font-bold text-[var(--status-warning-text)]">
+                {stats.difficulty.medium}%
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-bg)] p-2.5">
+              <div className="text-[10px] font-semibold text-[var(--status-error-text)]">
+                কঠিন (Hard)
+              </div>
+              <div className="mt-0.5 font-mono text-base font-bold text-[var(--status-error-text)]">
+                {stats.difficulty.hard}%
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </AppModal>
   );
 }

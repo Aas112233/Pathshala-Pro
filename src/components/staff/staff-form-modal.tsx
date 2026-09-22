@@ -59,6 +59,28 @@ export function StaffFormModal({
   const [userEmail, setUserEmail] = useState("");
   const [userPassword, setUserPassword] = useState("");
 
+  const departmentOptions = [
+    { value: "Teaching", label: t("filters.department.teaching") },
+    { value: "Administration", label: t("filters.department.administration") },
+    { value: "Support", label: t("filters.department.support") },
+    { value: "Transport", label: t("filters.department.transport") },
+    { value: "Maintenance", label: t("filters.department.maintenance") },
+  ];
+
+  const designationOptions = [
+    { value: "Principal", label: t("form.designations.principal") },
+    { value: "Vice Principal", label: t("form.designations.vicePrincipal") },
+    { value: "Senior Teacher", label: t("form.designations.seniorTeacher") },
+    { value: "Teacher", label: t("form.designations.teacher") },
+    { value: "Accountant", label: t("form.designations.accountant") },
+    { value: "Admin Officer", label: t("form.designations.adminOfficer") },
+    { value: "Clerk", label: t("form.designations.clerk") },
+    { value: "Librarian", label: t("form.designations.librarian") },
+    { value: "Lab Assistant", label: t("form.designations.labAssistant") },
+    { value: "PT Teacher", label: t("form.designations.ptTeacher") },
+    { value: "Counselor", label: t("form.designations.counselor") },
+  ];
+
   const [formData, setFormData] = useState<CreateStaffDTO>({
     firstName: "",
     lastName: "",
@@ -143,43 +165,43 @@ export function StaffFormModal({
     const newErrors: FormErrors = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = t("form.firstNameRequired");
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = t("form.lastNameRequired");
     }
 
     if (!formData.department.trim()) {
-      newErrors.department = "Department is required";
+      newErrors.department = t("form.departmentRequired");
     }
 
     if (!formData.designation.trim()) {
-      newErrors.designation = "Designation is required";
+      newErrors.designation = t("form.designationRequired");
     }
 
     if (!formData.hireDate) {
-      newErrors.hireDate = "Hire date is required";
+      newErrors.hireDate = t("form.hireDateRequired");
     }
 
     if (formData.baseSalary < 0) {
-      newErrors.baseSalary = "Base salary must be non-negative";
+      newErrors.baseSalary = t("form.baseSalaryNonNegative");
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = t("form.emailInvalid");
     }
 
     if (formData.phone && !/^\d{10,}$/.test(formData.phone.replace(/\s/g, ""))) {
-      newErrors.phone = "Please enter a valid phone number";
+      newErrors.phone = t("form.phoneInvalid");
     }
 
     if (createUserAccount) {
       if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
-        newErrors.userEmail = "Valid email is required for user account";
+        newErrors.userEmail = t("form.loginEmailRequired");
       }
       if (!userPassword || userPassword.length < 6) {
-        newErrors.userPassword = "Password must be at least 6 characters";
+        newErrors.userPassword = t("form.passwordRequired");
       }
     }
 
@@ -192,7 +214,7 @@ export function StaffFormModal({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, createUserAccount, userEmail, userPassword, tDate]);
+  }, [formData, createUserAccount, userEmail, userPassword, tDate, t]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -218,7 +240,7 @@ export function StaffFormModal({
     }
   }, [errors]);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
@@ -234,48 +256,33 @@ export function StaffFormModal({
       uploadData.append("file", file);
       uploadData.append("fileType", "staff_profiles");
 
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/upload");
-      xhr.withCredentials = true;
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: uploadData,
+        });
 
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(percentComplete);
+        if (!response.ok) {
+          const errRes = await response.json().catch(() => ({}));
+          throw new Error(errRes.error || errRes.message || "Failed to upload image. Please try again.");
         }
-      };
 
-      xhr.onload = () => {
-        setIsUploading(false);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const response = JSON.parse(xhr.responseText);
-          setFormData((prev) => ({
-            ...prev,
-            profilePictureUrl: response.data.webViewLink,
-            driveFileId: response.data.fileId
-          }));
-          setTempFileId(response.data.fileId);
-          toast.success(t("imageUploadSuccess"));
-        } else {
-          let errMsg = "Failed to upload image. Please try again.";
-          try {
-            const errRes = JSON.parse(xhr.responseText);
-            errMsg = errRes.error || errRes.message || errMsg;
-          } catch (e) { }
-          toast.error(errMsg);
-          setSelectedFile(null);
-        }
-      };
-
-      xhr.onerror = () => {
-        setIsUploading(false);
-        toast.error(t("uploadNetworkError"));
+        const result = await response.json();
+        setFormData((prev) => ({
+          ...prev,
+          profilePictureUrl: result.data.webViewLink,
+          driveFileId: result.data.fileId
+        }));
+        setTempFileId(result.data.fileId);
+        toast.success(t("imageUploadSuccess"));
+      } catch (err: any) {
+        toast.error(err?.message || t("uploadNetworkError"));
         setSelectedFile(null);
-      };
-
-      xhr.send(uploadData);
+      } finally {
+        setIsUploading(false);
+      }
     }
-  }, []);
+  }, [t]);
 
   // Cleanup temp file on cancel/close
   const cleanupTempFile = useCallback(async () => {
@@ -371,16 +378,16 @@ export function StaffFormModal({
     <TopSheet
       isOpen={isOpen}
       onClose={handleModalClose}
-      title={isEditing ? "Edit Staff Member" : "Add New Staff Member"}
-      description={isEditing ? "Update staff member information." : "Create a new staff member profile in the system."}
+      title={isEditing ? t("editStaff") : t("addStaff")}
+      description={isEditing ? t("form.editStaffDescription") : t("form.addStaffDescription")}
       maxWidth="5xl"
       footer={
         <div className="flex items-center justify-end gap-3 w-full">
           <Button variant="outline" type="button" onClick={handleModalClose} disabled={isLoading || isUploading}>
-            Cancel
+            {t("form.cancel")}
           </Button>
           <Button type="submit" form="staff-form" disabled={isLoading || isUploading}>
-            {isLoading ? "Saving..." : isUploading ? "Uploading file..." : isEditing ? "Update Staff" : "Save Staff"}
+            {isLoading ? t("form.saving") : isUploading ? t("form.uploading") : isEditing ? t("form.update") : t("form.create")}
           </Button>
         </div>
       }
@@ -391,7 +398,7 @@ export function StaffFormModal({
           {/* Left Column - Photo Upload */}
           <div className="lg:col-span-1">
             <div className="sticky top-0 space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/90">Staff Photo</label>
+              <label className="text-xs font-semibold text-foreground/90">{t("staffProfile")}</label>
               <div className={clsx(
                 "space-y-1.5 flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg transition-colors",
                 isUploading ? "border-primary/50 bg-primary/5" : "border-muted-foreground/25 hover:bg-muted/50"
@@ -410,11 +417,11 @@ export function StaffFormModal({
                           setIsImagePreviewOpen(true);
                         }
                       }}
-                      aria-label="Click to preview image"
+                      aria-label={t("form.previewAria")}
                     >
                       <img
                         src={formData.profilePictureUrl || (selectedFile ? URL.createObjectURL(selectedFile) : "")}
-                        alt="Staff preview"
+                        alt={t("form.previewAlt")}
                         className="h-full w-full object-cover"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
@@ -434,13 +441,13 @@ export function StaffFormModal({
                   <span className="bg-primary/10 text-primary p-3 rounded-full">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
                   </span>
-                  <span className="font-semibold text-xs text-center">{selectedFile ? selectedFile.name : (formData.profilePictureUrl ? "Change Photo" : "Upload Photo")}</span>
-                  <span className="text-xs text-muted-foreground">PNG, JPG, WEBP up to 5MB</span>
+                  <span className="font-semibold text-xs text-center">{selectedFile ? selectedFile.name : (formData.profilePictureUrl ? t("form.changePhoto") : t("form.uploadPhoto"))}</span>
+                  <span className="text-xs text-muted-foreground">{t("form.photoFormat")}</span>
 
                   {isUploading && (
                     <div className="w-full mt-2 space-y-1.5">
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Uploading...</span>
+                        <span>{t("form.uploading")}</span>
                         <span>{uploadProgress}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
@@ -467,73 +474,73 @@ export function StaffFormModal({
           {/* Right Column - Form Fields */}
           <div className="lg:col-span-3 space-y-5">
             {/* Basic Information */}
-            <ERPFormSection title="Basic Information">
+            <ERPFormSection title={t("form.sectionBasicInfo")}>
               <ERPFormGrid cols={2}>
-                <ERPFormField label="Staff ID" helperText="Format: STAFF-YYYY-####">
+                <ERPFormField label={t("form.staffId")} helperText={t("form.staffIdHelper")}>
                   <div className="px-3 py-2 rounded-md border border-input bg-muted text-sm text-muted-foreground">
-                    Auto-generated on save
+                    {t("form.autoGenerated")}
                   </div>
                 </ERPFormField>
 
-                <ERPFormField label="Gender" htmlFor="gender">
+                <ERPFormField label={t("form.gender")} htmlFor="gender">
                   <AppDropdown
                     value={formData.gender || "MALE"}
                     onChange={(val) => handleDropdownChange("gender", val)}
                     disabled={isLoading || isUploading}
                     options={[
-                      { value: "MALE", label: "Male" },
-                      { value: "FEMALE", label: "Female" },
-                      { value: "OTHER", label: "Other" },
+                      { value: "MALE", label: t("form.male") },
+                      { value: "FEMALE", label: t("form.female") },
+                      { value: "OTHER", label: t("form.other") },
                     ]}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="First Name" required error={errors.firstName} htmlFor="firstName">
+                <ERPFormField label={t("form.firstName")} required error={errors.firstName} htmlFor="firstName">
                   <Input
                     id="firstName"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    placeholder="First name"
+                    placeholder={t("form.firstName")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.firstName)}
                   />
                 </ERPFormField>
-                <ERPFormField label="Last Name" required error={errors.lastName} htmlFor="lastName">
+                <ERPFormField label={t("form.lastName")} required error={errors.lastName} htmlFor="lastName">
                   <Input
                     id="lastName"
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    placeholder="Last name"
+                    placeholder={t("form.lastName")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.lastName)}
                   />
                 </ERPFormField>
 
                 {/* Bengali Name Fields */}
-                <ERPFormField label="First Name (Second Language)" htmlFor="firstNameBn">
+                <ERPFormField label={t("form.firstNameBn")} htmlFor="firstNameBn">
                   <Input
                     id="firstNameBn"
                     name="firstNameBn"
                     value={formData.firstNameBn}
                     onChange={handleChange}
-                    placeholder="প্রথম নাম"
+                    placeholder={t("form.firstNameBnPlaceholder")}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
-                <ERPFormField label="Last Name (Second Language)" htmlFor="lastNameBn">
+                <ERPFormField label={t("form.lastNameBn")} htmlFor="lastNameBn">
                   <Input
                     id="lastNameBn"
                     name="lastNameBn"
                     value={formData.lastNameBn}
                     onChange={handleChange}
-                    placeholder="শেষ নাম"
+                    placeholder={t("form.lastNameBnPlaceholder")}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Date of Birth" error={errors.dateOfBirth} htmlFor="dateOfBirth">
+                <ERPFormField label={t("form.dateOfBirth")} error={errors.dateOfBirth} htmlFor="dateOfBirth">
                   <TenantDateInput
                     id="dateOfBirth"
                     value={formData.dateOfBirth}
@@ -541,13 +548,13 @@ export function StaffFormModal({
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
-                <ERPFormField label="Address" htmlFor="address">
+                <ERPFormField label={t("form.address")} htmlFor="address">
                   <Input
                     id="address"
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    placeholder="Full address"
+                    placeholder={t("form.addressPlaceholder")}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
@@ -555,41 +562,30 @@ export function StaffFormModal({
             </ERPFormSection>
 
             {/* Employment Information */}
-            <ERPFormSection title="Employment Information">
+            <ERPFormSection title={t("form.sectionEmploymentInfo")}>
               <ERPFormGrid cols={2}>
-                <ERPFormField label="Department" required error={errors.department} htmlFor="department">
-                  <Input
+                <ERPFormField label={t("department")} required error={errors.department} htmlFor="department">
+                  <AppDropdown
                     id="department"
-                    name="department"
                     value={formData.department}
-                    onChange={handleChange}
-                    placeholder="e.g. Teaching, Administration"
+                    onChange={(val) => handleDropdownChange("department", val)}
                     disabled={isLoading || isUploading}
-                    aria-invalid={Boolean(errors.department)}
+                    options={departmentOptions}
+                    placeholder={t("form.departmentPlaceholder")}
                   />
                 </ERPFormField>
-                <ERPFormField label="Designation" required error={errors.designation} htmlFor="designation">
-                  <Input
+                <ERPFormField label={t("designation")} required error={errors.designation} htmlFor="designation">
+                  <AppDropdown
                     id="designation"
-                    name="designation"
                     value={formData.designation}
-                    onChange={handleChange}
-                    placeholder="e.g. Senior Teacher, Principal"
+                    onChange={(val) => handleDropdownChange("designation", val)}
                     disabled={isLoading || isUploading}
-                    aria-invalid={Boolean(errors.designation)}
+                    options={designationOptions}
+                    placeholder={t("form.designationPlaceholder")}
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Hire Date" required error={errors.hireDate} htmlFor="hireDate">
-                  <TenantDateInput
-                    id="hireDate"
-                    value={formData.hireDate}
-                    onChange={(v) => handleDateChange("hireDate", v)}
-                    disabled={isLoading || isUploading}
-                    aria-invalid={Boolean(errors.hireDate)}
-                  />
-                </ERPFormField>
-                <ERPFormField label="Joining Date" htmlFor="joiningDate">
+                <ERPFormField label={t("joiningDate")} htmlFor="joiningDate">
                   <TenantDateInput
                     id="joiningDate"
                     value={formData.joiningDate}
@@ -598,24 +594,24 @@ export function StaffFormModal({
                   />
                 </ERPFormField>
 
-                <ERPFormField label="Qualification" htmlFor="qualification">
+                <ERPFormField label={t("qualification")} htmlFor="qualification">
                   <Input
                     id="qualification"
                     name="qualification"
                     value={formData.qualification}
                     onChange={handleChange}
-                    placeholder="e.g. M.Ed, B.Ed"
+                    placeholder={t("form.qualificationPlaceholder")}
                     disabled={isLoading || isUploading}
                   />
                 </ERPFormField>
-                <ERPFormField label="Base Salary" error={errors.baseSalary} htmlFor="baseSalary">
+                <ERPFormField label={t("salary")} error={errors.baseSalary} htmlFor="baseSalary">
                   <Input
                     id="baseSalary"
                     type="number"
                     name="baseSalary"
                     value={formData.baseSalary}
                     onChange={handleChange}
-                    placeholder="0"
+                    placeholder={t("form.baseSalaryPlaceholder")}
                     min="0"
                     step="0.01"
                     disabled={isLoading || isUploading}
@@ -624,7 +620,7 @@ export function StaffFormModal({
                 </ERPFormField>
               </ERPFormGrid>
 
-              <ERPFormField label="Status" htmlFor="isActive">
+              <ERPFormField label={t("form.status")} htmlFor="isActive">
                 <div className="flex items-center gap-2">
                   <Switch
                     id="isActive"
@@ -632,34 +628,34 @@ export function StaffFormModal({
                     onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
                     disabled={isLoading || isUploading}
                   />
-                  <span className="text-sm">{formData.isActive ? "Active" : "Inactive"}</span>
+                  <span className="text-sm">{formData.isActive ? t("form.active") : t("form.inactive")}</span>
                 </div>
               </ERPFormField>
             </ERPFormSection>
 
             {/* Contact Information */}
-            <ERPFormSection title="Contact Information">
+            <ERPFormSection title={t("form.sectionContactInfo")}>
               <ERPFormGrid cols={2}>
-                <ERPFormField label="Email" error={errors.email} htmlFor="email">
+                <ERPFormField label={t("form.email")} error={errors.email} htmlFor="email">
                   <Input
                     id="email"
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="staff@school.edu"
+                    placeholder={t("form.emailPlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.email)}
                   />
                 </ERPFormField>
-                <ERPFormField label="Phone" error={errors.phone} htmlFor="phone">
+                <ERPFormField label={t("form.phone")} error={errors.phone} htmlFor="phone">
                   <Input
                     id="phone"
                     name="phone"
                     type="tel"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="+880-XXX-XXXXXX"
+                    placeholder={t("form.phonePlaceholder")}
                     disabled={isLoading || isUploading}
                     aria-invalid={Boolean(errors.phone)}
                   />
@@ -669,7 +665,7 @@ export function StaffFormModal({
 
             {/* User Account Creation */}
             {!isEditing && (
-              <ERPFormSection title="User Account">
+              <ERPFormSection title={t("form.sectionUserAccount")}>
                 <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30">
                   <Switch
                     id="createUserAccount"
@@ -679,17 +675,17 @@ export function StaffFormModal({
                   />
                   <div className="flex-1">
                     <Label htmlFor="createUserAccount" className="font-medium cursor-pointer">
-                      Create login account for this staff member
+                      {t("form.createUserAccount")}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      This will allow the staff member to access the system
+                      {t("form.createUserAccountHint")}
                     </p>
                   </div>
                 </div>
 
                 {createUserAccount && (
                   <ERPFormGrid cols={2}>
-                    <ERPFormField label="Login Email" required error={errors.userEmail} htmlFor="userEmail">
+                    <ERPFormField label={t("form.loginEmail")} required error={errors.userEmail} htmlFor="userEmail">
                       <Input
                         id="userEmail"
                         type="email"
@@ -700,7 +696,7 @@ export function StaffFormModal({
                             setErrors((prev) => ({ ...prev, userEmail: undefined }));
                           }
                         }}
-                        placeholder="staff@school.edu"
+                        placeholder={t("form.loginEmailPlaceholder")}
                         disabled={isLoading || isUploading}
                         aria-invalid={Boolean(errors.userEmail)}
                       />
@@ -733,8 +729,8 @@ export function StaffFormModal({
         isOpen={isImagePreviewOpen}
         onClose={() => setIsImagePreviewOpen(false)}
         src={formData.profilePictureUrl || (selectedFile ? URL.createObjectURL(selectedFile) : "")}
-        alt="Staff photo preview"
-        title="Staff Photo"
+        alt={t("form.previewAlt")}
+        title={t("form.previewTitle")}
       />
     </TopSheet>
   );

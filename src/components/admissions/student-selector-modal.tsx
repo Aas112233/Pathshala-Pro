@@ -10,7 +10,7 @@ import { Search, UserCheck, X, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn, formatStudentName, fuzzyFilter } from "@/lib/utils";
 
-interface Student {
+export interface Student {
   id: string;
   studentId: string;
   rollNumber: string;

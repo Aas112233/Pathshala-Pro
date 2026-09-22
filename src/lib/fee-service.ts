@@ -462,9 +462,234 @@ export async function postLegacyFeeInvoiceAccrual(
 }
 
 /**
- * Posts a receipt journal for legacy FeeVoucher transactions.
+ * Current wallet balance for a student (last StudentWalletLedger.balanceAfter,
+ * 0 when the student never received an excess credit).
  */
-export async function postLegacyFeePaymentJournal(
+export async function getWalletBalance(
+  tx: Prisma.TransactionClient,
+  params: { tenantId: string; studentProfileId: string },
+): Promise<Prisma.Decimal> {
+  const last = await (tx as any).studentWalletLedger?.findFirst?.({
+    where: { tenantId: params.tenantId, studentProfileId: params.studentProfileId },
+    orderBy: { createdAt: "desc" },
+  });
+  return last ? new Prisma.Decimal(last.balanceAfter) : new Prisma.Decimal(0);
+}
+
+/**
+ * Pays a fee voucher from the student's advance wallet:
+ *    - Dr. Unearned Fee Liability / Wallet (2050) -> amount
+ *    - Cr. Student Accounts Receivable (1030)      -> amount
+ * plus a negative StudentWalletLedger entry. No bank/cash leg moves — the
+ * cash already entered the ledger when the excess was collected.
+ */
+export async function applyWalletDebit(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    studentProfileId: string;
+    feeVoucherId: string;
+    amount: number | Prisma.Decimal;
+    executedById: string;
+    receiptNumber: string;
+    transactionId?: string;
+    note?: string;
+  }
+): Promise<{ journalEntryId: string; voucherNumber: string }> {
+  const amount = new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  if (amount.lessThanOrEqualTo(0)) {
+    throw ApiError.internal("Wallet debit amount must be positive.");
+  }
+
+  // Serialize against concurrent wallet debits/credits on the same student.
+  await tx.$queryRaw`SELECT id FROM "StudentProfile" WHERE id = ${params.studentProfileId} AND "tenantId" = ${params.tenantId} FOR UPDATE`;
+  const balance = await getWalletBalance(tx, { tenantId: params.tenantId, studentProfileId: params.studentProfileId });
+  if (balance.lessThan(amount)) {
+    throw ApiError.badRequest(`Insufficient wallet balance (${balance.toFixed(2)}) for debit ${amount.toFixed(2)}.`);
+  }
+
+  const accounts = await tx.chartOfAccount.findMany({
+    where: { tenantId: params.tenantId, code: { in: ["2050", "1030"] }, isActive: true },
+  });
+  const accountMap = new Map(accounts.map((a) => [a.code, a.id]));
+  if (!accountMap.has("2050") || !accountMap.has("1030")) {
+    throw ApiError.internal("Wallet (2050) or Receivable (1030) account not configured.");
+  }
+
+  const voucherNumber = await getNextVoucherNumber(tx, params.tenantId, "RECEIPT");
+  const period = await resolveOpenPeriod(tx, { tenantId: params.tenantId });
+  const journal = await tx.journalEntry.create({
+    data: {
+      tenantId: params.tenantId,
+      entryNumber: voucherNumber,
+      voucherType: "RECEIPT",
+      postingDate: new Date(),
+      postingStatus: "POSTED",
+      narration: `Wallet Applied - ${params.receiptNumber} (Voucher: ${params.feeVoucherId})${params.note ? ` | ${params.note}` : ""}`,
+      reference: params.receiptNumber,
+      totalDebit: amount,
+      totalCredit: amount,
+      createdById: params.executedById,
+      ...(period.fiscalYearId ? { fiscalYearId: period.fiscalYearId } : {}),
+      ...(period.financialPeriodId ? { financialPeriodId: period.financialPeriodId } : {}),
+      lineItems: {
+        create: [
+          {
+            tenantId: params.tenantId,
+            accountId: accountMap.get("2050")!,
+            debitAmount: amount,
+            creditAmount: new Prisma.Decimal(0),
+            narration: `Wallet Debit - ${params.feeVoucherId}`,
+            studentId: params.studentProfileId,
+          },
+          {
+            tenantId: params.tenantId,
+            accountId: accountMap.get("1030")!,
+            debitAmount: new Prisma.Decimal(0),
+            creditAmount: amount,
+            narration: `Settlement of Fee Voucher ${params.feeVoucherId} from Wallet`,
+            studentId: params.studentProfileId,
+          },
+        ],
+      },
+    },
+  });
+
+  const newBal = balance.minus(amount);
+  await (tx as any).studentWalletLedger?.create?.({
+    data: {
+      tenantId: params.tenantId,
+      studentProfileId: params.studentProfileId,
+      journalEntryId: journal.id,
+      transactionId: params.transactionId,
+      amount: amount.mul(-1),
+      balanceAfter: newBal,
+      reason: `Wallet applied to voucher — ${params.feeVoucherId}`,
+    },
+  });
+
+  return { journalEntryId: journal.id, voucherNumber };
+}
+
+/**
+ * Best-effort BankAccount balance sync. BankAccount rows optionally link to
+ * the GL via `accountCode` — when linked, keep currentBalance in step with
+ * posted journals; when unlinked, this is a no-op (GL remains the truth).
+ */
+export async function syncBankBalance(
+  tx: Prisma.TransactionClient,
+  params: { tenantId: string; accountCode: string; delta: number | Prisma.Decimal },
+): Promise<void> {
+  const deltaNum = Number(new Prisma.Decimal(params.delta).toFixed(2));
+  if (!Number.isFinite(deltaNum) || deltaNum === 0) return;
+  try {
+    await (tx as any).bankAccount?.updateMany?.({
+      where: { tenantId: params.tenantId, accountCode: params.accountCode },
+      data: { currentBalance: { increment: deltaNum } },
+    });
+  } catch {}
+}
+
+/**
+ * Resolves the open fiscal year/period for a posting date. Throws when the
+ * date falls inside a closed period or closed fiscal year, so back-dated
+ * collections cannot silently rewrite a closed book. Returns {} when the
+ * tenant has no fiscal setup (period tracking not yet adopted).
+ */
+export async function resolveOpenPeriod(
+  tx: Prisma.TransactionClient,
+  params: { tenantId: string; postingDate?: Date },
+): Promise<{ fiscalYearId?: string; financialPeriodId?: string }> {
+  const postingDate = params.postingDate ?? new Date();
+  const fiscalYear = await (tx as any).fiscalYear?.findFirst?.({
+    where: { tenantId: params.tenantId, startDate: { lte: postingDate }, endDate: { gte: postingDate } },
+    select: { id: true, isClosed: true },
+  });
+  if (!fiscalYear) return {};
+  if (fiscalYear.isClosed) {
+    throw ApiError.badRequest("Fiscal year is closed for this posting date. Post into the open year.");
+  }
+  const period = await (tx as any).financialPeriod?.findFirst?.({
+    where: { tenantId: params.tenantId, fiscalYearId: fiscalYear.id, startDate: { lte: postingDate }, endDate: { gte: postingDate } },
+    select: { id: true, isClosed: true },
+  });
+  if (period) {
+    if (period.isClosed) {
+      throw ApiError.badRequest("Financial period is closed for this posting date.");
+    }
+    return { fiscalYearId: fiscalYear.id, financialPeriodId: period.id };
+  }
+  return { fiscalYearId: fiscalYear.id };
+}
+
+/**
+ * Cash-counter → bank deposit (CONTRA): moves collected cash into the bank
+ * without touching revenue or receivables.
+ *    - Dr. Bank account (toCode)   -> amount
+ *    - Cr. Cash account (fromCode) -> amount
+ */
+export async function postCashDeposit(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    fromCode?: string;
+    toCode: string;
+    amount: number | Prisma.Decimal;
+    executedById: string;
+    note?: string;
+  }
+): Promise<{ journalEntryId: string; voucherNumber: string }> {
+  const { tenantId, fromCode = "1020", toCode, executedById } = params;
+  const amount = new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  if (amount.lessThanOrEqualTo(0)) {
+    throw ApiError.badRequest("Deposit amount must be positive.");
+  }
+  if (fromCode === toCode) {
+    throw ApiError.badRequest("Deposit source and destination accounts must differ.");
+  }
+  const accounts = await tx.chartOfAccount.findMany({
+    where: { tenantId, code: { in: [fromCode, toCode] }, isActive: true },
+  });
+  const accountMap = new Map(accounts.map((a) => [a.code, a.id]));
+  if (!accountMap.has(fromCode) || !accountMap.has(toCode)) {
+    throw ApiError.internal(`Deposit accounts (${fromCode} → ${toCode}) not configured.`);
+  }
+  const period = await resolveOpenPeriod(tx, { tenantId });
+  const voucherNumber = await getNextVoucherNumber(tx, tenantId, "CONTRA");
+  const journal = await tx.journalEntry.create({
+    data: {
+      tenantId,
+      entryNumber: voucherNumber,
+      voucherType: "CONTRA",
+      postingDate: new Date(),
+      postingStatus: "POSTED",
+      narration: `Cash Deposit ${fromCode} → ${toCode}${params.note ? ` | ${params.note}` : ""}`,
+      reference: voucherNumber,
+      totalDebit: amount,
+      totalCredit: amount,
+      createdById: executedById,
+      ...(period.fiscalYearId ? { fiscalYearId: period.fiscalYearId } : {}),
+      ...(period.financialPeriodId ? { financialPeriodId: period.financialPeriodId } : {}),
+      lineItems: {
+        create: [
+          { tenantId, accountId: accountMap.get(toCode)!, debitAmount: amount, creditAmount: new Prisma.Decimal(0), narration: `Cash deposited to ${toCode}` },
+          { tenantId, accountId: accountMap.get(fromCode)!, debitAmount: new Prisma.Decimal(0), creditAmount: amount, narration: `Cash moved out of ${fromCode}` },
+        ],
+      },
+    },
+  });
+  await syncBankBalance(tx, { tenantId, accountCode: toCode, delta: amount });
+  await syncBankBalance(tx, { tenantId, accountCode: fromCode, delta: amount.mul(-1) });
+  return { journalEntryId: journal.id, voucherNumber };
+}
+
+/**
+ * Single receipt poster for every fee collection path (counter, bulk,
+ * direct transaction). Resolves the deposit account from the tenant's
+ * configured paymentMethods, enforces balanced/non-zero guards, writes an
+ * AuditLog marker, and links any wallet excess with its transactionId.
+ */
+export async function postFeeReceipt(
   tx: Prisma.TransactionClient,
   params: {
     tenantId: string;
@@ -477,16 +702,19 @@ export async function postLegacyFeePaymentJournal(
     receiptNumber: string;
     executedById: string;
     note?: string;
+    transactionId?: string;
+    bankAccountCode?: string;
   }
 ): Promise<{ journalEntryId: string; voucherNumber: string }> {
-  const payment = new Prisma.Decimal(params.amount);
-  const applied = new Prisma.Decimal(params.appliedToInvoice);
-  const excess = new Prisma.Decimal(params.excessToWallet || 0);
+  const payment = new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const applied = new Prisma.Decimal(params.appliedToInvoice).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const excess = new Prisma.Decimal(params.excessToWallet || 0).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
   if (payment.lessThanOrEqualTo(0) || !applied.plus(excess).equals(payment)) {
     throw ApiError.internal("Invalid fee payment journal amounts.");
   }
 
-  let bankCode = params.paymentMethod === "CASH" ? "1020" : "1010";
+  let bankCode = params.bankAccountCode
+    || (params.paymentMethod === "CASH" ? "1020" : "1010");
   try {
     const tenant = await tx.tenant.findUnique({
       where: { tenantId: params.tenantId },
@@ -517,12 +745,15 @@ export async function postLegacyFeePaymentJournal(
   }
 
   const voucherNumber = await getNextVoucherNumber(tx, params.tenantId, "RECEIPT");
+  const period = await resolveOpenPeriod(tx, { tenantId: params.tenantId });
   const lines = [{
     tenantId: params.tenantId,
     accountId: accountMap.get(bankCode)!.id,
     debitAmount: payment,
     creditAmount: new Prisma.Decimal(0),
-    narration: `Fee Payment Received via ${params.paymentMethod} [Rcpt: ${params.receiptNumber}]`,
+    // Snapshot the method→account routing on the narration itself, so history
+    // stays interpretable even if the tenant remaps the method tomorrow.
+    narration: `Fee Payment Received via ${params.paymentMethod}→${bankCode} [Rcpt: ${params.receiptNumber}]`,
   }];
   if (applied.greaterThan(0)) {
     lines.push({
@@ -555,21 +786,110 @@ export async function postLegacyFeePaymentJournal(
       totalDebit: payment,
       totalCredit: payment,
       createdById: params.executedById,
+      ...(period.fiscalYearId ? { fiscalYearId: period.fiscalYearId } : {}),
+      ...(period.financialPeriodId ? { financialPeriodId: period.financialPeriodId } : {}),
       lineItems: { create: lines },
     },
   });
+
+  await syncBankBalance(tx, { tenantId: params.tenantId, accountCode: bankCode, delta: payment });
+
+  try {
+    await (tx as any).auditLog?.create?.({
+      data: {
+        tenantId: params.tenantId,
+        userId: params.executedById ?? null,
+        action: "JOURNAL_POST",
+        entity: "Journal",
+        entityId: journal.id,
+        details: {
+          entryNumber: journal.entryNumber,
+          voucherType: "RECEIPT",
+          reference: params.receiptNumber,
+          paymentMethod: params.paymentMethod,
+          totalDebit: payment.toFixed(2),
+          totalCredit: payment.toFixed(2),
+        },
+      },
+    });
+  } catch {}
 
   if (excess.greaterThan(0)) {
     await createWalletLedgerIfNeeded(tx, {
       tenantId: params.tenantId,
       studentProfileId: params.studentProfileId,
       journalEntryId: journal.id,
+      transactionId: params.transactionId,
       amount: excess,
       reason: `Excess payment wallet credit — ${params.feeVoucherId}`,
     });
   }
 
   return { journalEntryId: journal.id, voucherNumber };
+}
+
+/**
+ * Dispatcher for collection journals: bank/cash/digital methods post a
+ * RECEIPT via postFeeReceipt; WALLET_CREDIT settles from the advance wallet
+ * via applyWalletDebit (overpay-from-wallet is rejected — excess would loop
+ * straight back into the wallet it came from).
+ */
+export async function postCollectionJournal(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    studentProfileId: string;
+    feeVoucherId: string;
+    amount: number | Prisma.Decimal;
+    appliedToInvoice: number | Prisma.Decimal;
+    excessToWallet?: number | Prisma.Decimal;
+    paymentMethod: string;
+    receiptNumber: string;
+    executedById: string;
+    note?: string;
+    transactionId?: string;
+  }
+): Promise<{ journalEntryId: string; voucherNumber: string }> {
+  if (params.paymentMethod === "WALLET_CREDIT") {
+    const excess = new Prisma.Decimal(params.excessToWallet || 0);
+    if (excess.greaterThan(0)) {
+      throw ApiError.badRequest("Wallet payments cannot exceed the voucher balance due.");
+    }
+    return applyWalletDebit(tx, {
+      tenantId: params.tenantId,
+      studentProfileId: params.studentProfileId,
+      feeVoucherId: params.feeVoucherId,
+      amount: params.appliedToInvoice,
+      executedById: params.executedById,
+      receiptNumber: params.receiptNumber,
+      transactionId: params.transactionId,
+      note: params.note,
+    });
+  }
+  return postFeeReceipt(tx, params);
+}
+
+/**
+ * Posts a receipt journal for legacy FeeVoucher transactions.
+ * Thin wrapper over postFeeReceipt (kept for call-site compatibility).
+ */
+export async function postLegacyFeePaymentJournal(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    studentProfileId: string;
+    feeVoucherId: string;
+    amount: number | Prisma.Decimal;
+    appliedToInvoice: number | Prisma.Decimal;
+    excessToWallet?: number | Prisma.Decimal;
+    paymentMethod: string;
+    receiptNumber: string;
+    executedById: string;
+    note?: string;
+    transactionId?: string;
+  }
+): Promise<{ journalEntryId: string; voucherNumber: string }> {
+  return postFeeReceipt(tx, params);
 }
 
 /**
@@ -615,6 +935,7 @@ export async function applyLateFineSurcharge(
   if (!accountMap.has(lateFeeRevenueCode)) throw new Error(`Late Fee Revenue (${lateFeeRevenueCode}) not configured.`);
 
   const voucherNumber = await getNextVoucherNumber(tx, tenantId, "JOURNAL");
+  const period = await resolveOpenPeriod(tx, { tenantId });
 
   const journal = await tx.journalEntry.create({
     data: {
@@ -628,6 +949,8 @@ export async function applyLateFineSurcharge(
       totalDebit: fine,
       totalCredit: fine,
       createdById: executedById,
+      ...(period.fiscalYearId ? { fiscalYearId: period.fiscalYearId } : {}),
+      ...(period.financialPeriodId ? { financialPeriodId: period.financialPeriodId } : {}),
       lineItems: {
         create: [
           {
@@ -656,9 +979,9 @@ export async function applyLateFineSurcharge(
   await tx.feeVoucher.update({
     where: { id: feeVoucherId },
     data: {
-      lateFine: { increment: Number(fine.toFixed(2)) },
-      totalDue: { increment: Number(fine.toFixed(2)) },
-      balance: { increment: Number(fine.toFixed(2)) },
+      lateFine: { increment: fine },
+      totalDue: { increment: fine },
+      balance: { increment: fine },
       status: "OVERDUE",
     },
   });
@@ -704,7 +1027,7 @@ export async function collectFeePayment(
   // schema) so concurrent payments against the same voucher can't read the
   // same stale remaining-due figure.
   const lockedRows = await tx.$queryRaw<
-    Array<{ id: string; totalDue: number; amountPaid: number }>
+    Array<{ id: string; totalDue: Prisma.Decimal; amountPaid: Prisma.Decimal }>
   >`
     SELECT id, "totalDue", "amountPaid"
     FROM "FeeVoucher"
@@ -731,90 +1054,23 @@ export async function collectFeePayment(
     excessToWallet = payment;
   }
 
-  const requiredCodes = [bankAccountCode];
-  if (appliedToInvoice.greaterThan(0)) requiredCodes.push(arAccountCode);
-  if (excessToWallet.greaterThan(0)) requiredCodes.push(unearnedLiabilityCode);
+  // Resolve student once for the wallet ledger link.
+  const voucherForWallet = await (tx as any).feeVoucher?.findUnique?.({ where: { id: feeVoucherId }, select: { studentProfileId: true } });
+  const studentProfileId = (voucherForWallet as any)?.studentProfileId;
 
-  const accounts = await tx.chartOfAccount.findMany({
-    where: { tenantId, code: { in: requiredCodes }, isActive: true },
+  const { journalEntryId } = await postFeeReceipt(tx, {
+    tenantId,
+    studentProfileId: studentProfileId ?? feeVoucherId,
+    feeVoucherId,
+    amount: payment,
+    appliedToInvoice,
+    excessToWallet,
+    paymentMethod,
+    receiptNumber,
+    executedById,
+    note: notes ? `${notes} (Voucher: ${feeVoucherId})` : `Voucher: ${feeVoucherId}`,
+    bankAccountCode: params.bankAccountCode,
   });
-  const accountMap = new Map(accounts.map((a) => [a.code, a.id]));
-
-  if (!accountMap.has(bankAccountCode)) throw new Error(`Deposit account (${bankAccountCode}) not configured.`);
-
-  const voucherNumber = await getNextVoucherNumber(tx, tenantId, "RECEIPT");
-
-  const lines: Array<{
-    tenantId: string;
-    accountId: string;
-    debitAmount: Prisma.Decimal;
-    creditAmount: Prisma.Decimal;
-    narration: string;
-  }> = [
-    // Dr. Bank/Cash
-    {
-      tenantId,
-      accountId: accountMap.get(bankAccountCode)!,
-      debitAmount: payment,
-      creditAmount: new Prisma.Decimal(0),
-      narration: `Fee Payment Received via ${paymentMethod} [Rcpt: ${receiptNumber}]`,
-    },
-  ];
-
-  // Cr. Accounts Receivable
-  if (appliedToInvoice.greaterThan(0)) {
-    lines.push({
-      tenantId,
-      accountId: accountMap.get(arAccountCode)!,
-      debitAmount: new Prisma.Decimal(0),
-      creditAmount: appliedToInvoice,
-      narration: `Settlement of Fee Voucher ${feeVoucherId}`,
-    });
-  }
-
-  // Cr. Unearned Fee Liability (Wallet)
-  if (excessToWallet.greaterThan(0)) {
-    lines.push({
-      tenantId,
-      accountId: accountMap.get(unearnedLiabilityCode)!,
-      debitAmount: new Prisma.Decimal(0),
-      creditAmount: excessToWallet,
-      narration: `Excess Payment Credited to Student Wallet`,
-    });
-  }
-
-  const journal = await tx.journalEntry.create({
-    data: {
-      tenantId,
-      entryNumber: voucherNumber,
-      voucherType: "RECEIPT",
-      postingDate: new Date(),
-      postingStatus: "POSTED",
-      narration: `Fee Collection Receipt - ${receiptNumber} (Voucher: ${feeVoucherId})${notes ? ` | ${notes}` : ""}`,
-      reference: reference || receiptNumber,
-      totalDebit: payment,
-      totalCredit: payment,
-      createdById: executedById,
-      lineItems: {
-        create: lines,
-      },
-    },
-  });
-
-  if (excessToWallet.greaterThan(0)) {
-    try {
-      // Resolve student for wallet ledger if not in params
-      const voucher = await (tx as any).feeVoucher?.findUnique?.({ where: { id: feeVoucherId }, select: { studentProfileId: true } });
-      const studentId = (voucher as any)?.studentProfileId || feeVoucherId; // fallback
-      await createWalletLedgerIfNeeded(tx, {
-        tenantId,
-        studentProfileId: studentId,
-        journalEntryId: journal.id,
-        amount: excessToWallet,
-        reason: `Excess wallet credit — ${receiptNumber}`,
-      });
-    } catch {}
-  }
 
   const remainingBalance = Prisma.Decimal.max(remainingDue.minus(appliedToInvoice), new Prisma.Decimal(0));
 
@@ -826,6 +1082,121 @@ export async function collectFeePayment(
     excessToWallet: excessToWallet.toFixed(2),
     newBalance: remainingBalance.toFixed(2),
     status: remainingBalance.isZero() ? "PAID" : "PARTIAL",
-    journalEntryId: journal.id,
+    journalEntryId,
   };
+}
+
+/**
+ * Reverses (waives) a late-fine surcharge, in full or in part:
+ *    - Dr. Late Fee Surcharge Income (4060) -> waivedAmount
+ *    - Cr. Accounts Receivable (1030)       -> waivedAmount
+ * and decrements the voucher's lateFine/totalDue/balance. Never drives a
+ * balance negative — the waiver is capped at the outstanding fine.
+ */
+export async function waiveLateFine(
+  tx: Prisma.TransactionClient,
+  params: {
+    tenantId: string;
+    feeVoucherId: string;
+    studentProfileId: string;
+    amount?: number | Prisma.Decimal;
+    executedById: string;
+    reason?: string;
+    arAccountCode?: string;
+    lateFeeRevenueCode?: string;
+  }
+) {
+  const {
+    tenantId,
+    feeVoucherId,
+    studentProfileId,
+    executedById,
+    reason,
+    arAccountCode = "1030",
+    lateFeeRevenueCode = "4060",
+  } = params;
+
+  const lockedRows = await tx.$queryRaw<
+    Array<{ id: string; lateFine: Prisma.Decimal; totalDue: Prisma.Decimal; amountPaid: Prisma.Decimal }>
+  >`
+    SELECT id, "lateFine", "totalDue", "amountPaid"
+    FROM "FeeVoucher"
+    WHERE id = ${feeVoucherId} AND "tenantId" = ${tenantId}
+    FOR UPDATE
+  `;
+  if (lockedRows.length === 0) {
+    throw new Error(`FeeVoucher ${feeVoucherId} not found for tenant ${tenantId}`);
+  }
+  const outstandingFine = new Prisma.Decimal(lockedRows[0].lateFine);
+  if (outstandingFine.lessThanOrEqualTo(0)) {
+    throw ApiError.badRequest("Voucher carries no outstanding late fine to waive.");
+  }
+  const waived = params.amount !== undefined
+    ? new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+    : outstandingFine;
+  if (waived.lessThanOrEqualTo(0) || waived.greaterThan(outstandingFine)) {
+    throw ApiError.badRequest(`Waiver amount must be within 0 and outstanding fine (${outstandingFine.toFixed(2)}).`);
+  }
+
+  const accounts = await tx.chartOfAccount.findMany({
+    where: { tenantId, code: { in: [arAccountCode, lateFeeRevenueCode] }, isActive: true },
+  });
+  const accountMap = new Map(accounts.map((a) => [a.code, a.id]));
+  if (!accountMap.has(arAccountCode)) throw new Error(`Accounts Receivable (${arAccountCode}) not configured.`);
+  if (!accountMap.has(lateFeeRevenueCode)) throw new Error(`Late Fee Revenue (${lateFeeRevenueCode}) not configured.`);
+
+  const period = await resolveOpenPeriod(tx, { tenantId });
+  const voucherNumber = await getNextVoucherNumber(tx, tenantId, "JOURNAL");
+  const journal = await tx.journalEntry.create({
+    data: {
+      tenantId,
+      entryNumber: voucherNumber,
+      voucherType: "JOURNAL",
+      postingDate: new Date(),
+      postingStatus: "POSTED",
+      narration: `Late Fine Waived on Voucher ${feeVoucherId}${reason ? ` | ${reason}` : ""}`,
+      reference: feeVoucherId,
+      totalDebit: waived,
+      totalCredit: waived,
+      createdById: executedById,
+      ...(period.fiscalYearId ? { fiscalYearId: period.fiscalYearId } : {}),
+      ...(period.financialPeriodId ? { financialPeriodId: period.financialPeriodId } : {}),
+      lineItems: {
+        create: [
+          {
+            tenantId,
+            accountId: accountMap.get(lateFeeRevenueCode)!,
+            debitAmount: waived,
+            creditAmount: new Prisma.Decimal(0),
+            narration: `Late Fine Waiver - ${feeVoucherId}`,
+            studentId: studentProfileId,
+          },
+          {
+            tenantId,
+            accountId: accountMap.get(arAccountCode)!,
+            debitAmount: new Prisma.Decimal(0),
+            creditAmount: waived,
+            narration: `Late Fine Receivable Reversed - ${feeVoucherId}`,
+            studentId: studentProfileId,
+          },
+        ],
+      },
+    },
+  });
+
+  const totalDue = new Prisma.Decimal(lockedRows[0].totalDue).minus(waived);
+  const amountPaid = new Prisma.Decimal(lockedRows[0].amountPaid);
+  const newBalance = Prisma.Decimal.max(new Prisma.Decimal(0), totalDue.minus(amountPaid));
+  const newStatus = newBalance.isZero() ? "PAID" : amountPaid.greaterThan(0) ? "PARTIAL" : "OVERDUE";
+  await tx.feeVoucher.update({
+    where: { id: feeVoucherId },
+    data: {
+      lateFine: { decrement: waived },
+      totalDue: { decrement: waived },
+      balance: newBalance.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+      status: newStatus,
+    },
+  });
+
+  return { journalEntryId: journal.id, voucherNumber, waivedAmount: waived.toFixed(2), status: newStatus };
 }

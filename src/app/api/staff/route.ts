@@ -15,6 +15,7 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { verifyInternalFileUrl } from "@/lib/upload-security";
 import { fastCache } from "@/lib/fast-memory-cache";
+import { logAuditEvent } from "@/lib/audit-logger";
 
 /**
  * GET /api/staff
@@ -242,6 +243,16 @@ export async function POST(request: NextRequest) {
 
     fastCache.invalidatePrefix(`staff:${tenantId}`);
     fastCache.invalidatePrefix(`dash_summary:${tenantId}`);
+
+    logAuditEvent({
+      tenantId,
+      userId: access.authContext.user.id,
+      userEmail: access.authContext.user.email,
+      action: "CREATE",
+      entity: "Staff",
+      entityId: staff.id,
+      details: { staffId: staff.staffId, name: `${staff.firstName} ${staff.lastName}` },
+    });
 
     return successResponse(staff, "Staff member created successfully", 201);
   } catch (error) {

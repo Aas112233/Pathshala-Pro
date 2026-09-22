@@ -48,6 +48,12 @@ build_output.txt
 !.env.template
 !.env.sample
 !.env.local.example
+.env.vault
+.env.me
+
+# Local MCP / agent configs (may contain tokens)
+.mcp.json
+!.mcp.json.example
 
 # Certificates & Private Keys
 *.pem
@@ -83,6 +89,8 @@ prisma/*.db
 /uploads/
 /backups/
 /dumps/
+# Keep folders but ignore contents
+!**/.gitkeep
 
 # --- Testing, Coverage & Reports ---
 coverage/
@@ -113,6 +121,9 @@ lerna-debug.log*
 
 # --- TypeScript ---
 *.tsbuildinfo
+next-env.d.ts
+.eslintcache
+.prettiercache
 
 # --- OS System Files ---
 .DS_Store
@@ -126,6 +137,8 @@ Desktop.ini
 
 # --- Editor & IDE Files ---
 .idea/
+.vs/
+.history/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -149,11 +162,54 @@ Desktop.ini
 .lingma/
 .codegraph/
 .bynara/
+.freebuff/
+.verdent/
+.commitshow/
+.commandcode/
+.aider*/
+aider.chat.history.md
+.continue/
 
 # --- Temporary & Scratch Files ---
 *.tmp
 *.temp
 *.bak
+*.orig
+*.rej
 scratch/
-k6.exe 
+tmp/
+.temp/
+
+# Load-test binaries & extracts (was `k6.exe ` with trailing space — never matched)
+k6
+k6.exe
+k6-*/
+k6-v*/
+
+# Local test / typecheck / lint output (scattered *.txt in repo root)
 test-out.txt
+test-output.txt
+test-run-*.txt
+*-output.txt
+*-tests.txt
+targeted-tests.txt
+classes-test.txt
+i18n-tests.txt
+tsc-*.txt
+vitest-*.txt
+lint-*.txt
+cookies.txt
+
+# Generated test datasets & stray pack artifacts
+*Test_Dataset*.xlsx
+Pathshala_Pro_*.xlsx
+/pathshala-pro@*/
+/next
+
+# Python / misc caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+pathshala-pro@0.1.0
+.commandcode/taste/taste/taste.md

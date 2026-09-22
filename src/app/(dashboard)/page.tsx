@@ -72,9 +72,16 @@ export default function DashboardPage() {
     user?.role === "SUPER_ADMIN" ||
     (!!user && user.role !== "SYSTEM_ADMIN" && hasPermission(user.permissions, "fees", "read"));
 
-  const queryEnabled = !isAuthLoading && !!user;
+  const { activeAcademicYear, isLoading: isAcademicYearLoading } = useAcademicYearContext();
 
-  const { activeAcademicYear } = useAcademicYearContext();
+  // Bootstrap gates. React Query reports isLoading === false while a query is
+  // disabled, so without these the cards/panels paint empty values first, flip to
+  // skeletons while auth settles, and flip again when the academic year arrives.
+  // KPI queries additionally depend on the selected academic year — waiting for it
+  // also avoids fetching the summary once with no year and again with the real one.
+  const isAuthReady = !isAuthLoading && !!user;
+  const isBootstrapping = !isAuthReady;
+  const isKpiReady = isAuthReady && !isAcademicYearLoading;
 
   // Server-aggregated KPI summary: 1 small request instead of the previous
   // fees-limit-100 + attendance-limit-100 client-side sums.
@@ -83,14 +90,14 @@ export default function DashboardPage() {
     isLoading: isSummaryLoading,
   } = useDashboardSummary(
     { academicYearId: activeAcademicYear?.id },
-    { enabled: queryEnabled }
+    { enabled: isKpiReady }
   );
 
   // Shared ["notices"] cache with header/banner/login dialog (limit 4 for feed).
   const {
     data: noticesData,
     isLoading: isNoticesLoading,
-  } = useNotices({ activeOnly: true, limit: 4 }, { enabled: queryEnabled });
+  } = useNotices({ activeOnly: true, limit: 4 }, { enabled: isAuthReady });
   const notices = noticesData ?? [];
 
   // Real Database Queries
@@ -99,7 +106,7 @@ export default function DashboardPage() {
     isLoading: isStudentsLoading,
   } = useStudents(
     { page: 1, limit: 10, academicYearId: activeAcademicYear?.id } as any,
-    { enabled: queryEnabled && canReadStudents }
+    { enabled: isKpiReady && canReadStudents }
   );
 
   const {
@@ -107,10 +114,12 @@ export default function DashboardPage() {
     isLoading: isTransactionsLoading,
   } = useTransactions(
     { page: 1, limit: 5 },
-    { enabled: queryEnabled && canReadFees }
+    { enabled: isAuthReady && canReadFees }
   );
 
-  const isKpiLoading = isStudentsLoading || isSummaryLoading;
+  const isKpiLoading = !isKpiReady || isStudentsLoading || isSummaryLoading;
+  const isTransactionsPending = isBootstrapping || isTransactionsLoading;
+  const isNoticesPending = isBootstrapping || isNoticesLoading;
 
   const totalStudents = summary?.totalStudents ?? (studentsResponse as any)?.pagination?.totalCount ?? 0;
   const totalStaff = summary?.totalStaff ?? 0;
@@ -334,7 +343,7 @@ export default function DashboardPage() {
               </Button>
             </div>
 
-            {isTransactionsLoading ? (
+            {isTransactionsPending ? (
               <div className="space-y-3 py-4">
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-12 w-full" />
@@ -496,7 +505,7 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        {isNoticesLoading ? (
+        {isNoticesPending ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-4">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-32" />
@@ -573,6 +582,7 @@ export default function DashboardPage() {
           data={filteredRecentStudents}
           columns={studentColumns}
           keyExtractor={(row) => row.id}
+          isLoading={!isKpiReady || isStudentsLoading}
           searchPlaceholder={t("students.searchPlaceholder")}
           searchValue={studentTableSearch}
           onSearchChange={setStudentTableSearch}

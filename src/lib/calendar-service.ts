@@ -279,7 +279,7 @@ export async function getCalendarItems(params: GetCalendarItemsParams): Promise<
       const dayKey = voucher.dueDate.toISOString().slice(0, 10);
       const bucket = byDay.get(dayKey) ?? { count: 0, totalBalance: 0 };
       bucket.count += 1;
-      bucket.totalBalance += voucher.balance;
+      bucket.totalBalance += Number(voucher.balance);
       byDay.set(dayKey, bucket);
     }
 

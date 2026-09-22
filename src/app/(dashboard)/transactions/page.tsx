@@ -27,6 +27,8 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
+  ShieldCheck,
+  CheckCircle2,
 } from "lucide-react";
 import { downloadBlob } from "@/lib/download-blob";
 import { useTransactionViewModel } from "@/viewmodels/transactions/use-transaction-view-model";
@@ -62,9 +64,15 @@ export default function TransactionsPage() {
     setPage,
     setPageSize,
     deleteTransaction,
+    clearCheque,
+    isClearing,
+    verifyReceipt,
+    isVerifying,
   } = useTransactionViewModel();
 
   const [detail, setDetail] = useState<any | null>(null);
+  const [bounceReason, setBounceReason] = useState("");
+  const [showBounceBox, setShowBounceBox] = useState(false);
   const [isExportingDaybook, setIsExportingDaybook] = useState(false);
   const [isExportingDaybookPdf, setIsExportingDaybookPdf] = useState(false);
   const { exportFeeDaybookPDF } = usePDFExport();
@@ -288,7 +296,21 @@ export default function TransactionsPage() {
             m === "CASH" ? "bg-emerald-500/10 text-emerald-700 border-emerald-200" :
             m === "DIGITAL" || m === "EASYPAISA" || m === "JAZZCASH" ? "bg-sky-500/10 text-sky-700 border-sky-200" :
             "bg-amber-500/10 text-amber-700 border-amber-200";
-          return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${color}`}>{m.toLowerCase()}</span>;
+          return (
+            <span className="inline-flex flex-col items-start gap-1">
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${color}`}>{m.toLowerCase()}</span>
+              {m === "CHEQUE" && row.chequeStatus && (
+                <span className="inline-flex items-center rounded-full border border-border px-1.5 py-px text-[10px] font-semibold uppercase text-muted-foreground">
+                  {row.chequeStatus === "PENDING" ? t("chequePending") : row.chequeStatus === "CLEARED" ? t("chequeCleared") : t("chequeBounced")}
+                </span>
+              )}
+              {row.verifiedAt ? (
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold uppercase text-emerald-700">
+                  {t("verified")}
+                </span>
+              ) : null}
+            </span>
+          );
         },
       },
       {
@@ -449,10 +471,63 @@ export default function TransactionsPage() {
       {/* Detail Drawer — next-level inspection (TopSheet) */}
       <TopSheet
         isOpen={!!detail}
-        onClose={() => setDetail(null)}
+        onClose={() => { setDetail(null); setShowBounceBox(false); setBounceReason(""); }}
         title={detail ? `${detail.receiptNumber} — ${formatCurrency(detail.amountPaid)}` : ""}
         description={detail ? `${detail.paymentMethod} • ${formatDate(detail.timestamp)}` : ""}
         maxWidth="lg"
+        footer={detail ? (
+          <div className="flex items-center justify-end gap-2">
+            {detail.paymentMethod === "CHEQUE" && detail.chequeStatus === "PENDING" && canManageFees && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isClearing}
+                  onClick={async () => {
+                    try {
+                      const updated = await clearCheque({ id: detail.id, data: { status: "CLEARED" } });
+                      setDetail((updated as any)?.data?.transaction ?? { ...detail, chequeStatus: "CLEARED", clearedAt: new Date().toISOString() });
+                    } catch {}
+                  }}
+                  className="gap-1.5"
+                >
+                  {isClearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                  {t("clearCheque")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isClearing}
+                  onClick={() => setShowBounceBox((v) => !v)}
+                  className="gap-1.5"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  {t("bounceCheque")}
+                </Button>
+              </>
+            )}
+            {!detail.verifiedAt && ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"].includes(detail.paymentMethod) && canManageFees && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isVerifying}
+                onClick={async () => {
+                  try {
+                    const updated = await verifyReceipt({ id: detail.id });
+                    setDetail((updated as any)?.data?.transaction ?? { ...detail, verifiedAt: new Date().toISOString() });
+                  } catch {}
+                }}
+                className="gap-1.5"
+              >
+                {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                {t("verifyReceipt")}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => { setDetail(null); setShowBounceBox(false); setBounceReason(""); }}>
+              {tCommon("close") || "Close"}
+            </Button>
+          </div>
+        ) : undefined}
       >
         {detail && (
           <div className="space-y-4 text-sm">
@@ -481,7 +556,38 @@ export default function TransactionsPage() {
               <p>{detail.collectedBy?.name} — {detail.collectedBy?.email}</p>
               <p className="text-muted-foreground">{formatDate(detail.timestamp)}</p>
               {detail.note && <p className="mt-2 italic">Note: {detail.note}</p>}
+              {detail.chequeNumber && <p className="mt-1 font-mono">{t("chequeNumber")}: {detail.chequeNumber}</p>}
+              {detail.reference && <p className="mt-1 font-mono">{t("reference")}: {detail.reference}</p>}
             </div>
+            {showBounceBox && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                <p className="text-xs font-semibold text-destructive">{t("confirmBounce")}</p>
+                <Input
+                  placeholder={t("bounceReasonPlaceholder")}
+                  value={bounceReason}
+                  onChange={(e) => setBounceReason(e.target.value)}
+                  className="h-8 text-xs bg-background"
+                />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isClearing}
+                  onClick={async () => {
+                    try {
+                      await clearCheque({ id: detail.id, data: { status: "BOUNCED", reason: bounceReason || undefined } });
+                      toast.success(t("chequeBouncedMsg"));
+                      setDetail(null);
+                    } catch {}
+                    setShowBounceBox(false);
+                    setBounceReason("");
+                  }}
+                  className="gap-1.5"
+                >
+                  {isClearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                  {t("bounceCheque")}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </TopSheet>

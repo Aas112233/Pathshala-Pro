@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { ExamPaperStudioModel as ExamPaper } from '@/types/exam-studio';
 import { EXAM_TEMPLATES } from '@/lib/question-paper-studio/templates';
 import { AppDropdown } from '@/components/ui/app-dropdown';
+import { Button } from '@/components/ui/button';
 import {
   ArrowLeft,
-  FileDown,
   Printer,
   Layers,
   Settings,
@@ -15,7 +15,6 @@ import {
   ZoomOut,
   GraduationCap,
   Save,
-  Loader2,
   PieChart,
 } from 'lucide-react';
 
@@ -72,13 +71,11 @@ export function TopNavbar({
       <div className="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap">
         {/* Left: Brand & Template Switcher */}
         <div className="flex items-center gap-2.5">
-          <Link
-            href="/exams/question-papers"
-            title="ফিরে যান (Exit Studio)"
-            className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-md transition-colors border border-border/60 flex items-center justify-center shadow-2xs"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
+          <Button asChild variant="outline" size="icon-sm" title="ফিরে যান (Exit Studio)">
+            <Link href="/exams/question-papers">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+          </Button>
 
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
@@ -129,118 +126,127 @@ export function TopNavbar({
         {/* Center: Command Palette & Smart Tools */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Omni Command Palette Trigger */}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onOpenOmniPalette}
-            className="px-2.5 py-1 bg-muted/60 hover:bg-muted border border-border rounded-md text-xs text-muted-foreground flex items-center gap-2 transition-colors"
+            className="bg-muted/60 text-muted-foreground hover:bg-muted"
           >
             <Search className="w-3.5 h-3.5" />
             <span className="hidden md:inline">কমান্ড</span>
             <kbd className="text-[10px] font-mono px-1 py-0.2 bg-card border border-border rounded text-muted-foreground hidden sm:inline">
               Ctrl+K
             </kbd>
-          </button>
+          </Button>
 
           {/* Question Bank Direct Import */}
           {onOpenQuestionBankModal && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onOpenQuestionBankModal}
-              className="px-2.5 py-1 bg-muted hover:bg-muted/80 border border-border text-foreground rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors"
               title="প্রশ্ন ব্যাংক থেকে ইমপোর্ট করুন"
+              className="bg-muted font-semibold hover:bg-muted/80"
             >
               <BookOpen className="w-3.5 h-3.5 text-primary" />
               <span>প্রশ্ন ব্যাংক</span>
-            </button>
+            </Button>
           )}
 
           {/* Cognitive Balance Meter Toggle */}
           {onOpenCognitiveBalance && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onOpenCognitiveBalance}
-              className="px-2.5 py-1 bg-muted hover:bg-muted/80 border border-border text-foreground rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors"
-              title="ব্লুমস ট্যাক্সনমি ও মান ভারসাম্য"
+              title="ব্লুমস ট্যাক্সোনমি ও মান ভারসাম্য"
+              className="bg-muted hover:bg-muted/80"
             >
               <PieChart className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="hidden lg:inline">ব্যালেন্স মিটার</span>
-            </button>
+            </Button>
           )}
 
           {/* Batch Sets Generator */}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onOpenBatchModal}
-            className="px-2.5 py-1 bg-muted hover:bg-muted/80 border border-border text-foreground rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors"
             title="মাল্টিপল সেট ও শাফলিং"
+            className="bg-muted hover:bg-muted/80"
           >
             <Layers className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="hidden md:inline">সেট শাফলিং</span>
-          </button>
+          </Button>
 
           {/* Layout Settings Drawer */}
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={onOpenSettingsDrawer}
-            className="px-2.5 py-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
             title="লেআউট সেটিংস ও ফন্ট"
+            className="font-semibold"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>লেআউট ও ফন্ট</span>
-          </button>
+          </Button>
         </div>
 
         {/* Right: Zoom & Export Actions */}
         <div className="flex items-center gap-2">
           {/* Zoom Controls */}
           <div className="hidden xl:flex items-center gap-1 border border-border rounded-md p-0.5 bg-muted/40">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => onZoomChange(Math.max(0.7, zoomLevel - 0.1))}
-              className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
               title="জুম আউট"
             >
               <ZoomOut className="w-3.5 h-3.5" />
-            </button>
+            </Button>
             <span className="text-[11px] font-mono font-medium px-1.5 text-muted-foreground">
               {Math.round(zoomLevel * 100)}%
             </span>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => onZoomChange(Math.min(1.4, zoomLevel + 0.1))}
-              className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
               title="জুম ইন"
             >
               <ZoomIn className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
 
           {/* Unified Print & PDF Action */}
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={onPrint}
-            className="px-3 py-1.5 bg-foreground text-background hover:bg-foreground/90 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
             title="প্রশ্নপত্র সরাসরি প্রিন্ট বা PDF আকারে সংরক্ষণ করুন"
+            className="bg-foreground text-background hover:bg-foreground/90 font-semibold"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>প্রিন্ট / PDF</span>
-          </button>
+          </Button>
 
           {/* Database Save */}
           {onSavePaper && (
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={onSavePaper}
-              disabled={isSaving}
-              className="px-3.5 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+              loading={isSaving}
+              className="font-bold"
             >
-              {isSaving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
-              )}
+              <Save className="w-3.5 h-3.5" />
               <span>সংরক্ষণ করুন</span>
-            </button>
+            </Button>
           )}
         </div>
       </div>

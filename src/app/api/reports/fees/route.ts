@@ -103,18 +103,18 @@ export async function GET(request: NextRequest) {
       // Calculate payment method breakdown from transactions
       liveTransactions.forEach((tx) => {
         if (tx.paymentMethod === "CASH") {
-          cashCollected = addCurrency(cashCollected, tx.amountPaid);
+          cashCollected = addCurrency(cashCollected, Number(tx.amountPaid));
         } else {
-          digitalCollected = addCurrency(digitalCollected, tx.amountPaid);
+          digitalCollected = addCurrency(digitalCollected, Number(tx.amountPaid));
         }
       });
 
       if (voucher.status === "PAID") {
-        totalCollected = addCurrency(totalCollected, paidAmount);
+        totalCollected = addCurrency(totalCollected, Number(paidAmount));
       } else if (voucher.status === "PENDING" || voucher.status === "UNPAID" || voucher.status === "PARTIAL") {
-        totalPending = addCurrency(totalPending, dueAmount);
+        totalPending = addCurrency(totalPending, Number(dueAmount));
       } else if (voucher.status === "OVERDUE") {
-        totalOverdue = addCurrency(totalOverdue, dueAmount);
+        totalOverdue = addCurrency(totalOverdue, Number(dueAmount));
       }
 
       // Get latest payment method

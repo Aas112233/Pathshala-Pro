@@ -19,6 +19,7 @@ import {
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
 import { fastCache } from "@/lib/fast-memory-cache";
+import { logAuditEvent } from "@/lib/audit-logger";
 
 /**
  * GET /api/staff/[id]
@@ -195,6 +196,16 @@ export async function PUT(
 
     fastCache.invalidatePrefix(`staff:${tenantId}`);
 
+    logAuditEvent({
+      tenantId,
+      userId: access.authContext.user.id,
+      userEmail: access.authContext.user.email,
+      action: "UPDATE",
+      entity: "Staff",
+      entityId: updatedStaff.id,
+      details: { staffId: updatedStaff.staffId, name: `${updatedStaff.firstName} ${updatedStaff.lastName}` },
+    });
+
     return successResponse(updatedStaff, "Staff member updated successfully");
   } catch (error) {
     return handleApiError(error);
@@ -242,6 +253,16 @@ export async function DELETE(
 
     fastCache.invalidatePrefix(`staff:${tenantId}`);
     fastCache.invalidatePrefix(`dash_summary:${tenantId}`);
+
+    logAuditEvent({
+      tenantId,
+      userId: access.authContext.user.id,
+      userEmail: access.authContext.user.email,
+      action: "DELETE",
+      entity: "Staff",
+      entityId: existingStaff.id,
+      details: { staffId: existingStaff.staffId, name: `${existingStaff.firstName} ${existingStaff.lastName}` },
+    });
 
     return successResponse(null, "Staff member deleted successfully");
   } catch (error) {

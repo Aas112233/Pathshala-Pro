@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         bankName: data.bankName,
         branchName: data.branchName,
         accountType: data.accountType,
+        accountCode: (data as any).accountCode,
         openingBalance: data.openingBalance,
         currentBalance: data.openingBalance,
         currency: data.currency,

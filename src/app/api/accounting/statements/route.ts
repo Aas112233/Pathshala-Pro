@@ -147,8 +147,8 @@ export async function GET(req: NextRequest) {
 
       vouchers.forEach((v) => {
         // Debit: Voucher Generated / Billed
-        runningBalance += v.totalDue;
-        totalBilled += v.totalDue;
+        runningBalance += Number(v.totalDue);
+        totalBilled += Number(v.totalDue);
 
         allEntries.push({
           id: `voucher-${v.id}`,
@@ -172,8 +172,8 @@ export async function GET(req: NextRequest) {
         // Credit: Transactions / Payments Made
         const voucherTransactions = transactionsByVoucherId.get(v.id) || [];
         voucherTransactions.forEach((tx) => {
-          runningBalance -= tx.amountPaid;
-          totalPaid += tx.amountPaid;
+          runningBalance -= Number(tx.amountPaid);
+          totalPaid += Number(tx.amountPaid);
 
           allEntries.push({
             id: `tx-${tx.id}`,
@@ -388,6 +388,101 @@ export async function GET(req: NextRequest) {
         return errorResponse("Bank account not found", 404);
       }
 
+      // GL-driven statement when the bank master is linked to a chart code:
+      // every posted receipt, deposit, expense and payroll journal already
+      // carries its debit/credit legs, so the ledger — not a synthetic
+      // re-assembly of subledgers — is the single source of truth.
+      if ((account as any).accountCode) {
+        const glCode = (account as any).accountCode as string;
+        const glAccount = await prisma.chartOfAccount.findFirst({
+          where: { tenantId, code: glCode },
+          select: { id: true, code: true, name: true },
+        });
+        if (glAccount) {
+          const glLines = await prisma.journalLineItem.findMany({
+            where: { tenantId, accountId: glAccount.id },
+            include: {
+              journalEntry: { select: { entryNumber: true, voucherType: true, postingDate: true, narration: true, reference: true } },
+            },
+            orderBy: { journalEntry: { postingDate: "asc" } },
+          });
+
+          const toNum = (v: unknown) => Number((v as any)?.toString?.() ?? v ?? 0);
+          let runningBalance = account.openingBalance || 0;
+          const allEntries: any[] = [
+            {
+              id: `open-${account.id}`,
+              date: account.createdAt,
+              refId: "OPENING-BAL",
+              type: "DEBIT",
+              category: "OPENING_BALANCE",
+              description: `Initial Opening Balance for ${account.accountName}`,
+              debit: account.openingBalance,
+              credit: 0,
+              runningBalance: account.openingBalance,
+              status: "CLEARED",
+              paymentMethod: account.accountType,
+            },
+          ];
+          for (const line of glLines) {
+            const debit = toNum((line as any).debitAmount);
+            const credit = toNum((line as any).creditAmount);
+            runningBalance += debit - credit;
+            const je = (line as any).journalEntry;
+            allEntries.push({
+              id: `gl-${line.id}`,
+              date: je?.postingDate || (line as any).createdAt,
+              refId: je?.entryNumber || je?.reference || "GL",
+              type: debit > 0 ? "DEBIT" : "CREDIT",
+              category: je?.voucherType || "JOURNAL",
+              description: (line as any).narration || je?.narration || "General Ledger Entry",
+              debit,
+              credit,
+              runningBalance,
+              status: "CLEARED",
+              paymentMethod: glCode,
+            });
+          }
+
+          let filteredEntries = allEntries;
+          let openingBalance = 0;
+          if (startDate) {
+            const priorEntries = allEntries.filter((e) => new Date(e.date) < startDate);
+            if (priorEntries.length > 0) {
+              openingBalance = priorEntries[priorEntries.length - 1].runningBalance;
+            }
+            filteredEntries = filteredEntries.filter((e) => new Date(e.date) >= startDate);
+          }
+          if (endDate) {
+            filteredEntries = filteredEntries.filter((e) => new Date(e.date) <= endDate);
+          }
+          const periodDebit = filteredEntries.reduce((sum, e) => sum + e.debit, 0);
+          const periodCredit = filteredEntries.reduce((sum, e) => sum + e.credit, 0);
+          const closingBalance = openingBalance + periodDebit - periodCredit;
+          const expectedClosing = (account.openingBalance || 0) + glLines.reduce((s, l) => s + toNum((l as any).debitAmount) - toNum((l as any).creditAmount), 0);
+
+          return successResponse({
+            type: "ACCOUNT",
+            entity: account,
+            options: { students, staffList, bankAccounts },
+            statement: {
+              openingBalance,
+              totalDebit: periodDebit,
+              totalCredit: periodCredit,
+              closingBalance,
+              entries: filteredEntries,
+              glLinked: true,
+              glCode,
+              // Live currentBalance is synced on every post; any non-zero
+              // difference here means a journal bypassed the posters.
+              syncedBalance: account.currentBalance,
+              difference: Number((expectedClosing - (account.currentBalance || 0)).toFixed(2)),
+            },
+          });
+        }
+      }
+
+      // Unlinked bank master: legacy synthetic statement (subledgers).
       // 1. Fee collection deposits (Inflow / Debit to Bank)
       const transactions = await prisma.transaction.findMany({
         where: { tenantId, isVoided: false },
@@ -456,7 +551,7 @@ export async function GET(req: NextRequest) {
 
       // Inflow: Fee Collections
       transactions.forEach((tx) => {
-        runningBalance += tx.amountPaid;
+        runningBalance += Number(tx.amountPaid);
         allEntries.push({
           id: `tx-${tx.id}`,
           date: tx.timestamp || tx.createdAt,

@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { MoreVertical, Pencil, Trash2, Eye, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { SalaryLedger } from "@/types/entities";
 
 interface SalaryActionsDropdownProps {
@@ -24,100 +29,60 @@ export function SalaryActionsDropdown({
   onGenerateSlip,
 }: SalaryActionsDropdownProps) {
   const t = useTranslations("salary");
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleAction = (callback?: (salary: SalaryLedger) => void) => {
-    setIsOpen(false);
-    callback?.(salary);
-  };
 
   const isPaid = salary.status === "PAID" || salary.status === "PARTIAL";
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        aria-label={t("ui.actions.aria")}
-      >
-        <MoreVertical className="h-4 w-4" />
-      </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label={t("ui.actions.aria")}>
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
 
-      {isOpen && (
-        <div
-          className="absolute right-0 top-full mt-1 z-50 min-w-[180px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
-          style={{
-            position: "fixed",
-            top: `${dropdownRef.current?.getBoundingClientRect().bottom || 0 + 4}px`,
-            left: `${(dropdownRef.current?.getBoundingClientRect().right || 0) - 180}px`,
-          }}
-        >
-          <div className="p-1">
-            {onView && (
-              <button
-                onClick={() => handleAction(onView)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
-              >
-                <Eye className="h-4 w-4" />
-                <span>{t("ui.actions.viewDetails")}</span>
-              </button>
-            )}
-            {onEdit && !isPaid && (
-              <button
-                onClick={() => handleAction(onEdit)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
-              >
-                <Pencil className="h-4 w-4" />
-                <span>{t("ui.actions.edit")}</span>
-              </button>
-            )}
-            {onPayment && !isPaid && (
-              <button
-                onClick={() => handleAction(onPayment)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
-              >
-                <FileText className="h-4 w-4" />
-                <span>{t("ui.actions.recordPayment")}</span>
-              </button>
-            )}
-            {onGenerateSlip && (
-              <button
-                onClick={() => handleAction(onGenerateSlip)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
-              >
-                <FileText className="h-4 w-4" />
-                <span>{t("ui.actions.downloadSlip")}</span>
-              </button>
-            )}
-            {onDelete && !isPaid && (
-              <button
-                onClick={() => handleAction(onDelete)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>{t("ui.actions.delete")}</span>
-              </button>
-            )}
-            {isPaid && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                <span className="text-amber-600 font-medium">{t("ui.actions.locked")}</span> - {t("ui.actions.paidLocked")}
-              </div>
-            )}
+      <DropdownMenuContent>
+        {onView && (
+          <DropdownMenuItem onSelect={() => onView(salary)}>
+            <Eye className="h-4 w-4" />
+            <span>{t("ui.actions.viewDetails")}</span>
+          </DropdownMenuItem>
+        )}
+        {onEdit && !isPaid && (
+          <DropdownMenuItem onSelect={() => onEdit(salary)}>
+            <Pencil className="h-4 w-4" />
+            <span>{t("ui.actions.edit")}</span>
+          </DropdownMenuItem>
+        )}
+        {onPayment && !isPaid && (
+          <DropdownMenuItem
+            className="text-[var(--status-success-text)] focus:bg-[var(--status-success-bg)] focus:text-[var(--status-success-text)]"
+            onSelect={() => onPayment(salary)}
+          >
+            <FileText className="h-4 w-4" />
+            <span>{t("ui.actions.recordPayment")}</span>
+          </DropdownMenuItem>
+        )}
+        {onGenerateSlip && (
+          <DropdownMenuItem onSelect={() => onGenerateSlip(salary)}>
+            <FileText className="h-4 w-4" />
+            <span>{t("ui.actions.downloadSlip")}</span>
+          </DropdownMenuItem>
+        )}
+        {onDelete && !isPaid && (
+          <DropdownMenuItem variant="destructive" onSelect={() => onDelete(salary)}>
+            <Trash2 className="h-4 w-4" />
+            <span>{t("ui.actions.delete")}</span>
+          </DropdownMenuItem>
+        )}
+        {isPaid && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-medium text-[var(--status-warning-text)]">
+              {t("ui.actions.locked")}
+            </span>{" "}
+            - {t("ui.actions.paidLocked")}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { StudentSelectorModal } from "@/components/admissions/student-selector-modal";
+import { StudentSelectorModal, type Student } from "@/components/admissions/student-selector-modal";
 import { StudentFormModal } from "@/components/students/student-form-modal";
 import { ERPDataTable, type ColumnDef as ERPColumnDef } from "@/components/ui/erp-data-table";
 import { formatStudentName } from "@/lib/utils";
@@ -25,23 +25,6 @@ import { useTenantFormatting, useTenantSettings } from "@/components/providers/t
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
-
-interface Student {
-  id: string;
-  studentId: string;
-  rollNumber: string;
-  firstName: string;
-  lastName: string;
-  firstNameBn?: string;
-  lastNameBn?: string;
-  guardianName: string;
-  gender?: string;
-  status: string;
-  profilePictureUrl?: string;
-  classId?: string;
-  groupId?: string;
-  sectionId?: string;
-}
 
 interface AdmissionItem {
   student: Student;

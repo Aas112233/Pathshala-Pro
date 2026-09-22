@@ -23,8 +23,8 @@ export interface DiagnosticsResult {
 }
 
 /** Only tests stored balance arithmetic; does not reconcile payments or journals. */
-export function checkFeeBalance(voucher: { totalDue: number; amountPaid: number; balance: number }): DiagnosticIssue[] {
-  const values = [voucher.totalDue, voucher.amountPaid, voucher.balance];
+export function checkFeeBalance(voucher: { totalDue: number | string | { toString(): string }; amountPaid: number | string | { toString(): string }; balance: number | string | { toString(): string } }): DiagnosticIssue[] {
+  const values = [voucher.totalDue, voucher.amountPaid, voucher.balance].map((v) => Number(v?.toString?.() ?? v));
   if (values.some((value) => !Number.isFinite(value) || value < 0)) return ["invalidAmount"];
   const [due, paid, balance] = values.map((value) => toCents(value));
   if (![due, paid, balance].every(Number.isSafeInteger)) return ["invalidAmount"];
