@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { requireApiAccess } from "@/lib/api-auth";
 import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
+import { hasDateBounds, normalizeDateRange } from "@/lib/date-range-filter";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,13 +25,12 @@ export async function GET(request: NextRequest) {
       tenantId: user.tenantId,
     };
 
-    if (fromDate || toDate) {
-      const dateFilter: Prisma.DateTimeFilter = {};
-      if (fromDate) dateFilter.gte = new Date(fromDate);
-      if (toDate) dateFilter.lte = new Date(toDate);
-
-      expenseWhere.expenseDate = dateFilter;
-      txWhere.timestamp = dateFilter;
+    // normalizeDateRange keeps the end bound inclusive; a bare `new Date(toDate)`
+    // is UTC midnight and silently drops everything on the final day.
+    const dateRange = normalizeDateRange(fromDate, toDate);
+    if (hasDateBounds(dateRange)) {
+      expenseWhere.expenseDate = dateRange;
+      txWhere.timestamp = dateRange;
     }
 
     if (categoryId && categoryId !== "all") {

@@ -53,6 +53,39 @@ describe("Permissions Engine & RBAC Matrix", () => {
       const unknownRolePerms = getEffectivePermissions("UNKNOWN_ROLE", null);
       expect(unknownRolePerms).toBeNull();
     });
+
+    it("preserves desk access for stored overrides that predate the desk split", () => {
+      // A cashier's saved override has no fee-pos/fee-bulk keys because the
+      // split landed later. Reading that absence as "no" would take the cash box
+      // away from every existing cashier the moment the split shipped.
+      const legacyCashier = { students: { read: true }, fees: { read: true, write: true } };
+      const perms = getEffectivePermissions("CLERK", legacyCashier);
+      expect(perms?.fees?.write).toBe(true);
+      expect(perms?.["fee-pos"]?.write).toBe(true);
+      expect(perms?.["fee-bulk"]?.write).toBe(true);
+    });
+
+    it("respects an explicit desk revocation and invents no desk for a read-only role", () => {
+      const revoked = {
+        fees: { read: true, write: true },
+        "fee-pos": { read: false, write: false },
+      };
+      const revokedPerms = getEffectivePermissions("CLERK", revoked);
+      expect(revokedPerms?.["fee-pos"]?.write).toBe(false);
+      // The desk the override says nothing about is still inherited.
+      expect(revokedPerms?.["fee-bulk"]?.write).toBe(true);
+
+      // PRINCIPAL holds no desk by default, so there is nothing to inherit.
+      const principal = getEffectivePermissions("PRINCIPAL", { fees: { read: true, manage: true } });
+      expect(principal?.["fee-pos"]).toBeUndefined();
+      expect(principal?.["fee-bulk"]).toBeUndefined();
+    });
+
+    it("does not mutate the stored override it was given", () => {
+      const stored = { fees: { read: true, write: true } };
+      getEffectivePermissions("ACCOUNTANT", stored);
+      expect(Object.keys(stored)).toEqual(["fees"]);
+    });
   });
 
   describe("hasPermission checks and cascading hierarchy", () => {
@@ -116,6 +149,18 @@ describe("Permissions Engine & RBAC Matrix", () => {
 
     it("securely default-denies unknown subpaths by returning base segment", () => {
       expect(getModuleForPath("/custom-module/detail")).toBe("custom-module");
+    });
+
+    it("routes each fee collection desk to its own capability tier", () => {
+      // The two desks are separate cash-handling capabilities, so navigation
+      // must follow the desk rather than the parent `fees` module; collector
+      // management is a user-administration surface.
+      expect(getModuleForPath("/fees")).toBe("fees");
+      expect(getModuleForPath("/fees/collection")).toBe("fee-pos");
+      expect(getModuleForPath("/fees/bulk")).toBe("fee-bulk");
+      expect(getModuleForPath("/fees/collectors")).toBe("users");
+      expect(getModuleForPath("/fees/structures")).toBe("fees");
+      expect(getModuleForPath("/transactions")).toBe("fees");
     });
   });
 
@@ -284,6 +329,27 @@ describe("Capability gates the module tier cannot express", () => {
     for (const role of ["ACCOUNTANT", "CLERK", "ADMIN", "SCHOOL_ADMIN", "INSTITUTE_ADMIN"]) {
       expect(hasRolePermission(role, "fees:payment:collect"), role).toBe(true);
     }
+  });
+
+  it("splits the cash box into two independently grantable desks", () => {
+    const worksPos = (role: string) =>
+      hasPermission(ROLE_DEFAULT_PERMISSIONS[role], "fee-pos", "write");
+    const worksBulk = (role: string) =>
+      hasPermission(ROLE_DEFAULT_PERMISSIONS[role], "fee-bulk", "write");
+
+    for (const role of ["ACCOUNTANT", "CLERK", "ADMIN", "SCHOOL_ADMIN", "INSTITUTE_ADMIN"]) {
+      expect(worksPos(role), role).toBe(true);
+      expect(worksBulk(role), role).toBe(true);
+    }
+
+    for (const role of ["PRINCIPAL", "MANAGER", "ACADEMIC_COORDINATOR", "TEACHER", "STUDENT", "PARENT"]) {
+      expect(worksPos(role), role).toBe(false);
+      expect(worksBulk(role), role).toBe(false);
+    }
+
+    // The principal still holds the fee module (waiver approval) — which is
+    // exactly why the desk could not be expressed as a module tier.
+    expect(hasPermission(ROLE_DEFAULT_PERMISSIONS.PRINCIPAL, "fees", "manage")).toBe(true);
   });
 
   it("restricts journal posting, period close and payroll to finance roles", () => {

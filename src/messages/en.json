@@ -113,6 +113,12 @@
     "threeMonths": "3 Months / Term",
     "sixMonths": "6 Months",
     "fullRemaining": "Full 12 Months / Remaining",
+    "selectAll": "All Unpaid (Full Year)",
+    "clearSelection": "Clear",
+    "exactAmount": "Exact",
+    "shortcuts": "Shortcuts",
+    "selectedDue": "Selected Due:",
+    "totalOutstanding": "Total Outstanding:",
     "activeInvoices": "Active Invoices & Vouchers",
     "totalDue": "Total Due:",
     "currentMonthRate": "Current Month Class Tuition Rate",
@@ -176,7 +182,18 @@
     "selectStudentPrompt": "Select a student to collect fees",
     "noFeeStructureAlert": "No active fee structure is configured for {className} in academic year {academicYear}. Unbilled months cannot be collected until configured.",
     "configureFeeStructure": "Configure Fee Structure",
-    "feeStructureRequired": "Fee Structure Required"
+    "feeStructureRequired": "Fee Structure Required",
+    "walletMethod": "Wallet",
+    "walletMethodHint": "Pay from the student advance wallet",
+    "walletSplitTitle": "Pay part from wallet",
+    "autoApplyWallet": "Auto-apply wallet",
+    "walletAmountPlaceholder": "Wallet amount",
+    "chequeNumber": "Cheque number",
+    "chequeNumberPlaceholder": "Enter cheque number",
+    "paymentReference": "Transaction reference (UTR)",
+    "paymentReferencePlaceholder": "Enter UTR / gateway id",
+    "referenceRequired": "External reference (UTR/transaction id) is required for {method} payments.",
+    "chequeNumberRequired": "Cheque number is required for CHEQUE payments."
   },
   "currencies": {
     "title": "Currency",
@@ -276,15 +293,18 @@
     "feeStructures": "Fee Structures",
     "feeCollection": "Fee Collection (POS)",
     "bulkFeeCollection": "Bulk Fee Entry",
+    "feeCollectors": "Fee Collectors",
     "transactions": "Transactions",
     "expenses": "Expenses",
     "bankAccounts": "Bank & Cash Accounts",
+    "deposits": "Cash Deposits",
     "profitLoss": "Profit & Loss Statement",
     "statements": "Account Statements",
     "feeHeadMappings": "Fee Head Accounting",
     "hr": "HR & Payroll",
     "staff": "Staff Directory",
     "salaryPayroll": "Salary & Payroll",
+    "payrollApprovals": "Payroll Approvals",
     "administration": "Settings & System",
     "systemSettings": "Settings & System",
     "campusFacilities": "Campus & Facilities",
@@ -709,7 +729,9 @@
       "profilePhotoAlt": "{name}'s profile photo"
     },
     "idCards": "ID Cards",
-    "admissionForm": "Admission Form"
+    "admissionForm": "Admission Form",
+    "createError": "Failed to create student",
+    "updateError": "Failed to update student"
   },
   "fees": {
     "title": "Fee Management Hub",
@@ -773,15 +795,6 @@
     "tuition": "Tuition",
     "rollLabel": "Roll:",
     "voucherNumber": "Voucher #",
-    "walletMethod": "Wallet",
-    "walletMethodHint": "Pay from the student advance wallet",
-    "chequeNumber": "Cheque number",
-    "chequeNumberPlaceholder": "Enter cheque number",
-    "paymentReference": "Transaction reference (UTR)",
-    "paymentReferencePlaceholder": "Enter UTR / gateway id",
-    "walletSplitTitle": "Pay part from wallet",
-    "autoApplyWallet": "Auto-apply wallet",
-    "walletAmountPlaceholder": "Wallet amount",
     "waiveFine": "Waive late fine",
     "outstandingFine": "Outstanding fine",
     "waiveAmount": "Waiver amount",
@@ -882,6 +895,7 @@
       "phoneInvalid": "Please enter a valid phone number",
       "createUserAccount": "Create login account for this staff member",
       "createUserAccountDescription": "This will allow the staff member to access the system",
+      "createUserAccountHint": "An email with login credentials will be sent to the staff member",
       "loginEmail": "Login Email",
       "loginEmailPlaceholder": "staff@school.edu",
       "loginEmailRequired": "Valid email is required for user account",
@@ -1112,7 +1126,9 @@
     "resultsSaved": "Exam results saved successfully!",
     "promotionRuleCreated": "Promotion rule created successfully!",
     "promotionsExecuted": "Promotions executed successfully!",
-    "error": "Failed to process examination action"
+    "error": "Failed to process examination action",
+    "promotionRuleUpdated": "Promotion rule updated successfully",
+    "promotionRuleDeleted": "Promotion rule deleted successfully"
   },
   "results": {
     "marksLockedDuePromotion": "Marks for this student are locked due to promotion.",
@@ -1222,6 +1238,59 @@
   "salary": {
     "title": "Salary / Payroll",
     "description": "Manage staff salaries, advances, and payroll.",
+    "approvals": {
+      "title": "Payroll Approvals",
+      "description": "Audit, review, and authorize staff salaries before disbursement.",
+      "approveSelected": "Approve Selected ({count})",
+      "approveAllPending": "Approve All Pending",
+      "quickApprove": "Quick Approve",
+      "reject": "Reject",
+      "approvedBadge": "Approved",
+      "readyForPayment": "Ready for Payment",
+      "awaitingAudit": "Awaiting Approval",
+      "table": {
+        "period": "Period",
+        "audit": "Approval Audit"
+      },
+      "kpi": {
+        "pendingTitle": "Pending Approvals",
+        "pendingSubtitle": "Awaiting authorization",
+        "approvedTitle": "Ready for Payout",
+        "approvedSubtitle": "Approved by management",
+        "disbursedTitle": "Disbursed (Month)",
+        "disbursedSubtitle": "Paid out to accounts",
+        "rejectedTitle": "Needs Attention",
+        "rejectedSubtitle": "Rejected / sent back",
+        "staffUnit": "Staff"
+      },
+      "filters": {
+        "allStatuses": "All Statuses",
+        "pending": "Pending Approval",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "paid": "Paid",
+        "selectMonth": "Select Month",
+        "selectYear": "Select Year",
+        "selectDept": "Select Department",
+        "selectStatus": "Select Status"
+      },
+      "searchPlaceholder": "Search by staff name or ID...",
+      "emptyTitle": "No Payroll Records Found",
+      "emptyDescription": "No salary records match the selected month, year, or approval filters.",
+      "noPendingSelected": "None of the selected records are pending approval",
+      "noPendingInView": "No records in the current view are pending approval",
+      "rejectTitle": "Reject Salary Record",
+      "rejectDescription": "Provide a clear reason for returning this record to HR / Accounting.",
+      "rejectDescriptionStaff": "Provide a clear reason for returning {name}'s salary record to HR.",
+      "reasonLabel": "Rejection Reason",
+      "reasonPlaceholder": "State required corrections (e.g. incorrect LOP days, missing advance deduction)...",
+      "rejectionReasonRequired": "Rejection reason is required (minimum 3 characters)",
+      "cancel": "Cancel",
+      "confirmReject": "Reject Record",
+      "approveSuccess": "Salary approved successfully!",
+      "rejectSuccess": "Salary rejected and sent back to HR",
+      "bulkApproveSuccess": "Selected salaries approved successfully!"
+    },
     "processPayroll": "Process Payroll",
     "month": "Month",
     "year": "Year",
@@ -2387,7 +2456,6 @@
   "reports": {
     "title": "Reports & Analytics Hub",
     "description": "Comprehensive institutional intelligence, audits, and exportable ledgers",
-    "overview": "Reports Overview",
     "filters": {
       "selectClass": "Select class",
       "selectClassFirst": "Select class first...",
@@ -2435,7 +2503,24 @@
       "export": "Export",
       "generating": "Generating...",
       "noData": "No data available",
-      "exportedExcel": "Report exported successfully"
+      "exportedExcel": "Report exported successfully",
+      "reportPeriod": "Report period",
+      "generatedAt": "Generated at",
+      "records": "Records",
+      "appliedFilters": "Applied filters",
+      "noExtraFilters": "No extra filters",
+      "trendFromLastPeriod": "% from last period",
+      "rowsPerPage": "Rows per page",
+      "paginationRange": "{start}-{end} of {total}",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "searchPlaceholder": "Search within report...",
+      "noRecordsTitle": "No records found",
+      "noRecordsDescription": "Try adjusting your search or filters",
+      "exportTruncated": "Export truncated — the result set exceeds the export limit",
+      "lowestAttendanceStudents": "Lowest attendance",
+      "reportUnavailableForRole": "This report is not available for your role",
+      "reportUnavailableForRoleHint": "Contact your administrator if you believe this is incorrect"
     },
     "charts": {
       "total": "Total"
@@ -2561,7 +2646,8 @@
       "exportedPDF": "Financial report exported to PDF",
       "exportFailed": "Failed to export financial report",
       "title": "Financial Expenses & Cash Flow",
-      "description": "Operational expense heads, payment vouchers, fee receipts, and net cash balance"
+      "description": "Operational expense heads, payment vouchers, fee receipts, and net cash balance",
+      "itemizedExpenseLedger": "Itemized Expense Ledger"
     },
     "admissionsReport": {
       "applicantStudent": "Applicant / Student",
@@ -2608,7 +2694,8 @@
       "exportedPDF": "Admissions report exported to PDF",
       "exportFailed": "Failed to export admissions report",
       "title": "Admissions & Conversion Funnel",
-      "description": "Inquiry pipeline tracking, lead attribution, conversion rates, and enrollment stats"
+      "description": "Inquiry pipeline tracking, lead attribution, conversion rates, and enrollment stats",
+      "enquiriesLedger": "Applicant Enquiries Ledger"
     },
     "attendanceReport": {
       "class": "Class",
@@ -2713,6 +2800,15 @@
       "start": "Start",
       "present": "Present",
       "examType": "Exam type"
+    },
+    "hub": {
+      "searchPlaceholder": "Search reports...",
+      "finance": "Finance",
+      "academics": "Academics",
+      "operations": "Operations",
+      "noAccess": "No reports are available for your role",
+      "noAccessHint": "Contact your administrator if you believe this is incorrect",
+      "emptySearch": "No reports match your search"
     }
   },
   "accounting": {
@@ -2961,6 +3057,30 @@
     },
     "deposits": {
       "recordDeposit": "Record Deposit",
+      "title": "Cash Deposits",
+      "pageDescription": "Bank the counter collections with balanced cash-to-bank entries.",
+      "tableTitle": "Deposit journal",
+      "showingRecords": "Showing {count} records",
+      "colVoucher": "Voucher",
+      "colRoute": "From → To",
+      "colNarration": "Narration",
+      "colDate": "Date",
+      "colAmount": "Amount",
+      "totalDeposited": "Total deposited (page)",
+      "pageCount": "{count} entries",
+      "depositCount": "Deposit entries",
+      "entriesUnit": "contra entries",
+      "avgDeposit": "Average deposit",
+      "perEntryUnit": "per entry",
+      "emptyTitle": "No deposits recorded",
+      "emptyHint": "Record the first cash-to-bank deposit to start the trail.",
+      "colBankRef": "Bank ref",
+      "undepositedCash": "Cash in drawer",
+      "undepositedHint": "collected, not yet banked",
+      "bankReference": "Bank slip / UTR",
+      "bankReferencePlaceholder": "e.g. UTR 123456789012",
+      "receiptRefs": "Linked receipts",
+      "receiptRefsPlaceholder": "e.g. REC-2026-0001, REC-2026-0002",
       "description": "Move collected cash into the bank with a balanced transfer entry.",
       "transferTitle": "Cash Transfer",
       "transferDescription": "Debit the bank, credit the cash register. Linked balances sync automatically.",
@@ -2968,6 +3088,8 @@
       "toAccount": "To account (bank)",
       "toAccountPlaceholder": "e.g. 1010",
       "selectDestination": "Select the destination account",
+      "selectSource": "Select the source account",
+      "sameAccount": "Source and destination accounts must differ",
       "amount": "Amount",
       "note": "Note",
       "notePlaceholder": "e.g. Evening counter deposit",
@@ -3463,7 +3585,9 @@
     "periodRemoved": "Period removed successfully!",
     "error": "Failed to process timetable period",
     "periodWithNumber": "Period {number}",
-    "pdfDownloadSuccess": "Timetable PDF downloaded"
+    "pdfDownloadSuccess": "Timetable PDF downloaded",
+    "periodCreated": "Period created successfully!",
+    "periodDeleted": "Period deleted successfully!"
   },
   "notifications": {
     "title": "Notifications & Circulars",
@@ -3710,7 +3834,8 @@
     "routeDeleted": "Route deleted successfully!",
     "allocatedSuccess": "Student allocated successfully!",
     "allocationRemoved": "Allocation removed successfully!",
-    "error": "Failed to process transport operation"
+    "error": "Failed to process transport operation",
+    "vacatedSuccess": "Allocation vacated successfully!"
   },
   "homework": {
     "title": "Homework & Assignments",
@@ -4432,6 +4557,51 @@
     "created": "Notice created successfully!",
     "updated": "Notice updated successfully!"
   },
+  "collectors": {
+    "title": "Fee Collectors",
+    "description": "Decide which staff may take money at each fee collection desk.",
+    "deskNote": "Both collection desks are cash-handling capabilities. Granting a desk lets that user open the desk and take payments; revoking it removes the desk from their navigation at their next sign-in.",
+    "searchPlaceholder": "Search staff by name or email...",
+    "manage": "Manage desks",
+    "granted": "Granted",
+    "notGranted": "Not granted",
+    "active": "Active",
+    "inactive": "Inactive",
+    "receiptsCount": "{count} receipts",
+    "neverCollected": "Never",
+    "sheetTitle": "{name} — Fee Desk Access",
+    "sheetDescription": "Turn each collection desk on or off for this staff member.",
+    "posDesk": "POS counter desk",
+    "posDeskHint": "Single-student counter payments with receipt printing.",
+    "bulkDesk": "Bulk class desk",
+    "bulkDeskHint": "Batch posting for a whole class and fee month.",
+    "sessionNote": "Desk changes apply within a minute and end the collector's current session, so they must sign in again.",
+    "save": "Save desk access",
+    "saving": "Saving...",
+    "saved": "Desk access updated for {name}.",
+    "saveError": "Could not update desk access.",
+    "loadError": "Could not load the fee collectors.",
+    "noCollectors": "No staff accounts yet",
+    "noCollectorsHint": "Create staff users before assigning fee collection desks.",
+    "noMatches": "No staff match \"{term}\"",
+    "clearSearch": "Clear search",
+    "columns": {
+      "collector": "Collector",
+      "role": "Role",
+      "account": "Account",
+      "posDesk": "POS",
+      "bulkDesk": "Bulk",
+      "todayCollected": "Collected Today",
+      "lastCollected": "Last Collection",
+      "actions": "Actions"
+    },
+    "pagination": {
+      "rowsPerPage": "Rows per page:",
+      "range": "{start}-{end} of {total}",
+      "previous": "Previous page",
+      "next": "Next page"
+    }
+  },
   "bulkFees": {
     "challansDownloaded": "Challans PDF downloaded (3-copy)",
     "pdfFailed": "Failed to generate PDF",
@@ -4506,7 +4676,13 @@
     "amountPlaceholder": "0.00",
     "monthAlreadyPaid": "Fees for {month} have already been paid for {student}",
     "noFeeStructureAlert": "No active fee structure is configured for {className} in academic year {academicYear}. Unbilled students show 0.00 until a structure is configured.",
-    "configureFeeStructure": "Configure Fee Structure"
+    "configureFeeStructure": "Configure Fee Structure",
+    "chequeNumber": "Cheque number",
+    "chequeNumberPlaceholder": "Enter cheque number",
+    "paymentReference": "Transaction reference (UTR)",
+    "paymentReferencePlaceholder": "Enter UTR / gateway id",
+    "referenceRequired": "External reference (UTR/transaction id) is required for {method} payments.",
+    "chequeNumberRequired": "Cheque number is required for CHEQUE payments."
   },
   "subscription": {
     "banner": {

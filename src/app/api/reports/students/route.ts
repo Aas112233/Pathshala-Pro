@@ -2,14 +2,34 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiAccess } from "@/lib/api-auth";
 import {
-  errorResponse,
   successResponse,
   handleApiError,
 } from "@/lib/api-response";
+import {
+  hasDateBounds,
+  isWithinDateRange,
+  normalizeDateRange,
+} from "@/lib/date-range-filter";
+
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function parsePositiveInt(value: string | null, fallback: number, max: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request);
+    const access = await requireApiAccess(request, {
+      // Declared explicitly rather than relying solely on the path map in
+      // api-auth.ts. The path map still supplies the module gate, but an
+      // undeclared guard is invisible to readers and disappears silently if
+      // that map is ever edited. Verified behaviour-preserving: every role that
+      // passes the `students` module gate also holds `students:read`.
+      permission: "students:read",
+    });
     if ("response" in access) return access.response;
 
     const { tenantId } = access.authContext;
@@ -20,15 +40,12 @@ export async function GET(request: NextRequest) {
     const classId = searchParams.get("classId");
     const sectionId = searchParams.get("sectionId");
     const status = searchParams.get("status");
+    const page = parsePositiveInt(searchParams.get("page"), 1, Number.MAX_SAFE_INTEGER);
+    const pageSize = parsePositiveInt(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-    // Build date filter for admission date
-    const dateFilter: any = {};
-    if (fromDate) {
-      dateFilter.gte = new Date(fromDate);
-    }
-    if (toDate) {
-      dateFilter.lte = new Date(toDate);
-    }
+    // Build date filter for admission date. Inclusive end bound — a bare
+    // `new Date(toDate)` is UTC midnight and drops the whole final day.
+    const admissionRange = normalizeDateRange(fromDate, toDate);
 
     // Build class/section filter
     const classFilter: any = {};
@@ -49,8 +66,8 @@ export async function GET(request: NextRequest) {
     const students = await prisma.studentProfile.findMany({
       where: {
         tenantId,
-        ...(Object.keys(dateFilter).length > 0 && {
-          admissionDate: dateFilter,
+        ...(hasDateBounds(admissionRange) && {
+          admissionDate: admissionRange,
         }),
         ...(Object.keys(classFilter).length > 0 && classFilter),
         ...(Object.keys(statusFilter).length > 0 && statusFilter),
@@ -75,11 +92,10 @@ export async function GET(request: NextRequest) {
     // Calculate metrics
     const totalStudents = students.length;
     const activeStudents = students.filter((s: any) => s.status === "ACTIVE").length;
-    const newAdmissions = students.filter(
-      (s: any) =>
-        fromDate && toDate
-          ? s.admissionDate >= new Date(fromDate) && s.admissionDate <= new Date(toDate)
-          : true
+    // Uses the same inclusive end bound as the Prisma filter above, so the
+    // headline metric and the row list can never disagree about the final day.
+    const newAdmissions = students.filter((s: any) =>
+      isWithinDateRange(s.admissionDate, fromDate, toDate)
     ).length;
     const transferredOut = students.filter((s: any) => s.status === "TRANSFERRED").length;
     const graduated = students.filter((s: any) => s.status === "GRADUATED").length;
@@ -129,6 +145,15 @@ export async function GET(request: NextRequest) {
       contactNumber: student.guardianContact,
     }));
 
+    // The rows here are students, not transactional records, so the query is
+    // already bounded by the size of the student body. Metrics and rollups are
+    // therefore computed over the full filtered set (a summary that shifted as
+    // the user paged would be misleading), while the response payload is
+    // bounded by pageSize.
+    const totalCount = transformedStudents.length;
+    const start = (page - 1) * pageSize;
+    const studentsPage = transformedStudents.slice(start, start + pageSize);
+
     return successResponse({
       metrics: {
         totalStudents,
@@ -144,7 +169,13 @@ export async function GET(request: NextRequest) {
       },
       classWise: classWiseData,
       admissionTrend: admissionTrendData,
-      students: transformedStudents,
+      students: studentsPage,
+      pagination: { page, pageSize, totalCount },
+      appliedScope: {
+        classId: classFilter.classId ?? null,
+        sectionId: classFilter.sectionId ?? null,
+        status: statusFilter.status ?? null,
+      },
     });
   } catch (error) {
     return handleApiError(error);

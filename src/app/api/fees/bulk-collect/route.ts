@@ -4,7 +4,10 @@ import { successResponse, badRequest, handleApiError, safeParseBody, ApiError } 
 import { requireApiAccess } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { z } from "zod";
-import { paymentMethodSchema } from "@/lib/schemas";
+import {
+  getMethodPostingRules,
+  validateCollectionMethod,
+} from "@/lib/payment-method-routing";
 import { postLegacyFeeInvoiceAccrual, postCollectionJournal, computeStackedConcession } from "@/lib/fee-service";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
 import { Prisma } from "@prisma/client";
@@ -15,7 +18,7 @@ const bulkFeePaymentSchema = z.object({
   academicYearId: z.string().min(1, "Academic Year is required"),
   classId: z.string().min(1, "Class is required"),
   sectionId: z.string().optional(),
-  paymentMethod: paymentMethodSchema.default("CASH"),
+  paymentMethod: z.string().trim().min(1).max(30).default("CASH"),
   feeType: z.string().default("TUITION"),
   month: z.number().int().min(1).max(12).optional(),
   year: z.number().int().min(2000).max(2100).optional(),
@@ -27,24 +30,47 @@ const bulkFeePaymentSchema = z.object({
     chequeNumber: z.string().max(50).optional(),
     reference: z.string().max(100).optional(),
   })).min(1).max(100),
-}).superRefine((data, ctx) => {
-  if (data.paymentMethod === "CHEQUE" && data.payments.some((p) => !p.chequeNumber)) {
-    ctx.addIssue({ code: "custom", message: "Cheque number is required for every CHEQUE payment.", path: ["payments"] });
-  }
-  const onlineMethods = ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"];
-  if (onlineMethods.includes(data.paymentMethod) && data.payments.some((p) => !p.reference)) {
-    ctx.addIssue({ code: "custom", message: `External reference (UTR/transaction id) is required for every ${data.paymentMethod} payment.`, path: ["payments"] });
-  }
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireApiAccess(request, { permission: "fees:payment:collect" });
+    // Bulk desk tier: batch posting for a whole class is a separate, per-user
+    // grantable capability from working the counter (see collect-direct).
+    const access = await requireApiAccess(request, { module: "fee-bulk", action: "write" });
     if ("response" in access) return access.response;
     const { user, tenantId } = access.authContext;
     const bodyResult = await safeParseBody(request, bulkFeePaymentSchema);
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
+
+    // Tenant-aware method gate (custom codes + active toggle; the transport
+    // schema cannot enumerate tenant config). Cheque/reference traceability
+    // follows the method's configured type.
+    const tenantRow = await prisma.tenant.findUnique({
+      where: { tenantId },
+      select: { featureFlags: true },
+    });
+    const tenantMethods = (tenantRow?.featureFlags as any)?.paymentMethods;
+    // Schema default fills "CASH" at runtime; the ?? only satisfies the type.
+    const paymentMethod = data.paymentMethod ?? "CASH";
+    const methodCheck = validateCollectionMethod(tenantMethods, paymentMethod);
+    if (methodCheck.error === "unknown") {
+      return badRequest(
+        `Unknown payment method "${paymentMethod}" for this tenant.`
+      );
+    }
+    if (methodCheck.error === "inactive") {
+      return badRequest(`Payment method "${paymentMethod}" is disabled for this tenant.`);
+    }
+    const postingRules = getMethodPostingRules(methodCheck.method, paymentMethod);
+    if (postingRules.isCheque && data.payments.some((p) => !p.chequeNumber)) {
+      return badRequest("Cheque number is required for every CHEQUE payment.");
+    }
+    if (postingRules.requiresReference && data.payments.some((p) => !p.reference)) {
+      return badRequest(
+        `External reference (UTR/transaction id) is required for every ${paymentMethod} payment.`
+      );
+    }
 
     const rateCheck = await smartRateLimitAsync(`BULK_FEE_${tenantId}_${user.id}`, { preset: "mutation", limit: 10 });
     if (!rateCheck.success) return badRequest("Too many bulk payment requests. Please try again later.");

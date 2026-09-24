@@ -577,3 +577,165 @@ export async function disburseSalaryLedger(params: {
     return { ledgerId: updated.id, paidAmount: new Prisma.Decimal(updated.paidAmount).toFixed(2) };
   }, { maxWait: 10000, timeout: 60000 });
 }
+
+// ── Stage 1.5: Review & Approval Workflow ──────────────────────────────
+
+export async function approveSalaryLedger(
+  tx: Prisma.TransactionClient | typeof prisma,
+  params: {
+    tenantId: string;
+    salaryLedgerId: string;
+    approvedById: string;
+    notes?: string;
+  }
+) {
+  const ledger = await tx.salaryLedger.findFirst({
+    where: { id: params.salaryLedgerId, tenantId: params.tenantId },
+    include: {
+      staffProfile: {
+        select: { staffId: true, firstName: true, lastName: true, designation: true, department: true },
+      },
+    },
+  });
+
+  if (!ledger) throw new Error("SalaryLedger not found");
+  if (ledger.status === "APPROVED") return ledger;
+  if (["PAID", "PARTIAL"].includes(ledger.status)) {
+    throw new Error("Cannot approve an already paid salary ledger");
+  }
+
+  // Ensure accrual journal is posted if missing
+  const accrualRef = `PAYROLL-ACCRUAL-${ledger.id}`;
+  const existingJournal = await tx.transaction.findFirst({
+    where: { tenantId: params.tenantId, reference: accrualRef },
+  });
+
+  if (!existingJournal) {
+    const grossSalary = ledger.grossSalary ?? new Prisma.Decimal(ledger.baseSalary);
+    const netPayable = ledger.netPayable;
+    const pfAmount = ledger.pfAmount ?? new Prisma.Decimal(0);
+    const taxAmount = ledger.taxAmount ?? new Prisma.Decimal(0);
+    const loanRecovery = ledger.loanRecovery ?? new Prisma.Decimal(ledger.advances);
+    const lopAmount = ledger.lopAmount ?? new Prisma.Decimal(0);
+
+    const calc: PayrollCalculation = {
+      tenantId: params.tenantId,
+      staffProfileId: ledger.staffProfileId,
+      staffName: ledger.staffProfile ? `${ledger.staffProfile.firstName} ${ledger.staffProfile.lastName}` : undefined,
+      year: ledger.year,
+      month: ledger.month,
+      daysInMonth: ledger.daysInMonth ?? 30,
+      payableDays: ledger.payableDays ?? 30,
+      isProrated: ledger.isProrated,
+      proratedUnpaidDays: 0,
+      attendance: { present: 0, absent: 0, leaveUnpaid: 0, unpaidDays: 0 },
+      earnings: {
+        baseSalary: new Prisma.Decimal(ledger.baseSalary),
+        hra: new Prisma.Decimal(0),
+        medical: new Prisma.Decimal(0),
+        transport: new Prisma.Decimal(0),
+        special: new Prisma.Decimal(0),
+        other: new Prisma.Decimal(0),
+        grossSalary,
+      },
+      deductions: {
+        lopDays: ledger.lopDays ?? 0,
+        lopAmount,
+        pfAmount,
+        taxAmount,
+        loanRecovery,
+        totalDeductions: new Prisma.Decimal(ledger.deductions),
+      },
+      netPayable,
+      dailyRate: new Prisma.Decimal(0),
+      shortfall: new Prisma.Decimal(0),
+    };
+
+    await postPayrollAccrual(tx, calc, ledger.id, params.approvedById);
+  }
+
+  return tx.salaryLedger.update({
+    where: { id: ledger.id },
+    data: {
+      status: "APPROVED",
+      approvedById: params.approvedById,
+      approvedAt: new Date(),
+      rejectionReason: null,
+    },
+    include: {
+      staffProfile: {
+        select: { staffId: true, firstName: true, lastName: true, designation: true, department: true },
+      },
+      approvedBy: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+  });
+}
+
+export async function rejectSalaryLedger(
+  tx: Prisma.TransactionClient | typeof prisma,
+  params: {
+    tenantId: string;
+    salaryLedgerId: string;
+    rejectedById: string;
+    reason: string;
+  }
+) {
+  const ledger = await tx.salaryLedger.findFirst({
+    where: { id: params.salaryLedgerId, tenantId: params.tenantId },
+  });
+
+  if (!ledger) throw new Error("SalaryLedger not found");
+  if (["PAID", "PARTIAL"].includes(ledger.status)) {
+    throw new Error("Cannot reject an already paid salary ledger");
+  }
+
+  return tx.salaryLedger.update({
+    where: { id: ledger.id },
+    data: {
+      status: "REJECTED",
+      rejectionReason: params.reason,
+      approvedById: null,
+      approvedAt: null,
+    },
+    include: {
+      staffProfile: {
+        select: { staffId: true, firstName: true, lastName: true, designation: true, department: true },
+      },
+    },
+  });
+}
+
+export async function bulkApproveSalaryLedgers(params: {
+  tenantId: string;
+  salaryIds: string[];
+  approvedById: string;
+  notes?: string;
+}) {
+  // One short transaction per ledger, executed sequentially. A single
+  // interactive transaction spanning all ledgers holds the tx open for
+  // N x ~10 sequential round-trips (ledger read, journal checks, chart of
+  // accounts, SELECT ... FOR UPDATE voucher sequence, journal + lines create,
+  // audit write, ledger update); over Accelerate that exceeds the transaction
+  // lifetime for any sizable batch and the engine kills the tx — every later
+  // iteration then fails at tx.salaryLedger.findFirst with P2028
+  // "Transaction not found". Per-ledger transactions stay well under the
+  // timeout, and a retry after a mid-batch failure is safe: approveSalaryLedger
+  // returns already-APPROVED ledgers without error (idempotent).
+  const results = [];
+  for (const id of params.salaryIds) {
+    const approved = await prisma.$transaction(
+      (tx) =>
+        approveSalaryLedger(tx, {
+          tenantId: params.tenantId,
+          salaryLedgerId: id,
+          approvedById: params.approvedById,
+          notes: params.notes,
+        }),
+      { maxWait: 10000, timeout: 30000 }
+    );
+    results.push(approved);
+  }
+  return results;
+}

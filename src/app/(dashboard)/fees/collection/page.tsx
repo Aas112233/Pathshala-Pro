@@ -15,11 +15,12 @@ import { useSubmitGuard } from "@/hooks/use-submit-guard";
 import { toast } from "sonner";
 import { ACADEMIC_MONTHS } from "@/lib/constants";
 import { addCurrency, roundCurrency } from "@/lib/math-utils";
-import { formatStudentName, fuzzyFilter } from "@/lib/utils";
+import { formatStudentName, fuzzyFilter, cn } from "@/lib/utils";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
+import { getMethodPostingRules, resolveTenantMethod } from "@/lib/payment-method-routing";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
-import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions, FEE_DESK_TIER } from "@/lib/permissions";
 import Link from "next/link";
 import {
   CreditCard,
@@ -40,6 +41,7 @@ import {
   Smartphone,
   History,
   AlertTriangle,
+  AlertCircle,
   Settings,
 } from "lucide-react";
 
@@ -59,6 +61,10 @@ export default function FeeCollectionPage() {
   const canReadFees = hasPermission(perms, "fees", "read");
   const canWriteFees = hasPermission(perms, "fees", "write");
   const canManageFees = hasPermission(perms, "fees", "manage");
+  // The POS desk is its own capability: a bulk-entry operator must not be able
+  // to work the counter. The same tier gates the collect API server-side.
+  const canViewPosDesk = hasPermission(perms, FEE_DESK_TIER.pos, "read");
+  const canCollectPos = hasPermission(perms, FEE_DESK_TIER.pos, "write");
   const { exportFeeVouchersPDF } = usePDFExport();
   const { run: runPayment, isPending: isGuardedPayment } = useSubmitGuard();
 
@@ -93,6 +99,8 @@ export default function FeeCollectionPage() {
   const [autoApplyWallet, setAutoApplyWallet] = useState<boolean>(false);
   const [chequeNumber, setChequeNumber] = useState<string>("");
   const [paymentReference, setPaymentReference] = useState<string>("");
+  const referenceInputRef = useRef<HTMLInputElement>(null);
+  const chequeInputRef = useRef<HTMLInputElement>(null);
   const [lastPaymentResult, setLastPaymentResult] = useState<any | null>(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
@@ -157,7 +165,7 @@ export default function FeeCollectionPage() {
   }, [allStudentVouchers]);
 
   // 3. Fetch Student Class Fee Structure (for direct on-the-spot collection)
-  const { data: studentClassStructureData } = useQuery({
+  const { data: studentClassStructureData, isLoading: isLoadingFeeStructure } = useQuery({
     queryKey: ["class-fee-structures", "student-class", selectedStudent?.classId, activeYearId],
     queryFn: async () => {
       if (!selectedStudent?.classId) return null;
@@ -188,9 +196,41 @@ export default function FeeCollectionPage() {
   });
   const studentTransactions: any[] = (studentTxData as any)?.data ?? [];
 
+  const isCheckingFeeStructure = !!selectedStudent?.classId && isLoadingFeeStructure;
   const standardMonthlyFee =
     studentClassStructureData?.totalMonthlyFee || studentClassStructureData?.tuitionFee || 0;
   const hasFeeStructure = !!studentClassStructureData && standardMonthlyFee > 0;
+
+  // 3c. Fetch Student Fee Concessions
+  const { data: concessionsData } = useQuery({
+    queryKey: ["fee-concessions", "student", selectedStudent?.id],
+    queryFn: async () => {
+      if (!selectedStudent?.id) return { data: [] };
+      const res = await fetch(`/api/fees/concessions?studentProfileId=${selectedStudent.id}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    enabled: !!selectedStudent?.id,
+  });
+  const studentConcessions: any[] = (concessionsData as any)?.data ?? [];
+
+  // Compute student net monthly fee factoring in active concessions
+  const studentMonthlyNetFee = useMemo(() => {
+    if (!hasFeeStructure || standardMonthlyFee <= 0) return 0;
+    let discount = 0;
+    for (const c of studentConcessions) {
+      if (c.isActive === false) continue;
+      const val = parseFloat(c.discountValue) || 0;
+      if (c.discountType === "PERCENTAGE") {
+        discount = addCurrency(discount, roundCurrency((standardMonthlyFee * val) / 100));
+      } else {
+        discount = addCurrency(discount, val);
+      }
+    }
+    return Math.max(0, roundCurrency(standardMonthlyFee - discount));
+  }, [hasFeeStructure, standardMonthlyFee, studentConcessions]);
 
   // 4. Fetch Recent Today Transactions
   const { data: recentTxData, isLoading: isLoadingRecent } = useQuery({
@@ -219,7 +259,7 @@ export default function FeeCollectionPage() {
         unpaidMonthsCount: 0,
       };
     }
-    const baseMonthly = standardMonthlyFee;
+    const baseMonthly = studentMonthlyNetFee > 0 ? studentMonthlyNetFee : standardMonthlyFee;
     const totalPaid = allStudentVouchers.reduce(
       (s: number, v: any) => addCurrency(s, v.amountPaid || 0),
       0
@@ -237,7 +277,7 @@ export default function FeeCollectionPage() {
       paidMonthsCount,
       unpaidMonthsCount,
     };
-  }, [selectedStudent, standardMonthlyFee, allStudentVouchers]);
+  }, [selectedStudent, studentMonthlyNetFee, standardMonthlyFee, allStudentVouchers]);
 
   // Chronological list of unpaid month indices (0..11)
   const unpaidMonthIndices = useMemo(() => {
@@ -345,16 +385,68 @@ export default function FeeCollectionPage() {
     },
   });
 
-  // Calculate selected total balance from vouchers
-  const selectedTotalBalance = useMemo(() => {
+  // Calculate currently selected period total due
+  const selectedPeriodDue = useMemo(() => {
     if (!selectedStudent) return 0;
-    if (unpaidVouchers.length > 0 && selectedVoucherIds.length > 0) {
-      return unpaidVouchers
-        .filter((v: any) => selectedVoucherIds.includes(v.id))
-        .reduce((sum: number, v: any) => addCurrency(sum, v.balance || 0), 0);
+    let total = 0;
+    for (const m of selectedMonths) {
+      const num = m + 1;
+      const v = vouchersByMonth.get(num);
+      if (v && v.balance > 0) {
+        total = addCurrency(total, v.balance);
+      } else {
+        total = addCurrency(total, annualCalculations.baseMonthly);
+      }
     }
-    return annualCalculations.baseMonthly;
-  }, [selectedStudent, unpaidVouchers, selectedVoucherIds, annualCalculations.baseMonthly]);
+    for (const vId of selectedVoucherIds) {
+      const v = unpaidVouchers.find((uv: any) => uv.id === vId);
+      if (v && !v.billingMonth && v.balance > 0) {
+        total = addCurrency(total, v.balance);
+      }
+    }
+    return total;
+  }, [selectedStudent, selectedMonths, vouchersByMonth, annualCalculations.baseMonthly, selectedVoucherIds, unpaidVouchers]);
+
+  // Keep academic year start year in sync
+  useEffect(() => {
+    if (activeAcademicYear?.startDate) {
+      const yr = new Date(activeAcademicYear.startDate).getFullYear();
+      if (!isNaN(yr) && yr >= 2000 && yr <= 2100) {
+        setSelectedYear(yr);
+      }
+    }
+  }, [activeAcademicYear?.startDate]);
+
+  // Unified month selection applier (guarantees selectedMonths, voucherIds, and paymentAmount stay 100% in sync)
+  const applyMonthSelection = (nextMonths: number[]) => {
+    const sorted = [...nextMonths].sort((a, b) => a - b);
+    let total = 0;
+    const vIds: string[] = [];
+
+    for (const m of sorted) {
+      const num = m + 1;
+      const v = vouchersByMonth.get(num);
+      if (v && v.balance > 0) {
+        total = addCurrency(total, v.balance);
+        vIds.push(v.id);
+      } else {
+        total = addCurrency(total, annualCalculations.baseMonthly);
+      }
+    }
+
+    // Preserve any selected ad-hoc vouchers that don't have a billingMonth
+    for (const vId of selectedVoucherIds) {
+      const v = unpaidVouchers.find((uv: any) => uv.id === vId);
+      if (v && !v.billingMonth && v.balance > 0 && !vIds.includes(v.id)) {
+        vIds.push(v.id);
+        total = addCurrency(total, v.balance);
+      }
+    }
+
+    setSelectedMonths(sorted);
+    setSelectedVoucherIds(vIds);
+    setPaymentAmount(total > 0 ? String(total) : "");
+  };
 
   // Handle student selection
   const handleSelectStudent = (student: any) => {
@@ -401,33 +493,16 @@ export default function FeeCollectionPage() {
     if (selectedStudent?.id && !isLoadingVouchers) {
       const curM = new Date().getMonth();
       if (unpaidMonthIndices.includes(curM)) {
-        setSelectedMonths([curM]);
-        const mV = vouchersByMonth.get(curM + 1);
-        if (mV && mV.balance > 0) {
-          setPaymentAmount(String(mV.balance));
-          setSelectedVoucherIds([mV.id]);
-        } else {
-          setPaymentAmount(String(annualCalculations.baseMonthly));
-          setSelectedVoucherIds([]);
-        }
+        applyMonthSelection([curM]);
       } else if (unpaidMonthIndices.length > 0) {
-        const firstUnpaid = unpaidMonthIndices[0];
-        setSelectedMonths([firstUnpaid]);
-        const mV = vouchersByMonth.get(firstUnpaid + 1);
-        if (mV && mV.balance > 0) {
-          setPaymentAmount(String(mV.balance));
-          setSelectedVoucherIds([mV.id]);
-        } else {
-          setPaymentAmount(String(annualCalculations.baseMonthly));
-          setSelectedVoucherIds([]);
-        }
+        applyMonthSelection([unpaidMonthIndices[0]]);
       } else {
         setSelectedMonths([]);
         setSelectedVoucherIds([]);
         setPaymentAmount("");
       }
     }
-  }, [selectedStudent?.id, isLoadingVouchers]);
+  }, [selectedStudent?.id, isLoadingVouchers, unpaidMonthIndices]);
 
   // Toggle selection on a month (click again deselects, supports multi-month)
   const handleToggleMonth = (idx: number) => {
@@ -443,27 +518,45 @@ export default function FeeCollectionPage() {
     }
 
     setInspectingPaidMonth(null);
-    setSelectedMonths((prev) => {
-      const next = prev.includes(idx)
-        ? prev.filter((m) => m !== idx) // Click again deselects!
-        : [...prev, idx].sort((a, b) => a - b); // Multi-month select
+    const nextMonths = selectedMonths.includes(idx)
+      ? selectedMonths.filter((m) => m !== idx)
+      : [...selectedMonths, idx];
+    applyMonthSelection(nextMonths);
+  };
+
+  // Two-way sync for toggling vouchers from the Invoices list
+  const handleToggleVoucher = (v: any) => {
+    const isCurrentlySelected = selectedVoucherIds.includes(v.id);
+    if (v.billingMonth) {
+      const mIdx = v.billingMonth - 1;
+      const nextMonths = isCurrentlySelected
+        ? selectedMonths.filter((m) => m !== mIdx)
+        : [...selectedMonths, mIdx];
+      applyMonthSelection(nextMonths);
+    } else {
+      const nextVoucherIds = isCurrentlySelected
+        ? selectedVoucherIds.filter((id) => id !== v.id)
+        : [...selectedVoucherIds, v.id];
+      setSelectedVoucherIds(nextVoucherIds);
 
       let total = 0;
-      const vIds: string[] = [];
-      for (const m of next) {
+      for (const m of selectedMonths) {
         const num = m + 1;
-        const v = vouchersByMonth.get(num);
-        if (v && v.balance > 0) {
-          total = addCurrency(total, v.balance);
-          vIds.push(v.id);
+        const mv = vouchersByMonth.get(num);
+        if (mv && mv.balance > 0) {
+          total = addCurrency(total, mv.balance);
         } else {
           total = addCurrency(total, annualCalculations.baseMonthly);
         }
       }
-      setSelectedVoucherIds(vIds);
+      for (const vId of nextVoucherIds) {
+        const uv = unpaidVouchers.find((x: any) => x.id === vId);
+        if (uv && !uv.billingMonth && uv.balance > 0) {
+          total = addCurrency(total, uv.balance);
+        }
+      }
       setPaymentAmount(total > 0 ? String(total) : "");
-      return next;
-    });
+    }
   };
 
   // Quick Pay Presets handler: selects upcoming unpaid months and computes total
@@ -478,22 +571,26 @@ export default function FeeCollectionPage() {
       return;
     }
 
-    setSelectedMonths(targetIndices);
+    applyMonthSelection(targetIndices);
+  };
 
-    let total = 0;
-    const vIds: string[] = [];
-    for (const m of targetIndices) {
-      const num = m + 1;
-      const v = vouchersByMonth.get(num);
-      if (v && v.balance > 0) {
-        total = addCurrency(total, v.balance);
-        vIds.push(v.id);
-      } else {
-        total = addCurrency(total, annualCalculations.baseMonthly);
-      }
+  const handleClearSelection = () => {
+    setInspectingPaidMonth(null);
+    setSelectedMonths([]);
+    setSelectedVoucherIds([]);
+    setPaymentAmount("");
+  };
+
+  const handleSetExactAmount = () => {
+    if (selectedPeriodDue > 0) {
+      setPaymentAmount(String(selectedPeriodDue));
     }
-    setSelectedVoucherIds(vIds);
-    setPaymentAmount(total > 0 ? String(total) : "");
+  };
+
+  const handleSetHalfAmount = () => {
+    if (selectedPeriodDue > 0) {
+      setPaymentAmount(String(roundCurrency(selectedPeriodDue / 2)));
+    }
   };
 
   const handlePay = () => {
@@ -511,11 +608,28 @@ export default function FeeCollectionPage() {
       );
       return;
     }
-    const payNum = parseFloat(paymentAmount || String(selectedTotalBalance));
+    const payNum = parseFloat(paymentAmount || String(selectedPeriodDue));
     if (isNaN(payNum) || payNum <= 0) {
       toast.error(t("validAmountError"));
       return;
     }
+
+    // Client-side pre-flight validation before sending API request
+    if (postingRules.isCheque && !chequeNumber.trim()) {
+      toast.error(t("chequeNumberRequired"));
+      chequeInputRef.current?.focus();
+      return;
+    }
+    if (postingRules.requiresReference && !paymentReference.trim()) {
+      toast.error(
+        t("referenceRequired", {
+          method: currentMode?.label || paymentMethod,
+        })
+      );
+      referenceInputRef.current?.focus();
+      return;
+    }
+
     const walletNum = parseFloat(walletAmount) || 0;
     const splitArgs = {
       walletAmount: walletNum > 0 ? walletNum : undefined,
@@ -524,16 +638,16 @@ export default function FeeCollectionPage() {
       reference: paymentReference.trim() || undefined,
     };
 
-    if (selectedMonths.length > 1) {
+    if (selectedMonths.length > 1 || selectedVoucherIds.length > 1) {
       void runPayment(async () => {
         await collectPaymentMutation.mutateAsync({
           studentProfileId: selectedStudent.id,
           amount: payNum,
           method: paymentMethod,
           note: paymentNote,
-          billingMonths: selectedMonths.map((m) => m + 1),
+          billingMonths: selectedMonths.length > 0 ? selectedMonths.map((m) => m + 1) : undefined,
           billingYear: selectedYear,
-          voucherIds: selectedVoucherIds,
+          voucherIds: selectedVoucherIds.length > 0 ? selectedVoucherIds : undefined,
           chequeNumber: splitArgs.chequeNumber,
           reference: splitArgs.reference,
         });
@@ -578,8 +692,6 @@ export default function FeeCollectionPage() {
 
   const handlePrint3PartChallan = (voucher: any) => {
     const pdfData: FeeVoucherPDFData = {
-      // School identity must come from tenant settings — a challan PDF bearing
-      // another institution's name is a data-integrity and branding failure.
       schoolName: settings.name || "School",
       schoolCode: settings.schoolCode,
       schoolAddress: settings.address,
@@ -607,21 +719,112 @@ export default function FeeCollectionPage() {
 
   const payNum = parseFloat(paymentAmount) || 0;
   const cashNum = parseFloat(cashTendered) || 0;
-  // Cents-precise change: 10.1 - 10 floats to 0.09999999999999964, which a
-  // rupee/paisa display would render as 0.10 anyway but a comparison or
-  // receipt total would not.
   const changeDue = Math.max(0, roundCurrency(cashNum - payNum));
 
-  // Collection is possible when the student has unpaid vouchers OR the annual
-  // ledger still shows a remaining balance. In the latter case the backend
-  // auto-creates the annual fee voucher on-the-spot, so the terminal must not
-  // be locked just because no invoice row exists yet.
   const hasOutstandingDue = !!selectedStudent && (unpaidVouchers.length > 0 || annualCalculations.remainingDue > 0);
-  const fullPayable = selectedStudent
-    ? (unpaidVouchers.length > 0 ? selectedTotalBalance : annualCalculations.remainingDue)
-    : 0;
   const hasUnbilledSelected = selectedMonths.some((m) => !vouchersByMonth.has(m + 1));
   const canCollectCurrentSelection = !hasUnbilledSelected || hasFeeStructure;
+
+  // Keyboard Shortcuts for POS Cashier Counter
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape: Close success modal or clear search/selection
+      if (e.key === "Escape") {
+        if (isSuccessModalOpen) {
+          setIsSuccessModalOpen(false);
+          handleClearStudent();
+          e.preventDefault();
+        } else if (searchTerm) {
+          setSearchTerm("");
+          setIsSearchDropdownOpen(false);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Alt+S or Ctrl+K: Focus student search
+      if ((e.altKey && (e.key === "s" || e.key === "S")) || (e.ctrlKey && (e.key === "k" || e.key === "K"))) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      // Actions requiring student to be selected
+      if (!selectedStudent) return;
+
+      // F4 or Alt+A: Select Full Year / All Remaining
+      if (e.key === "F4" || (e.altKey && (e.key === "a" || e.key === "A"))) {
+        e.preventDefault();
+        handleApplyPreset("full");
+        return;
+      }
+
+      // Alt+1 / Alt+2 / Alt+3 / Alt+6: Quick Presets
+      if (e.altKey && e.key === "1") {
+        e.preventDefault();
+        handleApplyPreset(1);
+        return;
+      }
+      if (e.altKey && e.key === "2") {
+        e.preventDefault();
+        handleApplyPreset(2);
+        return;
+      }
+      if (e.altKey && e.key === "3") {
+        e.preventDefault();
+        handleApplyPreset(3);
+        return;
+      }
+      if (e.altKey && e.key === "6") {
+        e.preventDefault();
+        handleApplyPreset(6);
+        return;
+      }
+
+      // Alt+C: Clear selection
+      if (e.altKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        handleClearSelection();
+        return;
+      }
+
+      // Alt+X: Exact amount
+      if (e.altKey && (e.key === "x" || e.key === "X")) {
+        e.preventDefault();
+        handleSetExactAmount();
+        return;
+      }
+
+      // Alt+H: Half amount (50%)
+      if (e.altKey && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        handleSetHalfAmount();
+        return;
+      }
+
+      // Ctrl+Enter or F8: Trigger Payment Collection
+      if ((e.ctrlKey && e.key === "Enter") || e.key === "F8") {
+        if (canCollectCurrentSelection && !collectPaymentMutation.isPending && !isGuardedPayment && payNum > 0) {
+          e.preventDefault();
+          handlePay();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    selectedStudent,
+    isSuccessModalOpen,
+    searchTerm,
+    unpaidMonthIndices,
+    selectedPeriodDue,
+    canCollectCurrentSelection,
+    collectPaymentMutation.isPending,
+    isGuardedPayment,
+    payNum,
+    handlePay,
+  ]);
 
   const { settings } = useTenantSettings();
   const configuredMethods = useMemo(() => {
@@ -671,7 +874,17 @@ export default function FeeCollectionPage() {
   }, [configuredMethods, t]);
 
   const ONLINE_METHOD_CODES = ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"];
-  const showReferenceInput = ONLINE_METHOD_CODES.includes(paymentMethod);
+  const postingRules = useMemo(() => {
+    const customMethod = resolveTenantMethod(configuredMethods, paymentMethod);
+    const rules = getMethodPostingRules(customMethod, paymentMethod);
+    return {
+      isCheque: rules.isCheque,
+      requiresReference: rules.requiresReference || ONLINE_METHOD_CODES.includes(paymentMethod),
+    };
+  }, [configuredMethods, paymentMethod]);
+  const showReferenceInput = postingRules.requiresReference;
+  const isReferenceEmpty = showReferenceInput && !paymentReference.trim();
+  const isChequeEmpty = postingRules.isCheque && !chequeNumber.trim();
   const showSplitBox = selectedStudent && paymentMethod !== "WALLET_CREDIT" && paymentMethod !== "CHEQUE" && selectedMonths.length <= 1;
 
   const currentMode = paymentModes.find((m) => m.id === paymentMethod);
@@ -693,7 +906,7 @@ export default function FeeCollectionPage() {
         )}
       </PageHeader>
 
-      {!isAuthLoading && !canReadFees ? (
+      {!isAuthLoading && !canViewPosDesk ? (
         <div className="rounded-lg border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
@@ -849,8 +1062,8 @@ export default function FeeCollectionPage() {
                 </CardContent>
               </Card>
 
-              {/* Missing Fee Structure Warning Banner */}
-              {!hasFeeStructure && selectedStudent && (
+              {/* Missing Fee Structure Warning Banner - only display after API fetch finishes and confirms no structure */}
+              {!isCheckingFeeStructure && !hasFeeStructure && selectedStudent && (
                 <div className="p-3.5 rounded-lg border border-amber-300/80 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -883,7 +1096,7 @@ export default function FeeCollectionPage() {
                     <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
                       {t("academicYearTotal")}
                     </p>
-                    {isLoadingVouchers ? (
+                    {isLoadingVouchers || isCheckingFeeStructure ? (
                       <div className="py-1 space-y-1">
                         <Skeleton className="h-5 w-24 mx-auto" />
                         <Skeleton className="h-3 w-16 mx-auto" />
@@ -906,7 +1119,7 @@ export default function FeeCollectionPage() {
                     <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
                       {t("paidToDate")}
                     </p>
-                    {isLoadingVouchers ? (
+                    {isLoadingVouchers || isCheckingFeeStructure ? (
                       <div className="py-1 space-y-1">
                         <Skeleton className="h-5 w-24 mx-auto" />
                         <Skeleton className="h-3 w-16 mx-auto" />
@@ -929,7 +1142,7 @@ export default function FeeCollectionPage() {
                     <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
                       {t("remainingUnpaid")}
                     </p>
-                    {isLoadingVouchers ? (
+                    {isLoadingVouchers || isCheckingFeeStructure ? (
                       <div className="py-1 space-y-1">
                         <Skeleton className="h-5 w-24 mx-auto" />
                         <Skeleton className="h-3 w-16 mx-auto" />
@@ -969,7 +1182,7 @@ export default function FeeCollectionPage() {
 
                   {/* 12 Months Interactive Grid with Skeletons */}
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                    {isLoadingVouchers ? (
+                    {isLoadingVouchers || isCheckingFeeStructure ? (
                       Array.from({ length: 12 }).map((_, idx) => (
                         <div key={idx} className="p-2.5 rounded-lg border border-border bg-muted/20 space-y-2 animate-pulse text-center">
                           <Skeleton className="h-3.5 w-12 mx-auto rounded" />
@@ -1033,11 +1246,11 @@ export default function FeeCollectionPage() {
                   </div>
 
                   {/* Quick Preset Buttons for Cashier */}
-                  <div className="pt-2 border-t border-border flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-semibold text-muted-foreground">
+                  <div className="pt-2 border-t border-border flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-muted-foreground mr-1">
                       {t("quickPresets")}
                     </span>
-                    {isLoadingVouchers ? (
+                    {isLoadingVouchers || isCheckingFeeStructure ? (
                       <div className="flex gap-2 py-1">
                         <Skeleton className="h-7 w-20 rounded-lg" />
                         <Skeleton className="h-7 w-20 rounded-lg" />
@@ -1051,9 +1264,10 @@ export default function FeeCollectionPage() {
                           size="sm"
                           disabled={unpaidMonthIndices.length === 0}
                           onClick={() => handleApplyPreset(1)}
-                          className="h-7 text-[11px] px-2.5 rounded-lg border-primary/40 text-primary hover:bg-primary/10"
+                          className="h-7 text-[11px] px-2 rounded-lg border-primary/40 text-primary hover:bg-primary/10"
                         >
-                          {t("oneMonth")} ({formatCurrency(annualCalculations.baseMonthly * 1)})
+                          {t("oneMonth")}
+                          <span className="ml-1 text-[9px] text-muted-foreground font-mono">Alt+1</span>
                         </Button>
                         <Button
                           type="button"
@@ -1061,9 +1275,10 @@ export default function FeeCollectionPage() {
                           size="sm"
                           disabled={unpaidMonthIndices.length < 2}
                           onClick={() => handleApplyPreset(2)}
-                          className="h-7 text-[11px] px-2.5 rounded-lg"
+                          className="h-7 text-[11px] px-2 rounded-lg"
                         >
-                          {t("twoMonths")} ({formatCurrency(annualCalculations.baseMonthly * 2)})
+                          {t("twoMonths")}
+                          <span className="ml-1 text-[9px] text-muted-foreground font-mono">Alt+2</span>
                         </Button>
                         <Button
                           type="button"
@@ -1071,9 +1286,10 @@ export default function FeeCollectionPage() {
                           size="sm"
                           disabled={unpaidMonthIndices.length < 3}
                           onClick={() => handleApplyPreset(3)}
-                          className="h-7 text-[11px] px-2.5 rounded-lg"
+                          className="h-7 text-[11px] px-2 rounded-lg"
                         >
-                          {t("threeMonths")} ({formatCurrency(annualCalculations.baseMonthly * 3)})
+                          {t("threeMonths")}
+                          <span className="ml-1 text-[9px] text-muted-foreground font-mono">Alt+3</span>
                         </Button>
                         <Button
                           type="button"
@@ -1081,9 +1297,10 @@ export default function FeeCollectionPage() {
                           size="sm"
                           disabled={unpaidMonthIndices.length < 6}
                           onClick={() => handleApplyPreset(6)}
-                          className="h-7 text-[11px] px-2.5 rounded-lg"
+                          className="h-7 text-[11px] px-2 rounded-lg"
                         >
-                          {t("sixMonths")} ({formatCurrency(annualCalculations.baseMonthly * 6)})
+                          {t("sixMonths")}
+                          <span className="ml-1 text-[9px] text-muted-foreground font-mono">Alt+6</span>
                         </Button>
                         <Button
                           type="button"
@@ -1091,10 +1308,23 @@ export default function FeeCollectionPage() {
                           size="sm"
                           disabled={unpaidMonthIndices.length === 0}
                           onClick={() => handleApplyPreset("full")}
-                          className="h-7 text-[11px] px-2.5 rounded-lg font-bold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
+                          className="h-7 text-[11px] px-2.5 rounded-lg font-bold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
                         >
-                          {t("fullRemaining")} ({formatCurrency(annualCalculations.remainingDue)})
+                          {t("selectAll")} ({formatCurrency(annualCalculations.remainingDue)})
+                          <span className="ml-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-mono">Alt+A</span>
                         </Button>
+                        {selectedMonths.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearSelection}
+                            className="h-7 text-[11px] px-2 rounded-lg text-muted-foreground hover:text-foreground"
+                          >
+                            {t("clearSelection")}
+                            <span className="ml-1 text-[9px] font-mono">Alt+C</span>
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>
@@ -1242,13 +1472,7 @@ export default function FeeCollectionPage() {
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedVoucherIds((p) => [...p, v.id]);
-                                    } else {
-                                      setSelectedVoucherIds((p) => p.filter((id) => id !== v.id));
-                                    }
-                                  }}
+                                  onChange={() => handleToggleVoucher(v)}
                                   className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                                 />
                                 <div>
@@ -1375,11 +1599,15 @@ export default function FeeCollectionPage() {
                 <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Wallet className="h-4 w-4 text-emerald-600" /> {t("cashierTerminal")}
                 </h3>
-                {fullPayable > 0 && (
+                {selectedPeriodDue > 0 ? (
                   <Badge variant="outline" className="font-mono text-xs font-bold text-destructive border-destructive/30">
-                    {t("due")} {formatCurrency(fullPayable)}
+                    {t("due")} {formatCurrency(selectedPeriodDue)}
                   </Badge>
-                )}
+                ) : annualCalculations.remainingDue > 0 ? (
+                  <Badge variant="outline" className="font-mono text-xs font-semibold text-muted-foreground">
+                    {t("totalDue")} {formatCurrency(annualCalculations.remainingDue)}
+                  </Badge>
+                ) : null}
               </div>
 
               {/* Target Billing Period Indicator */}
@@ -1408,44 +1636,46 @@ export default function FeeCollectionPage() {
                 )}
               </div>
 
-              {/* 1. Quick Pay Amount Presets */}
+              {/* 1. Quick Pay Amount Presets for Current Selection */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-foreground flex justify-between">
                   <span>{t("paymentAmount")}</span>
-                  {fullPayable > 0 && (
+                  {selectedPeriodDue > 0 && (
                     <span className="text-muted-foreground text-[11px]">
-                      {t("max")} {formatCurrency(fullPayable)}
+                      {t("selectedDue")} {formatCurrency(selectedPeriodDue)}
                     </span>
                   )}
                 </label>
 
-                {fullPayable > 0 && (
+                {selectedPeriodDue > 0 && (
                   <div className="flex gap-1.5">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => handleApplyPreset("full")}
+                      onClick={handleSetExactAmount}
                       className={`flex-1 text-[11px] h-7 font-bold ${
-                        selectedMonths.length === unpaidMonthIndices.length && unpaidMonthIndices.length > 0
+                        paymentAmount === String(selectedPeriodDue)
                           ? "border-primary bg-primary/10 text-primary"
                           : ""
                       }`}
                     >
-                      {t("payFull")} ({formatCurrency(fullPayable)})
+                      {t("exactAmount")} ({formatCurrency(selectedPeriodDue)})
+                      <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">Alt+X</span>
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setPaymentAmount(String(roundCurrency(fullPayable / 2)))}
+                      onClick={handleSetHalfAmount}
                       className={`text-[11px] h-7 font-medium ${
-                        paymentAmount === String(roundCurrency(fullPayable / 2))
+                        paymentAmount === String(roundCurrency(selectedPeriodDue / 2))
                           ? "border-primary bg-primary/10 text-primary"
                           : ""
                       }`}
                     >
-                      {t("payHalf")}
+                      {t("payHalf")} ({formatCurrency(roundCurrency(selectedPeriodDue / 2))})
+                      <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">Alt+H</span>
                     </Button>
                   </div>
                 )}
@@ -1492,32 +1722,68 @@ export default function FeeCollectionPage() {
               </div>
 
               {/* 2b. Cheque number (required for CHEQUE) */}
-              {paymentMethod === "CHEQUE" && (
+              {postingRules.isCheque && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">{t("chequeNumber")} *</label>
+                  <label className="text-xs font-semibold flex items-center justify-between">
+                    <span className={cn(isChequeEmpty ? "text-destructive font-bold" : "text-foreground")}>
+                      {t("chequeNumber")} <span className="text-destructive font-bold">*</span>
+                    </span>
+                    <span className={cn("text-[10px] font-medium flex items-center gap-1", isChequeEmpty ? "text-destructive font-semibold" : "text-muted-foreground font-normal")}>
+                      {isChequeEmpty && <AlertCircle className="h-3 w-3 text-destructive shrink-0" />}
+                      {t("chequeNumberRequired")}
+                    </span>
+                  </label>
                   <Input
+                    ref={chequeInputRef}
                     type="text"
                     placeholder={t("chequeNumberPlaceholder")}
                     value={chequeNumber}
                     onChange={(e) => setChequeNumber(e.target.value)}
                     disabled={!selectedStudent}
-                    className="h-9 text-sm font-mono"
+                    className={cn(
+                      "h-9 text-sm font-mono transition-colors",
+                      isChequeEmpty && "border-destructive focus-visible:ring-destructive bg-destructive/5 text-destructive placeholder:text-destructive/50"
+                    )}
                   />
+                  {isChequeEmpty && (
+                    <p className="text-[11px] text-destructive font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      {t("chequeNumberRequired")}
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* 2c. External reference (required for online methods) */}
               {showReferenceInput && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">{t("paymentReference")} *</label>
+                  <label className="text-xs font-semibold flex items-center justify-between">
+                    <span className={cn(isReferenceEmpty ? "text-destructive font-bold" : "text-foreground")}>
+                      {t("paymentReference")} <span className="text-destructive font-bold">*</span>
+                    </span>
+                    <span className={cn("text-[10px] font-medium flex items-center gap-1", isReferenceEmpty ? "text-destructive font-semibold" : "text-muted-foreground font-normal")}>
+                      {isReferenceEmpty && <AlertCircle className="h-3 w-3 text-destructive shrink-0" />}
+                      {t("referenceRequired", { method: currentMode?.label || paymentMethod })}
+                    </span>
+                  </label>
                   <Input
+                    ref={referenceInputRef}
                     type="text"
                     placeholder={t("paymentReferencePlaceholder")}
                     value={paymentReference}
                     onChange={(e) => setPaymentReference(e.target.value)}
                     disabled={!selectedStudent}
-                    className="h-9 text-sm font-mono"
+                    className={cn(
+                      "h-9 text-sm font-mono transition-colors",
+                      isReferenceEmpty && "border-destructive focus-visible:ring-destructive bg-destructive/5 text-destructive placeholder:text-destructive/50"
+                    )}
                   />
+                  {isReferenceEmpty && (
+                    <p className="text-[11px] text-destructive font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      {t("referenceRequired", { method: currentMode?.label || paymentMethod })}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1600,7 +1866,7 @@ export default function FeeCollectionPage() {
               </div>
 
               {/* 5. Big Collect Payment Action Button */}
-              {canWriteFees && (
+              {canCollectPos && (
                 <Button
                   type="button"
                   onClick={handlePay}
@@ -1608,6 +1874,8 @@ export default function FeeCollectionPage() {
                     !selectedStudent ||
                     !paymentAmount ||
                     payNum <= 0 ||
+                    isCheckingFeeStructure ||
+                    isLoadingVouchers ||
                     !canCollectCurrentSelection ||
                     isGuardedPayment ||
                     collectPaymentMutation.isPending
@@ -1622,6 +1890,10 @@ export default function FeeCollectionPage() {
                     <>
                       <User className="h-4 w-4" /> {t("selectStudentPrompt")}
                     </>
+                  ) : isCheckingFeeStructure || isLoadingVouchers ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> {tCommon("loading")}
+                    </>
                   ) : !canCollectCurrentSelection ? (
                     <>
                       <AlertTriangle className="h-4 w-4" /> {t("feeStructureRequired")}
@@ -1629,10 +1901,12 @@ export default function FeeCollectionPage() {
                   ) : selectedMonths.length > 1 ? (
                     <>
                       <CheckCircle2 className="h-4 w-4" /> {t("collectAmount", { amount: formatCurrency(payNum) })} ({t("monthsCount", { count: selectedMonths.length })})
+                      <span className="text-[10px] opacity-75 font-mono ml-1 hidden sm:inline">(F8)</span>
                     </>
                   ) : selectedMonths.length === 1 ? (
                     <>
                       <CheckCircle2 className="h-4 w-4" /> {t("collectAmount", { amount: formatCurrency(payNum) })}
+                      <span className="text-[10px] opacity-75 font-mono ml-1 hidden sm:inline">(F8)</span>
                     </>
                   ) : unpaidMonthIndices.length === 0 && selectedVoucherIds.length === 0 ? (
                     <>
@@ -1641,6 +1915,7 @@ export default function FeeCollectionPage() {
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4" /> {t("collectAmount", { amount: payNum > 0 ? formatCurrency(payNum) : t("paymentFallback") })}
+                      <span className="text-[10px] opacity-75 font-mono ml-1 hidden sm:inline">(F8)</span>
                     </>
                   )}
                 </Button>

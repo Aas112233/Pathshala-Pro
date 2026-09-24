@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { GL_CODES } from "@/lib/constants";
 
 export interface MonthlyCollectionTrend {
   monthName: string; // e.g. "Apr 2026"
@@ -127,13 +128,13 @@ export async function getExecutiveDashboardMetrics(
         new Prisma.Decimal(0)
       );
 
-      // Cash & Bank (1010, 1020)
-      if (acc.code === "1010" || acc.code === "1020") {
+      // Cash & Bank (GL_CODES.BANK, GL_CODES.CASH)
+      if (acc.code === GL_CODES.BANK || acc.code === GL_CODES.CASH) {
         cashAndBankBalance += allDebits.minus(allCredits).toNumber();
       }
 
-      // Accounts Receivable (1030)
-      if (acc.code === "1030") {
+      // Accounts Receivable (GL_CODES.RECEIVABLE)
+      if (acc.code === GL_CODES.RECEIVABLE) {
         totalPendingReceivables += allDebits.minus(allCredits).toNumber();
       }
 

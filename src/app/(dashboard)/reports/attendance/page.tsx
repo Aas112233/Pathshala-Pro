@@ -22,7 +22,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
 import { usePDFExport } from "@/hooks/use-pdf-export";
+import { useClasses, useSections } from "@/hooks/use-queries";
 import { api } from "@/lib/api-client";
+import { collectAllReportRows } from "@/lib/report-pagination";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
 
@@ -49,10 +51,14 @@ interface AttendanceReportData {
   };
   records: AttendanceRecord[];
   classWise: { className: string; averagePercentage: number }[];
+  defaulters?: AttendanceRecord[];
+  defaultersTruncated?: boolean;
+  pagination?: { page: number; pageSize: number; totalCount: number };
 }
 
 export default function AttendanceReportPage() {
   const tAttendance = useTranslations("reports.attendanceReport");
+  const tCommon = useTranslations("reports.common");
   const { settings } = useTenantSettings();
   const { formatDateTime } = useTenantFormatting();
   const { exportAttendanceReport } = useExcelExport({
@@ -78,6 +84,19 @@ export default function AttendanceReportPage() {
   const [classWiseData, setClassWiseData] = useState<{ className: string; averagePercentage: number }[]>(
     []
   );
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+  const [defaulters, setDefaulters] = useState<AttendanceRecord[]>([]);
+
+  // The class/section dropdowns previously rendered empty because no report page
+  // supplied them; ReportFilters defaults both props to [].
+  const { data: classes = [] } = useClasses({ isActive: true, limit: 200 });
+  const hasSpecificClass = Boolean(filters.classId) && filters.classId !== "all";
+  const { data: sections = [] } = useSections(
+    { classId: hasSpecificClass ? filters.classId : undefined, limit: 200 },
+    { enabled: hasSpecificClass }
+  );
 
   const schoolInfo = {
     name: settings.name || "Pathshala Pro School",
@@ -91,21 +110,43 @@ export default function AttendanceReportPage() {
     to: filters.toDate || tAttendance("present"),
   };
   const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
+
+  // Resolve names so the applied-filter chips read "Class: Grade 9" rather than
+  // echoing back a raw UUID.
+  const classLabelById = new Map(classes.map((c: any) => [c.id, c.name as string]));
+  const sectionLabelById = new Map(sections.map((s: any) => [s.id, s.name as string]));
   const appliedFilters = [
-    filters.classId && filters.classId !== "all" ? { label: tAttendance("class"), value: filters.classId } : null,
+    hasSpecificClass
+      ? {
+          label: tAttendance("class"),
+          value: classLabelById.get(filters.classId as string) ?? (filters.classId as string),
+        }
+      : null,
     filters.sectionId && filters.sectionId !== "all"
-      ? { label: tAttendance("section"), value: filters.sectionId }
+      ? {
+          label: tAttendance("section"),
+          value: sectionLabelById.get(filters.sectionId) ?? filters.sectionId,
+        }
       : null,
   ].filter((value): value is { label: string; value: string } => Boolean(value));
 
-  const handleGenerateReport = async () => {
+  // Single source for the filter query string, shared by the paged fetch and the
+  // export fetch so the two can never diverge.
+  const buildBaseParams = () => {
+    const params = new URLSearchParams();
+    if (filters.fromDate) params.set("fromDate", filters.fromDate);
+    if (filters.toDate) params.set("toDate", filters.toDate);
+    if (hasSpecificClass) params.set("classId", filters.classId as string);
+    if (filters.sectionId && filters.sectionId !== "all") params.set("sectionId", filters.sectionId);
+    return params;
+  };
+
+  const runReport = async (targetPage: number, targetPageSize: number) => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filters.fromDate) params.set("fromDate", filters.fromDate);
-      if (filters.toDate) params.set("toDate", filters.toDate);
-      if (filters.classId && filters.classId !== "all") params.set("classId", filters.classId);
-      if (filters.sectionId && filters.sectionId !== "all") params.set("sectionId", filters.sectionId);
+      const params = buildBaseParams();
+      params.set("page", String(targetPage));
+      params.set("pageSize", String(targetPageSize));
 
       const response = await api.get<AttendanceReportData>(
         `/api/reports/attendance?${params.toString()}`
@@ -115,6 +156,10 @@ export default function AttendanceReportPage() {
       setData(reportData.records || []);
       setMetrics(reportData.metrics || null);
       setClassWiseData(reportData.classWise || []);
+      setDefaulters(reportData.defaulters || []);
+      setTotalCount(reportData.pagination?.totalCount ?? reportData.records?.length ?? 0);
+      setPage(targetPage);
+      setPageSize(targetPageSize);
       setHasGenerated(true);
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
@@ -123,6 +168,41 @@ export default function AttendanceReportPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * Exports must cover the whole filtered set, not the visible page. Walks the
+   * endpoint page by page rather than reading the on-screen array.
+   */
+  const fetchAllRecordsForExport = async () => {
+    const base = buildBaseParams();
+    return collectAllReportRows<AttendanceRecord>(async (p, ps) => {
+      const params = new URLSearchParams(base);
+      params.set("page", String(p));
+      params.set("pageSize", String(ps));
+      const response = await api.get<AttendanceReportData>(
+        `/api/reports/attendance?${params.toString()}`
+      );
+      const payload = (response as ApiSuccessResponse<AttendanceReportData>).data;
+      return {
+        rows: payload.records ?? [],
+        totalCount: payload.pagination?.totalCount ?? payload.records?.length ?? 0,
+      };
+    });
+  };
+
+  // A new filter set always restarts at page 1 — staying on page 4 of a
+  // different result set would show an empty table.
+  const handleGenerateReport = () => runReport(1, pageSize);
+
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || isLoading) return;
+    void runReport(nextPage, pageSize);
+  };
+
+  const handlePageSizeChange = (nextSize: number) => {
+    if (nextSize === pageSize || isLoading) return;
+    void runReport(1, nextSize);
   };
 
   const handleReset = () => {
@@ -135,14 +215,20 @@ export default function AttendanceReportPage() {
     setData([]);
     setMetrics(null);
     setClassWiseData([]);
+    setDefaulters([]);
     setHasGenerated(false);
     setGeneratedAt("");
+    setPage(1);
+    setTotalCount(0);
   };
 
   const handleExportExcel = async () => {
-    const result = await exportAttendanceReport(data, dateRange);
+    const { rows, truncated } = await fetchAllRecordsForExport();
+    const result = await exportAttendanceReport(rows, dateRange);
     if (result.success) {
-      toast.success(tAttendance("exported"));
+      toast.success(
+        truncated ? tCommon("exportTruncated") : tAttendance("exported")
+      );
       return;
     }
     toast.error(tAttendance("exportFailed"));
@@ -151,6 +237,7 @@ export default function AttendanceReportPage() {
   const handleExportPdf = async () => {
     if (!metrics) return;
 
+    const { rows, truncated } = await fetchAllRecordsForExport();
     const result = await exportAttendanceReportPDF({
       school: schoolInfo,
       dateRangeLabel,
@@ -162,7 +249,7 @@ export default function AttendanceReportPage() {
         totalAbsent: String(metrics.totalAbsent),
         defaulterCount: String(metrics.defaulterCount),
       },
-      records: data.map((record) => ({
+      records: rows.map((record) => ({
         rollNumber: record.rollNumber,
         studentName: record.studentName,
         className: record.className,
@@ -176,7 +263,9 @@ export default function AttendanceReportPage() {
     });
 
     if (result.success) {
-      toast.success(tAttendance("exported"));
+      toast.success(
+        truncated ? tCommon("exportTruncated") : tAttendance("exported")
+      );
       return;
     }
     toast.error(tAttendance("exportFailed"));
@@ -190,7 +279,9 @@ export default function AttendanceReportPage() {
     await handleExportPdf();
   };
 
-  const defaulters = data.filter((record) => record.attendancePercentage < 75);
+  // `defaulters` comes from the API's full-set rollup (state above), not the
+  // current page — a page of well-attending students would otherwise show an
+  // empty defaulter panel while defaulters existed on another page.
 
   const columns: ColumnDef<AttendanceRecord>[] = [
     {
@@ -254,6 +345,8 @@ export default function AttendanceReportPage() {
             isLoading={isLoading}
             showClassFilter
             showSectionFilter
+            classes={classes.map((c: any) => ({ id: c.id, name: c.name }))}
+            sections={sections.map((s: any) => ({ id: s.id, name: s.name }))}
             exportComponent={<ExportDropdown onExport={handleExport} disabled={data.length === 0} />}
           />
         }
@@ -262,7 +355,7 @@ export default function AttendanceReportPage() {
             <ReportSummaryBar
               dateRangeLabel={dateRangeLabel}
               generatedAtLabel={generatedAt}
-              recordCount={data.length}
+              recordCount={totalCount}
               appliedFilters={appliedFilters}
             />
           ) : undefined
@@ -294,7 +387,7 @@ export default function AttendanceReportPage() {
           ) : undefined
         }
         insights={
-          data.length > 0 ? (
+          totalCount > 0 ? (
             <div className="space-y-6">
               <div className="grid gap-6 lg:grid-cols-2">
                 <BarChart
@@ -307,9 +400,9 @@ export default function AttendanceReportPage() {
                   height={200}
                 />
                 <LineChart
-                  title={tAttendance("attendanceTrend")}
-                  data={data.slice(0, 5).map((record, index) => ({
-                    label: `S${index + 1}`,
+                  title={tCommon("lowestAttendanceStudents")}
+                  data={defaulters.slice(0, 8).map((record) => ({
+                    label: record.rollNumber || record.studentName,
                     value: record.attendancePercentage,
                   }))}
                   height={200}
@@ -350,7 +443,7 @@ export default function AttendanceReportPage() {
         }
         table={
           hasGenerated || isLoading ? (
-            data.length > 0 || isLoading ? (
+            totalCount > 0 || isLoading ? (
               <ReportTable
                 title={tAttendance("attendanceDetails")}
                 description={tAttendance("attendanceDetailsDescription")}
@@ -358,6 +451,11 @@ export default function AttendanceReportPage() {
                 data={data}
                 isLoading={isLoading}
                 showExport={false}
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
               />
             ) : (
               <ReportEmptyState

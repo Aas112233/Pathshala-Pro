@@ -62,6 +62,16 @@ export function ERPMetricCard({
   isLoading = false,
   className,
 }: ERPMetricCardProps) {
+  const valueText = String(value ?? "");
+  // ponytail: length-based shrink keeps long values inside the card without JS measuring; tighten thresholds if cards narrow further
+  const valueSizeClass =
+    valueText.length <= 10
+      ? "text-2xl"
+      : valueText.length <= 15
+        ? "text-xl"
+        : valueText.length <= 22
+          ? "text-lg"
+          : "text-base";
   if (isLoading) {
     return (
       <div
@@ -96,25 +106,25 @@ export function ERPMetricCard({
   return (
     <div
       className={cn(
-        "group relative flex flex-col justify-between rounded-lg border border-border/80 bg-card p-4 shadow-none transition-colors hover:border-primary/40",
+        "group relative flex min-w-0 flex-col justify-between overflow-hidden rounded-lg border border-border/80 bg-card p-4 shadow-none transition-colors hover:border-primary/40",
         className
       )}
     >
       {/* Top Header Row */}
-      <div>
+      <div className="min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <div className="space-y-0.5">
+          <div className="min-w-0 flex-1 space-y-0.5">
             {subtitle && (
-              <span className="text-[10px] font-medium tracking-wide text-muted-foreground">
+              <span className="block truncate text-[10px] font-medium tracking-wide text-muted-foreground">
                 {subtitle}
               </span>
             )}
             {title && (
-              <h3 className="text-sm font-semibold text-foreground/90">{title}</h3>
+              <h3 className="break-words text-sm font-semibold text-foreground/90">{title}</h3>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             {detailsLink || onDetailsClick ? (
               <Button
                 variant="ghost"
@@ -146,30 +156,36 @@ export function ERPMetricCard({
         </div>
 
         {/* Hero Value & Trend */}
-        <div className="mt-3 flex items-baseline gap-2.5">
-          <span className="text-2xl font-semibold tracking-tight text-foreground">
+        <div className="mt-3 flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <span
+            title={valueText}
+            className={cn(
+              "min-w-0 flex-1 break-all leading-tight font-semibold tracking-tight text-foreground",
+              valueSizeClass
+            )}
+          >
             {value}
           </span>
           {unit && (
-            <span className="text-sm font-medium text-muted-foreground">
+            <span className="shrink-0 text-sm font-medium text-muted-foreground">
               {unit}
             </span>
           )}
           {trend && (
             <div
               className={cn(
-                "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold",
+                "inline-flex max-w-full shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold",
                 trend.isPositive !== false
                   ? "bg-[var(--status-success-bg)] text-[var(--status-success-text)]"
                   : "bg-[var(--status-error-bg)] text-[var(--status-error-text)]"
               )}
             >
               {trend.isPositive !== false ? (
-                <ArrowUpRight className="h-3 w-3" />
+                <ArrowUpRight className="h-3 w-3 shrink-0" />
               ) : (
-                <ArrowDownRight className="h-3 w-3" />
+                <ArrowDownRight className="h-3 w-3 shrink-0" />
               )}
-              <span>{trend.value}</span>
+              <span className="min-w-0 break-all">{trend.value}</span>
             </div>
           )}
         </div>
@@ -180,10 +196,10 @@ export function ERPMetricCard({
             {breakdowns.map((item, idx) => {
               const theme = colorMap[item.color || "indigo"];
               return (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-muted-foreground">{item.label}</span>
-                    <span className="font-semibold text-foreground">{item.count}</span>
+                <div key={idx} className="min-w-0 space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-xs font-medium">
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground">{item.label}</span>
+                    <span className="shrink-0 font-semibold text-foreground">{item.count}</span>
                   </div>
                   {item.percentage !== undefined ? (
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">

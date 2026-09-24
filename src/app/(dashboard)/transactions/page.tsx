@@ -242,16 +242,30 @@ export default function TransactionsPage() {
     }
   };
 
-  const paymentOptions = [
-    { value: "ALL", label: t("allStatuses") || "All Methods" },
-    { value: "CASH", label: t("paymentMethods.CASH") },
-    { value: "DIGITAL", label: t("paymentMethods.DIGITAL") },
-    { value: "BANK_TRANSFER", label: t("paymentMethods.BANK_TRANSFER") },
-    { value: "CARD", label: t("paymentMethods.CARD") },
-    { value: "CHEQUE", label: t("paymentMethods.CHEQUE") },
-    { value: "EASYPAISA", label: t("paymentMethods.EASYPAISA") },
-    { value: "JAZZCASH", label: t("paymentMethods.JAZZCASH") },
-  ];
+  // Filter follows tenant config so custom methods stay selectable; legacy
+  // translated septet as fallback.
+  const paymentOptions = useMemo(() => {
+    const list =
+      settings.paymentMethods && settings.paymentMethods.length > 0
+        ? settings.paymentMethods.filter((m) => m.isActive)
+        : null;
+    if (list && list.length > 0) {
+      return [
+        { value: "ALL", label: t("allStatuses") },
+        ...list.map((m) => ({ value: m.code, label: m.name })),
+      ];
+    }
+    return [
+      { value: "ALL", label: t("allStatuses") },
+      { value: "CASH", label: t("paymentMethods.CASH") },
+      { value: "DIGITAL", label: t("paymentMethods.DIGITAL") },
+      { value: "BANK_TRANSFER", label: t("paymentMethods.BANK_TRANSFER") },
+      { value: "CARD", label: t("paymentMethods.CARD") },
+      { value: "CHEQUE", label: t("paymentMethods.CHEQUE") },
+      { value: "EASYPAISA", label: t("paymentMethods.EASYPAISA") },
+      { value: "JAZZCASH", label: t("paymentMethods.JAZZCASH") },
+    ];
+  }, [settings.paymentMethods, t]);
 
   const columns: ColumnDef<any>[] = useMemo(
     () => [
@@ -399,10 +413,10 @@ export default function TransactionsPage() {
 
       {/* KPI Grid — next-level financial overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <ERPMetricCard title={t("kpi.totalTransactions") || "Total Transactions"} value={kpis.count} subtitle={t("kpi.totalTransactionsSubtitle") || "All time"} icon={Layers} />
-        <ERPMetricCard title={t("kpi.totalAmount") || "Total Amount"} value={formatCurrency(kpis.totalAmount)} subtitle={t("kpi.totalAmountSubtitle") || "Filtered period"} icon={Wallet} />
-        <ERPMetricCard title={t("kpi.cashTotal") || "Cash"} value={formatCurrency(kpis.cash)} subtitle="CASH" icon={Banknote} />
-        <ERPMetricCard title={t("kpi.digitalTotal") || "Digital"} value={formatCurrency(kpis.digital)} subtitle="DIGITAL / Wallets" icon={Smartphone} />
+        <ERPMetricCard title={t("kpi.totalTransactions")} value={kpis.count} subtitle={t("kpi.totalTransactionsSubtitle")} icon={Layers} />
+        <ERPMetricCard title={t("kpi.totalAmount")} value={formatCurrency(kpis.totalAmount)} subtitle={t("kpi.totalAmountSubtitle")} icon={Wallet} />
+        <ERPMetricCard title={t("kpi.cashTotal")} value={formatCurrency(kpis.cash)} subtitle="CASH" icon={Banknote} />
+        <ERPMetricCard title={t("kpi.digitalTotal")} value={formatCurrency(kpis.digital)} subtitle="DIGITAL / Wallets" icon={Smartphone} />
       </div>
 
       {/* Filters — AppDropdown + date range per AGENTS #4, #8 */}
@@ -439,7 +453,7 @@ export default function TransactionsPage() {
             <div className="mt-3 flex justify-end">
               <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5">
                 <RotateCcw className="h-3.5 w-3.5" />
-                {tCommon("reset") || "Reset filters"}
+                {tCommon("reset")}
               </Button>
             </div>
           )}
@@ -463,7 +477,7 @@ export default function TransactionsPage() {
         searchPlaceholder={t("searchPlaceholder")}
         emptyState={
           <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">{t("noData") || "No transactions found"}</p>
+            <p className="text-sm text-muted-foreground">{t("noData")}</p>
           </div>
         }
       />
@@ -524,7 +538,7 @@ export default function TransactionsPage() {
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => { setDetail(null); setShowBounceBox(false); setBounceReason(""); }}>
-              {tCommon("close") || "Close"}
+              {tCommon("close")}
             </Button>
           </div>
         ) : undefined}

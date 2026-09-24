@@ -113,6 +113,12 @@
     "threeMonths": "3 महीने / टर्म",
     "sixMonths": "6 महीने",
     "fullRemaining": "पूरे 12 महीने / शेष",
+    "selectAll": "सभी बकाया (पूरा वर्ष)",
+    "clearSelection": "साफ़ करें",
+    "exactAmount": "सटीक राशि",
+    "shortcuts": "शॉर्टकट",
+    "selectedDue": "चयनित देय:",
+    "totalOutstanding": "कुल बकाया:",
     "activeInvoices": "सक्रिय इनवॉइस और वाउचर",
     "totalDue": "कुल देय:",
     "currentMonthRate": "वर्तमान माह की कक्षा ट्यूशन दर",
@@ -176,7 +182,18 @@
     "selectStudentPrompt": "शुल्क जमा करने के लिए छात्र का चयन करें",
     "noFeeStructureAlert": "शैक्षणिक वर्ष {academicYear} में {className} के लिए कोई सक्रिय शुल्क संरचना कॉन्फ़िगर नहीं है। कॉन्फ़िगर होने तक अनबिल्ड महीनों का शुल्क जमा नहीं किया जा सकता।",
     "configureFeeStructure": "शुल्क संरचना कॉन्फ़िगर करें",
-    "feeStructureRequired": "शुल्क संरचना आवश्यक है"
+    "feeStructureRequired": "शुल्क संरचना आवश्यक है",
+    "walletMethod": "वॉलेट",
+    "walletMethodHint": "छात्र अग्रिम वॉलेट से भुगतान",
+    "walletSplitTitle": "वॉलेट से आंशिक भुगतान",
+    "autoApplyWallet": "वॉलेट स्वतः लागू करें",
+    "walletAmountPlaceholder": "वॉलेट राशि",
+    "chequeNumber": "चेक नंबर",
+    "chequeNumberPlaceholder": "चेक नंबर दर्ज करें",
+    "paymentReference": "लेनदेन संदर्भ (UTR)",
+    "paymentReferencePlaceholder": "UTR / गेटवे आईडी दर्ज करें",
+    "referenceRequired": "{method} भुगतान के लिए बाहरी संदर्भ (UTR/लेनदेन आईडी) आवश्यक है।",
+    "chequeNumberRequired": "चेक भुगतान के लिए चेक नंबर आवश्यक है।"
   },
   "currencies": {
     "title": "मुद्रा",
@@ -276,15 +293,18 @@
     "feeStructures": "शुल्क संरचनाएं",
     "feeCollection": "शुल्क संग्रह (पीओएस)",
     "bulkFeeCollection": "थोक शुल्क प्रविष्टि",
+    "feeCollectors": "शुल्क वसूलकर्ता",
     "transactions": "लेनदेन",
     "expenses": "व्यय",
     "bankAccounts": "बैंक और कैश खाते",
+    "deposits": "नकद जमा",
     "profitLoss": "लाभ और हानि विवरण",
     "statements": "खाता विवरण",
     "feeHeadMappings": "फीस हेड अकाउंटिंग",
     "hr": "मानव संसाधन और वेतन",
     "staff": "कर्मचारी निर्देशिका",
     "salaryPayroll": "वेतन और पेरोल",
+    "payrollApprovals": "वेतन स्वीकृति",
     "administration": "सेटिंग्स और सिस्टम",
     "systemSettings": "सेटिंग्स और सिस्टम",
     "campusFacilities": "परिसर और सुविधाएं",
@@ -709,7 +729,9 @@
       "profilePhotoAlt": "{name} की प्रोफ़ाइल फ़ोटो"
     },
     "idCards": "ID Cards",
-    "admissionForm": "Admission Form"
+    "admissionForm": "Admission Form",
+    "createError": "छात्र बनाने में विफल",
+    "updateError": "छात्र अपडेट करने में विफल"
   },
   "fees": {
     "title": "शुल्क प्रबंधन केंद्र",
@@ -773,15 +795,6 @@
     "tuition": "ट्यूशन",
     "rollLabel": "रोल:",
     "voucherNumber": "वाउचर नंबर",
-    "walletMethod": "वॉलेट",
-    "walletMethodHint": "छात्र अग्रिम वॉलेट से भुगतान",
-    "chequeNumber": "चेक नंबर",
-    "chequeNumberPlaceholder": "चेक नंबर दर्ज करें",
-    "paymentReference": "लेनदेन संदर्भ (UTR)",
-    "paymentReferencePlaceholder": "UTR / गेटवे आईडी दर्ज करें",
-    "walletSplitTitle": "वॉलेट से आंशिक भुगतान",
-    "autoApplyWallet": "वॉलेट स्वतः लागू करें",
-    "walletAmountPlaceholder": "वॉलेट राशि",
     "waiveFine": "विलंब शुल्क माफ करें",
     "outstandingFine": "बकाया विलंब शुल्क",
     "waiveAmount": "माफी राशि",
@@ -958,6 +971,7 @@
       "phoneInvalid": "कृपया एक वैध फोन नंबर दर्ज करें",
       "createUserAccount": "इस स्टाफ सदस्य के लिए लॉगिन खाता बनाएं",
       "createUserAccountDescription": "इसे स्टाफ सदस्य को सिस्टम तक पहुंचने की अनुमति देगा",
+      "createUserAccountHint": "लॉगिन क्रेडेंशियल्स के साथ एक ईमेल स्टाफ सदस्य को भेजा जाएगा",
       "addStaffDescription": "सिस्टम में नया स्टाफ सदस्य प्रोफाइल बनाएं।",
       "editStaffDescription": "स्टाफ सदस्य की जानकारी अपडेट करें।",
       "loginEmail": "लॉगिन ईमेल",
@@ -999,6 +1013,59 @@
   "salary": {
     "title": "वेतन / वेतनपत्र",
     "description": "कर्मचारियों के वेतन, अग्रिम, और वेतनपत्र।",
+    "approvals": {
+      "title": "वेतन स्वीकृति",
+      "description": "भुगतान से पहले कर्मचारियों के वेतन का ऑडिट, समीक्षा और अनुमोदन करें।",
+      "approveSelected": "चयनित स्वीकृत करें ({count})",
+      "approveAllPending": "सभी लंबित स्वीकृत करें",
+      "quickApprove": "त्वरित स्वीकृति",
+      "reject": "अस्वीकार करें",
+      "approvedBadge": "स्वीकृत",
+      "readyForPayment": "भुगतान के लिए तैयार",
+      "awaitingAudit": "स्वीकृति की प्रतीक्षा में",
+      "table": {
+        "period": "अवधि",
+        "audit": "स्वीकृति ऑडिट"
+      },
+      "kpi": {
+        "pendingTitle": "लंबित स्वीकृतियां",
+        "pendingSubtitle": "अनुमोदन की प्रतीक्षा में",
+        "approvedTitle": "भुगतान के लिए तैयार",
+        "approvedSubtitle": "प्रबंधन द्वारा अनुमोदित",
+        "disbursedTitle": "संवितरित (माह)",
+        "disbursedSubtitle": "खातों में भुगतान किया गया",
+        "rejectedTitle": "ध्यान देने योग्य",
+        "rejectedSubtitle": "अस्वीकृत / वापस भेजा गया",
+        "staffUnit": "स्टाफ"
+      },
+      "filters": {
+        "allStatuses": "सभी स्थितियां",
+        "pending": "लंबित स्वीकृति",
+        "approved": "स्वीकृत",
+        "rejected": "अस्वीकृत",
+        "paid": "भुगतान किया गया",
+        "selectMonth": "महीना चुनें",
+        "selectYear": "वर्ष चुनें",
+        "selectDept": "विभाग चुनें",
+        "selectStatus": "स्थिति चुनें"
+      },
+      "searchPlaceholder": "स्टाफ का नाम या आईडी खोजें...",
+      "emptyTitle": "कोई पेरोल रिकॉर्ड नहीं मिला",
+      "emptyDescription": "चयनित महीने, वर्ष या स्वीकृति फ़िल्टर से कोई वेतन रिकॉर्ड मेल नहीं खाता।",
+      "noPendingSelected": "चयनित रिकॉर्डों में से कोई भी स्वीकृति के लिए लंबित नहीं है",
+      "noPendingInView": "वर्तमान दृश्य में कोई भी रिकॉर्ड स्वीकृति के लिए लंबित नहीं है",
+      "rejectTitle": "वेतन रिकॉर्ड अस्वीकार करें",
+      "rejectDescription": "इस रिकॉर्ड को एचआर / लेखा को वापस भेजने का स्पष्ट कारण बताएं।",
+      "rejectDescriptionStaff": "{name} के वेतन रिकॉर्ड को एचआर को वापस भेजने का स्पष्ट कारण बताएं।",
+      "reasonLabel": "अस्वीकृति का कारण",
+      "reasonPlaceholder": "आवश्यक सुधार बताएं (उदा. गलत एलओपी दिन, अनुपस्थित अग्रिम कटौती)...",
+      "rejectionReasonRequired": "अस्वीकृति का कारण आवश्यक है (न्यूनतम 3 वर्ण)",
+      "cancel": "रद्द करें",
+      "confirmReject": "रिकॉर्ड अस्वीकार करें",
+      "approveSuccess": "वेतन सफलतापूर्वक स्वीकृत हो गया!",
+      "rejectSuccess": "वेतन अस्वीकार कर एचआर को वापस भेज दिया गया",
+      "bulkApproveSuccess": "चयनित वेतन सफलतापूर्वक स्वीकृत हो गए!"
+    },
     "processPayroll": "वेतनपत्र प्रक्रिया",
     "month": "महीना",
     "year": "वर्ष",
@@ -1500,7 +1567,9 @@
     "resultsSaved": "परीक्षा परिणाम सफलतापूर्वक सहेजे गए!",
     "promotionRuleCreated": "पदोन्नति नियम सफलतापूर्वक बनाया गया!",
     "promotionsExecuted": "पदोन्नति सफलतापूर्वक निष्पादित की गई!",
-    "error": "परीक्षा कार्रवाई में विफल"
+    "error": "परीक्षा कार्रवाई में विफल",
+    "promotionRuleUpdated": "प्रोमोशन नियम सफलतापूर्वक अपडेट किया गया",
+    "promotionRuleDeleted": "प्रोमोशन नियम सफलतापूर्वक हटाया गया"
   },
   "results": {
     "marksLockedDuePromotion": "पदोन्नति के कारण इस छात्र के अंक लॉक हैं।",
@@ -2387,7 +2456,6 @@
   "reports": {
     "title": "रिपोर्ट और विश्लेषिकी केंद्र",
     "description": "संस्थागत विश्लेषण, ऑडिट और निर्यात योग्य रिपोर्टें",
-    "overview": "रिपोर्ट अवलोकन",
     "charts": {
       "total": "कुल"
     },
@@ -2512,7 +2580,8 @@
       "exportedPDF": "वित्तीय रिपोर्ट PDF में निर्यात की गई",
       "exportFailed": "वित्तीय रिपोर्ट निर्यात करने में विफल",
       "title": "वित्तीय व्यय और नकदी प्रवाह रिपोर्ट",
-      "description": "परिचालन व्यय मदें, भुगतान वाउचर, शुल्क प्राप्तियां और शुद्ध नकदी शेष"
+      "description": "परिचालन व्यय मदें, भुगतान वाउचर, शुल्क प्राप्तियां और शुद्ध नकदी शेष",
+      "itemizedExpenseLedger": "मदवार व्यय बही"
     },
     "admissionsReport": {
       "applicantStudent": "Applicant / Student",
@@ -2559,7 +2628,8 @@
       "exportedPDF": "प्रवेश रिपोर्ट PDF में निर्यात की गई",
       "exportFailed": "प्रवेश रिपोर्ट निर्यात करने में विफल",
       "title": "प्रवेश पाइपलाइन और रूपांतरण रिपोर्ट",
-      "description": "पूछताछ ट्रैकिंग, लीड स्रोत, रूपांतरण दर और नामांकन आंकड़े"
+      "description": "पूछताछ ट्रैकिंग, लीड स्रोत, रूपांतरण दर और नामांकन आंकड़े",
+      "enquiriesLedger": "आवेदक पूछताछ बही"
     },
     "attendanceReport": {
       "class": "Class",
@@ -2712,7 +2782,33 @@
       "export": "निर्यात करें",
       "generating": "बनाया जा रहा है...",
       "noData": "कोई डेटा उपलब्ध नहीं",
-      "exportedExcel": "रिपोर्ट सफलतापूर्वक Excel में निर्यात की गई"
+      "exportedExcel": "रिपोर्ट सफलतापूर्वक Excel में निर्यात की गई",
+      "reportPeriod": "रिपोर्ट अवधि",
+      "generatedAt": "निर्मित समय",
+      "records": "रिकॉर्ड",
+      "appliedFilters": "लागू फ़िल्टर",
+      "noExtraFilters": "कोई अतिरिक्त फ़िल्टर नहीं",
+      "trendFromLastPeriod": "पिछली अवधि से %",
+      "rowsPerPage": "प्रति पृष्ठ पंक्तियाँ",
+      "paginationRange": "{start}-{end} / {total}",
+      "previousPage": "पिछला पृष्ठ",
+      "nextPage": "अगला पृष्ठ",
+      "searchPlaceholder": "रिपोर्ट में खोजें...",
+      "noRecordsTitle": "कोई रिकॉर्ड नहीं मिला",
+      "noRecordsDescription": "अपनी खोज या फ़िल्टर समायोजित करने का प्रयास करें",
+      "exportTruncated": "निर्यात सीमित — परिणाम सेट निर्यात सीमा से अधिक है",
+      "lowestAttendanceStudents": "सबसे कम उपस्थिति",
+      "reportUnavailableForRole": "यह रिपोर्ट आपकी भूमिका के लिए उपलब्ध नहीं है",
+      "reportUnavailableForRoleHint": "यदि आपको लगता है कि यह गलत है तो अपने प्रशासक से संपर्क करें"
+    },
+    "hub": {
+      "searchPlaceholder": "रिपोर्ट खोजें...",
+      "finance": "वित्त",
+      "academics": "शैक्षणिक",
+      "operations": "संचालन",
+      "noAccess": "आपकी भूमिका के लिए कोई रिपोर्ट उपलब्ध नहीं है",
+      "noAccessHint": "यदि आपको लगता है कि यह गलत है तो अपने प्रशासक से संपर्क करें",
+      "emptySearch": "आपकी खोज से कोई रिपोर्ट मेल नहीं खाती"
     }
   },
   "accounting": {
@@ -2961,6 +3057,30 @@
     },
     "deposits": {
       "recordDeposit": "जमा दर्ज करें",
+      "title": "नकद जमा",
+      "pageDescription": "संतुलित नकद-से-बैंक प्रविष्टियों के साथ काउंटर संग्रह बैंक में जमा करें।",
+      "tableTitle": "जमा जर्नल",
+      "showingRecords": "{count} रिकॉर्ड दिखाए जा रहे हैं",
+      "colVoucher": "वाउचर",
+      "colRoute": "कहाँ से → कहाँ",
+      "colNarration": "विवरण",
+      "colDate": "तिथि",
+      "colAmount": "राशि",
+      "totalDeposited": "कुल जमा (पृष्ठ)",
+      "pageCount": "{count} प्रविष्टियाँ",
+      "depositCount": "जमा प्रविष्टियाँ",
+      "entriesUnit": "कॉन्ट्रा प्रविष्टियाँ",
+      "avgDeposit": "औसत जमा",
+      "perEntryUnit": "प्रति प्रविष्टि",
+      "emptyTitle": "कोई जमा दर्ज नहीं",
+      "emptyHint": "रिकॉर्ड शुरू करने के लिए पहली नकद-से-बैंक जमा दर्ज करें।",
+      "colBankRef": "बैंक संदर्भ",
+      "undepositedCash": "दराज में नकदी",
+      "undepositedHint": "संग्रहित, अभी बैंक नहीं हुई",
+      "bankReference": "बैंक स्लिप / UTR",
+      "bankReferencePlaceholder": "जैसे UTR 123456789012",
+      "receiptRefs": "लिंक प्राप्तियाँ",
+      "receiptRefsPlaceholder": "जैसे REC-2026-0001, REC-2026-0002",
       "description": "संतुलित स्थानांतरण प्रविष्टि के साथ संग्रहित नकदी बैंक में जमा करें।",
       "transferTitle": "नकद स्थानांतरण",
       "transferDescription": "बैंक को डेबिट, कैश रजिस्टर को क्रेडिट करें। लिंक शेष स्वतः समन्वयित होंगे।",
@@ -2968,6 +3088,8 @@
       "toAccount": "कहाँ (बैंक)",
       "toAccountPlaceholder": "जैसे 1010",
       "selectDestination": "गंतव्य खाता चुनें",
+      "selectSource": "स्रोत खाता चुनें",
+      "sameAccount": "स्रोत और गंतव्य खाते अलग होने चाहिए",
       "amount": "राशि",
       "note": "टिप्पणी",
       "notePlaceholder": "जैसे शाम की काउंटर जमा",
@@ -3463,7 +3585,9 @@
     "periodRemoved": "अवधि सफलतापूर्वक हटाई गई!",
     "error": "समय सारिणी अवधि में विफल",
     "periodWithNumber": "पीरियड {number}",
-    "pdfDownloadSuccess": "टाइम टेबल PDF डाउनलोड हुआ"
+    "pdfDownloadSuccess": "टाइम टेबल PDF डाउनलोड हुआ",
+    "periodCreated": "अवधि सफलतापूर्वक बनाई गई!",
+    "periodDeleted": "अवधि सफलतापूर्वक हटाई गई!"
   },
   "notifications": {
     "title": "सूचनाएं और परिपत्र",
@@ -3710,7 +3834,8 @@
     "routeDeleted": "मार्ग सफलतापूर्वक हटाया गया!",
     "allocatedSuccess": "छात्र को सफलतापूर्वक आवंटित किया गया!",
     "allocationRemoved": "आवंटन सफलतापूर्वक हटाया गया!",
-    "error": "परिवहन संचालन में विफल"
+    "error": "परिवहन संचालन में विफल",
+    "vacatedSuccess": "आवंटन सफलतापूर्वक खाली किया गया!"
   },
   "homework": {
     "title": "गृहकार्य और असाइनमेंट",
@@ -4432,6 +4557,51 @@
     "created": "नोटिस सफलतापूर्वक बनाया गया!",
     "updated": "नोटिस सफलतापूर्वक अपडेट किया गया!"
   },
+  "collectors": {
+    "title": "शुल्क वसूलकर्ता",
+    "description": "तय करें कि कौन सा स्टाफ़ किस शुल्क संग्रह डेस्क पर भुगतान ले सकता है।",
+    "deskNote": "दोनों संग्रह डेस्क नकदी संभालने की क्षमताएँ हैं। डेस्क देने पर वह उपयोगकर्ता डेस्क खोलकर भुगतान ले सकता है; हटाने पर डेस्क अगले साइन-इन पर उसके नेविगेशन से हट जाता है।",
+    "searchPlaceholder": "नाम या ईमेल से स्टाफ़ खोजें...",
+    "manage": "डेस्क प्रबंधित करें",
+    "granted": "स्वीकृत",
+    "notGranted": "स्वीकृत नहीं",
+    "active": "सक्रिय",
+    "inactive": "निष्क्रिय",
+    "receiptsCount": "{count} रसीदें",
+    "neverCollected": "कभी नहीं",
+    "sheetTitle": "{name} — शुल्क डेस्क पहुँच",
+    "sheetDescription": "इस स्टाफ़ सदस्य के लिए प्रत्येक संग्रह डेस्क चालू या बंद करें।",
+    "posDesk": "पीओएस काउंटर डेस्क",
+    "posDeskHint": "एक छात्र के काउंटर भुगतान और रसीद प्रिंटिंग।",
+    "bulkDesk": "बल्क कक्षा डेस्क",
+    "bulkDeskHint": "पूरी कक्षा और शुल्क माह के लिए सामूहिक प्रविष्टि।",
+    "sessionNote": "डेस्क परिवर्तन एक मिनट में लागू होते हैं और वसूलकर्ता का वर्तमान सत्र समाप्त कर देते हैं, इसलिए उसे दोबारा साइन इन करना होगा।",
+    "save": "डेस्क पहुँच सहेजें",
+    "saving": "सहेजा जा रहा है...",
+    "saved": "{name} की डेस्क पहुँच अपडेट की गई।",
+    "saveError": "डेस्क पहुँच अपडेट नहीं हो सकी।",
+    "loadError": "शुल्क वसूलकर्ता लोड नहीं हो सके।",
+    "noCollectors": "अभी कोई स्टाफ़ खाता नहीं",
+    "noCollectorsHint": "शुल्क संग्रह डेस्क सौंपने से पहले स्टाफ़ उपयोगकर्ता बनाएँ।",
+    "noMatches": "\"{term}\" से कोई स्टाफ़ मेल नहीं खाता",
+    "clearSearch": "खोज साफ़ करें",
+    "columns": {
+      "collector": "वसूलकर्ता",
+      "role": "भूमिका",
+      "account": "खाता",
+      "posDesk": "पीओएस",
+      "bulkDesk": "बल्क",
+      "todayCollected": "आज वसूला",
+      "lastCollected": "अंतिम वसूली",
+      "actions": "क्रियाएँ"
+    },
+    "pagination": {
+      "rowsPerPage": "प्रति पृष्ठ पंक्तियाँ:",
+      "range": "{total} में से {start}-{end}",
+      "previous": "पिछला पृष्ठ",
+      "next": "अगला पृष्ठ"
+    }
+  },
   "bulkFees": {
     "challansDownloaded": "चालान PDF डाउनलोड हो गए (3 प्रतियां)",
     "pdfFailed": "PDF बनाने में विफल",
@@ -4506,7 +4676,13 @@
     "amountPlaceholder": "0.00",
     "monthAlreadyPaid": "{student} के लिए {month} का शुल्क पहले ही भुगतान किया जा चुका है",
     "noFeeStructureAlert": "शैक्षणिक वर्ष {academicYear} में {className} के लिए कोई सक्रिय शुल्क संरचना कॉन्फ़िगर नहीं है। कॉन्फ़िगर होने तक अनबिल्ड छात्र 0.00 दिखेंगे।",
-    "configureFeeStructure": "शुल्क संरचना कॉन्फ़िगर करें"
+    "configureFeeStructure": "शुल्क संरचना कॉन्फ़िगर करें",
+    "chequeNumber": "चेक नंबर",
+    "chequeNumberPlaceholder": "चेक नंबर दर्ज करें",
+    "paymentReference": "लेनदेन संदर्भ (UTR)",
+    "paymentReferencePlaceholder": "UTR / गेटवे आईडी दर्ज करें",
+    "referenceRequired": "{method} भुगतान के लिए बाहरी संदर्भ (UTR/लेनदेन आईडी) आवश्यक है।",
+    "chequeNumberRequired": "चेक भुगतान के लिए चेक नंबर आवश्यक है।"
   },
   "subscription": {
     "banner": {

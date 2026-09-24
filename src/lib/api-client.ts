@@ -275,8 +275,11 @@ export const depositsApi = {
   list: (params?: SearchParams) =>
     api.get<any[]>("/api/accounting/deposits", params),
 
-  create: (data: { fromCode?: string; toCode: string; amount: number; note?: string }) =>
+  create: (data: { fromCode?: string; toCode: string; amount: number; note?: string; bankReference?: string; receiptRefs?: string }) =>
     api.post<any>("/api/accounting/deposits", data),
+
+  summary: (params?: Record<string, string | number | boolean>) =>
+    api.get<any>("/api/accounting/deposits/summary", params as any),
 };
 
 // Staff API
@@ -302,6 +305,9 @@ export const salaryApi = {
   list: (params?: SearchParams) =>
     api.get<any[]>("/api/salary", params),
 
+  listApprovals: (params?: SearchParams) =>
+    api.get<any[]>("/api/salary/approvals", params),
+
   get: (id: string) =>
     api.get<any>(`/api/salary/${id}`),
 
@@ -316,6 +322,15 @@ export const salaryApi = {
 
   bulk: (data: any) =>
     api.post<any>("/api/salary/bulk", data),
+
+  approve: (id: string, notes?: string) =>
+    api.post<any>(`/api/salary/${id}/approve`, { notes }),
+
+  reject: (id: string, reason: string) =>
+    api.post<any>(`/api/salary/${id}/reject`, { reason }),
+
+  bulkApprove: (salaryIds: string[], notes?: string) =>
+    api.post<any>("/api/salary/bulk-approve", { salaryIds, notes }),
 };
 
 // Attendance API
@@ -390,6 +405,15 @@ export const feeHeadsApi = {
     api.get<{ feeHeads: any[]; revenueAccounts: any[] }>("/api/accounting/fee-heads"),
   update: (data: { mappings: Array<{ code: string; accountCode: string }> }) =>
     api.put<any>("/api/accounting/fee-heads", data),
+};
+
+// Chart of Accounts API (pickers: payment-method GL mapping, deposit routing)
+export const chartAccountsApi = {
+  list: (params?: { accountType?: string }) =>
+    api.get<{ accounts: Array<{ code: string; name: string; accountType: string }> }>(
+      "/api/accounting/chart",
+      params as any
+    ),
 };
 
 // Profit & Loss API

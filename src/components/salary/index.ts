@@ -6,3 +6,4 @@ export { PaymentModal } from "./payment-modal";
 export { BulkPayrollModal } from "./bulk-payroll-modal";
 export { SalaryFiltersBar } from "./salary-filters-bar";
 export { SalaryEmptyState } from "./salary-empty-state";
+export { RejectionDialog } from "./rejection-dialog";

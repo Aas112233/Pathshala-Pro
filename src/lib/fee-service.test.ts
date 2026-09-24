@@ -390,6 +390,41 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
       ).rejects.toThrow(/must differ/);
     });
 
+    it("stores bank slip reference and linked receipts on the CONTRA narration", async () => {
+      const journals: any[] = [];
+      const mockTx: any = {
+        chartOfAccount: {
+          findMany: async () => [
+            { id: "acc-cash", code: "1020", name: "Cash Register", isActive: true },
+            { id: "acc-bank", code: "1010", name: "Main Bank Account", isActive: true },
+          ],
+        },
+        fiscalYear: { findFirst: async () => null },
+        journalEntry: {
+          create: async (payload: any) => {
+            journals.push(payload.data);
+            return { id: "jv-contra-2", ...payload.data };
+          },
+        },
+        bankAccount: { updateMany: async () => ({ count: 1 }) },
+        $queryRaw: async () => [{ id: "seq-1", current_number: 8 }],
+        $executeRaw: async () => 1,
+      };
+
+      await postCashDeposit(mockTx, {
+        tenantId: "school-hyd-01",
+        fromCode: "1020",
+        toCode: "1010",
+        amount: 15000,
+        executedById: "user-acc-1",
+        bankReference: "UTR123456",
+        receiptRefs: "REC-2026-0001, REC-2026-0002",
+      });
+      expect(journals[0].reference).toBe("UTR123456");
+      expect(journals[0].narration).toContain("Bank ref: UTR123456");
+      expect(journals[0].narration).toContain("REC-2026-0001");
+    });
+
     it("throws when the posting date falls in a closed period", async () => {
       const mockTx: any = {
         fiscalYear: { findFirst: async () => ({ id: "fy-1", isClosed: false }) },

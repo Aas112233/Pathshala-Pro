@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
+import { GL_CODES } from "@/lib/constants";
 
 export type BookIssueStatusType = "ISSUED" | "RETURNED" | "OVERDUE" | "LOST" | "DAMAGED";
 export type AllocationStatusType = "ACTIVE" | "VACATED" | "SUSPENDED";
@@ -33,7 +34,7 @@ export interface VehicleExpenseParams {
   odometerReading?: number;
   expenseDate?: Date;
   description?: string;
-  paidFromCode?: "1010" | "1020"; // 1010 Bank or 1020 Cash
+  paidFromCode?: typeof GL_CODES.BANK | typeof GL_CODES.CASH; // Bank or Cash
   recordedById: string;
 }
 
@@ -148,16 +149,16 @@ export async function returnLibraryBook(
 
   // 4. If fine collected, post to General Ledger
   if (fineAmount > 0 && paidFromPaymentMethod !== "UNPAID") {
-    const debitAccountCode = paidFromPaymentMethod === "BANK" ? "1010" : "1020";
+    const debitAccountCode = paidFromPaymentMethod === "BANK" ? GL_CODES.BANK : GL_CODES.CASH;
     const voucherNumber = await getNextVoucherNumber(tx, tenantId, "RECEIPT", returnDate.getFullYear());
 
     const [debitAccount, revenueAccount] = await Promise.all([
       tx.chartOfAccount.findFirst({ where: { tenantId, code: debitAccountCode } }),
-      tx.chartOfAccount.findFirst({ where: { tenantId, code: "4060" } }),
+      tx.chartOfAccount.findFirst({ where: { tenantId, code: GL_CODES.LATE_FINE_REVENUE } }),
     ]);
 
     if (!debitAccount || !revenueAccount) {
-      throw new Error(`Chart of Accounts not seeded. Missing: ${!debitAccount ? debitAccountCode : ""} ${!revenueAccount ? "4060" : ""}`);
+      throw new Error(`Chart of Accounts not seeded. Missing: ${!debitAccount ? debitAccountCode : ""} ${!revenueAccount ? GL_CODES.LATE_FINE_REVENUE : ""}`);
     }
 
     await tx.journalEntry.create({
@@ -267,7 +268,7 @@ export async function recordTransportVehicleExpense(
     odometerReading,
     expenseDate = new Date(),
     description,
-    paidFromCode = "1010",
+    paidFromCode = GL_CODES.BANK,
     recordedById,
   } = params;
 

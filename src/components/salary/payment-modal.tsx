@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import type { PaymentDTO, SalaryLedgerWithDetails } from "@/types/entities";
+import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -23,7 +25,7 @@ interface FormErrors {
   paymentDate?: string;
 }
 
-const PAYMENT_METHODS = [
+const FALLBACK_PAYMENT_METHODS = [
   { value: "CASH", key: "cash" },
   { value: "DIGITAL", key: "digital" },
   { value: "BANK_TRANSFER", key: "bankTransfer" },
@@ -38,6 +40,24 @@ export function PaymentModal({
   const t = useTranslations("salary");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const { settings } = useTenantSettings();
+
+  // Salary tender follows the tenant's configured methods (same source as
+  // POS) so new custom methods work here too; legacy trio as fallback.
+  const methodOptions = useMemo(() => {
+    const list =
+      settings.paymentMethods && settings.paymentMethods.length > 0
+        ? settings.paymentMethods.filter((m) => m.isActive)
+        : null;
+    if (list && list.length > 0) {
+      return list.map((m) => ({ value: m.code, label: m.name }));
+    }
+    return FALLBACK_PAYMENT_METHODS.map((method) => ({
+      value: method.value,
+      label: t(`ui.payment.${method.key}`),
+    }));
+  }, [settings.paymentMethods, t]);
 
   const [formData, setFormData] = useState<PaymentDTO>({
     paidAmount: salary?.netPayable || 0,
@@ -196,8 +216,9 @@ export function PaymentModal({
                 invalid={Boolean(errors.paymentMethod)}
                 aria-describedby={errors.paymentMethod ? "payment-method-error" : undefined}
                 triggerClassName={errors.paymentMethod ? "border-destructive ring-1 ring-destructive" : ""}
-                options={PAYMENT_METHODS.map((method) => ({ ...method, label: t(`ui.payment.${method.key}`) }))}
+                options={methodOptions}
                 placeholder={t("ui.payment.selectMethod")}
+                searchable
               />
               {errors.paymentMethod && <p id="payment-method-error" className="text-xs text-destructive mt-1">{errors.paymentMethod}</p>}
             </ERPFormField>

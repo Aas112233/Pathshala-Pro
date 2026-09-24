@@ -3,6 +3,7 @@ import {
   formatCompactCurrencyValue,
   type FormatCurrencyOptions,
 } from "./currencies";
+import { GL_CODES } from "./constants";
 import {
   formatAcademicYear,
   type AcademicYearData,
@@ -20,13 +21,13 @@ export interface CustomPaymentMethod {
 }
 
 export const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
-  { id: "cash", name: "Cash", code: "CASH", type: "CASH", accountCode: "1020", isActive: true, isDefault: true },
-  { id: "bank_transfer", name: "Bank Transfer", code: "BANK_TRANSFER", type: "BANK", accountCode: "1010", isActive: true },
-  { id: "pos_card", name: "Card / POS", code: "POS_CARD", type: "DIGITAL", accountCode: "1010", isActive: true },
-  { id: "easypaisa", name: "EasyPaisa", code: "EASYPAISA", type: "DIGITAL", accountCode: "1010", isActive: true },
-  { id: "jazzcash", name: "JazzCash", code: "JAZZCASH", type: "DIGITAL", accountCode: "1010", isActive: true },
-  { id: "bkash", name: "bKash", code: "BKASH", type: "DIGITAL", accountCode: "1010", isActive: true },
-  { id: "cheque", name: "Cheque / Draft", code: "CHEQUE", type: "CHEQUE", accountCode: "1010", isActive: true },
+  { id: "cash", name: "Cash", code: "CASH", type: "CASH", accountCode: GL_CODES.CASH, isActive: true, isDefault: true },
+  { id: "bank_transfer", name: "Bank Transfer", code: "BANK_TRANSFER", type: "BANK", accountCode: GL_CODES.BANK, isActive: true },
+  { id: "pos_card", name: "Card / POS", code: "POS_CARD", type: "DIGITAL", accountCode: GL_CODES.BANK, isActive: true },
+  { id: "easypaisa", name: "EasyPaisa", code: "EASYPAISA", type: "DIGITAL", accountCode: GL_CODES.BANK, isActive: true },
+  { id: "jazzcash", name: "JazzCash", code: "JAZZCASH", type: "DIGITAL", accountCode: GL_CODES.BANK, isActive: true },
+  { id: "bkash", name: "bKash", code: "BKASH", type: "DIGITAL", accountCode: GL_CODES.BANK, isActive: true },
+  { id: "cheque", name: "Cheque / Draft", code: "CHEQUE", type: "CHEQUE", accountCode: GL_CODES.BANK, isActive: true },
 ];
 
 export interface TenantSettings {
@@ -110,6 +111,60 @@ function getDateParts(date: Date | string, timezone: string) {
     day: find("day"),
     monthIndex: isNaN(monthIndex) ? 0 : monthIndex,
   };
+}
+
+/** Wall-clock offset of `timeZone` at `date`, in milliseconds east of UTC. */
+function timeZoneOffsetMs(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  const asUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour"),
+    get("minute"),
+    get("second"),
+  );
+  return asUtc - Math.floor(date.getTime() / 1000) * 1000;
+}
+
+/**
+ * UTC instants bounding the tenant-local calendar day that contains `date`.
+ *
+ * "Today's collection" is a cash-reconciliation figure, so it has to follow the
+ * school's timezone rather than the server's: at 01:00 in Asia/Dhaka the UTC
+ * day is still yesterday, and a counter total that straddles the two cannot be
+ * reconciled against the drawer.
+ */
+export function getTenantDayRange(
+  date: Date,
+  timezone?: string | null,
+): { start: Date; end: Date } {
+  const tz = timezone || DEFAULT_TENANT_SETTINGS.timezone;
+  try {
+    const { year, month, day } = getDateParts(date, tz);
+    const wallMidnight = Date.UTC(Number(year), Number(month) - 1, Number(day));
+    if (!Number.isFinite(wallMidnight)) throw new RangeError("unparseable date parts");
+    // Two passes: the offset sampled at UTC midnight is wrong only for a local
+    // midnight that crosses a DST transition, and the second pass corrects it.
+    const firstPass = wallMidnight - timeZoneOffsetMs(new Date(wallMidnight), tz);
+    const start = new Date(wallMidnight - timeZoneOffsetMs(new Date(firstPass), tz));
+    return { start, end: new Date(start.getTime() + 86_400_000 - 1) };
+  } catch {
+    // Unknown timezone configured on the tenant: fall back to the UTC day
+    // rather than throwing the whole report.
+    const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    return { start, end: new Date(start.getTime() + 86_400_000 - 1) };
+  }
 }
 
 export function formatDateWithSettings(

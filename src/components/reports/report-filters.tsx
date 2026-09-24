@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { RotateCcw, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -45,6 +39,20 @@ export interface ReportFilterState {
   academicYearId?: string;
 }
 
+const ALL = "all";
+
+/**
+ * Shared report filter bar.
+ *
+ * Uses AppDropdown rather than a raw <select> (AGENTS.md §4): dropdowns render
+ * through a portal so they are never clipped by the surrounding card, and class
+ * / section / group lists are live-searchable.
+ *
+ * Cascading rule (AGENTS.md §5): changing the class clears any previously
+ * chosen section and group, and those child selectors stay disabled until a
+ * specific class is picked — otherwise a stale section from the previous class
+ * would silently mis-scope the report.
+ */
 export function ReportFilters({
   filters,
   onFilterChange,
@@ -64,6 +72,11 @@ export function ReportFilters({
   exportComponent,
 }: ReportFiltersProps) {
   const t = useTranslations("reports");
+  const tCommon = useTranslations("reports.common");
+
+  const searchPlaceholder = tCommon("searchPlaceholder");
+  const noOptionsText = tCommon("noRecordsTitle");
+
   const resolvedStatusOptions = statusOptions ?? [
     { value: "PENDING", label: t("filters.pending") },
     { value: "PAID", label: t("filters.paid") },
@@ -107,7 +120,7 @@ export function ReportFilters({
 
   // Child filters are only meaningful for one specific class. "all"/empty
   // means unscoped, so keep them disabled until a class is picked.
-  const hasSpecificClass = Boolean(filters.classId) && filters.classId !== "all";
+  const hasSpecificClass = Boolean(filters.classId) && filters.classId !== ALL;
 
   return (
     <Card>
@@ -137,19 +150,18 @@ export function ReportFilters({
           {showClassFilter && (
             <div className="space-y-2">
               <Label>{t("filters.class")}</Label>
-              <Select value={filters.classId || ""} onValueChange={handleClassChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("filters.selectClass")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.allClasses")}</SelectItem>
-                  {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AppDropdown
+                value={filters.classId || ALL}
+                onChange={handleClassChange}
+                placeholder={t("filters.selectClass")}
+                searchable
+                searchPlaceholder={searchPlaceholder}
+                noOptionsText={noOptionsText}
+                options={[
+                  { value: ALL, label: t("filters.allClasses") },
+                  ...classes.map((cls) => ({ value: cls.id, label: cls.name })),
+                ]}
+              />
             </div>
           )}
 
@@ -157,19 +169,21 @@ export function ReportFilters({
           {showSectionFilter && (
             <div className="space-y-2">
               <Label>{t("filters.section")}</Label>
-              <Select value={filters.sectionId || ""} onValueChange={handleSectionChange} disabled={!hasSpecificClass}>
-                <SelectTrigger>
-                  <SelectValue placeholder={hasSpecificClass ? t("filters.selectSection") : t("filters.selectClassFirst")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.allSections")}</SelectItem>
-                  {sections.map((section) => (
-                    <SelectItem key={section.id} value={section.id}>
-                      {section.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AppDropdown
+                value={filters.sectionId || ALL}
+                onChange={handleSectionChange}
+                disabled={!hasSpecificClass}
+                placeholder={
+                  hasSpecificClass ? t("filters.selectSection") : t("filters.selectClassFirst")
+                }
+                searchable
+                searchPlaceholder={searchPlaceholder}
+                noOptionsText={noOptionsText}
+                options={[
+                  { value: ALL, label: t("filters.allSections") },
+                  ...sections.map((section) => ({ value: section.id, label: section.name })),
+                ]}
+              />
             </div>
           )}
 
@@ -177,19 +191,21 @@ export function ReportFilters({
           {showGroupFilter && (
             <div className="space-y-2">
               <Label>{t("filters.group")}</Label>
-              <Select value={filters.groupId || ""} onValueChange={handleGroupChange} disabled={!hasSpecificClass}>
-                <SelectTrigger>
-                  <SelectValue placeholder={hasSpecificClass ? t("filters.selectGroup") : t("filters.selectClassFirst")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.allGroups")}</SelectItem>
-                  {groups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AppDropdown
+                value={filters.groupId || ALL}
+                onChange={handleGroupChange}
+                disabled={!hasSpecificClass}
+                placeholder={
+                  hasSpecificClass ? t("filters.selectGroup") : t("filters.selectClassFirst")
+                }
+                searchable
+                searchPlaceholder={searchPlaceholder}
+                noOptionsText={noOptionsText}
+                options={[
+                  { value: ALL, label: t("filters.allGroups") },
+                  ...groups.map((group) => ({ value: group.id, label: group.name })),
+                ]}
+              />
             </div>
           )}
 
@@ -197,19 +213,18 @@ export function ReportFilters({
           {showStatusFilter && (
             <div className="space-y-2">
               <Label>{t("filters.status")}</Label>
-              <Select value={filters.status || ""} onValueChange={handleStatusChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("filters.selectStatus")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.allStatus")}</SelectItem>
-                  {resolvedStatusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AppDropdown
+                value={filters.status || ALL}
+                onChange={handleStatusChange}
+                placeholder={t("filters.selectStatus")}
+                searchable
+                searchPlaceholder={searchPlaceholder}
+                noOptionsText={noOptionsText}
+                options={[
+                  { value: ALL, label: t("filters.allStatus") },
+                  ...resolvedStatusOptions,
+                ]}
+              />
             </div>
           )}
 
@@ -217,19 +232,19 @@ export function ReportFilters({
           {showPaymentMethodFilter && (
             <div className="space-y-2">
               <Label>{t("filters.paymentMethod")}</Label>
-              <Select
-                value={filters.paymentMethod || ""}
-                onValueChange={handlePaymentMethodChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("filters.selectPaymentMethod")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.allMethods")}</SelectItem>
-                  <SelectItem value="CASH">{t("filters.cash")}</SelectItem>
-                  <SelectItem value="DIGITAL">{t("filters.digital")}</SelectItem>
-                </SelectContent>
-              </Select>
+              <AppDropdown
+                value={filters.paymentMethod || ALL}
+                onChange={handlePaymentMethodChange}
+                placeholder={t("filters.selectPaymentMethod")}
+                searchable
+                searchPlaceholder={searchPlaceholder}
+                noOptionsText={noOptionsText}
+                options={[
+                  { value: ALL, label: t("filters.allMethods") },
+                  { value: "CASH", label: t("filters.cash") },
+                  { value: "DIGITAL", label: t("filters.digital") },
+                ]}
+              />
             </div>
           )}
 
@@ -237,20 +252,23 @@ export function ReportFilters({
           {showExamTypeFilter && (
             <div className="space-y-2">
               <Label>{t("filters.examType")}</Label>
-              <Select value={filters.examType || ""} onValueChange={handleExamTypeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("filters.selectExamType")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.allExamTypes")}</SelectItem>
-                  <SelectItem value="MID_TERM">{t("filters.midTerm")}</SelectItem>
-                  <SelectItem value="FINAL">{t("filters.final")}</SelectItem>
-                  <SelectItem value="UNIT_TEST">{t("filters.unitTest")}</SelectItem>
-                  <SelectItem value="QUARTERLY">{t("filters.quarterly")}</SelectItem>
-                  <SelectItem value="HALF_YEARLY">{t("filters.halfYearly")}</SelectItem>
-                  <SelectItem value="ANNUAL">{t("filters.annual")}</SelectItem>
-                </SelectContent>
-              </Select>
+              <AppDropdown
+                value={filters.examType || ALL}
+                onChange={handleExamTypeChange}
+                placeholder={t("filters.selectExamType")}
+                searchable
+                searchPlaceholder={searchPlaceholder}
+                noOptionsText={noOptionsText}
+                options={[
+                  { value: ALL, label: t("filters.allExamTypes") },
+                  { value: "MID_TERM", label: t("filters.midTerm") },
+                  { value: "FINAL", label: t("filters.final") },
+                  { value: "UNIT_TEST", label: t("filters.unitTest") },
+                  { value: "QUARTERLY", label: t("filters.quarterly") },
+                  { value: "HALF_YEARLY", label: t("filters.halfYearly") },
+                  { value: "ANNUAL", label: t("filters.annual") },
+                ]}
+              />
             </div>
           )}
         </div>
@@ -259,7 +277,7 @@ export function ReportFilters({
         <div className="mt-4 flex items-center justify-between">
           {/* Export Section */}
           {exportComponent && <div>{exportComponent}</div>}
-          
+
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onReset}>
               <RotateCcw className="mr-2 h-4 w-4" />

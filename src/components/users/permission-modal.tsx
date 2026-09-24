@@ -69,13 +69,24 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 
 type PermState = Record<string, Record<PermissionAction, boolean>>;
 
-function buildPermState(perms: UserPermissions): PermState {
+/**
+ * Seed the grid from the stored override, falling back to the role default for
+ * any module the override predates.
+ *
+ * A stored override replaces the role defaults wholesale, so it only mentions
+ * the modules that existed when it was saved. Seeding a newer module as `false`
+ * would make an unrelated edit silently revoke it on save — which is exactly
+ * how the POS/bulk desk split would have stripped cash access from every
+ * existing cashier.
+ */
+function buildPermState(perms: UserPermissions, defaults?: UserPermissions): PermState {
   const state: PermState = {};
   ALL_MODULE_IDS.forEach((id) => {
+    const source = perms?.[id] ?? defaults?.[id];
     state[id] = {
-      read: !!perms?.[id]?.read,
-      write: !!perms?.[id]?.write,
-      manage: !!perms?.[id]?.manage,
+      read: !!source?.read,
+      write: !!source?.write,
+      manage: !!source?.manage,
     };
   });
   return state;
@@ -145,12 +156,12 @@ export function PermissionModal({ isOpen, onClose, user }: PermissionModalProps)
       } catch {}
 
       // If no explicit permissions, use role defaults
+      const roleKey = (user.role || "").toUpperCase();
       if (Object.keys(initialPerms).length === 0) {
-        const roleKey = (user.role || "").toUpperCase();
         initialPerms = ROLE_DEFAULT_PERMISSIONS[roleKey] || {};
       }
 
-      setPermissions(buildPermState(initialPerms));
+      setPermissions(buildPermState(initialPerms, ROLE_DEFAULT_PERMISSIONS[roleKey] || {}));
       setSelectedLevel(user.accessLevel || null);
       setCollapsedCategories(new Set());
     }

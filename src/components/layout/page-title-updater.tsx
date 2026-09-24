@@ -3,142 +3,83 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { safeTranslate, type Translator } from "@/lib/i18n-safe";
 
-export function getPageTitle(pathname: string, t: any): string {
+export function getPageTitle(pathname: string, t: Translator): string {
   if (!pathname || pathname === "/") {
-    try {
-      return t("nav.dashboard") || "Dashboard";
-    } catch {
-      return "Dashboard";
-    }
+    return safeTranslate(t, "nav.dashboard", "Dashboard");
   }
 
   if (pathname === "/login") {
-    try {
-      return t("auth.signInErp") || "Login";
-    } catch {
-      return "Login";
-    }
+    return safeTranslate(t, "auth.signInErp", "Login");
   }
 
   if (pathname === "/onboarding") {
-    try {
-      return t("onboarding.title") || "Onboarding";
-    } catch {
-      return "Onboarding";
-    }
+    return safeTranslate(t, "onboarding.title", "Onboarding");
   }
 
   // Handle system admin routes
   if (pathname.startsWith("/system-admin")) {
     const subPath = pathname.replace("/system-admin", "").replace(/^\//, "");
     if (!subPath) {
-      try {
-        return t("systemAdmin.title") || "System Admin";
-      } catch {
-        return "System Admin";
-      }
+      return safeTranslate(t, "systemAdmin.title", "System Admin");
     }
     if (subPath.startsWith("tenants")) {
-      try {
-        return t("systemAdmin.tenants") || "Tenants";
-      } catch {
-        return "Tenants";
-      }
+      return safeTranslate(t, "systemAdmin.tenants", "Tenants");
     }
     if (subPath.startsWith("billing")) {
-      try {
-        return t("systemAdmin.billing") || "Billing";
-      } catch {
-        return "Billing";
-      }
+      return safeTranslate(t, "systemAdmin.billing", "Billing");
     }
     if (subPath.startsWith("feature-flags")) {
-      try {
-        return t("systemAdmin.featureFlags") || "Feature Flags";
-      } catch {
-        return "Feature Flags";
-      }
+      return safeTranslate(t, "systemAdmin.featureFlags", "Feature Flags");
     }
     if (subPath.startsWith("audit-logs")) {
-      try {
-        return t("systemAdmin.auditLogs") || "Audit Logs";
-      } catch {
-        return "Audit Logs";
-      }
+      return safeTranslate(t, "systemAdmin.auditLogs", "Audit Logs");
     }
     if (subPath.startsWith("users")) {
-      try {
-        return t("systemAdmin.users") || "Platform Users";
-      } catch {
-        return "Platform Users";
-      }
+      return safeTranslate(t, "systemAdmin.users", "Platform Users");
     }
     if (subPath.startsWith("settings")) {
-      try {
-        return t("systemAdmin.settings") || "Platform Settings";
-      } catch {
-        return "Platform Settings";
-      }
+      return safeTranslate(t, "systemAdmin.settings", "Platform Settings");
     }
     return "System Administration";
   }
 
   // Handle specific dashboard sub-routes
   if (pathname === "/fees/collection") {
-    try {
-      return t("nav.feeCollection") || "Single POS Counter";
-    } catch {
-      return "Single POS Counter";
-    }
+    return safeTranslate(t, "nav.feeCollection", "Single POS Counter");
   }
 
   if (pathname === "/fees/bulk") {
-    try {
-      return t("nav.bulkFeeCollection") || "Bulk Class Fee Entry";
-    } catch {
-      return "Bulk Class Fee Entry";
-    }
+    return safeTranslate(t, "nav.bulkFeeCollection", "Bulk Class Fee Entry");
+  }
+
+  if (pathname === "/fees/collectors") {
+    return safeTranslate(t, "nav.feeCollectors", "Fee Collectors");
+  }
+
+  if (pathname === "/accounting/deposits") {
+    return safeTranslate(t, "nav.deposits", "Cash Deposits");
   }
 
   if (pathname === "/accounting/fee-heads") {
-    try {
-      return t("nav.feeHeadMappings") || "Fee Head Accounting";
-    } catch {
-      return "Fee Head Accounting";
-    }
+    return safeTranslate(t, "nav.feeHeadMappings", "Fee Head Accounting");
   }
 
   if (pathname.startsWith("/exams/results")) {
-    try {
-      return t("nav.examResults") || "Exam Results";
-    } catch {
-      return "Exam Results";
-    }
+    return safeTranslate(t, "nav.examResults", "Exam Results");
   }
 
   if (pathname.startsWith("/exams/") && pathname !== "/exams") {
-    try {
-      return t("exams.editExam") || "Edit Exam";
-    } catch {
-      return "Edit Exam";
-    }
+    return safeTranslate(t, "exams.editExam", "Edit Exam");
   }
 
   if (pathname.startsWith("/promotions/rules")) {
-    try {
-      return t("nav.promotionRules") || "Promotion Rules";
-    } catch {
-      return "Promotion Rules";
-    }
+    return safeTranslate(t, "nav.promotionRules", "Promotion Rules");
   }
 
   if (pathname.startsWith("/promotions/calculate")) {
-    try {
-      return t("nav.promotions") || "Promotions";
-    } catch {
-      return "Promotions";
-    }
+    return safeTranslate(t, "nav.promotions", "Promotions");
   }
 
   if (pathname.startsWith("/reports/")) {
@@ -147,11 +88,7 @@ export function getPageTitle(pathname: string, t: any): string {
       const formatted = reportType.charAt(0).toUpperCase() + reportType.slice(1);
       return `${formatted} Report`;
     }
-    try {
-      return t("nav.reports") || "Reports";
-    } catch {
-      return "Reports";
-    }
+    return safeTranslate(t, "nav.reports", "Reports");
   }
 
   const segment = pathname.split("/").filter(Boolean)[0];
@@ -187,23 +124,15 @@ export function getPageTitle(pathname: string, t: any): string {
   };
 
   if (segment && keyMap[segment]) {
-    try {
-      const translated = t(keyMap[segment]);
-      if (translated) return translated;
-    } catch {
-      // Fallback below
-    }
+    const translated = safeTranslate(t, keyMap[segment], "");
+    if (translated) return translated;
   }
 
   if (segment) {
     return segment.charAt(0).toUpperCase() + segment.slice(1);
   }
 
-  try {
-    return t("nav.dashboard") || "Dashboard";
-  } catch {
-    return "Dashboard";
-  }
+  return safeTranslate(t, "nav.dashboard", "Dashboard");
 }
 
 export function PageTitleUpdater() {
@@ -212,7 +141,7 @@ export function PageTitleUpdater() {
 
   useEffect(() => {
     try {
-      const pageTitle = getPageTitle(pathname, t);
+      const pageTitle = getPageTitle(pathname, t as Translator);
       document.title = `${pageTitle} | Pathshala Pro`;
     } catch {
       document.title = "Pathshala Pro - School Management ERP";

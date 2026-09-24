@@ -21,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
 import { usePDFExport } from "@/hooks/use-pdf-export";
+import { useClasses, useSections } from "@/hooks/use-queries";
+import { collectAllReportRows } from "@/lib/report-pagination";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
@@ -63,10 +65,13 @@ interface ExamReportData {
   classWise: { className: string; averagePercentage: number }[];
   failedStudents: ExamResult[];
   results: ExamResult[];
+  failedStudentsTruncated?: boolean;
+  pagination?: { page: number; pageSize: number; totalCount: number };
 }
 
 export default function ExamReportPage() {
   const tExam = useTranslations("reports.examReport");
+  const tCommon = useTranslations("reports.common");
   const { settings } = useTenantSettings();
   const { formatDateTime } = useTenantFormatting();
   const { exportExamReport } = useExcelExport({
@@ -100,6 +105,18 @@ export default function ExamReportPage() {
     []
   );
   const [failedStudents, setFailedStudents] = useState<ExamResult[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Populate the class/section dropdowns — previously rendered empty because no
+  // report page supplied them, so the filters could never affect the query.
+  const { data: classes = [] } = useClasses({ isActive: true, limit: 200 });
+  const hasSpecificClass = Boolean(filters.classId) && filters.classId !== "all";
+  const { data: sections = [] } = useSections(
+    { classId: hasSpecificClass ? filters.classId : undefined, limit: 200 },
+    { enabled: hasSpecificClass }
+  );
 
   const schoolInfo = {
     name: settings.name || "Pathshala Pro School",
@@ -113,25 +130,47 @@ export default function ExamReportPage() {
     to: filters.toDate || tExam("present"),
   };
   const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
+
+  // Resolve names so the applied-filter chips read "Class: Grade 9" rather than
+  // echoing back a raw UUID.
+  const classLabelById = new Map(classes.map((c: any) => [c.id, c.name as string]));
+  const sectionLabelById = new Map(sections.map((s: any) => [s.id, s.name as string]));
   const appliedFilters = [
-    filters.classId && filters.classId !== "all" ? { label: tExam("className"), value: filters.classId } : null,
+    hasSpecificClass
+      ? {
+          label: tExam("className"),
+          value: classLabelById.get(filters.classId as string) ?? (filters.classId as string),
+        }
+      : null,
     filters.sectionId && filters.sectionId !== "all"
-      ? { label: tExam("section"), value: filters.sectionId }
+      ? {
+          label: tExam("section"),
+          value: sectionLabelById.get(filters.sectionId) ?? filters.sectionId,
+        }
       : null,
     filters.examType && filters.examType !== "all"
       ? { label: tExam("examType"), value: filters.examType }
       : null,
   ].filter((value): value is { label: string; value: string } => Boolean(value));
 
-  const handleGenerateReport = async () => {
+  // Single source for the filter query string, shared by the paged fetch and the
+  // export fetch so the two can never diverge.
+  const buildBaseParams = () => {
+    const params = new URLSearchParams();
+    if (filters.fromDate) params.set("fromDate", filters.fromDate);
+    if (filters.toDate) params.set("toDate", filters.toDate);
+    if (filters.classId && filters.classId !== "all") params.set("classId", filters.classId);
+    if (filters.sectionId && filters.sectionId !== "all") params.set("sectionId", filters.sectionId);
+    if (filters.examType && filters.examType !== "all") params.set("examType", filters.examType);
+    return params;
+  };
+
+  const runReport = async (targetPage: number, targetPageSize: number) => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filters.fromDate) params.set("fromDate", filters.fromDate);
-      if (filters.toDate) params.set("toDate", filters.toDate);
-      if (filters.classId && filters.classId !== "all") params.set("classId", filters.classId);
-      if (filters.sectionId && filters.sectionId !== "all") params.set("sectionId", filters.sectionId);
-      if (filters.examType && filters.examType !== "all") params.set("examType", filters.examType);
+      const params = buildBaseParams();
+      params.set("page", String(targetPage));
+      params.set("pageSize", String(targetPageSize));
 
       const response = await api.get<ExamReportData>(`/api/reports/exams?${params.toString()}`);
       const reportData = (response as ApiSuccessResponse<ExamReportData>).data;
@@ -142,6 +181,9 @@ export default function ExamReportPage() {
       setSubjectWiseData(reportData.subjectWise || []);
       setClassWiseData(reportData.classWise || []);
       setFailedStudents(reportData.failedStudents || []);
+      setTotalCount(reportData.pagination?.totalCount ?? reportData.results?.length ?? 0);
+      setPage(targetPage);
+      setPageSize(targetPageSize);
       setHasGenerated(true);
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
@@ -150,6 +192,37 @@ export default function ExamReportPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * Exports must cover the whole filtered set, not the visible page.
+   */
+  const fetchAllResultsForExport = async () => {
+    const base = buildBaseParams();
+    return collectAllReportRows<ExamResult>(async (p, ps) => {
+      const params = new URLSearchParams(base);
+      params.set("page", String(p));
+      params.set("pageSize", String(ps));
+      const response = await api.get<ExamReportData>(`/api/reports/exams?${params.toString()}`);
+      const payload = (response as ApiSuccessResponse<ExamReportData>).data;
+      return {
+        rows: payload.results ?? [],
+        totalCount: payload.pagination?.totalCount ?? payload.results?.length ?? 0,
+      };
+    });
+  };
+
+  // A new filter set always restarts at page 1.
+  const handleGenerateReport = () => runReport(1, pageSize);
+
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || isLoading) return;
+    void runReport(nextPage, pageSize);
+  };
+
+  const handlePageSizeChange = (nextSize: number) => {
+    if (nextSize === pageSize || isLoading) return;
+    void runReport(1, nextSize);
   };
 
   const handleReset = () => {
@@ -168,12 +241,15 @@ export default function ExamReportPage() {
     setFailedStudents([]);
     setHasGenerated(false);
     setGeneratedAt("");
+    setPage(1);
+    setTotalCount(0);
   };
 
   const handleExportExcel = async () => {
-    const result = await exportExamReport(data, dateRange);
+    const { rows, truncated } = await fetchAllResultsForExport();
+    const result = await exportExamReport(rows, dateRange);
     if (result.success) {
-      toast.success(tExam("exported"));
+      toast.success(truncated ? tCommon("exportTruncated") : tExam("exported"));
       return;
     }
     toast.error(tExam("exportFailed"));
@@ -182,6 +258,7 @@ export default function ExamReportPage() {
   const handleExportPdf = async () => {
     if (!metrics) return;
 
+    const { rows, truncated } = await fetchAllResultsForExport();
     const result = await exportExamReportPDF({
       school: schoolInfo,
       dateRangeLabel,
@@ -193,7 +270,7 @@ export default function ExamReportPage() {
         averageMarks: `${metrics.averageMarks}%`,
         topPerformers: String(metrics.topPerformers),
       },
-      records: data.map((row) => ({
+      records: rows.map((row) => ({
         rollNumber: row.rollNumber,
         studentName: row.studentName,
         className: row.className,
@@ -208,7 +285,7 @@ export default function ExamReportPage() {
     });
 
     if (result.success) {
-      toast.success(tExam("exported"));
+      toast.success(truncated ? tCommon("exportTruncated") : tExam("exported"));
       return;
     }
     toast.error(tExam("exportFailed"));
@@ -339,6 +416,8 @@ export default function ExamReportPage() {
             showClassFilter
             showSectionFilter
             showExamTypeFilter
+            classes={classes.map((c: any) => ({ id: c.id, name: c.name }))}
+            sections={sections.map((s: any) => ({ id: s.id, name: s.name }))}
             exportComponent={<ExportDropdown onExport={handleExport} disabled={data.length === 0} />}
           />
         }
@@ -347,7 +426,7 @@ export default function ExamReportPage() {
             <ReportSummaryBar
               dateRangeLabel={dateRangeLabel}
               generatedAtLabel={generatedAt}
-              recordCount={data.length}
+              recordCount={totalCount}
               appliedFilters={appliedFilters}
             />
           ) : undefined
@@ -375,7 +454,7 @@ export default function ExamReportPage() {
           ) : undefined
         }
         insights={
-          data.length > 0 ? (
+          totalCount > 0 ? (
             <div className="space-y-6">
               <div className="grid gap-6 lg:grid-cols-2">
                 <PieChart
@@ -450,7 +529,7 @@ export default function ExamReportPage() {
         }
         table={
           hasGenerated || isLoading ? (
-            data.length > 0 || isLoading ? (
+            totalCount > 0 || isLoading ? (
               <ReportTable
                 title={tExam("reportDetailsTitle")}
                 description={tExam("reportDetailsDescription")}
@@ -458,6 +537,11 @@ export default function ExamReportPage() {
                 data={data}
                 isLoading={isLoading}
                 showExport={false}
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
               />
             ) : (
               <ReportEmptyState

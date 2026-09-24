@@ -12,11 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { ERPDataTable } from "@/components/ui/erp-data-table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { useAcademicYearContext } from "@/components/providers/academic-year-provider";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/tenant-settings";
+import { getMethodPostingRules, resolveTenantMethod } from "@/lib/payment-method-routing";
 import Link from "next/link";
 import {
   Users,
@@ -32,14 +34,15 @@ import {
   Search,
   X,
   AlertTriangle,
+  AlertCircle,
   Settings,
 } from "lucide-react";
 
 import { ACADEMIC_MONTHS, MONTH_NAMES, SHORT_MONTH_NAMES } from "@/lib/constants";
 import { addCurrency, applyPercentage, roundCurrency } from "@/lib/math-utils";
-import { fuzzyFilter } from "@/lib/utils";
+import { fuzzyFilter, cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions, FEE_DESK_TIER } from "@/lib/permissions";
 
 interface StudentRowState {
   id: string;
@@ -79,6 +82,11 @@ export default function BulkFeeEntryPage() {
   const canReadFees = hasPermission(perms, "fees", "read");
   const canWriteFees = hasPermission(perms, "fees", "write");
   const canManageFees = hasPermission(perms, "fees", "manage");
+  // The bulk desk is its own capability: batch posting a whole class is not the
+  // same authority as working the counter. Server-side gate is the same tier.
+  const canViewBulkDesk = hasPermission(perms, FEE_DESK_TIER.bulk, "read");
+  const canCollectBulk = hasPermission(perms, FEE_DESK_TIER.bulk, "write");
+  const canViewPosDesk = hasPermission(perms, FEE_DESK_TIER.pos, "read");
 
   // 1. Academic Years (global academic year selection)
   const {
@@ -103,6 +111,8 @@ export default function BulkFeeEntryPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(new Date().getMonth());
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
+  const [paymentReference, setPaymentReference] = useState<string>("" );
+  const [chequeNumber, setChequeNumber] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const selectedClass = classes.find((c: any) => c.id === selectedClassId);
@@ -128,7 +138,7 @@ export default function BulkFeeEntryPage() {
   const rawStudents = (studentsData as any)?.data || EMPTY_ARRAY;
 
   // 4. Query Class Fee Structure for selected class
-  const { data: structureData } = useQuery({
+  const { data: structureData, isLoading: isLoadingStructure } = useQuery({
     queryKey: ["class-fee-structures", "bulk", selectedClassId, activeYearId],
     queryFn: async () => {
       if (!selectedClassId) return null;
@@ -143,6 +153,7 @@ export default function BulkFeeEntryPage() {
     enabled: !!selectedClassId,
   });
 
+  const isCheckingStructure = !!selectedClassId && isLoadingStructure;
   const classStandardMonthlyFee =
     structureData?.totalMonthlyFee || structureData?.tuitionFee || 0;
   const hasClassFeeStructure = !!structureData && classStandardMonthlyFee > 0;
@@ -184,11 +195,13 @@ export default function BulkFeeEntryPage() {
   const [userAmounts, setUserAmounts] = useState<Record<string, number>>({});
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
 
-  // Reset local edits when class, section or month filter changes
+  // Reset local edits when class, section, month, or payment method changes
   useEffect(() => {
     setUserAmounts({});
     setSelectedIds({});
-  }, [selectedClassId, selectedSectionId, selectedMonthIndex]);
+    setPaymentReference("");
+    setChequeNumber("");
+  }, [selectedClassId, selectedSectionId, selectedMonthIndex, paymentMethod]);
 
   // Derived 12-Month Roster in useMemo
   const roster: StudentRowState[] = useMemo(() => {
@@ -611,6 +624,20 @@ export default function BulkFeeEntryPage() {
       return;
     }
 
+    // Client-side pre-flight validation before sending API request
+    if (postingRules.isCheque && !chequeNumber.trim()) {
+      toast.error(t("chequeNumberRequired"));
+      return;
+    }
+    if (postingRules.requiresReference && !paymentReference.trim()) {
+      toast.error(
+        t("referenceRequired", {
+          method: paymentMethod,
+        })
+      );
+      return;
+    }
+
     const payload = {
       academicYearId: activeYearId,
       classId: selectedClassId,
@@ -624,6 +651,8 @@ export default function BulkFeeEntryPage() {
         amountPaid: Number(r.amountToPay) || 0,
         feeVoucherId: r.existingVoucherId || undefined,
         note: `Bulk Class Payment for ${currentMonthName} (${paymentMethod})`,
+        reference: paymentReference.trim() || undefined,
+        chequeNumber: chequeNumber.trim() || undefined,
       })),
     };
 
@@ -636,6 +665,19 @@ export default function BulkFeeEntryPage() {
       : DEFAULT_PAYMENT_METHODS;
     return list.filter((m) => m.isActive);
   }, [settings.paymentMethods]);
+
+  const postingRules = useMemo(() => {
+    const customMethod = resolveTenantMethod(configuredMethods, paymentMethod);
+    const rules = getMethodPostingRules(customMethod, paymentMethod);
+    const ONLINE_CODES = ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"];
+    return {
+      isCheque: rules.isCheque,
+      requiresReference: rules.requiresReference || ONLINE_CODES.includes(paymentMethod),
+    };
+  }, [configuredMethods, paymentMethod]);
+
+  const isReferenceEmpty = postingRules.requiresReference && !paymentReference.trim();
+  const isChequeEmpty = postingRules.isCheque && !chequeNumber.trim();
 
   const paymentModes = useMemo(() => {
     return configuredMethods.map((m) => {
@@ -661,7 +703,7 @@ export default function BulkFeeEntryPage() {
         description={t("description")}
         icon={Users}
       >
-        {canWriteFees && (
+        {canViewPosDesk && (
           <Button
             variant="outline"
             size="sm"
@@ -674,7 +716,7 @@ export default function BulkFeeEntryPage() {
         )}
       </PageHeader>
 
-      {!isAuthLoading && !canReadFees ? (
+      {!isAuthLoading && !canViewBulkDesk ? (
         <div className="rounded-lg border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">{tCommon("accessRestricted")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{tCommon("noPermission")}</p>
@@ -739,12 +781,74 @@ export default function BulkFeeEntryPage() {
                 options={paymentModes.map((m) => ({ value: m.id, label: m.label }))}
               />
             </div>
+
+            {/* External Reference */}
+            {postingRules.requiresReference && (
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold flex items-center justify-between">
+                  <span className={cn(isReferenceEmpty ? "text-destructive font-bold" : "text-foreground")}>
+                    {t("paymentReference")} <span className="text-destructive font-bold">*</span>
+                  </span>
+                  <span className={cn("text-[10px] font-medium flex items-center gap-1", isReferenceEmpty ? "text-destructive font-semibold" : "text-muted-foreground font-normal")}>
+                    {isReferenceEmpty && <AlertCircle className="h-3 w-3 text-destructive shrink-0" />}
+                    {t("referenceRequired", { method: paymentMethod })}
+                  </span>
+                </Label>
+                <Input
+                  type="text"
+                  placeholder={t("paymentReferencePlaceholder")}
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  className={cn(
+                    "h-9 text-sm font-mono transition-colors",
+                    isReferenceEmpty && "border-destructive focus-visible:ring-destructive bg-destructive/5 text-destructive placeholder:text-destructive/50"
+                  )}
+                />
+                {isReferenceEmpty && (
+                  <p className="text-[11px] text-destructive font-medium flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    {t("referenceRequired", { method: paymentMethod })}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Cheque Number */}
+            {postingRules.isCheque && (
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold flex items-center justify-between">
+                  <span className={cn(isChequeEmpty ? "text-destructive font-bold" : "text-foreground")}>
+                    {t("chequeNumber")} <span className="text-destructive font-bold">*</span>
+                  </span>
+                  <span className={cn("text-[10px] font-medium flex items-center gap-1", isChequeEmpty ? "text-destructive font-semibold" : "text-muted-foreground font-normal")}>
+                    {isChequeEmpty && <AlertCircle className="h-3 w-3 text-destructive shrink-0" />}
+                    {t("chequeNumberRequired")}
+                  </span>
+                </Label>
+                <Input
+                  type="text"
+                  placeholder={t("chequeNumberPlaceholder")}
+                  value={chequeNumber}
+                  onChange={(e) => setChequeNumber(e.target.value)}
+                  className={cn(
+                    "h-9 text-sm font-mono transition-colors",
+                    isChequeEmpty && "border-destructive focus-visible:ring-destructive bg-destructive/5 text-destructive placeholder:text-destructive/50"
+                  )}
+                />
+                {isChequeEmpty && (
+                  <p className="text-[11px] text-destructive font-medium flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    {t("chequeNumberRequired")}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Missing Fee Structure Warning Banner */}
-      {selectedClassId && !hasClassFeeStructure && (
+      {/* Missing Fee Structure Warning Banner - only shown after API fetch finishes */}
+      {selectedClassId && !isCheckingStructure && !hasClassFeeStructure && (
         <div className="p-3.5 rounded-lg border border-amber-300/80 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -777,12 +881,21 @@ export default function BulkFeeEntryPage() {
             <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
               {t("classMonthlyRate")}
             </p>
-            <p className="text-base font-bold text-emerald-600 font-mono mt-0.5">
-              {formatCurrency(classStandardMonthlyFee)} {t("perMonth")}
-            </p>
-            <p className="text-[10px] text-muted-foreground font-mono">
-              {t("total12Month", { amount: formatCurrency(roundCurrency(classStandardMonthlyFee * 12)) })}
-            </p>
+            {isCheckingStructure ? (
+              <div className="py-1 space-y-1">
+                <Skeleton className="h-5 w-24 mx-auto" />
+                <Skeleton className="h-3 w-16 mx-auto" />
+              </div>
+            ) : (
+              <>
+                <p className="text-base font-bold text-emerald-600 font-mono mt-0.5">
+                  {formatCurrency(classStandardMonthlyFee)} {t("perMonth")}
+                </p>
+                <p className="text-[10px] text-muted-foreground font-mono">
+                  {t("total12Month", { amount: formatCurrency(roundCurrency(classStandardMonthlyFee * 12)) })}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -948,7 +1061,7 @@ export default function BulkFeeEntryPage() {
           >
             {t("cancel")}
           </Button>
-          {canWriteFees && (
+          {canCollectBulk && (
             <Button
               onClick={handleSubmitBulk}
               disabled={

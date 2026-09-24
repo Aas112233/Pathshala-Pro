@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { requireApiAccess } from "@/lib/api-auth";
-import { handleApiError, successResponse } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { addCurrency } from "@/lib/math-utils";
+import { hasDateBounds, normalizeDateRange } from "@/lib/date-range-filter";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,17 +24,11 @@ export async function GET(request: NextRequest) {
       tenantId: user.tenantId,
     };
 
-    if (fromDate || toDate) {
-      const createdAt: Prisma.DateTimeFilter = {};
-      if (fromDate) {
-        createdAt.gte = new Date(fromDate);
-      }
-      if (toDate) {
-        // End-of-day inclusive, matching the statements route's range
-        // semantics; UTC-midnight lte silently dropped the final day.
-        createdAt.lte = new Date(`${toDate}T23:59:59.999Z`);
-      }
-      whereClause.createdAt = createdAt;
+    // normalizeDateRange keeps the end bound inclusive (T23:59:59.999Z); a bare
+    // `new Date(toDate)` is UTC midnight and silently drops the final day.
+    const createdAtRange = normalizeDateRange(fromDate, toDate);
+    if (hasDateBounds(createdAtRange)) {
+      whereClause.createdAt = createdAtRange;
     }
 
     if (status && status !== "all") {

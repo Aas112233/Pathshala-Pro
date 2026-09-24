@@ -196,7 +196,7 @@ export default function ExamResultsPage() {
       ? classes.filter((c: any) => eligible.includes(c.id))
       : classes;
     return [
-      { value: "", label: t("filterAllClasses") || "All Classes" },
+      { value: "", label: t("filterAllClasses") },
       ...visible.map((c: any) => ({
         value: c.id,
         label: c.name,
@@ -822,7 +822,7 @@ export default function ExamResultsPage() {
     },
     {
       accessorKey: "studentProfile.class.name",
-      header: t("className") || "Class",
+      header: t("className"),
       cell: ({ row }) => {
         const className = row.original.studentProfile?.class?.name;
         return (
@@ -1005,11 +1005,11 @@ export default function ExamResultsPage() {
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="ledger" className="gap-2">
               <ClipboardCheck className="h-4 w-4" />
-              {t("resultsLedger") || "Results Ledger"}
+              {t("resultsLedger")}
             </TabsTrigger>
             <TabsTrigger value="gradebook" className="gap-2">
               <Trophy className="h-4 w-4 text-amber-500" />
-              {t("classGradebook") || "Class Gradebook & Batch Cards"}
+              {t("classGradebook")}
             </TabsTrigger>
           </TabsList>
 
@@ -1045,7 +1045,7 @@ export default function ExamResultsPage() {
                       setFilterSubject("");
                     }}
                     options={listClassFilterOptions}
-                    placeholder={t("filterAllClasses") || "All Classes"}
+                    placeholder={t("filterAllClasses")}
                     searchable
                   />
                 </div>

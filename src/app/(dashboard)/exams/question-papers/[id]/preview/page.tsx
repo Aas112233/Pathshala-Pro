@@ -142,7 +142,7 @@ export default function QuestionPaperPreviewPage() {
                   className="gap-1.5 text-xs font-semibold"
                 >
                   <Edit3 className="h-3.5 w-3.5" />
-                  {t("common.edit") || "সম্পাদনা"}
+                  {t("common.edit")}
                 </Button>
               </Link>
             )}
@@ -170,7 +170,7 @@ export default function QuestionPaperPreviewPage() {
 
             <Button onClick={handlePrint} size="sm" className="gap-2 font-bold shadow-md">
               <Printer className="h-4 w-4" />
-              {t("questionPapers.print.printButton") || "প্রিন্ট"}
+              {t("questionPapers.print.printButton")}
             </Button>
           </div>
         </div>

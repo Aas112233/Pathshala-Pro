@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ArrowRightLeft, Loader2 } from "lucide-react";
 import { useCreateDeposit } from "@/hooks/use-queries";
 import { useTranslations } from "next-intl";
+import { GL_CODES } from "@/lib/constants";
 
 interface RecordDepositSheetProps {
   isOpen: boolean;
@@ -22,21 +23,50 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
   const tCommon = useTranslations("common");
   const createDeposit = useCreateDeposit();
 
-  const linked = (accounts || []).filter((a: any) => a.accountCode);
-  const [fromCode, setFromCode] = useState("1020");
-  const [toCode, setToCode] = useState("");
+  // Map bank accounts to options, ensuring each has an account code (defaulting to GL_CODES.BANK if unlinked)
+  const rawBankOptions = (accounts || []).map((a: any) => {
+    const code = a.accountCode ? String(a.accountCode) : GL_CODES.BANK;
+    const details = [a.bankName, a.accountNumber ? `••••${String(a.accountNumber).slice(-4)}` : ""].filter(Boolean).join(" - ");
+    return {
+      value: code,
+      label: `${a.accountName || t("toAccount")}${details ? ` (${details})` : ""} [${code}]`,
+    };
+  });
+
+  // Always ensure the standard Main Bank Account is available as an option
+  const hasBank = rawBankOptions.some((o: { value: string }) => o.value === GL_CODES.BANK);
+  const allBankOptions = hasBank
+    ? rawBankOptions
+    : [{ value: GL_CODES.BANK, label: `${t("toAccount")} - Main Bank (${GL_CODES.BANK})` }, ...rawBankOptions];
+
+  // De-duplicate by GL code
+  const uniqueBankOptions: { value: string; label: string }[] = allBankOptions.filter(
+    (item: { value: string }, index: number, self: { value: string }[]) =>
+      index === self.findIndex((o) => o.value === item.value)
+  );
+
+  const [fromCode, setFromCode] = useState<string>(GL_CODES.CASH);
+  const [toCode, setToCode] = useState(uniqueBankOptions[0]?.value || GL_CODES.BANK);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [bankReference, setBankReference] = useState("");
+  const [receiptRefs, setReceiptRefs] = useState("");
 
-  const toOptions = linked.map((a: any) => ({
-    value: String(a.accountCode),
-    label: `${a.accountName} (${a.accountCode})`,
-  }));
+  const fromOptions = [
+    { value: GL_CODES.CASH, label: `${t("fromAccount")} (${GL_CODES.CASH})` },
+    ...uniqueBankOptions.filter((o) => o.value !== GL_CODES.CASH && o.value !== toCode),
+  ];
+  const toOptions = uniqueBankOptions.filter((o) => o.value !== fromCode);
 
   const handleSubmit = async () => {
     const amt = parseFloat(amount);
+    const from = fromCode || GL_CODES.CASH;
     if (!toCode) {
       toast.error(t("selectDestination"));
+      return;
+    }
+    if (from === toCode) {
+      toast.error(t("sameAccount"));
       return;
     }
     if (!Number.isFinite(amt) || amt <= 0) {
@@ -44,11 +74,20 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
       return;
     }
     try {
-      await createDeposit.mutateAsync({ fromCode: fromCode || "1020", toCode, amount: amt, note: note || undefined });
+      await createDeposit.mutateAsync({
+        fromCode: from,
+        toCode,
+        amount: amt,
+        note: note || undefined,
+        bankReference: bankReference.trim() || undefined,
+        receiptRefs: receiptRefs.trim() || undefined,
+      });
       toast.success(t("depositRecorded"));
       setToCode("");
       setAmount("");
       setNote("");
+      setBankReference("");
+      setReceiptRefs("");
       onClose();
     } catch (err: any) {
       toast.error(err?.message || t("depositFailed"));
@@ -82,30 +121,22 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
         <ERPFormSection title={t("transferTitle")} description={t("transferDescription")}>
           <ERPFormGrid cols={2}>
             <ERPFormField label={t("fromAccount")} required>
-              <Input
+              <AppDropdown
+                options={fromOptions}
                 value={fromCode}
-                onChange={(e) => setFromCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-                className="h-10 font-mono"
-                placeholder="1020"
+                onChange={(v) => setFromCode(String(v))}
+                placeholder={t("selectSource")}
+                searchable
               />
             </ERPFormField>
             <ERPFormField label={t("toAccount")} required>
-              {toOptions.length > 0 ? (
-                <AppDropdown
-                  options={toOptions}
-                  value={toCode}
-                  onChange={(v) => setToCode(String(v))}
-                  placeholder={t("selectDestination")}
-                  searchable
-                />
-              ) : (
-                <Input
-                  value={toCode}
-                  onChange={(e) => setToCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-                  className="h-10 font-mono"
-                  placeholder={t("toAccountPlaceholder")}
-                />
-              )}
+              <AppDropdown
+                options={toOptions}
+                value={toCode}
+                onChange={(v) => setToCode(String(v))}
+                placeholder={t("selectDestination")}
+                searchable
+              />
             </ERPFormField>
             <ERPFormField label={t("amount")} required>
               <Input
@@ -123,6 +154,22 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
                 onChange={(e) => setNote(e.target.value)}
                 className="h-10"
                 placeholder={t("notePlaceholder")}
+              />
+            </ERPFormField>
+            <ERPFormField label={t("bankReference")}>
+              <Input
+                value={bankReference}
+                onChange={(e) => setBankReference(e.target.value.slice(0, 100))}
+                className="h-10 font-mono"
+                placeholder={t("bankReferencePlaceholder")}
+              />
+            </ERPFormField>
+            <ERPFormField label={t("receiptRefs")}>
+              <Input
+                value={receiptRefs}
+                onChange={(e) => setReceiptRefs(e.target.value.slice(0, 1000))}
+                className="h-10 font-mono"
+                placeholder={t("receiptRefsPlaceholder")}
               />
             </ERPFormField>
           </ERPFormGrid>

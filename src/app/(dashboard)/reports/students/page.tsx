@@ -21,6 +21,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
 import { usePDFExport } from "@/hooks/use-pdf-export";
+import { useClasses, useSections } from "@/hooks/use-queries";
+import { collectAllReportRows } from "@/lib/report-pagination";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import { toast } from "sonner";
@@ -56,10 +58,12 @@ interface StudentReportData {
   classWise: { className: string; count: number }[];
   admissionTrend: { month: string; count: number }[];
   students: StudentRecord[];
+  pagination?: { page: number; pageSize: number; totalCount: number };
 }
 
 export default function StudentReportPage() {
   const tStudent = useTranslations("reports.studentReport");
+  const tCommon = useTranslations("reports.common");
   const { settings } = useTenantSettings();
   const { formatDateTime } = useTenantFormatting();
   const { exportStudentReport } = useExcelExport({
@@ -88,6 +92,18 @@ export default function StudentReportPage() {
   const [admissionTrendData, setAdmissionTrendData] = useState<{ month: string; count: number }[]>(
     []
   );
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Populate the class/section dropdowns — previously rendered empty because no
+  // report page supplied them.
+  const { data: classes = [] } = useClasses({ isActive: true, limit: 200 });
+  const hasSpecificClass = Boolean(filters.classId) && filters.classId !== "all";
+  const { data: sections = [] } = useSections(
+    { classId: hasSpecificClass ? filters.classId : undefined, limit: 200 },
+    { enabled: hasSpecificClass }
+  );
 
   const schoolInfo = {
     name: settings.name || "Pathshala Pro School",
@@ -101,23 +117,45 @@ export default function StudentReportPage() {
     to: filters.toDate || tStudent("present"),
   };
   const dateRangeLabel = `${dateRange.from} to ${dateRange.to}`;
+
+  // Resolve names so the applied-filter chips read "Class: Grade 9" rather than
+  // echoing back a raw UUID.
+  const classLabelById = new Map(classes.map((c: any) => [c.id, c.name as string]));
+  const sectionLabelById = new Map(sections.map((s: any) => [s.id, s.name as string]));
   const appliedFilters = [
-    filters.classId && filters.classId !== "all" ? { label: tStudent("class"), value: filters.classId } : null,
+    hasSpecificClass
+      ? {
+          label: tStudent("class"),
+          value: classLabelById.get(filters.classId as string) ?? (filters.classId as string),
+        }
+      : null,
     filters.sectionId && filters.sectionId !== "all"
-      ? { label: tStudent("section"), value: filters.sectionId }
+      ? {
+          label: tStudent("section"),
+          value: sectionLabelById.get(filters.sectionId) ?? filters.sectionId,
+        }
       : null,
     filters.status && filters.status !== "all" ? { label: tStudent("status"), value: filters.status } : null,
   ].filter((value): value is { label: string; value: string } => Boolean(value));
 
-  const handleGenerateReport = async () => {
+  // Single source for the filter query string, shared by the paged fetch and the
+  // export fetch so the two can never diverge.
+  const buildBaseParams = () => {
+    const params = new URLSearchParams();
+    if (filters.fromDate) params.set("fromDate", filters.fromDate);
+    if (filters.toDate) params.set("toDate", filters.toDate);
+    if (filters.classId && filters.classId !== "all") params.set("classId", filters.classId);
+    if (filters.sectionId && filters.sectionId !== "all") params.set("sectionId", filters.sectionId);
+    if (filters.status && filters.status !== "all") params.set("status", filters.status);
+    return params;
+  };
+
+  const runReport = async (targetPage: number, targetPageSize: number) => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filters.fromDate) params.set("fromDate", filters.fromDate);
-      if (filters.toDate) params.set("toDate", filters.toDate);
-      if (filters.classId && filters.classId !== "all") params.set("classId", filters.classId);
-      if (filters.sectionId && filters.sectionId !== "all") params.set("sectionId", filters.sectionId);
-      if (filters.status && filters.status !== "all") params.set("status", filters.status);
+      const params = buildBaseParams();
+      params.set("page", String(targetPage));
+      params.set("pageSize", String(targetPageSize));
 
       const response = await api.get<StudentReportData>(`/api/reports/students?${params.toString()}`);
       const reportData = (response as ApiSuccessResponse<StudentReportData>).data;
@@ -127,6 +165,9 @@ export default function StudentReportPage() {
       setGenderData(reportData.genderDistribution || null);
       setClassWiseData(reportData.classWise || []);
       setAdmissionTrendData(reportData.admissionTrend || []);
+      setTotalCount(reportData.pagination?.totalCount ?? reportData.students?.length ?? 0);
+      setPage(targetPage);
+      setPageSize(targetPageSize);
       setHasGenerated(true);
       setGeneratedAt(formatDateTime(new Date()));
     } catch (error) {
@@ -135,6 +176,37 @@ export default function StudentReportPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * Exports must cover the whole filtered set, not the visible page.
+   */
+  const fetchAllStudentsForExport = async () => {
+    const base = buildBaseParams();
+    return collectAllReportRows<StudentRecord>(async (p, ps) => {
+      const params = new URLSearchParams(base);
+      params.set("page", String(p));
+      params.set("pageSize", String(ps));
+      const response = await api.get<StudentReportData>(`/api/reports/students?${params.toString()}`);
+      const payload = (response as ApiSuccessResponse<StudentReportData>).data;
+      return {
+        rows: payload.students ?? [],
+        totalCount: payload.pagination?.totalCount ?? payload.students?.length ?? 0,
+      };
+    });
+  };
+
+  // A new filter set always restarts at page 1.
+  const handleGenerateReport = () => runReport(1, pageSize);
+
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || isLoading) return;
+    void runReport(nextPage, pageSize);
+  };
+
+  const handlePageSizeChange = (nextSize: number) => {
+    if (nextSize === pageSize || isLoading) return;
+    void runReport(1, nextSize);
   };
 
   const handleReset = () => {
@@ -152,12 +224,15 @@ export default function StudentReportPage() {
     setAdmissionTrendData([]);
     setHasGenerated(false);
     setGeneratedAt("");
+    setPage(1);
+    setTotalCount(0);
   };
 
   const handleExportExcel = async () => {
-    const result = await exportStudentReport(data, dateRange);
+    const { rows, truncated } = await fetchAllStudentsForExport();
+    const result = await exportStudentReport(rows, dateRange);
     if (result.success) {
-      toast.success(tStudent("exported"));
+      toast.success(truncated ? tCommon("exportTruncated") : tStudent("exported"));
       return;
     }
     toast.error(tStudent("exportFailed"));
@@ -166,17 +241,18 @@ export default function StudentReportPage() {
   const handleExportPdf = async () => {
     if (!metrics) return;
 
+    const { rows, truncated } = await fetchAllStudentsForExport();
     const result = await exportStudentReportPDF({
       school: schoolInfo,
       dateRangeLabel,
       generatedAt: generatedAt || formatDateTime(new Date()),
       filters: appliedFilters,
       metrics,
-      records: data as any,
+      records: rows as any,
     });
 
     if (result.success) {
-      toast.success(tStudent("exported"));
+      toast.success(truncated ? tCommon("exportTruncated") : tStudent("exported"));
       return;
     }
     toast.error(tStudent("exportFailed"));
@@ -235,6 +311,8 @@ export default function StudentReportPage() {
             showClassFilter
             showSectionFilter
             showStatusFilter
+            classes={classes.map((c: any) => ({ id: c.id, name: c.name }))}
+            sections={sections.map((s: any) => ({ id: s.id, name: s.name }))}
             statusOptions={[
               { value: "ACTIVE", label: tStudent("active") },
               { value: "INACTIVE", label: tStudent("inactive") },
@@ -249,7 +327,7 @@ export default function StudentReportPage() {
             <ReportSummaryBar
               dateRangeLabel={dateRangeLabel}
               generatedAtLabel={generatedAt}
-              recordCount={data.length}
+              recordCount={totalCount}
               appliedFilters={appliedFilters}
             />
           ) : undefined
@@ -281,7 +359,7 @@ export default function StudentReportPage() {
           ) : undefined
         }
         insights={
-          data.length > 0 ? (
+          totalCount > 0 ? (
             <div className="space-y-6">
               <div className="grid gap-6 lg:grid-cols-2">
                 <PieChart
@@ -318,7 +396,7 @@ export default function StudentReportPage() {
         }
         table={
           hasGenerated || isLoading ? (
-            data.length > 0 || isLoading ? (
+            totalCount > 0 || isLoading ? (
               <ReportTable
                 title={tStudent("studentDetails")}
                 description={tStudent("studentDetailsDescription")}
@@ -326,6 +404,11 @@ export default function StudentReportPage() {
                 data={data}
                 isLoading={isLoading}
                 showExport={false}
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
               />
             ) : (
               <ReportEmptyState

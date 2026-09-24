@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { successResponse, handleApiError } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { Prisma } from "@prisma/client";
+import { GL_CODES } from "@/lib/constants";
 
 const dec = (v: unknown) => new Prisma.Decimal((v as any)?.toString?.() ?? v ?? 0);
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     const { tenantId } = access.authContext;
 
     const { searchParams } = new URL(request.url);
-    const accountCode = searchParams.get("accountCode") || "1010";
+    const accountCode = searchParams.get("accountCode") || GL_CODES.BANK;
 
     const account = await prisma.chartOfAccount.findFirst({
       where: { tenantId, code: accountCode },
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     let subledgerValue = glNet;
     let expected = glNet;
 
-    if (accountCode === "1030") {
+    if (accountCode === GL_CODES.RECEIVABLE) {
       const agg = await prisma.feeVoucher.aggregate({
         where: { tenantId, voidedAt: null, status: { notIn: ["VOID", "VOIDED", "CANCELLED"] } },
         _sum: { balance: true },
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       subledger = "sum(open voucher balance)";
       subledgerValue = dec(agg._sum.balance);
       expected = subledgerValue;
-    } else if (accountCode === "2050") {
+    } else if (accountCode === GL_CODES.WALLET) {
       const agg = await (prisma as any).studentWalletLedger.aggregate({
         where: { tenantId },
         _sum: { amount: true },

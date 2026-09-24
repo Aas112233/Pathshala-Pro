@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
@@ -22,7 +22,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useExpenses, useExpenseCategories, useDeleteExpense } from "@/hooks/use-queries";
-import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
+import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { AddExpenseModal } from "@/components/accounting/add-expense-modal";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -53,6 +53,25 @@ export default function ExpensesPage() {
 
   const { data: categoriesResponse } = useExpenseCategories();
   const categories = (categoriesResponse as any)?.data || [];
+
+  // Method filter follows tenant config so custom methods stay filterable;
+  // legacy translated quartet as fallback.
+  const { settings } = useTenantSettings();
+  const methodFilterOptions = useMemo(() => {
+    const list =
+      settings.paymentMethods && settings.paymentMethods.length > 0
+        ? settings.paymentMethods.filter((m) => m.isActive)
+        : null;
+    if (list && list.length > 0) {
+      return list.map((m) => ({ value: m.code, label: m.name }));
+    }
+    return [
+      { value: "CASH", label: t("accounting.expenses.methodCash") },
+      { value: "BANK", label: t("accounting.expenses.methodBank") },
+      { value: "CHEQUE", label: t("accounting.expenses.methodCheque") },
+      { value: "DIGITAL", label: t("accounting.expenses.methodDigital") },
+    ];
+  }, [settings.paymentMethods, t]);
 
   const deleteExpenseMutation = useDeleteExpense();
 
@@ -244,10 +263,7 @@ export default function ExpensesPage() {
                 onChange={setSelectedPaymentMethod}
                 options={[
                   { value: "", label: t("accounting.expenses.allMethods") },
-                  { value: "CASH", label: t("accounting.expenses.methodCash") },
-                  { value: "BANK", label: t("accounting.expenses.methodBank") },
-                  { value: "CHEQUE", label: t("accounting.expenses.methodCheque") },
-                  { value: "DIGITAL", label: t("accounting.expenses.methodDigital") },
+                  ...methodFilterOptions,
                 ]}
                 placeholder={t("accounting.expenses.allMethods")}
                 triggerClassName="h-9 text-xs"

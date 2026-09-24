@@ -20,7 +20,12 @@ export type Permission =
   // Fees & Finance
   | "fees:read"
   | "fees:invoice:create"
+  /** Umbrella cash-box capability covering both collection desks. */
   | "fees:payment:collect"
+  /** POS counter desk (`/fees/collection`): taking money at the counter. */
+  | "fees:pos:collect"
+  /** Bulk class desk (`/fees/bulk`): batch posting for a whole class/month. */
+  | "fees:bulk:collect"
   | "fees:waiver:approve"
   | "accounting:read"
   | "accounting:journal:post"
@@ -28,6 +33,7 @@ export type Permission =
   // HR & Payroll
   | "payroll:read"
   | "payroll:process"
+  | "payroll:approve"
   | "payroll:disburse"
   // Student & Staff Management
   | "students:read"
@@ -64,48 +70,54 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   PLATFORM_OWNER: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
     "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
-    "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
-    "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
+    "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
+    "accounting:read", "accounting:journal:post",
+    "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
     "portal:student:self", "portal:parent:self", "system:manage", "historical:manage",
   ],
   SUPER_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
     "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
-    "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
-    "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
+    "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
+    "accounting:read", "accounting:journal:post",
+    "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
     "portal:student:self", "portal:parent:self", "system:manage", "historical:manage",
   ],
   SYSTEM_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
     "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
-    "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
-    "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
+    "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
+    "accounting:read", "accounting:journal:post",
+    "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
     "system:manage", "historical:manage",
   ],
   INSTITUTE_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
     "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
-    "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
-    "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
+    "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
+    "accounting:read", "accounting:journal:post",
+    "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
     "system:manage", "historical:manage",
   ],
   ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
     "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
-    "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
-    "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
+    "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
+    "accounting:read", "accounting:journal:post",
+    "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
     "system:manage", "historical:manage",
   ],
   SCHOOL_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
     "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
-    "fees:payment:collect", "fees:waiver:approve", "accounting:read", "accounting:journal:post",
-    "accounting:period:close", "payroll:read", "payroll:process", "payroll:disburse",
+    "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
+    "accounting:read", "accounting:journal:post",
+    "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
     "students:read", "students:manage", "staff:read", "staff:manage", "attendance:read", "attendance:mark", "attendance:manage",
     "system:manage", "historical:manage",
   ],
@@ -122,7 +134,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "fees:read", "accounting:read", "payroll:read",
   ],
   ACCOUNTANT: [
-    "fees:read", "fees:invoice:create", "fees:payment:collect", "accounting:read",
+    "fees:read", "fees:invoice:create", "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect",
+    "accounting:read",
     "accounting:journal:post", "payroll:read", "payroll:process", "payroll:disburse",
     "students:read", "staff:read",
   ],
@@ -135,7 +148,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "academic:read", "exams:read", "exams:marks:write", "students:read", "attendance:read", "attendance:mark",
   ],
   CLERK: [
-    "students:read", "students:manage", "fees:read", "fees:payment:collect", "attendance:read", "attendance:mark",
+    "students:read", "students:manage", "fees:read", "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect",
+    "attendance:read", "attendance:mark",
   ],
   STUDENT: ["portal:student:self"],
   PARENT: ["portal:parent:self"],
@@ -148,6 +162,10 @@ export const ALL_PERMISSION_MODULES = [
   "exams",
   "exam-results",
   "fees",
+  // Desk-level tiers inside the fee module. Split from `fees` so a clerk can
+  // be a bulk-entry operator without being a cashier, and vice versa.
+  "fee-pos",
+  "fee-bulk",
   "transactions",
   "salary",
   "accounting",
@@ -206,13 +224,22 @@ const PERMISSION_MODULE_GRANTS: Record<Permission, ReadonlyArray<[string, Permis
   "academic:promote:execute": [["exams", "manage"], ["academic", "manage"]],
   "fees:read": [["fees", "read"], ["transactions", "read"]],
   "fees:invoice:create": [["fees", "write"]],
-  "fees:payment:collect": [["fees", "write"], ["transactions", "write"]],
+  // The umbrella keeps a role's cash entitlement expressible as one grant.
+  // Per-user desk grants are expressed on the two module tiers below, which
+  // is what the collection routes actually enforce (they are per-user aware;
+  // this role-only list is not, so it can neither grant nor revoke a desk).
+  "fees:payment:collect": [
+    ["fee-pos", "write"], ["fee-bulk", "write"], ["fees", "write"], ["transactions", "write"],
+  ],
+  "fees:pos:collect": [["fee-pos", "write"], ["fees", "write"], ["transactions", "write"]],
+  "fees:bulk:collect": [["fee-bulk", "write"], ["fees", "write"], ["transactions", "write"]],
   "fees:waiver:approve": [["fees", "manage"]],
   "accounting:read": [["accounting", "read"]],
   "accounting:journal:post": [["accounting", "write"]],
   "accounting:period:close": [["accounting", "manage"]],
   "payroll:read": [["salary", "read"]],
   "payroll:process": [["salary", "write"]],
+  "payroll:approve": [["salary", "manage"]],
   "payroll:disburse": [["salary", "manage"]],
   "students:read": [["students", "read"], ["admissions", "read"]],
   "students:manage": [["students", "manage"], ["admissions", "manage"]],
@@ -419,6 +446,60 @@ export const ACCESS_LEVEL_PERMISSIONS: Record<number, UserPermissions> = Object.
   Object.entries(ACCESS_LEVEL_ROLE).map(([level, role]) => [Number(level), ROLE_DEFAULT_PERMISSIONS[role]]),
 );
 
+/**
+ * Portal logins. They read their own student's records and nothing else — they
+ * are not staff, so they can never hold a cash desk or an admin scope.
+ */
+export const PORTAL_ROLES = ["STUDENT", "PARENT"] as const;
+
+/** Fee collection desks that are grantable independently of one another. */
+export const FEE_DESK_TIER = { pos: "fee-pos", bulk: "fee-bulk" } as const;
+export type FeeDeskTier = (typeof FEE_DESK_TIER)[keyof typeof FEE_DESK_TIER];
+export const FEE_DESK_TIERS = [FEE_DESK_TIER.pos, FEE_DESK_TIER.bulk] as const;
+
+/** Role / access-level module defaults for a role string, or null if unknown. */
+function defaultPermissionsFor(
+  normRole: string,
+  accessLevel?: number | null,
+): UserPermissions | null {
+  const byRole = ROLE_DEFAULT_PERMISSIONS[normRole];
+  if (byRole) return byRole;
+
+  if (typeof accessLevel === "number" && ACCESS_LEVEL_PERMISSIONS[accessLevel]) {
+    return ACCESS_LEVEL_PERMISSIONS[accessLevel];
+  }
+
+  if (/^LEVEL_[1-7]$/i.test(normRole)) {
+    const lvl = parseInt(normRole.split("_")[1], 10);
+    return ACCESS_LEVEL_PERMISSIONS[lvl] ?? null;
+  }
+
+  return null;
+}
+
+/**
+ * Preserve cash-desk access across the introduction of the desk tiers.
+ *
+ * Every tenant already has explicit per-user permission overrides stored, and
+ * a stored override *replaces* the role defaults. Those overrides predate the
+ * POS/bulk split, so they mention neither tier — which would read as "no" and
+ * silently strip the cash box from every existing cashier the moment this
+ * ships. Only a role that genuinely holds the desk (write) is inherited; a
+ * read-only role gains nothing.
+ */
+function backfillDeskTiers(
+  stored: UserPermissions,
+  defaults: UserPermissions | null,
+): UserPermissions {
+  const resolved: UserPermissions = { ...stored };
+  for (const tier of FEE_DESK_TIERS) {
+    if (tier in resolved) continue;
+    const fallback = defaults?.[tier];
+    if (fallback?.write) resolved[tier] = { ...fallback };
+  }
+  return resolved;
+}
+
 export function getEffectivePermissions(
   role: string | null | undefined,
   permissions: unknown,
@@ -429,28 +510,18 @@ export function getEffectivePermissions(
     return FULL_ACCESS_PERMISSIONS;
   }
 
+  const defaults = defaultPermissionsFor(normRole, accessLevel);
+
   if (
     permissions &&
     typeof permissions === "object" &&
     !Array.isArray(permissions) &&
     Object.keys(permissions as Record<string, unknown>).length > 0
   ) {
-    return permissions as UserPermissions;
+    return backfillDeskTiers(permissions as UserPermissions, defaults);
   }
 
-  const byRole = ROLE_DEFAULT_PERMISSIONS[normRole];
-  if (byRole) return byRole;
-
-  if (typeof accessLevel === "number" && ACCESS_LEVEL_PERMISSIONS[accessLevel]) {
-    return ACCESS_LEVEL_PERMISSIONS[accessLevel];
-  }
-
-  if (role && /^LEVEL_[1-7]$/i.test(role)) {
-    const lvl = parseInt(role.split("_")[1], 10);
-    return ACCESS_LEVEL_PERMISSIONS[lvl] ?? null;
-  }
-
-  return null;
+  return defaults;
 }
 
 export function hasAccessLevel(userLevel: number | null | undefined, requiredLevel: number): boolean {
@@ -511,6 +582,13 @@ export function getModuleForPath(path: string): string | null {
     case "exams":
       return "exams";
     case "fees":
+      // The two desks are independently grantable capabilities, so nav
+      // visibility follows the desk, not the parent module. Collector
+      // management is a user-administration surface.
+      if (segments[1] === "collection") return "fee-pos";
+      if (segments[1] === "bulk") return "fee-bulk";
+      if (segments[1] === "collectors") return "users";
+      return "fees";
     case "transactions":
       return "fees";
     case "settings":
@@ -597,6 +675,8 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
     icon: "Wallet",
     modules: [
       { id: "fees", label: "Fee Vouchers" },
+      { id: "fee-pos", label: "POS Fee Collection" },
+      { id: "fee-bulk", label: "Bulk Fee Collection" },
       { id: "transactions", label: "Transactions" },
       { id: "salary", label: "Salary & Payroll" },
       { id: "accounting", label: "Accounting & Ledger" },

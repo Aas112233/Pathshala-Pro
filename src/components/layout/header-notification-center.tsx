@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { safeTranslate } from "@/lib/i18n-safe";
 import {
   NOTIFICATION_TABS,
   type NotificationCategoryGroup,
@@ -185,7 +186,7 @@ export function HeaderNotificationCenter() {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <span>{t(tab.labelKey as any) || tab.fallbackLabel}</span>
+                  <span>{safeTranslate(t, tab.labelKey, tab.fallbackLabel)}</span>
                   {mounted && tabCount.unread > 0 && (
                     <span
                       className={cn(

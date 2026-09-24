@@ -14,6 +14,7 @@ import {
   expenseCategoriesApi,
   bankAccountsApi,
   feeHeadsApi,
+  chartAccountsApi,
   profitLossApi,
   depositsApi,
   feeFineApi,
@@ -758,12 +759,29 @@ export function useDeposits(params?: PaginationParams, options?: QueryHookOption
 export function useCreateDeposit() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { toCode: string; fromCode?: string; amount: number; note?: string }) =>
+    mutationFn: (data: { toCode: string; fromCode?: string; amount: number; note?: string; bankReference?: string; receiptRefs?: string }) =>
       depositsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deposits"] });
       queryClient.invalidateQueries({ queryKey: ["bankAccounts"] });
     },
+  });
+}
+
+export function useDepositSummary(params?: { cashCode?: string }, options?: QueryHookOptions) {
+  return useQuery({
+    queryKey: ["deposits", "summary", params],
+    queryFn: () => depositsApi.summary(params),
+    ...options,
+  });
+}
+
+// Chart of accounts hook (base-noun key per AGENTS #7)
+export function useChartAccounts(params?: { accountType?: string }, options?: QueryHookOptions) {
+  return useQuery({
+    queryKey: ["chartAccounts", params],
+    queryFn: () => chartAccountsApi.list(params),
+    ...options,
   });
 }
 

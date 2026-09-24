@@ -38,9 +38,12 @@ const feeStatusMap: Record<string, StatusVariant> = {
 
 /** Salary payment status */
 const salaryStatusMap: Record<string, StatusVariant> = {
-  PAID:     "success",
-  PARTIAL:  "warning",
-  PENDING:  "neutral",
+  PAID:             "success",
+  PARTIAL:          "warning",
+  PENDING:          "neutral",
+  PENDING_APPROVAL: "neutral",
+  APPROVED:         "info",
+  REJECTED:         "error",
 };
 
 /** Academic year status (isClosed) */

@@ -619,7 +619,7 @@ export default function QuestionPapersLibraryPage() {
                             className="w-full gap-1.5 font-bold"
                           >
                             <Edit3 className="h-3.5 w-3.5" />
-                            <span>{t("common.edit") || "সম্পাদনা"}</span>
+                            <span>{t("common.edit")}</span>
                           </Button>
                         </Link>
 

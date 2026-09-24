@@ -142,6 +142,8 @@ export interface StaffProfile {
   section?: { id: string; name: string } | null;
 }
 
+export type SalaryStatus = "PENDING" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "PARTIAL" | "PAID";
+
 export interface StaffProfileWithDetails extends StaffProfile {
   salaryLedgers?: Array<{
     id: string;
@@ -152,7 +154,7 @@ export interface StaffProfileWithDetails extends StaffProfile {
     advances: number;
     netPayable: number;
     paidAmount: number;
-    status: "PENDING" | "PAID" | "PARTIAL";
+    status: SalaryStatus;
   }>;
   attendances?: Array<{
     id: string;
@@ -174,8 +176,11 @@ export interface SalaryLedger {
   advances: number;
   netPayable: number;
   paidAmount: number;
-  status: "PENDING" | "PAID" | "PARTIAL";
+  status: SalaryStatus;
   paidAt?: Date;
+  approvedById?: string | null;
+  approvedAt?: Date | null;
+  rejectionReason?: string | null;
   createdAt: Date;
   updatedAt: Date;
   // Related data (from includes)
@@ -191,6 +196,11 @@ export interface SalaryLedger {
     yearId: string;
     label: string;
   };
+  approvedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
 }
 
 export interface SalaryLedgerWithDetails extends SalaryLedger {
@@ -208,6 +218,11 @@ export interface SalaryLedgerWithDetails extends SalaryLedger {
     startDate: Date;
     endDate: Date;
   };
+  approvedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
 }
 
 // DTO types for salary ledger creation and updates
@@ -219,9 +234,10 @@ export interface CreateSalaryLedgerDTO {
   baseSalary: number;
   deductions?: number;
   advances?: number;
-  status?: "PENDING" | "PARTIAL" | "PAID";
+  status?: SalaryStatus;
   paidAmount?: number;
   paidAt?: string;
+  rejectionReason?: string;
 }
 
 export interface UpdateSalaryLedgerDTO extends Partial<CreateSalaryLedgerDTO> {

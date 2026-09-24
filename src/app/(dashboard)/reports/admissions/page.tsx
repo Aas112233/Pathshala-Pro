@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -26,6 +26,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
+import { useClasses } from "@/hooks/use-queries";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
@@ -71,6 +72,7 @@ interface AdmissionsReportData {
 
 export default function AdmissionsReportPage() {
   const t = useTranslations("reports.admissionsReport");
+  const tCommon = useTranslations("reports.common");
   const { settings } = useTenantSettings();
   const { formatDateTime, formatDate } = useTenantFormatting();
 
@@ -88,7 +90,11 @@ export default function AdmissionsReportPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedClass, setSelectedClass] = useState("all");
-  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Uses the centralized query hook (AGENTS.md §7) instead of a bespoke
+  // useEffect + fetch, so this shares the cache and query key with every other
+  // class dropdown in the app.
+  const { data: classes = [] } = useClasses({ isActive: true, limit: 200 });
 
   const [isLoading, setIsLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -101,21 +107,6 @@ export default function AdmissionsReportPage() {
   const [statusBreakdown, setStatusBreakdown] = useState<
     AdmissionsReportData["statusBreakdown"]
   >([]);
-
-  useEffect(() => {
-    async function loadClasses() {
-      try {
-        const res = await fetch("/api/classes?limit=100");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setClasses(json.data);
-        }
-      } catch {
-        // Silent catch for class loader
-      }
-    }
-    loadClasses();
-  }, []);
 
   const handleGenerateReport = async () => {
     setIsLoading(true);
@@ -335,17 +326,20 @@ export default function AdmissionsReportPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("pipelineStatus")}</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase">{t("targetClass")}</label>
             <AppDropdown
-            value={selectedClass}
-            onChange={(v) => setSelectedClass(v)}
-            options={[
-              { value: "ALL", label: "All Classes" },
-              ...classes.map((cls: any) => ({ value: cls.id, label: cls.name }))
-            ]}
-            searchable
-            className="w-48"
-          />
+              value={selectedClass}
+              onChange={setSelectedClass}
+              options={[
+                { value: "all", label: t("allClasses") },
+                ...classes.map((cls: any) => ({ value: cls.id, label: cls.name })),
+              ]}
+              placeholder={t("allClasses")}
+              searchable
+              searchPlaceholder={tCommon("searchPlaceholder")}
+              noOptionsText={tCommon("noRecordsTitle")}
+              triggerClassName="mt-1 text-xs"
+            />
           </div>
         </div>
 
@@ -416,7 +410,7 @@ export default function AdmissionsReportPage() {
 
           {/* Table */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-foreground">Applicant Enquiries Ledger</h3>
+            <h3 className="text-sm font-bold text-foreground">{t("enquiriesLedger")}</h3>
             <ReportTable
               columns={columns}
               data={data}

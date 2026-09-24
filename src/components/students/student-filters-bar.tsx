@@ -76,7 +76,7 @@ export function StudentFiltersBar({
   const classOptions = useMemo(() => {
     const list = (classesData as any)?.data || [];
     return [
-      { value: "", label: t("filters.class.all") || "All Classes" },
+      { value: "", label: t("filters.class.all") },
       ...list.map((c: any) => ({ value: c.id, label: c.name })),
     ];
   }, [classesData, t]);
@@ -84,7 +84,7 @@ export function StudentFiltersBar({
   const groupOptions = useMemo(() => {
     const list = (groupsData as any)?.data || [];
     return [
-      { value: "", label: t("filters.group.all") || "All Groups" },
+      { value: "", label: t("filters.group.all") },
       ...list.map((g: any) => ({ value: g.id, label: g.name })),
     ];
   }, [groupsData, t]);
@@ -92,7 +92,7 @@ export function StudentFiltersBar({
   const sectionOptions = useMemo(() => {
     const list = (sectionsData as any)?.data || [];
     return [
-      { value: "", label: t("filters.section.all") || "All Sections" },
+      { value: "", label: t("filters.section.all") },
       ...list.map((s: any) => ({ value: s.id, label: s.name })),
     ];
   }, [sectionsData, t]);
@@ -111,15 +111,15 @@ export function StudentFiltersBar({
 
       <div className="flex flex-1 flex-wrap items-center gap-3">
         <div className="min-w-[150px]">
-          <AppDropdown value={classId} onChange={onClassChange} options={classOptions} placeholder={t("filters.class.all") || "All Classes"} searchable />
+          <AppDropdown value={classId} onChange={onClassChange} options={classOptions} placeholder={t("filters.class.all")} searchable />
         </div>
 
         <div className="min-w-[140px]">
-          <AppDropdown value={groupId} onChange={onGroupChange} options={groupOptions} placeholder={!classId ? t("filters.selectClassFirst") : t("filters.group.all") || "All Groups"} searchable disabled={!classId} />
+          <AppDropdown value={groupId} onChange={onGroupChange} options={groupOptions} placeholder={!classId ? t("filters.selectClassFirst") : t("filters.group.all")} searchable disabled={!classId} />
         </div>
 
         <div className="min-w-[150px]">
-          <AppDropdown value={sectionId} onChange={onSectionChange} options={sectionOptions} placeholder={!classId ? t("filters.selectClassFirst") : t("filters.section.all") || "All Sections"} searchable disabled={!classId} />
+          <AppDropdown value={sectionId} onChange={onSectionChange} options={sectionOptions} placeholder={!classId ? t("filters.selectClassFirst") : t("filters.section.all")} searchable disabled={!classId} />
         </div>
 
         <div className="min-w-[130px]">

@@ -113,6 +113,12 @@
     "threeMonths": "3 ماہ / ٹرم",
     "sixMonths": "6 ماہ",
     "fullRemaining": "پورے 12 ماہ / باقی",
+    "selectAll": "تمام بقایا (مکمل سال)",
+    "clearSelection": "صاف کریں",
+    "exactAmount": "مکمل رقم",
+    "shortcuts": "شارٹ کٹس",
+    "selectedDue": "منتخب شدہ واجبات:",
+    "totalOutstanding": "کل بقایا:",
     "activeInvoices": "فعال انوائسز اور واؤچرز",
     "totalDue": "کل واجب الادا:",
     "currentMonthRate": "موجودہ ماہ کی کلاس ٹیوشن فیس",
@@ -176,7 +182,18 @@
     "selectStudentPrompt": "فیس وصول کرنے کے لیے طالب علم کا انتخاب کریں",
     "noFeeStructureAlert": "{academicYear} تعلیمی سال میں {className} کے لیے کوئی فعال فیس اسٹرکچر تشکیل نہیں دیا گیا ہے۔ تشکیل دیے جانے تک غیر بل شدہ مہینوں کی فیس وصول نہیں کی جا سکتی۔",
     "configureFeeStructure": "فیس اسٹرکچر تشکیل دیں",
-    "feeStructureRequired": "فیس اسٹرکچر درکار ہے"
+    "feeStructureRequired": "فیس اسٹرکچر درکار ہے",
+    "walletMethod": "والٹ",
+    "walletMethodHint": "طالب علم کے ایڈوانس والٹ سے ادائیگی",
+    "walletSplitTitle": "والٹ سے جزوی ادائیگی",
+    "autoApplyWallet": "والٹ خودکار استعمال",
+    "walletAmountPlaceholder": "والٹ رقم",
+    "chequeNumber": "چیک نمبر",
+    "chequeNumberPlaceholder": "چیک نمبر درج کریں",
+    "paymentReference": "لین دین کا حوالہ (UTR)",
+    "paymentReferencePlaceholder": "UTR / گیٹ وے آئی ڈی درج کریں",
+    "referenceRequired": "{method} ادائیگیوں کے لیے بیرونی حوالہ (UTR/ٹرانزیکشن آئی ڈی) درکار ہے۔",
+    "chequeNumberRequired": "چیک ادائیگیوں کے لیے چیک نمبر درکار ہے۔"
   },
   "currencies": {
     "title": "کرنسی",
@@ -276,15 +293,18 @@
     "feeStructures": "فیس کا ڈھانچہ",
     "feeCollection": "فیس وصولی (پی او ایس)",
     "bulkFeeCollection": "بلک فیس انٹری",
+    "feeCollectors": "فیس وصول کنندگان",
     "transactions": "لین دین",
     "expenses": "اخراجات",
     "bankAccounts": "بینک اور کیش اکاؤنٹس",
+    "deposits": "نقد جمع",
     "profitLoss": "نفع و نقصان کا گوشوارہ",
     "statements": "کھاتہ اسٹیٹمنٹ",
     "feeHeadMappings": "فیس ہیڈ اکاؤنٹنگ",
     "hr": "انسانی وسائل اور تنخواہیں",
     "staff": "عملہ ڈائریکٹری",
     "salaryPayroll": "تنخواہ اور پے رول",
+    "payrollApprovals": "تنخواہ منظوری",
     "administration": "ترتیبات اور سسٹم",
     "systemSettings": "ترتیبات اور سسٹم",
     "campusFacilities": "کیمپس اور سہولیات",
@@ -709,7 +729,9 @@
       "profilePhotoAlt": "{name} کی پروفائل تصویر"
     },
     "idCards": "ID Cards",
-    "admissionForm": "Admission Form"
+    "admissionForm": "Admission Form",
+    "createError": "طالب علم بنانے میں ناکامی",
+    "updateError": "طالب علم اپ ڈیٹ کرنے میں ناکامی"
   },
   "fees": {
     "title": "فیس مینجمنٹ ہب",
@@ -773,15 +795,6 @@
     "tuition": "ٹیوشن",
     "rollLabel": "رول:",
     "voucherNumber": "واؤچر نمبر",
-    "walletMethod": "والٹ",
-    "walletMethodHint": "طالب علم کے ایڈوانس والٹ سے ادائیگی",
-    "chequeNumber": "چیک نمبر",
-    "chequeNumberPlaceholder": "چیک نمبر درج کریں",
-    "paymentReference": "لین دین کا حوالہ (UTR)",
-    "paymentReferencePlaceholder": "UTR / گیٹ وے آئی ڈی درج کریں",
-    "walletSplitTitle": "والٹ سے جزوی ادائیگی",
-    "autoApplyWallet": "والٹ خودکار استعمال",
-    "walletAmountPlaceholder": "والٹ رقم",
     "waiveFine": "تاخیری جرمانہ معاف کریں",
     "outstandingFine": "واجب الادا جرمانہ",
     "waiveAmount": "معافی کی رقم",
@@ -958,6 +971,7 @@
       "phoneInvalid": "براہ کرم ایک درست فون نمبر درج کریں",
       "createUserAccount": "اس سٹاف ممبر کے لئے لاگ ان کھاتہ بنائیں",
       "createUserAccountDescription": "اس سے سٹاف ممبر کو سسٹم تک رسائی حاصل ہوگی",
+      "createUserAccountHint": "لاگ ان 크ریڈینشلز کے ساتھ ایک ای میل سٹاف ممبر کو بھیجا جائے گا",
       "addStaffDescription": "سسٹم میں نیا سٹاف ممبر پروفائل بنائیں۔",
       "editStaffDescription": "سٹاف ممبر کی معلومات اپڈیٹ کریں۔",
       "loginEmail": "لاگ ان ای میل",
@@ -999,6 +1013,59 @@
   "salary": {
     "title": "تنخواہ / پے رول",
     "description": "عملے کی تنخواہ، پیشگی، اور پے رول کا انتظام۔",
+    "approvals": {
+      "title": "تنخواہ منظوری",
+      "description": "ادائیگی سے پہلے ملازمین کی تنخواہوں کی جانچ، جائزہ اور منظوری لیں۔",
+      "approveSelected": "منتخب منظور کریں ({count})",
+      "approveAllPending": "تمام زیر التواء منظور کریں",
+      "quickApprove": "فوری منظوری",
+      "reject": "مسترد کریں",
+      "approvedBadge": "منظور شدہ",
+      "readyForPayment": "ادائیگی کے لیے تیار",
+      "awaitingAudit": "منظوری کی منتظر",
+      "table": {
+        "period": "مدت",
+        "audit": "منظوری آڈٹ"
+      },
+      "kpi": {
+        "pendingTitle": "زیر التواء منظوری",
+        "pendingSubtitle": "منظوری کی منتظر",
+        "approvedTitle": "ادائیگی کے لیے تیار",
+        "approvedSubtitle": "انتظامیہ کی طرف سے منظور شدہ",
+        "disbursedTitle": "ادا شدہ (ماہانہ)",
+        "disbursedSubtitle": "کھاتوں میں ادا کی گئی",
+        "rejectedTitle": "توجہ طلب",
+        "rejectedSubtitle": "مسترد / واپس کی گئی",
+        "staffUnit": "عملہ"
+      },
+      "filters": {
+        "allStatuses": "تمام حالتیں",
+        "pending": "زیر التواء منظوری",
+        "approved": "منظور شدہ",
+        "rejected": "مسترد شدہ",
+        "paid": "ادا شدہ",
+        "selectMonth": "مہینہ منتخب کریں",
+        "selectYear": "سال منتخب کریں",
+        "selectDept": "شعبہ منتخب کریں",
+        "selectStatus": "حالت منتخب کریں"
+      },
+      "searchPlaceholder": "ملازم کا نام یا شناختی کارڈ تلاش کریں...",
+      "emptyTitle": "تنخواہ کا کوئی ریکارڈ نہیں ملا",
+      "emptyDescription": "منتخب کردہ مہینے، سال یا منظوری کے فلٹرز سے کوئی ریکارڈ مطابقت نہیں رکھتا۔",
+      "noPendingSelected": "منتخب کردہ ریکارڈز میں سے کوئی بھی منظوری کے لیے زیر التواء نہیں ہے",
+      "noPendingInView": "موجودہ فہرست میں کوئی ریکارڈ منظوری کے لیے زیر التواء نہیں ہے",
+      "rejectTitle": "تنخواہ کا ریکارڈ مسترد کریں",
+      "rejectDescription": "اس ریکارڈ کو ایچ آر / اکاؤنٹنگ کو واپس بھیجنے کی واضح وجہ درج کریں۔",
+      "rejectDescriptionStaff": "{name} کا تنخواہ کا ریکارڈ ایچ آر کو واپس بھیجنے کی واضح وجہ درج کریں۔",
+      "reasonLabel": "مسترد کرنے کی وجہ",
+      "reasonPlaceholder": "ضروری تصحیحات لکھیں (مثلاً ایل او پی کے غلط دن، پیشگی کٹوتی غائب)...",
+      "rejectionReasonRequired": "مسترد کرنے کی وجہ ضروری ہے (کم از کم 3 حروف)",
+      "cancel": "منسوخ کریں",
+      "confirmReject": "ریکارڈ مسترد کریں",
+      "approveSuccess": "تنخواہ کامیابی سے منظور ہو گئی!",
+      "rejectSuccess": "تنخواہ مسترد کر دی گئی اور ایچ آر کو واپس بھیج دی گئی",
+      "bulkApproveSuccess": "منتخب کردہ تنخواہیں کامیابی سے منظور ہو گئیں!"
+    },
     "processPayroll": "پے رول پروسیس",
     "month": "مہینہ",
     "year": "سال",
@@ -1500,7 +1567,9 @@
     "resultsSaved": "امتحان کے نتائج کامیابی سے محفوظ ہو گئے!",
     "promotionRuleCreated": "ترقی کا قاعدہ کامیابی سے بن گیا!",
     "promotionsExecuted": "ترقیات کامیابی سے لاگو ہو گئیں!",
-    "error": "امتحان کی کارروائی میں ناکامی"
+    "error": "امتحان کی کارروائی میں ناکامی",
+    "promotionRuleUpdated": "پروموشن رول کامیابی سے اپ ڈیٹ ہو گیا",
+    "promotionRuleDeleted": "پروموشن رول کامیابی سے حذف ہو گیا"
   },
   "results": {
     "marksLockedDuePromotion": "ترقی کی وجہ سے اس طالب علم کے نمبر لاک ہیں۔",
@@ -2387,7 +2456,6 @@
   "reports": {
     "title": "رپورٹس اور تجزیاتی مرکز",
     "description": "ادارہ جاتی ذہانت، آڈٹ اور برآمد کے قابل لیجرز",
-    "overview": "رپورٹس جائزہ",
     "charts": {
       "total": "کل"
     },
@@ -2512,7 +2580,8 @@
       "exportedPDF": "مالیاتی رپورٹ PDF میں برآمد ہو گئی",
       "exportFailed": "مالی رپورٹ برآمد کرنے میں ناکامی",
       "title": "مالی اخراجات اور کیش فلو رپورٹ",
-      "description": "اخراجات کے شعبے، واؤچرز، فیس کی رسیدیں اور خالص کیش بیلنس"
+      "description": "اخراجات کے شعبے، واؤچرز، فیس کی رسیدیں اور خالص کیش بیلنس",
+      "itemizedExpenseLedger": "تفصیلی اخراجات کا رجسٹر"
     },
     "admissionsReport": {
       "applicantStudent": "Applicant / Student",
@@ -2559,7 +2628,8 @@
       "exportedPDF": "داخلہ رپورٹ PDF میں برآمد ہو گئی",
       "exportFailed": "داخلہ رپورٹ برآمد کرنے میں ناکامی",
       "title": "داخلہ پائپ لائن اور کنورژن رپورٹ",
-      "description": "انکوائری ٹریکنگ، لیڈ ذرائع اور داخلے کی شرح کا تجزیہ"
+      "description": "انکوائری ٹریکنگ، لیڈ ذرائع اور داخلے کی شرح کا تجزیہ",
+      "enquiriesLedger": "درخواست دہندگان کے استفسارات کا رجسٹر"
     },
     "attendanceReport": {
       "class": "Class",
@@ -2712,7 +2782,33 @@
       "export": "برآمد کریں",
       "generating": "تیار ہو رہا ہے...",
       "noData": "کوئی ڈیٹا دستیاب نہیں",
-      "exportedExcel": "رپورٹ کامیابی سے Excel میں برآمد ہو گئی"
+      "exportedExcel": "رپورٹ کامیابی سے Excel میں برآمد ہو گئی",
+      "reportPeriod": "رپورٹ کی مدت",
+      "generatedAt": "تیار کردہ وقت",
+      "records": "ریکارڈز",
+      "appliedFilters": "لاگو فلٹرز",
+      "noExtraFilters": "کوئی اضافی فلٹر نہیں",
+      "trendFromLastPeriod": "پچھلی مدت سے %",
+      "rowsPerPage": "فی صفحہ قطاریں",
+      "paginationRange": "{start}-{end} از {total}",
+      "previousPage": "پچھلا صفحہ",
+      "nextPage": "اگلا صفحہ",
+      "searchPlaceholder": "رپورٹ میں تلاش کریں...",
+      "noRecordsTitle": "کوئی ریکارڈ نہیں ملا",
+      "noRecordsDescription": "اپنی تلاش یا فلٹرز کو ایڈجسٹ کرنے کی کوشش کریں",
+      "exportTruncated": "ایکسپورٹ محدود — نتائج کی تعداد ایکسپورٹ حد سے زیادہ ہے",
+      "lowestAttendanceStudents": "کم ترین حاضری",
+      "reportUnavailableForRole": "یہ رپورٹ آپ کے کردار کے لیے دستیاب نہیں ہے",
+      "reportUnavailableForRoleHint": "اگر آپ کو یقین ہے کہ یہ غلط ہے تو اپنے منتظم سے رابطہ کریں"
+    },
+    "hub": {
+      "searchPlaceholder": "رپورٹس تلاش کریں...",
+      "finance": "مالیات",
+      "academics": "تعلیمی",
+      "operations": "آپریشنز",
+      "noAccess": "آپ کے کردار کے لیے کوئی رپورٹ دستیاب نہیں",
+      "noAccessHint": "اگر آپ کو یقین ہے کہ یہ غلط ہے تو اپنے منتظم سے رابطہ کریں",
+      "emptySearch": "آپ کی تلاش سے کوئی رپورٹ مماثل نہیں"
     }
   },
   "accounting": {
@@ -2961,6 +3057,30 @@
     },
     "deposits": {
       "recordDeposit": "رقم جمع کروائیں",
+      "title": "نقد جمع",
+      "pageDescription": "متوازن نقد سے بینک اندراج کے ساتھ کاؤنٹر وصولیاں بینک میں جمع کریں۔",
+      "tableTitle": "جمع جرنل",
+      "showingRecords": "{count} ریکارڈ دکھائے جا رہے ہیں",
+      "colVoucher": "واؤچر",
+      "colRoute": "کہاں سے → کہاں",
+      "colNarration": "تفصیل",
+      "colDate": "تاریخ",
+      "colAmount": "رقم",
+      "totalDeposited": "کل جمع (صفحہ)",
+      "pageCount": "{count} اندراجات",
+      "depositCount": "جمع اندراجات",
+      "entriesUnit": "کانٹرا اندراجات",
+      "avgDeposit": "اوسط جمع",
+      "perEntryUnit": "فی اندراج",
+      "emptyTitle": "کوئی جمع ریکارڈ نہیں",
+      "emptyHint": "ریکارڈ شروع کرنے کے لیے پہلی نقد سے بینک جمع درج کریں۔",
+      "colBankRef": "بینک حوالہ",
+      "undepositedCash": "دراز میں نقد",
+      "undepositedHint": "وصول شدہ، ابھی بینک نہیں ہوئی",
+      "bankReference": "بینک سلپ / یو ٹی آر",
+      "bankReferencePlaceholder": "مثلاً UTR 123456789012",
+      "receiptRefs": "منسلک رسیدیں",
+      "receiptRefsPlaceholder": "مثلاً REC-2026-0001, REC-2026-0002",
       "description": "متوازن منتقلی اندراج کے ساتھ جمع شدہ نقد رقم بینک میں منتقل کریں۔",
       "transferTitle": "نقد منتقلی",
       "transferDescription": "بینک کو ڈیبٹ، کیش رجسٹر کو کریڈٹ کریں۔ منسلک بیلنس خود بخود ہم آہنگ ہوں گے۔",
@@ -2968,6 +3088,8 @@
       "toAccount": "کہاں (بینک)",
       "toAccountPlaceholder": "مثلاً 1010",
       "selectDestination": "منزل اکاؤنٹ منتخب کریں",
+      "selectSource": "ماخذ اکاؤنٹ منتخب کریں",
+      "sameAccount": "ماخذ اور منزل اکاؤنٹس مختلف ہونے چاہئیں",
       "amount": "رقم",
       "note": "نوٹ",
       "notePlaceholder": "مثلاً شام کی کاؤنٹر جمع",
@@ -3463,7 +3585,9 @@
     "periodRemoved": "پیریڈ کامیابی سے ہٹا دیا گیا!",
     "error": "ٹائم ٹیبل پیریڈ میں ناکامی",
     "periodWithNumber": "پیریڈ {number}",
-    "pdfDownloadSuccess": "ٹائم ٹیبل PDF ڈاؤن لوڈ ہو گیا"
+    "pdfDownloadSuccess": "ٹائم ٹیبل PDF ڈاؤن لوڈ ہو گیا",
+    "periodCreated": "پیریڈ کامیابی سے بن گیا!",
+    "periodDeleted": "پیریڈ کامیابی سے حذف ہو گیا!"
   },
   "notifications": {
     "title": "اطلاعات اور نوٹسز",
@@ -3710,7 +3834,8 @@
     "routeDeleted": "روٹ کامیابی سے حذف ہو گیا!",
     "allocatedSuccess": "طالب علم کامیابی سے الاٹ ہو گیا!",
     "allocationRemoved": "الاٹمنٹ کامیابی سے ہٹا دی گئی!",
-    "error": "ٹرانسپورٹ آپریشن میں ناکامی"
+    "error": "ٹرانسپورٹ آپریشن میں ناکامی",
+    "vacatedSuccess": "الاٹمنٹ کامیابی سے خالی ہو گئی!"
   },
   "homework": {
     "title": "ہوم ورک اور اسائنمنٹس",
@@ -4432,6 +4557,51 @@
     "created": "نوٹس کامیابی سے بن گیا!",
     "updated": "نوٹس کامیابی سے اپ ڈیٹ ہو گیا!"
   },
+  "collectors": {
+    "title": "فیس وصول کنندگان",
+    "description": "مقرر کریں کہ کون سا عملہ کس فیس وصولی ڈیسک پر رقم وصول کر سکتا ہے۔",
+    "deskNote": "دونوں وصولی ڈیسک نقدی سنبھالنے کی صلاحیتیں ہیں۔ ڈیسک دینے سے صارف وہ ڈیسک کھول کر ادائیگی وصول کر سکتا ہے؛ واپس لینے سے ڈیسک اگلی لاگ اِن پر اس کی نیویگیشن سے ہٹ جاتا ہے۔",
+    "searchPlaceholder": "نام یا ای میل سے عملہ تلاش کریں...",
+    "manage": "ڈیسک کا انتظام",
+    "granted": "اجازت یافتہ",
+    "notGranted": "اجازت نہیں",
+    "active": "فعال",
+    "inactive": "غیر فعال",
+    "receiptsCount": "{count} رسیدیں",
+    "neverCollected": "کبھی نہیں",
+    "sheetTitle": "{name} — فیس ڈیسک رسائی",
+    "sheetDescription": "اس عملے کے لیے ہر وصولی ڈیسک آن یا آف کریں۔",
+    "posDesk": "پی او ایس کاؤنٹر ڈیسک",
+    "posDeskHint": "ایک طالب علم کی کاؤنٹر پر ادائیگی اور رسید پرنٹنگ۔",
+    "bulkDesk": "بلک کلاس ڈیسک",
+    "bulkDeskHint": "پوری کلاس اور فیس مہینے کے لیے اجتماعی اندراج۔",
+    "sessionNote": "ڈیسک کی تبدیلیاں ایک منٹ میں لاگو ہوتی ہیں اور وصول کنندہ کا موجودہ سیشن ختم کر دیتی ہیں، لہٰذا اسے دوبارہ لاگ اِن کرنا ہوگا۔",
+    "save": "ڈیسک رسائی محفوظ کریں",
+    "saving": "محفوظ ہو رہا ہے...",
+    "saved": "{name} کی ڈیسک رسائی اپ ڈیٹ ہو گئی۔",
+    "saveError": "ڈیسک رسائی اپ ڈیٹ نہیں ہو سکی۔",
+    "loadError": "فیس وصول کنندگان لوڈ نہیں ہو سکے۔",
+    "noCollectors": "ابھی کوئی عملہ اکاؤنٹ نہیں",
+    "noCollectorsHint": "فیس وصولی ڈیسک تفویض کرنے سے پہلے عملہ صارفین بنائیں۔",
+    "noMatches": "\"{term}\" سے کوئی عملہ مماثل نہیں",
+    "clearSearch": "تلاش صاف کریں",
+    "columns": {
+      "collector": "وصول کنندہ",
+      "role": "کردار",
+      "account": "اکاؤنٹ",
+      "posDesk": "پی او ایس",
+      "bulkDesk": "بلک",
+      "todayCollected": "آج وصول شدہ",
+      "lastCollected": "آخری وصولی",
+      "actions": "کارروائیاں"
+    },
+    "pagination": {
+      "rowsPerPage": "فی صفحہ قطاریں:",
+      "range": "{total} میں سے {start}-{end}",
+      "previous": "پچھلا صفحہ",
+      "next": "اگلا صفحہ"
+    }
+  },
   "bulkFees": {
     "challansDownloaded": "چالان PDF ڈاؤن لوڈ ہو گئے (3 نقول)",
     "pdfFailed": "PDF بنانے میں ناکامی",
@@ -4506,7 +4676,13 @@
     "amountPlaceholder": "0.00",
     "monthAlreadyPaid": "{student} کی {month} کی فیس پہلے ہی ادا کی جا چکی ہے",
     "noFeeStructureAlert": "{academicYear} تعلیمی سال میں {className} کے لیے کوئی فعال فیس اسٹرکچر تشکیل نہیں دیا گیا ہے۔ تشکیل دیے جانے تک غیر بل شدہ طلبہ 0.00 ظاہر ہوں گے۔",
-    "configureFeeStructure": "فیس اسٹرکچر تشکیل دیں"
+    "configureFeeStructure": "فیس اسٹرکچر تشکیل دیں",
+    "chequeNumber": "چیک نمبر",
+    "chequeNumberPlaceholder": "چیک نمبر درج کریں",
+    "paymentReference": "لین دین کا حوالہ (UTR)",
+    "paymentReferencePlaceholder": "UTR / گیٹ وے آئی ڈی درج کریں",
+    "referenceRequired": "{method} ادائیگیوں کے لیے بیرونی حوالہ (UTR/ٹرانزیکشن آئی ڈی) درکار ہے۔",
+    "chequeNumberRequired": "چیک ادائیگیوں کے لیے چیک نمبر درکار ہے۔"
   },
   "subscription": {
     "banner": {

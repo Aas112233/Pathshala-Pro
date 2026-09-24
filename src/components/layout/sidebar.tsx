@@ -10,6 +10,8 @@ import { SIDEBAR_NAV, APP_NAME } from "@/lib/constants";
 import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getModuleForPath } from "@/lib/permissions";
 import { getModuleKeyForHref } from "@/lib/tenant-modules";
+import { canAccessAnyReport } from "@/lib/report-registry";
+import { safeTranslate, humanizeKey } from "@/lib/i18n-safe";
 import { ChevronLeft, GraduationCap, Search, X, ShieldAlert, Building2 } from "lucide-react";
 
 interface SidebarProps {
@@ -94,6 +96,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         if (isSystemAdmin) return true;
 
+        // Reports are a hub, not a single capability. Gating this link on
+        // `reports:read` hid it from roles that legitimately hold e.g.
+        // attendance:read — TEACHER could call /api/reports/attendance but had
+        // no way to navigate there. Gate on the union of the member reports so
+        // nav visibility matches what the APIs will actually serve.
+        if (item.href === "/reports") {
+          return canAccessAnyReport(user.permissions, user.role);
+        }
+
         // Check user RBAC permissions
         const moduleName = getModuleForPath(item.href);
         if (!moduleName) return true;
@@ -103,7 +114,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       // Then filter by search query
       const searchFiltered = query
         ? permissionFiltered.filter((item) => {
-            const label = t(item.titleKey as any)?.toLowerCase() || "";
+            const label = safeTranslate(t, item.titleKey, humanizeKey(item.titleKey)).toLowerCase();
             return label.includes(query);
           })
         : permissionFiltered;
@@ -237,7 +248,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <div key={group.labelKey} className="mb-4">
               {!collapsed && (
                 <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/75">
-                  {t(group.labelKey as any) || group.labelKey}
+                  {safeTranslate(t, group.labelKey, humanizeKey(group.labelKey))}
                 </p>
               )}
               <div className="space-y-0.5">
@@ -245,7 +256,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   const isActive =
                     pathname === item.href ||
                     (item.href !== "/" && pathname.startsWith(item.href));
-                  const label = t(item.titleKey as any);
+                  const label = safeTranslate(t, item.titleKey, humanizeKey(item.titleKey));
 
                   return (
                     <Link

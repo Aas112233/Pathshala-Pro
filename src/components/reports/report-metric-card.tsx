@@ -1,6 +1,9 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface ReportMetricCardProps {
   title: string;
@@ -22,20 +25,37 @@ export function ReportMetricCard({
   trend,
   className,
 }: ReportMetricCardProps) {
+  const t = useTranslations("reports.common");
+  const valueText = String(value ?? "");
+  // ponytail: length-based shrink keeps long values inside the card without JS measuring
+  const valueSizeClass =
+    valueText.length <= 10
+      ? "text-2xl"
+      : valueText.length <= 15
+        ? "text-xl"
+        : valueText.length <= 22
+          ? "text-lg"
+          : "text-base";
+
   return (
-    <Card className={cn("shadow-sm", className)}>
+    <Card className={cn("min-w-0 overflow-hidden shadow-sm", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="min-w-0 flex-1 break-words text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
         {Icon && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <Icon className="h-4 w-4 text-primary" />
           </div>
         )}
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+      <CardContent className="min-w-0">
+        <div
+          title={valueText}
+          className={cn("min-w-0 break-all font-bold leading-tight", valueSizeClass)}
+        >
+          {value}
+        </div>
         {description && (
           <CardDescription className="mt-1">{description}</CardDescription>
         )}
@@ -49,7 +69,8 @@ export function ReportMetricCard({
             )}
           >
             {trend.isPositive ? "+" : "-"}
-            {Math.abs(trend.value)}% from last period
+            {Math.abs(trend.value)}
+            {t("trendFromLastPeriod")}
           </p>
         )}
       </CardContent>

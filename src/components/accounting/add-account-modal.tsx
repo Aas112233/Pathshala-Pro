@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Building2, Save, Loader2 } from "lucide-react";
 import { useCreateBankAccount } from "@/hooks/use-queries";
+import { BANK_ACCOUNT_TYPES, type BankAccountType } from "@/lib/schemas";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { useTranslations } from "next-intl";
 
@@ -17,6 +18,13 @@ interface AddAccountModalProps {
   onClose: () => void;
   onSuccess?: () => void;
 }
+
+/** Bank/cash account type -> label key (labels already exist in all 4 locales). */
+const ACCOUNT_TYPE_LABEL_KEY: Record<BankAccountType, string> = {
+  CHECKING: "accounting.accountsForm.typeChecking",
+  SAVINGS: "accounting.accountsForm.typeSavings",
+  PETTY_CASH: "accounting.accountsForm.typePettyCash",
+};
 
 export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalProps) {
   const t = useTranslations();
@@ -28,7 +36,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
     accountNumber: "",
     bankName: "",
     branchName: "",
-    accountType: "CHECKING" as "CHECKING" | "SAVINGS" | "PETTY_CASH",
+    accountType: "CHECKING" as BankAccountType,
     accountCode: "",
     openingBalance: "0",
   });
@@ -128,14 +136,11 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
             <Label className="text-xs font-semibold">{t("accounting.accountsForm.typeLabel")}</Label>
             <AppDropdown
               value={formData.accountType}
-              onChange={(v) => setFormData({ ...formData, accountType: v as any })}
-              options={[
-                { value: "ASSET", label: "Asset" },
-                { value: "LIABILITY", label: "Liability" },
-                { value: "EQUITY", label: "Equity" },
-                { value: "REVENUE", label: "Revenue" },
-                { value: "EXPENSE", label: "Expense" }
-              ]}
+              onChange={(v) => setFormData({ ...formData, accountType: v as BankAccountType })}
+              options={BANK_ACCOUNT_TYPES.map((type) => ({
+                value: type,
+                label: t(ACCOUNT_TYPE_LABEL_KEY[type]),
+              }))}
             />
           </div>
 

@@ -29,6 +29,7 @@ import {
   Library,
   Bus,
   UserPlus,
+  UserCog,
   ClipboardPen,
   CalendarOff,
   Package,
@@ -38,6 +39,7 @@ import {
   FileQuestion,
   Database,
   History,
+  CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -273,6 +275,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: Users,
       },
       {
+        titleKey: "nav.feeCollectors",
+        href: "/fees/collectors",
+        icon: UserCog,
+      },
+      {
         titleKey: "nav.feeVouchers",
         href: "/fees",
         icon: Receipt,
@@ -296,6 +303,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.bankAccounts",
         href: "/accounting/accounts",
         icon: Landmark,
+      },
+      {
+        titleKey: "nav.deposits",
+        href: "/accounting/deposits",
+        icon: ArrowLeftRight,
       },
       {
         titleKey: "nav.profitLoss",
@@ -326,6 +338,11 @@ export const SIDEBAR_NAV: NavGroup[] = [
         titleKey: "nav.salaryPayroll",
         href: "/salary",
         icon: Wallet,
+      },
+      {
+        titleKey: "nav.payrollApprovals",
+        href: "/salary/approvals",
+        icon: CheckCircle2,
       },
     ],
   },
@@ -404,15 +421,20 @@ export const SIDEBAR_NAV: NavGroup[] = [
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
-export const PAYMENT_METHODS = [
-  { value: "CASH", labelKey: "collection.cash" },
-  { value: "BANK_TRANSFER", labelKey: "collection.bankTransfer" },
-  { value: "POS_CARD", labelKey: "collection.posCard" },
-  { value: "DIGITAL", labelKey: "collection.digital" },
-  { value: "CHEQUE", labelKey: "collection.cheque" },
-  { value: "EASYPAISA", labelKey: "collection.easypaisa" },
-  { value: "JAZZCASH", labelKey: "collection.jazzcash" },
-] as const;
+/**
+ * System GL account codes. Single source of truth for the seeded chart
+ * (`tenant-provisioning.ts`): method→account fallbacks, wallet/receivable
+ * legs and reporting buckets must reference these, never literals.
+ */
+export const GL_CODES = {
+  BANK: "1010",
+  CASH: "1020",
+  RECEIVABLE: "1030",
+  WALLET: "2050",
+  TUITION_REVENUE: "4010",
+  LATE_FINE_REVENUE: "4060",
+  CONCESSION_EXPENSE: "5060",
+} as const;
 
 export const VOUCHER_STATUSES = [
   { value: "PENDING", labelKey: "fees.pending" },

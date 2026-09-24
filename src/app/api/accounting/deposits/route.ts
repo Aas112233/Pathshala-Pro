@@ -9,14 +9,16 @@ import {
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { postCashDeposit } from "@/lib/fee-service";
-import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { GL_CODES, MAX_PAGE_SIZE } from "@/lib/constants";
 import { z } from "zod";
 
 const depositSchema = z.object({
   toCode: z.string().regex(/^\d{1,6}$/, "toCode must be a numeric account code"),
-  fromCode: z.string().regex(/^\d{1,6}$/).optional().default("1020"),
+  fromCode: z.string().regex(/^\d{1,6}$/).optional().default(GL_CODES.CASH),
   amount: z.number().positive("Deposit amount must be greater than 0"),
   note: z.string().max(500).optional(),
+  bankReference: z.string().trim().max(100).optional(),
+  receiptRefs: z.string().trim().max(1000).optional(),
 });
 
 /**
@@ -81,6 +83,8 @@ export async function POST(request: NextRequest) {
         amount: data.amount,
         executedById: user.id,
         note: data.note,
+        bankReference: data.bankReference,
+        receiptRefs: data.receiptRefs,
       })
     );
 

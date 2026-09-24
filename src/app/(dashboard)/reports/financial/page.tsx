@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -27,6 +27,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { useTenantFormatting, useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { useExcelExport } from "@/hooks/use-excel-export";
+import { useExpenseCategories } from "@/hooks/use-queries";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import { api } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
@@ -85,7 +86,6 @@ export default function FinancialReportPage() {
   const [toDate, setToDate] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedMethod, setSelectedMethod] = useState("all");
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -96,20 +96,13 @@ export default function FinancialReportPage() {
     FinancialReportData["categoryBreakdown"]
   >([]);
 
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const res = await fetch("/api/accounting/categories");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setCategories(json.data);
-        }
-      } catch {
-        // Silent catch for category loader
-      }
-    }
-    loadCategories();
-  }, []);
+  // Uses the centralized query hook (AGENTS.md §7) instead of a bespoke
+  // useEffect + fetch, matching how the expenses screen loads the same list.
+  const { data: categoriesResponse } = useExpenseCategories();
+  const categories = ((categoriesResponse as any)?.data || []) as Array<{
+    id: string;
+    name: string;
+  }>;
 
   const handleGenerateReport = async () => {
     setIsLoading(true);
@@ -416,7 +409,7 @@ export default function FinancialReportPage() {
 
           {/* Expenses Table */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-foreground">Itemized Expense Ledger</h3>
+            <h3 className="text-sm font-bold text-foreground">{t("itemizedExpenseLedger")}</h3>
             <ReportTable
               columns={columns}
               data={data}

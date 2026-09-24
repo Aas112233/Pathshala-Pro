@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
 import { ApiError } from "@/lib/api-error";
+import { GL_CODES } from "@/lib/constants";
+import { resolveMethodAccountCode } from "@/lib/payment-method-routing";
 
 /**
  * Helper: tuition-only capped stacking. Each concession declares appliesToHead.
@@ -120,8 +122,8 @@ export interface GenerateInvoiceParams {
   concessionAmount?: number | Prisma.Decimal;
   concessionReason?: "SIBLING" | "MERIT" | "STAFF_CHILD" | "POVERTY" | "OTHER";
   executedById: string;
-  arAccountCode?: string;          // Default: "1030" (Student Accounts Receivable)
-  concessionAccountCode?: string;  // Default: "5060" (Fee Concession & Scholarship Expense)
+  arAccountCode?: string;          // Default: GL_CODES.RECEIVABLE (Student Accounts Receivable)
+  concessionAccountCode?: string;  // Default: GL_CODES.CONCESSION_EXPENSE (Fee Concession & Scholarship Expense)
 }
 
 export interface FeeInvoiceResult {
@@ -142,9 +144,9 @@ export interface CollectFeePaymentParams {
   feeVoucherId: string;
   paymentAmount: number | Prisma.Decimal;
   paymentMethod: "CASH" | "BANK_TRANSFER" | "GATEWAY_ONLINE" | "CHEQUE" | "WALLET_CREDIT";
-  bankAccountCode?: string;        // Default: "1010" (or "1020" Cash Register)
-  arAccountCode?: string;          // Default: "1030"
-  unearnedLiabilityCode?: string;  // Default: "2050" (Student Wallet / Advance)
+  bankAccountCode?: string;        // Default: GL_CODES.BANK (or GL_CODES.CASH Cash Register)
+  arAccountCode?: string;          // Default: GL_CODES.RECEIVABLE
+  unearnedLiabilityCode?: string;  // Default: GL_CODES.WALLET (Student Wallet / Advance)
   receiptNumber?: string;
   reference?: string;
   executedById: string;
@@ -185,8 +187,8 @@ export async function generateFeeInvoice(
     concessionAmount = 0,
     concessionReason,
     executedById,
-    arAccountCode = "1030",
-    concessionAccountCode = "5060",
+    arAccountCode = GL_CODES.RECEIVABLE,
+    concessionAccountCode = GL_CODES.CONCESSION_EXPENSE,
   } = params;
 
   if (!items || items.length === 0) {
@@ -230,7 +232,7 @@ export async function generateFeeInvoice(
     : [];
   const feeHeadAccountMap = new Map(feeHeads.map((head) => [head.code, head.accountCode]));
   const revenueAccountCodes = Array.from(
-    new Set(items.map((item) => item.revenueAccountCode || feeHeadAccountMap.get(item.feeHeadCode) || "4010"))
+    new Set(items.map((item) => item.revenueAccountCode || feeHeadAccountMap.get(item.feeHeadCode) || GL_CODES.TUITION_REVENUE))
   );
   const neededCodes = [arAccountCode, ...revenueAccountCodes];
   if (discount.greaterThan(0)) {
@@ -292,7 +294,7 @@ export async function generateFeeInvoice(
 
   // Leg 3: Credit Respective Revenue Heads
   for (const item of items) {
-    const headCode = item.revenueAccountCode || feeHeadAccountMap.get(item.feeHeadCode) || "4010";
+    const headCode = item.revenueAccountCode || feeHeadAccountMap.get(item.feeHeadCode) || GL_CODES.TUITION_REVENUE;
     const revAccId = accountMap.get(headCode);
     if (!revAccId) {
       throw new Error(`Revenue account (${headCode}) for item '${item.title}' not configured.`);
@@ -389,10 +391,10 @@ export async function postLegacyFeeInvoiceAccrual(
       select: { accountCode: true },
     }),
     tx.chartOfAccount.findMany({
-      where: { tenantId: params.tenantId, code: { in: ["1030", "5060"] }, isActive: true },
+      where: { tenantId: params.tenantId, code: { in: [GL_CODES.RECEIVABLE, GL_CODES.CONCESSION_EXPENSE] }, isActive: true },
     }),
   ]);
-  const revenueCode = feeHead?.accountCode || "4010";
+  const revenueCode = feeHead?.accountCode || GL_CODES.TUITION_REVENUE;
   const revenueAccount = await tx.chartOfAccount.findFirst({
     where: { tenantId: params.tenantId, code: revenueCode, isActive: true },
   });
@@ -400,14 +402,14 @@ export async function postLegacyFeeInvoiceAccrual(
   // A tenant without a seeded chart of accounts cannot post a fee accrual.
   // Throwing ApiError (not a bare Error) keeps the actionable reason visible to
   // the administrator instead of collapsing into a generic 500.
-  if (!accountMap.has("1030")) {
-    throw ApiError.internal("Accounts Receivable account (1030) not configured. Seed the tenant's chart of accounts under Accounting > Chart of Accounts.");
+  if (!accountMap.has(GL_CODES.RECEIVABLE)) {
+    throw ApiError.internal(`Accounts Receivable account (${GL_CODES.RECEIVABLE}) not configured. Seed the tenant's chart of accounts under Accounting > Chart of Accounts.`);
   }
   if (!revenueAccount) {
     throw ApiError.internal(`Revenue account (${revenueCode}) not configured. Map the ${params.feeHeadCode} fee head to an active account under Accounting > Fee Heads.`);
   }
-  if (discount.greaterThan(0) && !accountMap.has("5060")) {
-    throw ApiError.internal("Fee Concession account (5060) not configured. Seed the tenant's chart of accounts before granting concessions.");
+  if (discount.greaterThan(0) && !accountMap.has(GL_CODES.CONCESSION_EXPENSE)) {
+    throw ApiError.internal(`Fee Concession account (${GL_CODES.CONCESSION_EXPENSE}) not configured. Seed the tenant's chart of accounts before granting concessions.`);
   }
 
   const net = gross.minus(discount);
@@ -416,7 +418,7 @@ export async function postLegacyFeeInvoiceAccrual(
   if (net.greaterThan(0)) {
     lineItems.push({
       tenantId: params.tenantId,
-      accountId: accountMap.get("1030")!.id,
+      accountId: accountMap.get(GL_CODES.RECEIVABLE)!.id,
       debitAmount: net,
       creditAmount: new Prisma.Decimal(0),
       narration: `Student Fee Voucher Receivable - ${params.reference}`,
@@ -426,7 +428,7 @@ export async function postLegacyFeeInvoiceAccrual(
   if (discount.greaterThan(0)) {
     lineItems.push({
       tenantId: params.tenantId,
-      accountId: accountMap.get("5060")!.id,
+      accountId: accountMap.get(GL_CODES.CONCESSION_EXPENSE)!.id,
       debitAmount: discount,
       creditAmount: new Prisma.Decimal(0),
       narration: `Fee Concession - ${params.reference}`,
@@ -509,11 +511,11 @@ export async function applyWalletDebit(
   }
 
   const accounts = await tx.chartOfAccount.findMany({
-    where: { tenantId: params.tenantId, code: { in: ["2050", "1030"] }, isActive: true },
+    where: { tenantId: params.tenantId, code: { in: [GL_CODES.WALLET, GL_CODES.RECEIVABLE] }, isActive: true },
   });
   const accountMap = new Map(accounts.map((a) => [a.code, a.id]));
-  if (!accountMap.has("2050") || !accountMap.has("1030")) {
-    throw ApiError.internal("Wallet (2050) or Receivable (1030) account not configured.");
+  if (!accountMap.has(GL_CODES.WALLET) || !accountMap.has(GL_CODES.RECEIVABLE)) {
+    throw ApiError.internal(`Wallet (${GL_CODES.WALLET}) or Receivable (${GL_CODES.RECEIVABLE}) account not configured.`);
   }
 
   const voucherNumber = await getNextVoucherNumber(tx, params.tenantId, "RECEIPT");
@@ -536,7 +538,7 @@ export async function applyWalletDebit(
         create: [
           {
             tenantId: params.tenantId,
-            accountId: accountMap.get("2050")!,
+            accountId: accountMap.get(GL_CODES.WALLET)!,
             debitAmount: amount,
             creditAmount: new Prisma.Decimal(0),
             narration: `Wallet Debit - ${params.feeVoucherId}`,
@@ -544,7 +546,7 @@ export async function applyWalletDebit(
           },
           {
             tenantId: params.tenantId,
-            accountId: accountMap.get("1030")!,
+            accountId: accountMap.get(GL_CODES.RECEIVABLE)!,
             debitAmount: new Prisma.Decimal(0),
             creditAmount: amount,
             narration: `Settlement of Fee Voucher ${params.feeVoucherId} from Wallet`,
@@ -637,9 +639,11 @@ export async function postCashDeposit(
     amount: number | Prisma.Decimal;
     executedById: string;
     note?: string;
+    bankReference?: string;
+    receiptRefs?: string;
   }
 ): Promise<{ journalEntryId: string; voucherNumber: string }> {
-  const { tenantId, fromCode = "1020", toCode, executedById } = params;
+  const { tenantId, fromCode = GL_CODES.CASH, toCode, executedById } = params;
   const amount = new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
   if (amount.lessThanOrEqualTo(0)) {
     throw ApiError.badRequest("Deposit amount must be positive.");
@@ -647,6 +651,8 @@ export async function postCashDeposit(
   if (fromCode === toCode) {
     throw ApiError.badRequest("Deposit source and destination accounts must differ.");
   }
+  const bankReference = params.bankReference?.trim().slice(0, 100) || "";
+  const receiptRefs = params.receiptRefs?.trim().slice(0, 1000) || "";
   const accounts = await tx.chartOfAccount.findMany({
     where: { tenantId, code: { in: [fromCode, toCode] }, isActive: true },
   });
@@ -656,6 +662,10 @@ export async function postCashDeposit(
   }
   const period = await resolveOpenPeriod(tx, { tenantId });
   const voucherNumber = await getNextVoucherNumber(tx, tenantId, "CONTRA");
+  const narrationParts = [`Cash Deposit ${fromCode} → ${toCode}`];
+  if (bankReference) narrationParts.push(`Bank ref: ${bankReference}`);
+  if (receiptRefs) narrationParts.push(`Receipts: ${receiptRefs}`);
+  if (params.note) narrationParts.push(params.note);
   const journal = await tx.journalEntry.create({
     data: {
       tenantId,
@@ -663,8 +673,8 @@ export async function postCashDeposit(
       voucherType: "CONTRA",
       postingDate: new Date(),
       postingStatus: "POSTED",
-      narration: `Cash Deposit ${fromCode} → ${toCode}${params.note ? ` | ${params.note}` : ""}`,
-      reference: voucherNumber,
+      narration: narrationParts.join(" | "),
+      reference: bankReference || voucherNumber,
       totalDebit: amount,
       totalCredit: amount,
       createdById: executedById,
@@ -714,7 +724,7 @@ export async function postFeeReceipt(
   }
 
   let bankCode = params.bankAccountCode
-    || (params.paymentMethod === "CASH" ? "1020" : "1010");
+    || resolveMethodAccountCode(undefined, params.paymentMethod);
   try {
     const tenant = await tx.tenant.findUnique({
       where: { tenantId: params.tenantId },
@@ -722,18 +732,14 @@ export async function postFeeReceipt(
     });
     const flags = (tenant?.featureFlags as any) || {};
     if (Array.isArray(flags.paymentMethods)) {
-      const match = flags.paymentMethods.find(
-        (m: any) => m.code === params.paymentMethod || m.id === params.paymentMethod
-      );
-      if (match?.accountCode) {
-        bankCode = match.accountCode;
-      }
+      bankCode = params.bankAccountCode
+        || resolveMethodAccountCode(flags.paymentMethods, params.paymentMethod);
     }
   } catch {}
 
   const requiredCodes = [bankCode];
-  if (applied.greaterThan(0)) requiredCodes.push("1030");
-  if (excess.greaterThan(0)) requiredCodes.push("2050");
+  if (applied.greaterThan(0)) requiredCodes.push(GL_CODES.RECEIVABLE);
+  if (excess.greaterThan(0)) requiredCodes.push(GL_CODES.WALLET);
   const accounts = await tx.chartOfAccount.findMany({
     where: { tenantId: params.tenantId, code: { in: requiredCodes }, isActive: true },
   });
@@ -758,7 +764,7 @@ export async function postFeeReceipt(
   if (applied.greaterThan(0)) {
     lines.push({
       tenantId: params.tenantId,
-      accountId: accountMap.get("1030")!.id,
+      accountId: accountMap.get(GL_CODES.RECEIVABLE)!.id,
       debitAmount: new Prisma.Decimal(0),
       creditAmount: applied,
       narration: `Settlement of Fee Voucher ${params.feeVoucherId}`,
@@ -767,7 +773,7 @@ export async function postFeeReceipt(
   if (excess.greaterThan(0)) {
     lines.push({
       tenantId: params.tenantId,
-      accountId: accountMap.get("2050")!.id,
+      accountId: accountMap.get(GL_CODES.WALLET)!.id,
       debitAmount: new Prisma.Decimal(0),
       creditAmount: excess,
       narration: `Excess Fee Payment Wallet Credit - ${params.feeVoucherId}`,
@@ -905,8 +911,8 @@ export async function applyLateFineSurcharge(
     studentProfileId: string;
     fineAmount: number | Prisma.Decimal;
     executedById: string;
-    arAccountCode?: string;        // Default: "1030"
-    lateFeeRevenueCode?: string;   // Default: "4060"
+    arAccountCode?: string;        // Default: GL_CODES.RECEIVABLE
+    lateFeeRevenueCode?: string;   // Default: GL_CODES.LATE_FINE_REVENUE
     notes?: string;
   }
 ) {
@@ -916,8 +922,8 @@ export async function applyLateFineSurcharge(
     studentProfileId,
     fineAmount,
     executedById,
-    arAccountCode = "1030",
-    lateFeeRevenueCode = "4060",
+    arAccountCode = GL_CODES.RECEIVABLE,
+    lateFeeRevenueCode = GL_CODES.LATE_FINE_REVENUE,
     notes,
   } = params;
 
@@ -1009,9 +1015,9 @@ export async function collectFeePayment(
     feeVoucherId,
     paymentAmount,
     paymentMethod,
-    bankAccountCode = paymentMethod === "CASH" ? "1020" : "1010",
-    arAccountCode = "1030",
-    unearnedLiabilityCode = "2050",
+    bankAccountCode = paymentMethod === "CASH" ? GL_CODES.CASH : GL_CODES.BANK,
+    arAccountCode = GL_CODES.RECEIVABLE,
+    unearnedLiabilityCode = GL_CODES.WALLET,
     receiptNumber = `REC-${Date.now()}`,
     reference,
     executedById,
@@ -1112,8 +1118,8 @@ export async function waiveLateFine(
     studentProfileId,
     executedById,
     reason,
-    arAccountCode = "1030",
-    lateFeeRevenueCode = "4060",
+    arAccountCode = GL_CODES.RECEIVABLE,
+    lateFeeRevenueCode = GL_CODES.LATE_FINE_REVENUE,
   } = params;
 
   const lockedRows = await tx.$queryRaw<

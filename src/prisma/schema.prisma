@@ -154,6 +154,7 @@ model User {
   approvedComponentGrace ExamComponentResult[]  @relation("GraceApprovedBy")
   approvedExamGrace      ExamResult[]           @relation("ExamGraceApprovedBy")
   graceLedgers           GraceMarkLedger[]      @relation("GraceLedgerApprover")
+  approvedSalaries       SalaryLedger[]         @relation("SalaryApprovedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -454,12 +455,16 @@ model SalaryLedger {
   deductionsBreakdown Json? // { lop, pf, tax, loan }
   status              String    @default("PENDING")
   paidAt              DateTime?
+  approvedById        String?
+  approvedAt          DateTime?
+  rejectionReason     String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   tenant       Tenant       @relation(fields: [tenantId], references: [tenantId])
   staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  approvedBy   User?        @relation("SalaryApprovedBy", fields: [approvedById], references: [id])
 
   @@unique([tenantId, staffProfileId, year, month]) // Prevent duplicate ledgers per staff per month
   @@unique([tenantId, academicYearId, staffProfileId, month, year])
@@ -467,6 +472,7 @@ model SalaryLedger {
   @@index([tenantId, year, month])
   @@index([tenantId, academicYearId])
   @@index([tenantId, transactionId])
+  @@index([tenantId, status])
 }
 
 model Attendance {

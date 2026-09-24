@@ -102,15 +102,17 @@ export async function PUT(
       return notFound("Salary ledger not found");
     }
 
-    if (existingLedger.paidAmount > 0 || ["PAID", "PARTIAL"].includes(existingLedger.status)) {
+    if (existingLedger.paidAmount > 0 || ["PAID", "PARTIAL", "APPROVED"].includes(existingLedger.status)) {
       return integrityViolation(
-        lockedUpdateMessage("Salary ledger", "payment activity already exists"),
+        lockedUpdateMessage("Salary ledger", existingLedger.status === "APPROVED" ? "record is already approved" : "payment activity already exists"),
         [
           {
             field: "id",
             code: "locked",
             message:
-              "Salary records with paid or partially paid amounts cannot be edited. Create an adjustment workflow instead.",
+              existingLedger.status === "APPROVED"
+                ? "Approved salary records cannot be edited. Reject the record first to make changes."
+                : "Salary records with paid or partially paid amounts cannot be edited. Create an adjustment workflow instead.",
           },
         ]
       );
@@ -169,18 +171,20 @@ export async function DELETE(
       return notFound("Salary ledger not found");
     }
 
-    if (existingLedger.paidAmount > 0 || ["PAID", "PARTIAL"].includes(existingLedger.status)) {
+    if (existingLedger.paidAmount > 0 || ["PAID", "PARTIAL", "APPROVED"].includes(existingLedger.status)) {
       return integrityViolation(
         lockedDeleteMessage("Salary ledger", {
           payments: existingLedger.paidAmount > 0 ? 1 : 0,
-          paidStatus: ["PAID", "PARTIAL"].includes(existingLedger.status) ? 1 : 0,
+          paidStatus: ["PAID", "PARTIAL", "APPROVED"].includes(existingLedger.status) ? 1 : 0,
         }),
         [
           {
             field: "id",
             code: "locked",
             message:
-              "Salary records with payment history cannot be deleted. Use a payroll adjustment workflow instead.",
+              existingLedger.status === "APPROVED"
+                ? "Approved salary records cannot be deleted. Reject the record first."
+                : "Salary records with payment history cannot be deleted. Use a payroll adjustment workflow instead.",
           },
         ]
       );

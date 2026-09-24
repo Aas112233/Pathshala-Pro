@@ -29,6 +29,8 @@ import {
 } from "@/lib/tenant-settings";
 import { ERPFormSection } from "@/components/ui/erp-form-layout";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
+import { GL_CODES } from "@/lib/constants";
+import { useChartAccounts } from "@/hooks/use-queries";
 import { toast } from "sonner";
 
 interface PaymentMethodsSettingsSectionProps {
@@ -42,6 +44,16 @@ export function PaymentMethodsSettingsSection({
 }: PaymentMethodsSettingsSectionProps) {
   const t = useTranslations("settings");
   const { refreshSettings, setSettings: setGlobalSettings } = useTenantSettings();
+  const { data: chartResponse } = useChartAccounts({ accountType: "ASSET" });
+  const assetAccounts = ((chartResponse as any)?.data as any)?.accounts || [];
+  const glOptions =
+    assetAccounts.length > 0
+      ? assetAccounts.map((a: any) => ({ value: String(a.code), label: `${a.name} (${a.code})` }))
+      : [
+          { value: GL_CODES.BANK, label: t("paymentMethods.modal.glAccount1010") },
+          { value: GL_CODES.CASH, label: t("paymentMethods.modal.glAccount1020") },
+          { value: GL_CODES.RECEIVABLE, label: t("paymentMethods.modal.glAccount1030") },
+        ];
   const methods = settings.paymentMethods && settings.paymentMethods.length > 0
     ? settings.paymentMethods
     : DEFAULT_PAYMENT_METHODS;
@@ -54,7 +66,7 @@ export function PaymentMethodsSettingsSection({
   const [formName, setFormName] = useState("");
   const [formCode, setFormCode] = useState("");
   const [formType, setFormType] = useState<CustomPaymentMethod["type"]>("DIGITAL");
-  const [formAccountCode, setFormAccountCode] = useState("1010");
+  const [formAccountCode, setFormAccountCode] = useState<string>(GL_CODES.BANK);
   const [formInstructions, setFormInstructions] = useState("");
   const [formIsActive, setFormIsActive] = useState(true);
 
@@ -84,10 +96,10 @@ export function PaymentMethodsSettingsSection({
         setGlobalSettings(json.data);
       }
       await refreshSettings();
-      toast.success(t("ui.saved") || "পেমেন্ট মেথড সফলভাবে ডাটাবেজে সংরক্ষিত হয়েছে");
+      toast.success(t("ui.saved"));
     } catch (err: any) {
       console.error("Failed to persist payment methods:", err);
-      toast.error(err.message || t("ui.saveFailed") || "পেমেন্ট মেথড সংরক্ষণ করতে ব্যর্থ হয়েছে");
+      toast.error(err.message || t("ui.saveFailed"));
     } finally {
       setIsSavingDirectly(false);
     }
@@ -98,7 +110,7 @@ export function PaymentMethodsSettingsSection({
     setFormName("");
     setFormCode("");
     setFormType("DIGITAL");
-    setFormAccountCode("1010");
+    setFormAccountCode(GL_CODES.BANK);
     setFormInstructions("");
     setFormIsActive(true);
     setIsModalOpen(true);
@@ -109,7 +121,7 @@ export function PaymentMethodsSettingsSection({
     setFormName(method.name);
     setFormCode(method.code);
     setFormType(method.type);
-    setFormAccountCode(method.accountCode || (method.type === "CASH" ? "1020" : "1010"));
+    setFormAccountCode(method.accountCode || (method.type === "CASH" ? GL_CODES.CASH : GL_CODES.BANK));
     setFormInstructions(method.instructions || "");
     setFormIsActive(method.isActive);
     setIsModalOpen(true);
@@ -288,7 +300,7 @@ export function PaymentMethodsSettingsSection({
                           {method.code}
                         </span>
                         <span className="text-[11px] text-muted-foreground">
-                          {t("paymentMethods.glPrefix")}: {method.accountCode || (isCash ? `1020 (${t("paymentMethods.cashInHand")})` : `1010 (${t("paymentMethods.bankDigital")})`)}
+                          {t("paymentMethods.glPrefix")}: {method.accountCode || (isCash ? `${GL_CODES.CASH} (${t("paymentMethods.cashInHand")})` : `${GL_CODES.BANK} (${t("paymentMethods.bankDigital")})`)}
                         </span>
                       </div>
                     </div>
@@ -398,8 +410,8 @@ export function PaymentMethodsSettingsSection({
                   onChange={(v) => {
                     const newType = v as CustomPaymentMethod["type"];
                     setFormType(newType);
-                    if (newType === "CASH") setFormAccountCode("1020");
-                    else setFormAccountCode("1010");
+                    if (newType === "CASH") setFormAccountCode(GL_CODES.CASH);
+                    else setFormAccountCode(GL_CODES.BANK);
                   }}
                   options={[
                     { value: "DIGITAL", label: t("paymentMethods.modal.typeDigital") },
@@ -417,11 +429,8 @@ export function PaymentMethodsSettingsSection({
               <AppDropdown
                 value={formAccountCode}
                 onChange={(v) => setFormAccountCode(v)}
-                options={[
-                  { value: "1010", label: t("paymentMethods.modal.glAccount1010") },
-                  { value: "1020", label: t("paymentMethods.modal.glAccount1020") },
-                  { value: "1030", label: t("paymentMethods.modal.glAccount1030") }
-                ]}
+                options={glOptions}
+                searchable
               />
               <p className="text-[11px] text-muted-foreground">
                 {t("paymentMethods.modal.glHint")}

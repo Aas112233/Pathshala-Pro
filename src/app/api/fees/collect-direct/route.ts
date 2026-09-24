@@ -9,7 +9,11 @@ import {
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
 import { z } from "zod";
-import { paymentMethodSchema } from "@/lib/schemas";
+import {
+  getMethodPostingRules,
+  validateCollectionMethod,
+  WALLET_CREDIT_METHOD,
+} from "@/lib/payment-method-routing";
 import {
   postLegacyFeeInvoiceAccrual,
   postCollectionJournal,
@@ -25,7 +29,7 @@ import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 const directFeeCollectionSchema = z.object({
   studentProfileId: z.string().min(1, "Student ID is required"),
   amountPaid: z.number().positive("Payment amount must be greater than 0"),
-  paymentMethod: paymentMethodSchema.default("CASH"),
+  paymentMethod: z.string().trim().min(1).max(30).default("CASH"),
   receiptNumber: z.string().optional(),
   note: z.string().optional(),
   chequeNumber: z.string().max(50).optional(),
@@ -40,15 +44,9 @@ const directFeeCollectionSchema = z.object({
   walletAmount: z.number().min(0, "Wallet amount cannot be negative").optional().default(0),
   autoApplyWallet: z.boolean().optional().default(false),
 }).superRefine((data, ctx) => {
-  // Every non-cash receipt must carry a traceable external reference.
-  if (data.paymentMethod === "CHEQUE" && !data.chequeNumber) {
-    ctx.addIssue({ code: "custom", message: "Cheque number is required for CHEQUE payments.", path: ["chequeNumber"] });
-  }
-  const onlineMethods = ["DIGITAL", "ONLINE", "BANK", "BANK_TRANSFER", "POS_CARD", "CARD", "EASYPAISA", "JAZZCASH", "BKASH", "NAGAD", "UPI"];
-  if (onlineMethods.includes(data.paymentMethod) && !data.reference) {
-    ctx.addIssue({ code: "custom", message: `External reference (UTR/transaction id) is required for ${data.paymentMethod} payments.`, path: ["reference"] });
-  }
-  if (data.walletAmount > 0 && data.paymentMethod === "WALLET_CREDIT") {
+  // Cheque/reference traceability is enforced server-side against the
+  // tenant's method config (type-aware); only wallet-shape rules live here.
+  if (data.walletAmount > 0 && data.paymentMethod === WALLET_CREDIT_METHOD) {
     ctx.addIssue({ code: "custom", message: "walletAmount is only for split payments; use WALLET_CREDIT alone for full-wallet payment.", path: ["walletAmount"] });
   }
   if (data.walletAmount > 0 && data.paymentMethod === "CHEQUE") {
@@ -61,11 +59,13 @@ const directFeeCollectionSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Cash-box gate. The module tier cannot express it: PRINCIPAL legitimately
-    // holds fees:{manage} (waiver approval), which would otherwise let the
-    // academic head take payments. `fees:payment:collect` is the capability
-    // the role matrix actually defines for that.
-    const access = await requireApiAccess(request, { permission: "fees:payment:collect" });
+    // Cash-box gate on the POS desk tier, not the parent `fees` module:
+    // PRINCIPAL legitimately holds fees:{manage} (waiver approval), which
+    // would otherwise let the academic head take payments. The desk tier is
+    // also the only form that carries per-user grants — `fees:payment:collect`
+    // is a role-only list, so it can neither hand a desk to a CLERK nor take
+    // one away from an ACCOUNTANT.
+    const access = await requireApiAccess(request, { module: "fee-pos", action: "write" });
     if ("response" in access) return access.response;
 
     const { user, tenantId } = access.authContext;
@@ -73,6 +73,34 @@ export async function POST(request: NextRequest) {
     const bodyResult = await safeParseBody(request, directFeeCollectionSchema);
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
+
+    // Tenant-aware method gate: custom codes and the active toggle live in
+    // featureFlags.paymentMethods, which the transport schema cannot enumerate.
+    const tenantRow = await prisma.tenant.findUnique({
+      where: { tenantId },
+      select: { featureFlags: true },
+    });
+    const tenantMethods = (tenantRow?.featureFlags as any)?.paymentMethods;
+    // Schema default fills "CASH" at runtime; the ?? only satisfies the type.
+    const paymentMethod = data.paymentMethod ?? "CASH";
+    const methodCheck = validateCollectionMethod(tenantMethods, paymentMethod);
+    if (methodCheck.error === "unknown") {
+      return badRequest(
+        `Unknown payment method "${paymentMethod}" for this tenant.`
+      );
+    }
+    if (methodCheck.error === "inactive") {
+      return badRequest(`Payment method "${paymentMethod}" is disabled for this tenant.`);
+    }
+    const postingRules = getMethodPostingRules(methodCheck.method, paymentMethod);
+    if (postingRules.isCheque && !data.chequeNumber) {
+      return badRequest("Cheque number is required for CHEQUE payments.");
+    }
+    if (postingRules.requiresReference && !data.reference) {
+      return badRequest(
+        `External reference (UTR/transaction id) is required for ${paymentMethod} payments.`
+      );
+    }
 
     const student = await prisma.studentProfile.findUnique({
       where: { id: data.studentProfileId, tenantId },

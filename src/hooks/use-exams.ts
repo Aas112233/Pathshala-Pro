@@ -396,7 +396,7 @@ export function useUpdatePromotionRule() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["promotion-rules"] });
-      toast.success(t("promotionRuleUpdated") || "প্রমোশন রুল সফলভাবে আপডেট হয়েছে");
+      toast.success(t("promotionRuleUpdated"));
     },
     onError: (error: any) => {
       const description = error?.details?.[0]?.message;
@@ -417,7 +417,7 @@ export function useDeletePromotionRule() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["promotion-rules"] });
-      toast.success(t("promotionRuleDeleted") || "প্রমোশন রুল সফলভাবে মুছে ফেলা হয়েছে");
+      toast.success(t("promotionRuleDeleted"));
     },
     onError: (error: any) => {
       const description = error?.details?.[0]?.message;

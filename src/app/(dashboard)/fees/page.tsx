@@ -50,7 +50,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { formatStudentName } from "@/lib/utils";
 import { usePDFExport, type FeeVoucherPDFData } from "@/hooks/use-pdf-export";
 import { useAuth } from "@/components/providers/auth-provider";
-import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { hasPermission, getEffectivePermissions, FEE_DESK_TIER } from "@/lib/permissions";
 
 export default function FeesPage() {
   const t = useTranslations("fees");
@@ -61,6 +61,10 @@ export default function FeesPage() {
   const canReadFees = hasPermission(perms, "fees", "read");
   const canWriteFees = hasPermission(perms, "fees", "write");
   const canManageFees = hasPermission(perms, "fees", "manage");
+  // Shortcuts only appear for desks the user may actually open; a POS-only
+  // cashier must not be offered a jump to the class-wide batch desk.
+  const canViewPosDesk = hasPermission(perms, FEE_DESK_TIER.pos, "read");
+  const canViewBulkDesk = hasPermission(perms, FEE_DESK_TIER.bulk, "read");
   const [activeTab, setActiveTab] = useState("vouchers");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -317,7 +321,7 @@ export default function FeesPage() {
         description={t("description")}
       >
         <div className="flex flex-wrap items-center gap-2">
-          {canWriteFees && (
+          {canViewPosDesk && (
             <Button
               size="sm"
               onClick={() => router.push("/fees/collection")}
@@ -328,7 +332,7 @@ export default function FeesPage() {
             </Button>
           )}
 
-          {canWriteFees && (
+          {canViewBulkDesk && (
             <Button
               size="sm"
               onClick={() => router.push("/fees/bulk")}
@@ -499,7 +503,7 @@ export default function FeesPage() {
                     triggerClassName="h-9 text-xs"
                   />
 
-                  {canWriteFees && (
+                  {canViewBulkDesk && (
                     <Button
                       size="sm"
                       onClick={() => router.push("/fees/bulk")}

@@ -113,6 +113,12 @@
     "threeMonths": "৩ মাস / টার্ম",
     "sixMonths": "৬ মাস",
     "fullRemaining": "পুরো ১২ মাস / বাকি",
+    "selectAll": "সকল বকেয়া (সম্পূর্ণ বছর)",
+    "clearSelection": "মুছে ফেলুন",
+    "exactAmount": "সঠিক পরিমাণ",
+    "shortcuts": "শর্টকাট",
+    "selectedDue": "নির্বাচিত বকেয়া:",
+    "totalOutstanding": "মোট বকেয়া:",
     "activeInvoices": "সক্রিয় ইনভয়েস ও ভাউচার",
     "totalDue": "মোট বকেয়া:",
     "currentMonthRate": "বর্তমান মাসের শ্রেণির টিউশন রেট",
@@ -176,7 +182,18 @@
     "selectStudentPrompt": "ফি সংগ্রহের জন্য শিক্ষার্থী নির্বাচন করুন",
     "noFeeStructureAlert": "{academicYear} শিক্ষাবর্ষে {className}-এর জন্য কোনো সক্রিয় ফি কাঠামো কনফিগার করা নেই। কনফিগার না করা পর্যন্ত অবিলকৃত মাসের ফি সংগ্রহ করা যাবে না।",
     "configureFeeStructure": "ফি কাঠামো কনফিগার করুন",
-    "feeStructureRequired": "ফি কাঠামো প্রয়োজন"
+    "feeStructureRequired": "ফি কাঠামো প্রয়োজন",
+    "walletMethod": "ওয়ালেট",
+    "walletMethodHint": "শিক্ষার্থীর অগ্রিম ওয়ালেট থেকে পরিশোধ",
+    "walletSplitTitle": "ওয়ালেট থেকে আংশিক পরিশোধ",
+    "autoApplyWallet": "ওয়ালেট স্বয়ংক্রিয় প্রয়োগ",
+    "walletAmountPlaceholder": "ওয়ালেট পরিমাণ",
+    "chequeNumber": "চেক নম্বর",
+    "chequeNumberPlaceholder": "চেক নম্বর লিখুন",
+    "paymentReference": "লেনদেন রেফারেন্স (UTR)",
+    "paymentReferencePlaceholder": "UTR / গেটওয়ে আইডি লিখুন",
+    "referenceRequired": "{method} পেমেন্টের জন্য এক্সটার্নাল রেফারেন্স (UTR/লেনদেন আইডি) প্রয়োজন।",
+    "chequeNumberRequired": "চেক পেমেন্টের জন্য চেক নম্বর প্রয়োজন।"
   },
   "currencies": {
     "title": "মুদ্রা",
@@ -276,15 +293,18 @@
     "feeStructures": "ফি কাঠামো",
     "feeCollection": "ফি আদায় (পিওএস)",
     "bulkFeeCollection": "বাল্ক ফি এন্ট্রি",
+    "feeCollectors": "ফি আদায়কারী",
     "transactions": "লেনদেন",
     "expenses": "ব্যয়",
     "bankAccounts": "ব্যাংক ও ক্যাশ একাউন্ট",
+    "deposits": "নগদ জমা",
     "profitLoss": "লাভ ও ক্ষতির বিবরণী",
     "statements": "হিসাবের বিবরণী",
     "feeHeadMappings": "ফি হেড অ্যাকাউন্টিং",
     "hr": "মানবসম্পদ ও বেতন",
     "staff": "কর্মচারী তালিকা",
     "salaryPayroll": "বেতন ও পে-রোল",
+    "payrollApprovals": "বেতন অনুমোদন",
     "administration": "সেটিংস ও সিস্টেম",
     "systemSettings": "সেটিংস ও সিস্টেম",
     "campusFacilities": "ক্যাম্পাস ও সুবিধা",
@@ -709,7 +729,9 @@
       "profilePhotoAlt": "{name}-এর প্রোফাইল ছবি"
     },
     "idCards": "ID Cards",
-    "admissionForm": "Admission Form"
+    "admissionForm": "Admission Form",
+    "createError": "শিক্ষার্থী তৈরি করতে ব্যর্থ",
+    "updateError": "শিক্ষার্থী আপডেট করতে ব্যর্থ"
   },
   "fees": {
     "title": "ফি ব্যবস্থাপনা কেন্দ্র",
@@ -773,15 +795,6 @@
     "tuition": "টিউশন",
     "rollLabel": "রোল:",
     "voucherNumber": "ভাউচার নম্বর",
-    "walletMethod": "ওয়ালেট",
-    "walletMethodHint": "শিক্ষার্থীর অগ্রিম ওয়ালেট থেকে পরিশোধ",
-    "chequeNumber": "চেক নম্বর",
-    "chequeNumberPlaceholder": "চেক নম্বর লিখুন",
-    "paymentReference": "লেনদেন রেফারেন্স (UTR)",
-    "paymentReferencePlaceholder": "UTR / গেটওয়ে আইডি লিখুন",
-    "walletSplitTitle": "ওয়ালেট থেকে আংশিক পরিশোধ",
-    "autoApplyWallet": "ওয়ালেট স্বয়ংক্রিয় প্রয়োগ",
-    "walletAmountPlaceholder": "ওয়ালেট পরিমাণ",
     "waiveFine": "বিলম্ব জরিমানা মওকুফ করুন",
     "outstandingFine": "বকেয়া বিলম্ব জরিমানা",
     "waiveAmount": "মওকুফের পরিমাণ",
@@ -958,6 +971,7 @@
       "phoneInvalid": "অনুগ্রহ করে একটি বৈধ ফোন নম্বর লিখুন",
       "createUserAccount": "এই স্টাফ সদস্যের জন্য লগিন অ্যাকাউন্ট তৈরি করুন",
       "createUserAccountDescription": "এটি স্টাফ সদস্যকে সিস্টেমে প্রবেশের অনুমতি দেবে",
+      "createUserAccountHint": "লগিন শংশাপত্র সহ একটি ইমেইল স্টাফ সদস্যকে পাঠানো হবে",
       "addStaffDescription": "সিস্টেমে নতুন স্টাফ সদস্যের প্রোফাইল তৈরি করুন।",
       "editStaffDescription": "স্টাফ সদস্যের তথ্য আপডেট করুন।",
       "loginEmail": "লগিন ইমেইল",
@@ -999,6 +1013,59 @@
   "salary": {
     "title": "বেতন / বেতনপত্র",
     "description": "কর্মচারীদের বেতন, অগ্রিম, এবং বেতনপত্র পরিচালনা করুন।",
+    "approvals": {
+      "title": "বেতন অনুমোদন",
+      "description": "বিতরণের পূর্বে কর্মীদের বেতনের অডিট, পর্যালোচনা এবং অনুমোদন করুন।",
+      "approveSelected": "নির্বাচিত অনুমোদন করুন ({count})",
+      "approveAllPending": "সকল অপেক্ষমান অনুমোদন করুন",
+      "quickApprove": "দ্রুত অনুমোদন",
+      "reject": "প্রত্যাখ্যান",
+      "approvedBadge": "অনুমোদিত",
+      "readyForPayment": "প্রদানের জন্য প্রস্তুত",
+      "awaitingAudit": "অনুমোদনের অপেক্ষায়",
+      "table": {
+        "period": "সময়কাল",
+        "audit": "অনুমোদন অডিট"
+      },
+      "kpi": {
+        "pendingTitle": "অপেক্ষমান অনুমোদন",
+        "pendingSubtitle": "অনুমোদনের অপেক্ষায়",
+        "approvedTitle": "প্রদানের জন্য প্রস্তুত",
+        "approvedSubtitle": "কর্তৃপক্ষ কর্তৃক অনুমোদিত",
+        "disbursedTitle": "বিতরণকৃত (মাসিক)",
+        "disbursedSubtitle": "অ্যাকাউন্টে প্রদান সম্পন্ন",
+        "rejectedTitle": "মনোযোগ প্রয়োজন",
+        "rejectedSubtitle": "প্রত্যাখ্যাত / ফেরত পাঠানো",
+        "staffUnit": "কর্মী"
+      },
+      "filters": {
+        "allStatuses": "সকল স্ট্যাটাস",
+        "pending": "অনুমোদনের অপেক্ষায়",
+        "approved": "অনুমোদিত",
+        "rejected": "প্রত্যাখ্যাত",
+        "paid": "পরিশোধিত",
+        "selectMonth": "মাস নির্বাচন করুন",
+        "selectYear": "বছর নির্বাচন করুন",
+        "selectDept": "বিভাগ নির্বাচন করুন",
+        "selectStatus": "স্ট্যাটাস নির্বাচন করুন"
+      },
+      "searchPlaceholder": "কর্মী নাম বা আইডি দিয়ে খুঁজুন...",
+      "emptyTitle": "কোন পে-রোল রেকর্ড পাওয়া যায়নি",
+      "emptyDescription": "নির্বাচিত মাস, বছর বা অনুমোদন ফিল্টারের সাথে কোন বেতনের রেকর্ড মেলেনি।",
+      "noPendingSelected": "নির্বাচিত কোন রেকর্ড অনুমোদনের অপেক্ষায় নেই",
+      "noPendingInView": "বর্তমান তালিকায় কোন রেকর্ড অনুমোদনের অপেক্ষায় নেই",
+      "rejectTitle": "বেতন রেকর্ড প্রত্যাখ্যান করুন",
+      "rejectDescription": "এই রেকর্ডটি এইচআর / অ্যাকাউন্টসে ফেরত পাঠানোর সঠিক কারণ উল্লেখ করুন।",
+      "rejectDescriptionStaff": "{name}-এর বেতনের রেকর্ড এইচআর-এ ফেরত পাঠানোর সঠিক কারণ উল্লেখ করুন।",
+      "reasonLabel": "প্রত্যাখ্যানের কারণ",
+      "reasonPlaceholder": "প্রয়োজনীয় সংশোধন উল্লেখ করুন (যেমন ভুল এলওপি দিন, অগ্রিম কর্তন বাদ পড়া)...",
+      "rejectionReasonRequired": "প্রত্যাখ্যানের কারণ বাধ্যতামূলক (ন্যূনতম ৩ অক্ষর)",
+      "cancel": "বাতিল",
+      "confirmReject": "রেকর্ড প্রত্যাখ্যান করুন",
+      "approveSuccess": "বেতন সফলভাবে অনুমোদিত হয়েছে!",
+      "rejectSuccess": "বেতন প্রত্যাখ্যান করে এইচআর-এ ফেরত পাঠানো হয়েছে",
+      "bulkApproveSuccess": "নির্বাচিত বেতনসমূহ সফলভাবে অনুমোদিত হয়েছে!"
+    },
     "processPayroll": "বেতনপত্র প্রক্রিয়া",
     "month": "মাস",
     "year": "বছর",
@@ -1500,7 +1567,9 @@
     "resultsSaved": "পরীক্ষার ফলাফল সফলভাবে সংরক্ষিত হয়েছে!",
     "promotionRuleCreated": "পদোন্নতির নিয়ম সফলভাবে তৈরি হয়েছে!",
     "promotionsExecuted": "পদোন্নতি সফলভাবে সম্পন্ন হয়েছে!",
-    "error": "পরীক্ষা কার্যক্রমে ব্যর্থ হয়েছে"
+    "error": "পরীক্ষা কার্যক্রমে ব্যর্থ হয়েছে",
+    "promotionRuleUpdated": "প্রমোশন রুল সফলভাবে আপডেট হয়েছে",
+    "promotionRuleDeleted": "প্রমোশন রুল সফলভাবে মুছে ফেলা হয়েছে"
   },
   "results": {
     "marksLockedDuePromotion": "শিক্ষার্থীর পদোন্নতির কারণে তার নম্বর লক করা হয়েছে।",
@@ -2387,7 +2456,6 @@
   "reports": {
     "title": "রিপোর্ট ও অ্যানালিটিক্স হাব",
     "description": "প্রাতিষ্ঠানিক বুদ্ধিমত্তা, অডিট ও এক্সপোর্টযোগ্য লেজার",
-    "overview": "রিপোর্ট ওভারভিউ",
     "charts": {
       "total": "মোট"
     },
@@ -2512,7 +2580,8 @@
       "exportedPDF": "আর্থিক রিপোর্ট PDF-এ এক্সপোর্ট হয়েছে",
       "exportFailed": "আর্থিক রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "আর্থিক ব্যয় ও নগদ প্রবাহ রিপোর্ট",
-      "description": "পরিচালন ব্যয় খাত, পেমেন্ট ভাউচার, ফি রসিদ ও নেট নগদ ব্যালেন্স"
+      "description": "পরিচালন ব্যয় খাত, পেমেন্ট ভাউচার, ফি রসিদ ও নেট নগদ ব্যালেন্স",
+      "itemizedExpenseLedger": "আইটেমভিত্তিক ব্যয় খতিয়ান"
     },
     "admissionsReport": {
       "applicantStudent": "Applicant / Student",
@@ -2559,7 +2628,8 @@
       "exportedPDF": "ভর্তি রিপোর্ট PDF-এ রপ্তানি হয়েছে",
       "exportFailed": "ভর্তি রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
       "title": "ভর্তি পাইপলাইন ও কনভার্সন রিপোর্ট",
-      "description": "অনুসন্ধান ট্র্যাকিং, লিড উৎস, কনভার্সন হার ও ভর্তি পরিসংখ্যান"
+      "description": "অনুসন্ধান ট্র্যাকিং, লিড উৎস, কনভার্সন হার ও ভর্তি পরিসংখ্যান",
+      "enquiriesLedger": "আবেদনকারী অনুসন্ধান খতিয়ান"
     },
     "attendanceReport": {
       "class": "Class",
@@ -2712,7 +2782,33 @@
       "export": "এক্সপোর্ট করুন",
       "generating": "তৈরি হচ্ছে...",
       "noData": "কোনো তথ্য নেই",
-      "exportedExcel": "রিপোর্ট সফলভাবে Excel-এ এক্সপোর্ট হয়েছে"
+      "exportedExcel": "রিপোর্ট সফলভাবে Excel-এ এক্সপোর্ট হয়েছে",
+      "reportPeriod": "রিপোর্টের সময়কাল",
+      "generatedAt": "তৈরি করার সময়",
+      "records": "রেকর্ড",
+      "appliedFilters": "প্রয়োগ করা ফিল্টার",
+      "noExtraFilters": "কোনো অতিরিক্ত ফিল্টার নেই",
+      "trendFromLastPeriod": "গত সময়কাল থেকে %",
+      "rowsPerPage": "প্রতি পৃষ্ঠায় সারি",
+      "paginationRange": "{start}-{end} / {total}",
+      "previousPage": "পূর্ববর্তী পৃষ্ঠা",
+      "nextPage": "পরবর্তী পৃষ্ঠা",
+      "searchPlaceholder": "রিপোর্টে খুঁজুন...",
+      "noRecordsTitle": "কোনো রেকর্ড পাওয়া যায়নি",
+      "noRecordsDescription": "আপনার অনুসন্ধান বা ফিল্টার সামঞ্জস্য করার চেষ্টা করুন",
+      "exportTruncated": "এক্সপোর্ট সীমিত — ফলাফল সেট এক্সপোর্ট সীমার বেশি",
+      "lowestAttendanceStudents": "সর্বনিম্ন উপস্থিতি",
+      "reportUnavailableForRole": "এই রিপোর্ট আপনার ভূমিকার জন্য উপলব্ধ নয়",
+      "reportUnavailableForRoleHint": "আপনি যদি মনে করেন এটি ভুল, আপনার প্রশাসকের সাথে যোগাযোগ করুন"
+    },
+    "hub": {
+      "searchPlaceholder": "রিপোর্ট খুঁজুন...",
+      "finance": "আর্থিক",
+      "academics": "একাডেমিক",
+      "operations": "পরিচালনা",
+      "noAccess": "আপনার ভূমিকার জন্য কোনো রিপোর্ট উপলব্ধ নেই",
+      "noAccessHint": "আপনি যদি মনে করেন এটি ভুল, আপনার প্রশাসকের সাথে যোগাযোগ করুন",
+      "emptySearch": "আপনার অনুসন্ধানের সাথে কোনো রিপোর্ট মেলে না"
     }
   },
   "accounting": {
@@ -2961,6 +3057,30 @@
     },
     "deposits": {
       "recordDeposit": "জমা রেকর্ড করুন",
+      "title": "নগদ জমা",
+      "pageDescription": "সুষম নগদ-থেকে-ব্যাংক এন্ট্রি দিয়ে কাউন্টার সংগ্রহ ব্যাংকে জমা করুন।",
+      "tableTitle": "জমা জার্নাল",
+      "showingRecords": "{count}টি রেকর্ড দেখানো হচ্ছে",
+      "colVoucher": "ভাউচার",
+      "colRoute": "কোথা থেকে → কোথায়",
+      "colNarration": "বিবরণ",
+      "colDate": "তারিখ",
+      "colAmount": "পরিমাণ",
+      "totalDeposited": "মোট জমা (পৃষ্ঠা)",
+      "pageCount": "{count}টি এন্ট্রি",
+      "depositCount": "জমা এন্ট্রি",
+      "entriesUnit": "কন্ট্রা এন্ট্রি",
+      "avgDeposit": "গড় জমা",
+      "perEntryUnit": "প্রতি এন্ট্রি",
+      "emptyTitle": "কোনো জমা রেকর্ড নেই",
+      "emptyHint": "রেকর্ড শুরু করতে প্রথম নগদ-থেকে-ব্যাংক জমা রেকর্ড করুন।",
+      "colBankRef": "ব্যাংক রেফ",
+      "undepositedCash": "ড্রয়ারে নগদ",
+      "undepositedHint": "সংগৃহীত, এখনও ব্যাংকে জমা হয়নি",
+      "bankReference": "ব্যাংক স্লিপ / UTR",
+      "bankReferencePlaceholder": "যেমন UTR 123456789012",
+      "receiptRefs": "সংযুক্ত রসিদ",
+      "receiptRefsPlaceholder": "যেমন REC-2026-0001, REC-2026-0002",
       "description": "সুষম স্থানান্তর এন্ট্রি দিয়ে সংগৃহীত নগদ ব্যাংকে জমা করুন।",
       "transferTitle": "নগদ স্থানান্তর",
       "transferDescription": "ব্যাংককে ডেবিট, ক্যাশ রেজিস্টারকে ক্রেডিট করুন। সংযুক্ত ব্যালেন্স স্বয়ংক্রিয়ভাবে সমন্বয় হবে।",
@@ -2968,6 +3088,8 @@
       "toAccount": "কোথায় (ব্যাংক)",
       "toAccountPlaceholder": "যেমন 1010",
       "selectDestination": "গন্তব্য অ্যাকাউন্ট নির্বাচন করুন",
+      "selectSource": "উৎস অ্যাকাউন্ট নির্বাচন করুন",
+      "sameAccount": "উৎস এবং গন্তব্য অ্যাকাউন্ট আলাদা হতে হবে",
       "amount": "পরিমাণ",
       "note": "নোট",
       "notePlaceholder": "যেমন সন্ধ্যার কাউন্টার জমা",
@@ -3463,7 +3585,9 @@
     "periodRemoved": "পিরিয়ড সফলভাবে সরানো হয়েছে!",
     "error": "সময়সূচী পিরিয়ডে ব্যর্থ হয়েছে",
     "periodWithNumber": "পিরিয়ড {number}",
-    "pdfDownloadSuccess": "টাইম টেবল PDF ডাউনলোড হয়েছে"
+    "pdfDownloadSuccess": "টাইম টেবল PDF ডাউনলোড হয়েছে",
+    "periodCreated": "পিরিয়ড সফলভাবে তৈরি করা হয়েছে!",
+    "periodDeleted": "পিরিয়ড সফলভাবে মুছে ফেলা হয়েছে!"
   },
   "notifications": {
     "title": "বিজ্ঞপ্তি ও নোটিশ",
@@ -3710,7 +3834,8 @@
     "routeDeleted": "রুট সফলভাবে মুছে ফেলা হয়েছে!",
     "allocatedSuccess": "শিক্ষার্থী সফলভাবে বরাদ্দ করা হয়েছে!",
     "allocationRemoved": "বরাদ্দ সফলভাবে সরানো হয়েছে!",
-    "error": "পরিবহন অপারেশনে ব্যর্থ হয়েছে"
+    "error": "পরিবহন অপারেশনে ব্যর্থ হয়েছে",
+    "vacatedSuccess": "বরাদ্দ সফলভাবে খালি করা হয়েছে!"
   },
   "homework": {
     "title": "হোমওয়ার্ক ও অ্যাসাইনমেন্ট",
@@ -4432,6 +4557,51 @@
     "created": "বিজ্ঞপ্তি সফলভাবে তৈরি হয়েছে!",
     "updated": "বিজ্ঞপ্তি সফলভাবে আপডেট হয়েছে!"
   },
+  "collectors": {
+    "title": "ফি আদায়কারী",
+    "description": "নির্ধারণ করুন কোন কর্মী কোন ফি আদায় ডেস্কে টাকা নিতে পারবে।",
+    "deskNote": "উভয় আদায় ডেস্ক নগদ সামলানোর সক্ষমতা। ডেস্ক দিলে সেই ব্যবহারকারী ডেস্ক খুলে পেমেন্ট নিতে পারবেন; বাতিল করলে পরবর্তী সাইন-ইনে ডেস্কটি তাঁর নেভিগেশন থেকে সরে যাবে।",
+    "searchPlaceholder": "নাম বা ইমেইল দিয়ে কর্মী খুঁজুন...",
+    "manage": "ডেস্ক পরিচালনা",
+    "granted": "অনুমোদিত",
+    "notGranted": "অনুমোদিত নয়",
+    "active": "সক্রিয়",
+    "inactive": "নিষ্ক্রিয়",
+    "receiptsCount": "{count} রসিদ",
+    "neverCollected": "কখনও নয়",
+    "sheetTitle": "{name} — ফি ডেস্ক অ্যাক্সেস",
+    "sheetDescription": "এই কর্মীর জন্য প্রতিটি আদায় ডেস্ক চালু বা বন্ধ করুন।",
+    "posDesk": "পিওএস কাউন্টার ডেস্ক",
+    "posDeskHint": "একজন শিক্ষার্থীর কাউন্টার পেমেন্ট ও রসিদ প্রিন্ট।",
+    "bulkDesk": "বাল্ক ক্লাস ডেস্ক",
+    "bulkDeskHint": "পুরো ক্লাস ও ফি মাসের জন্য একসাথে এন্ট্রি।",
+    "sessionNote": "ডেস্ক পরিবর্তন এক মিনিটের মধ্যে কার্যকর হয় এবং আদায়কারীর চলমান সেশন শেষ করে দেয়, তাই তাঁকে আবার সাইন ইন করতে হবে।",
+    "save": "ডেস্ক অ্যাক্সেস সংরক্ষণ করুন",
+    "saving": "সংরক্ষণ করা হচ্ছে...",
+    "saved": "{name}-এর ডেস্ক অ্যাক্সেস আপডেট হয়েছে।",
+    "saveError": "ডেস্ক অ্যাক্সেস আপডেট করা যায়নি।",
+    "loadError": "ফি আদায়কারীদের লোড করা যায়নি।",
+    "noCollectors": "এখনও কোনো কর্মী অ্যাকাউন্ট নেই",
+    "noCollectorsHint": "ফি আদায় ডেস্ক দেওয়ার আগে কর্মী ব্যবহারকারী তৈরি করুন।",
+    "noMatches": "\"{term}\" এর সাথে কোনো কর্মী মেলেনি",
+    "clearSearch": "অনুসন্ধান মুছুন",
+    "columns": {
+      "collector": "আদায়কারী",
+      "role": "ভূমিকা",
+      "account": "অ্যাকাউন্ট",
+      "posDesk": "পিওএস",
+      "bulkDesk": "বাল্ক",
+      "todayCollected": "আজ আদায়",
+      "lastCollected": "সর্বশেষ আদায়",
+      "actions": "কার্যক্রম"
+    },
+    "pagination": {
+      "rowsPerPage": "প্রতি পৃষ্ঠায় সারি:",
+      "range": "{total} এর মধ্যে {start}-{end}",
+      "previous": "পূর্ববর্তী পৃষ্ঠা",
+      "next": "পরবর্তী পৃষ্ঠা"
+    }
+  },
   "bulkFees": {
     "challansDownloaded": "চালান PDF ডাউনলোড হয়েছে (৩ কপি)",
     "pdfFailed": "PDF তৈরি করতে ব্যর্থ",
@@ -4506,7 +4676,13 @@
     "amountPlaceholder": "০.০০",
     "monthAlreadyPaid": "{student} এর জন্য {month} মাসের ফি ইতোমধ্যে পরিশোধ করা হয়েছে",
     "noFeeStructureAlert": "{academicYear} শিক্ষাবর্ষে {className}-এর জন্য কোনো সক্রিয় ফি কাঠামো কনফিগার করা নেই। কনফিগার না করা পর্যন্ত অবিলকৃত শিক্ষার্থীরা ০.০০ দেখাবে।",
-    "configureFeeStructure": "ফি কাঠামো কনফিগার করুন"
+    "configureFeeStructure": "ফি কাঠামো কনফিগার করুন",
+    "chequeNumber": "চেক নম্বর",
+    "chequeNumberPlaceholder": "চেক নম্বর লিখুন",
+    "paymentReference": "লেনদেন রেফারেন্স (UTR)",
+    "paymentReferencePlaceholder": "UTR / গেটওয়ে আইডি লিখুন",
+    "referenceRequired": "{method} পেমেন্টের জন্য এক্সটার্নাল রেফারেন্স (UTR/লেনদেন আইডি) প্রয়োজন।",
+    "chequeNumberRequired": "চেক পেমেন্টের জন্য চেক নম্বর প্রয়োজন।"
   },
   "subscription": {
     "banner": {

@@ -38,6 +38,18 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = createUserSchema.partial();
 
+/**
+ * A fee-collector capability change: which collection desk(s) a user may work.
+ * Both flags are required so a request can never leave a desk in an undefined
+ * state — the caller states the full intent, and the API writes the pair.
+ */
+export const feeCollectorCapabilitySchema = z.object({
+  posCollect: z.boolean(),
+  bulkCollect: z.boolean(),
+});
+
+export type FeeCollectorCapabilityInput = z.infer<typeof feeCollectorCapabilitySchema>;
+
 // Student schemas
 export const createStudentSchema = z.object({
   studentId: z.string().optional(),
@@ -320,6 +332,15 @@ export const createClassPromotionSchema = z.object({
 export const updateClassPromotionSchema = createClassPromotionSchema.partial();
 
 // Salary ledger schemas
+export const SALARY_LEDGER_STATUSES = [
+  "PENDING",
+  "PENDING_APPROVAL",
+  "APPROVED",
+  "REJECTED",
+  "PARTIAL",
+  "PAID",
+] as const;
+
 export const createSalaryLedgerSchema = z.object({
   staffProfileId: z.string().min(1, "Staff is required"),
   academicYearId: z.string().min(1, "Academic year is required"),
@@ -328,12 +349,26 @@ export const createSalaryLedgerSchema = z.object({
   baseSalary: z.number().min(0),
   deductions: z.number().min(0).default(0),
   advances: z.number().min(0).default(0),
-  status: z.enum(["PENDING", "PARTIAL", "PAID"]).default("PENDING"),
+  status: z.enum(SALARY_LEDGER_STATUSES).default("PENDING_APPROVAL"),
   paidAmount: z.number().min(0).default(0),
   paidAt: optionalDateInputSchema,
+  rejectionReason: z.string().optional(),
 });
 
 export const updateSalaryLedgerSchema = createSalaryLedgerSchema.partial();
+
+export const approveSalarySchema = z.object({
+  notes: z.string().optional(),
+});
+
+export const bulkApproveSalarySchema = z.object({
+  salaryIds: z.array(z.string().min(1)).min(1, "At least one salary record must be selected"),
+  notes: z.string().optional(),
+});
+
+export const rejectSalarySchema = z.object({
+  reason: z.string().min(3, "Rejection reason must be at least 3 characters"),
+});
 
 // Bulk payroll schema
 export const bulkPayrollEntrySchema = z.object({
@@ -532,12 +567,25 @@ export const createExpenseSchema = z.object({
 export const updateExpenseSchema = createExpenseSchema.partial();
 
 // Bank Account schemas
+/**
+ * Bank / cash-register classification — maps to `BankAccount.accountType`.
+ *
+ * This is NOT the same concept as `ChartOfAccount.accountType`
+ * (ASSET | LIABILITY | EQUITY | REVENUE | EXPENSE). Bank accounts are linked to
+ * the ledger through `accountCode`, not through their own type.
+ *
+ * Single source of truth: the UI dropdown and the API validation both derive
+ * from this constant so they can never drift apart.
+ */
+export const BANK_ACCOUNT_TYPES = ["CHECKING", "SAVINGS", "PETTY_CASH"] as const;
+export type BankAccountType = (typeof BANK_ACCOUNT_TYPES)[number];
+
 export const createBankAccountSchema = z.object({
   accountName: z.string().min(2, "Account name is required"),
   accountNumber: z.string().min(2, "Account number is required"),
   bankName: z.string().min(2, "Bank name is required"),
   branchName: z.string().optional(),
-  accountType: z.enum(["CHECKING", "SAVINGS", "PETTY_CASH"]).default("CHECKING"),
+  accountType: z.enum(BANK_ACCOUNT_TYPES).default("CHECKING"),
   accountCode: z.string().regex(/^\d{1,6}$/, "accountCode must be a numeric GL account code").optional(),
   openingBalance: z.number().min(0).default(0),
   currency: z.string().default("PKR"),

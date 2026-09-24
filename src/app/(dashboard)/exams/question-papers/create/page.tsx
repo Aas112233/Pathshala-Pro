@@ -386,7 +386,7 @@ export default function CreateQuestionPaperStudioPage() {
     },
     onSuccess: (data) => {
       setIsDirty(false);
-      toast.success(t('questionPapers.savedSuccess') || 'প্রশ্নপত্র সফলভাবে ডাটাবেজে সংরক্ষিত হয়েছে');
+      toast.success(t('questionPapers.savedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['question-papers'] });
       router.push(`/exams/question-papers/${data.data.id}/preview`);
     },
