@@ -7,9 +7,15 @@ import { Button } from "@/components/ui/button";
 import { AppDropdown } from "@/components/ui/app-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { TenantDateInput } from "@/components/ui/tenant-date-input";
 import { Label } from "@/components/ui/label";
+import { TopSheet } from "@/components/ui/top-sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import {
   FileSpreadsheet,
@@ -22,14 +28,13 @@ import {
   Printer,
   ArrowDownLeft,
   ArrowUpRight,
-  Wallet,
-  Building2,
-  Phone,
-  Mail,
   User,
-  CheckCircle2,
   Clock,
-  Filter,
+  Loader2,
+  Eye,
+  Share2,
+  Copy,
+  MessageSquare,
 } from "lucide-react";
 import { ERPDataTable, ERPStatusPill, type ColumnDef } from "@/components/ui/erp-data-table";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -39,6 +44,7 @@ import { useExcelExport } from "@/hooks/use-excel-export";
 import { usePDFExport } from "@/hooks/use-pdf-export";
 import type { ExcelColumn } from "@/lib/excel-exporter";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
 
 type StatementType = "STUDENT" | "STAFF" | "ACCOUNT";
 
@@ -58,33 +64,40 @@ export default function AccountingStatementsPage() {
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
   const canReadAccounting = hasPermission(perms, "accounting", "read");
-  const canWriteAccounting = hasPermission(perms, "accounting", "write");
-  const canManageAccounting = hasPermission(perms, "accounting", "manage");
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
+  const [selectedRowDetail, setSelectedRowDetail] = useState<any | null>(null);
 
-  const fetchStatement = async (type: StatementType, entityId?: string) => {
+  const fetchStatement = async (
+    type: StatementType = statementType,
+    entityId: string = selectedEntityId,
+    start: string = startDate,
+    end: string = endDate,
+    academicYearId: string = selectedAcademicYearId
+  ) => {
     setIsLoading(true);
     try {
       let url = `/api/accounting/statements?type=${type}`;
-      if (entityId) url += `&entityId=${entityId}`;
-      if (startDate) url += `&startDate=${startDate}`;
-      if (endDate) url += `&endDate=${endDate}`;
+      if (entityId) url += `&entityId=${encodeURIComponent(entityId)}`;
+      if (start) url += `&startDate=${encodeURIComponent(start)}`;
+      if (end) url += `&endDate=${encodeURIComponent(end)}`;
+      if (academicYearId) url += `&academicYearId=${encodeURIComponent(academicYearId)}`;
 
       const res = await fetch(url);
       const json = await res.json();
       if (json.success) {
-        setData(json.data);
-        if (!entityId && json.data?.entity?.id) {
-          setSelectedEntityId(json.data.entity.id);
-        }
+        setData((prev: any) => ({
+          ...json.data,
+          options: json.data?.options || prev?.options || { students: [], staffList: [], bankAccounts: [], academicYears: [] },
+        }));
       } else {
-        toast.error(t("loadFailed"));
+        toast.error(json.error?.message || t("loadFailed"));
       }
     } catch {
       toast.error(t("networkError"));
@@ -94,50 +107,73 @@ export default function AccountingStatementsPage() {
   };
 
   useEffect(() => {
-    // Don't fire a doomed request: the API returns 403 without accounting:read,
-    // and the page renders the access-restricted gate instead.
     if (isAuthLoading || !canReadAccounting) return;
-    fetchStatement(statementType);
+    fetchStatement(statementType, "", startDate, endDate, selectedAcademicYearId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statementType, isAuthLoading, canReadAccounting]);
 
   const handleTypeChange = (type: StatementType) => {
     setStatementType(type);
     setSelectedEntityId("");
-    fetchStatement(type, "");
+    setSelectedAcademicYearId("");
+    setSelectedRowDetail(null);
+    setData((prev: any) => ({
+      ...prev,
+      entity: null,
+      statement: {
+        openingBalance: 0,
+        totalDebit: 0,
+        totalCredit: 0,
+        closingBalance: 0,
+        entries: [],
+      },
+    }));
   };
 
   const handleEntityChange = (id: string) => {
     setSelectedEntityId(id);
-    fetchStatement(statementType, id);
+    setSelectedRowDetail(null);
+    setData((prev: any) => ({
+      ...prev,
+      entity: null,
+      statement: {
+        openingBalance: 0,
+        totalDebit: 0,
+        totalCredit: 0,
+        closingBalance: 0,
+        entries: [],
+      },
+    }));
   };
 
-  const handleApplyFilter = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchStatement(statementType, selectedEntityId);
+  const handleGenerateStatement = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!selectedEntityId) {
+      toast.error(t("selectEntityRequired"));
+      return;
+    }
+    fetchStatement(statementType, selectedEntityId, startDate, endDate, selectedAcademicYearId);
   };
 
   const handleQuickDatePreset = (preset: "THIS_MONTH" | "LAST_MONTH" | "THIS_YEAR" | "ALL") => {
+    let start = "";
+    let end = "";
     const now = new Date();
     if (preset === "ALL") {
-      setStartDate("");
-      setEndDate("");
+      start = "";
+      end = "";
     } else if (preset === "THIS_MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
-      setStartDate(firstDay);
-      setEndDate(lastDay);
+      start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
     } else if (preset === "LAST_MONTH") {
-      const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
-      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
-      setStartDate(firstDay);
-      setEndDate(lastDay);
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
+      end = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
     } else if (preset === "THIS_YEAR") {
-      const firstDay = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
-      const lastDay = new Date(now.getFullYear(), 11, 31).toISOString().split("T")[0];
-      setStartDate(firstDay);
-      setEndDate(lastDay);
+      start = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
+      end = new Date(now.getFullYear(), 11, 31).toISOString().split("T")[0];
     }
+    setStartDate(start);
+    setEndDate(end);
   };
 
   const handlePrint = () => {
@@ -253,7 +289,52 @@ export default function AccountingStatementsPage() {
     closingBalance: 0,
     entries: [],
   };
-  const options = data?.options || { students: [], staffList: [], bankAccounts: [] };
+  const options = data?.options || { students: [], staffList: [], bankAccounts: [], academicYears: [] };
+
+  const generateSummaryText = () => {
+    if (!entity) return "";
+    const schoolName = settings.name || "Pathshala Pro School";
+    const entityName =
+      statementType === "ACCOUNT"
+        ? entity.accountName
+        : `${entity.firstName} ${entity.lastName}`;
+    const period = startDate || endDate ? `${startDate || "Start"} → ${endDate || "End"}` : "All Records";
+    const currency = settings.currency || "$";
+
+    return (
+      `*${schoolName} - Statement Summary*\n` +
+      `Account: ${entityName}\n` +
+      `Period: ${period}\n` +
+      `Opening Balance: ${currency} ${statement.openingBalance.toLocaleString()}\n` +
+      `Total Charges / Billed: ${currency} ${statement.totalDebit.toLocaleString()}\n` +
+      `Total Paid / Received: ${currency} ${statement.totalCredit.toLocaleString()}\n` +
+      `Closing Net Balance: ${currency} ${statement.closingBalance.toLocaleString()}`
+    );
+  };
+
+  const handleCopySummary = async () => {
+    const summary = generateSummaryText();
+    if (!summary) return;
+    try {
+      await navigator.clipboard.writeText(summary);
+      toast.success(t("summaryCopied"));
+    } catch {
+      toast.error("Failed to copy summary");
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    const summary = generateSummaryText();
+    if (!summary) return;
+    let phone = "";
+    if (statementType === "STUDENT" && entity?.guardianContact) {
+      phone = entity.guardianContact.replace(/[^0-9]/g, "");
+    }
+    const url = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(summary)}`
+      : `https://wa.me/?text=${encodeURIComponent(summary)}`;
+    window.open(url, "_blank");
+  };
 
   const columns: ColumnDef<any>[] = [
     {
@@ -333,6 +414,25 @@ export default function AccountingStatementsPage() {
         </span>
       ),
     },
+    {
+      key: "actions",
+      header: "",
+      className: "w-10 text-right",
+      cell: (row) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 cursor-pointer text-muted-foreground hover:text-foreground"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedRowDetail(row);
+          }}
+          title={t("transactionDetails")}
+        >
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -344,7 +444,31 @@ export default function AccountingStatementsPage() {
           description={t("description")}
           icon={FileSpreadsheet}
         />
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-9 gap-1.5 cursor-pointer"
+                disabled={!entity}
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                {t("shareStatement")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleCopySummary} className="cursor-pointer gap-2 text-xs">
+                <Copy className="h-3.5 w-3.5" />
+                {t("copySummary")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShareWhatsApp} className="cursor-pointer gap-2 text-xs">
+                <MessageSquare className="h-3.5 w-3.5" />
+                {t("whatsappShare")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="outline"
             size="sm"
@@ -380,293 +504,654 @@ export default function AccountingStatementsPage() {
         </div>
       ) : (
         <>
+          {/* Statement Category Tabs */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-1 bg-muted/40 rounded-lg border border-border">
+            <button
+              type="button"
+              onClick={() => handleTypeChange("STUDENT")}
+              className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                statementType === "STUDENT"
+                  ? "bg-card text-foreground shadow-xs ring-1 ring-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <GraduationCap className="h-4 w-4 text-primary" />
+              <span>{t("studentStatement")}</span>
+            </button>
 
-      {/* Statement Category Tabs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-1 bg-muted/40 rounded-lg border border-border">
-        <button
-          type="button"
-          onClick={() => handleTypeChange("STUDENT")}
-          className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            statementType === "STUDENT"
-              ? "bg-card text-foreground shadow-xs ring-1 ring-border"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <GraduationCap className="h-4 w-4 text-primary" />
-          <span>{t("studentStatement")}</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => handleTypeChange("STAFF")}
+              className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                statementType === "STAFF"
+                  ? "bg-card text-foreground shadow-xs ring-1 ring-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Users className="h-4 w-4 text-primary" />
+              <span>{t("staffLedger")}</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => handleTypeChange("STAFF")}
-          className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            statementType === "STAFF"
-              ? "bg-card text-foreground shadow-xs ring-1 ring-border"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Users className="h-4 w-4 text-primary" />
-          <span>{t("staffLedger")}</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => handleTypeChange("ACCOUNT")}
+              className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                statementType === "ACCOUNT"
+                  ? "bg-card text-foreground shadow-xs ring-1 ring-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span>{t("accountLedger")}</span>
+            </button>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => handleTypeChange("ACCOUNT")}
-          className={`flex items-center justify-center gap-2.5 p-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            statementType === "ACCOUNT"
-              ? "bg-card text-foreground shadow-xs ring-1 ring-border"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-          <span>{t("accountLedger")}</span>
-        </button>
-      </div>
+          {/* Filter & Entity Selection Bar */}
+          <Card className="border border-border/80 shadow-xs">
+            <CardContent className="p-4">
+              <form onSubmit={handleGenerateStatement} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                  {/* Entity Picker */}
+                  <div className={cn(statementType === "ACCOUNT" ? "md:col-span-4" : "md:col-span-3", "space-y-1.5")}>
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      {statementType === "STUDENT"
+                        ? t("selectStudent")
+                        : statementType === "STAFF"
+                        ? t("selectStaff")
+                        : t("selectAccount")}
+                    </Label>
 
-      {/* Filter & Entity Selection Bar */}
-      <Card className="border border-border/80 shadow-xs">
-        <CardContent className="p-4">
-          <form onSubmit={handleApplyFilter} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-              {/* Entity Picker */}
-              <div className="md:col-span-5 space-y-1.5">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  {statementType === "STUDENT"
-                    ? t("selectStudent")
-                    : statementType === "STAFF"
-                    ? t("selectStaff")
-                    : t("selectAccount")}
-                </Label>
+                    {statementType === "STUDENT" && (
+                      <AppDropdown
+                        value={selectedEntityId}
+                        onChange={handleEntityChange}
+                        options={(options.students || []).map((s: any) => ({
+                          value: s.id,
+                          label: `${s.firstName} ${s.lastName} (Roll #${s.rollNumber} • ID: ${s.studentId})`,
+                        }))}
+                        placeholder={t("selectStudent")}
+                        searchable
+                      />
+                    )}
 
-                {statementType === "STUDENT" && (
-                  <AppDropdown
-                    value={selectedEntityId}
-                    onChange={handleEntityChange}
-                    options={(options.students || []).map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName} (Roll #${s.rollNumber} • ID: ${s.studentId})` }))}
-                    searchable
-                  />
-                )}
+                    {statementType === "STAFF" && (
+                      <AppDropdown
+                        value={selectedEntityId}
+                        onChange={handleEntityChange}
+                        options={(options.staffList || []).map((s: any) => ({
+                          value: s.id,
+                          label: `${s.firstName} ${s.lastName} (${s.designation} • ${s.department})`,
+                        }))}
+                        placeholder={t("selectStaff")}
+                        searchable
+                      />
+                    )}
 
-                {statementType === "STAFF" && (
-                  <AppDropdown
-                    value={selectedEntityId}
-                    onChange={handleEntityChange}
-                    options={(options.staffList || []).map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName} (${s.designation} • ${s.department})` }))}
-                    searchable
-                  />
-                )}
+                    {statementType === "ACCOUNT" && (
+                      <AppDropdown
+                        value={selectedEntityId}
+                        onChange={handleEntityChange}
+                        options={(options.bankAccounts || []).map((b: any) => ({
+                          value: b.id,
+                          label: `${b.accountName} (${b.bankName} • Acc #${b.accountNumber})`,
+                        }))}
+                        placeholder={t("selectAccount")}
+                        searchable
+                      />
+                    )}
+                  </div>
 
-                {statementType === "ACCOUNT" && (
-                  <AppDropdown
-                    value={selectedEntityId}
-                    onChange={handleEntityChange}
-                    options={(options.bankAccounts || []).map((b: any) => ({ value: b.id, label: `${b.accountName} (${b.bankName} • Acc #${b.accountNumber})` }))}
-                    searchable
-                  />
-                )}
+                  {/* Academic Year Filter (Students & Staff) */}
+                  {statementType !== "ACCOUNT" && (
+                    <div className="md:col-span-3 space-y-1.5">
+                      <Label className="text-xs font-semibold flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                        {t("academicYear")}
+                      </Label>
+                      <AppDropdown
+                        value={selectedAcademicYearId}
+                        onChange={setSelectedAcademicYearId}
+                        options={[
+                          { value: "", label: t("allAcademicYears") },
+                          ...(options.academicYears || []).map((ay: any) => ({
+                            value: ay.id,
+                            label: ay.label,
+                          })),
+                        ]}
+                        placeholder={t("allAcademicYears")}
+                        searchable
+                      />
+                    </div>
+                  )}
+
+                  {/* Date Filters */}
+                  <div className={cn(statementType === "ACCOUNT" ? "md:col-span-3" : "md:col-span-2", "space-y-1.5")}>
+                    <Label htmlFor="start-date" className="text-xs font-semibold flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t("fromDate")}
+                    </Label>
+                    <TenantDateInput
+                      id="start-date"
+                      value={startDate}
+                      onChange={setStartDate}
+                      className="h-10 text-xs"
+                    />
+                  </div>
+
+                  <div className={cn(statementType === "ACCOUNT" ? "md:col-span-3" : "md:col-span-2", "space-y-1.5")}>
+                    <Label htmlFor="end-date" className="text-xs font-semibold flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      {t("toDate")}
+                    </Label>
+                    <TenantDateInput
+                      id="end-date"
+                      value={endDate}
+                      onChange={setEndDate}
+                      className="h-10 text-xs"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>{t("generating")}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-3.5 w-3.5" />
+                          <span>{t("generateStatement")}</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground">{t("quickFilters")}</span>
+                  {[
+                    { label: t("thisMonth"), value: "THIS_MONTH" as const },
+                    { label: t("lastMonth"), value: "LAST_MONTH" as const },
+                    { label: t("thisYear"), value: "THIS_YEAR" as const },
+                    { label: t("allRecords"), value: "ALL" as const },
+                  ].map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => {
+                        handleQuickDatePreset(p.value);
+                      }}
+                      className="px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Entity Profile Ribbon */}
+          {entity && (
+            <div className="p-4 rounded-lg border border-border/80 bg-card flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-semibold text-lg">
+                  {statementType === "STUDENT" && <GraduationCap className="h-6 w-6" />}
+                  {statementType === "STAFF" && <Users className="h-6 w-6" />}
+                  {statementType === "ACCOUNT" && <Landmark className="h-6 w-6" />}
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-foreground">
+                      {statementType === "ACCOUNT" ? entity.accountName : `${entity.firstName} ${entity.lastName}`}
+                    </h3>
+                    <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                      {statementType === "STUDENT"
+                        ? `Roll #${entity.rollNumber}`
+                        : statementType === "STAFF"
+                        ? entity.designation
+                        : entity.accountType}
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                    {statementType === "STUDENT" && (
+                      <>
+                        <span>{t("studentId")}: <strong className="text-foreground font-mono">{entity.studentId}</strong></span>
+                        {entity.guardianName && <span>{t("guardian")}: <strong className="text-foreground">{entity.guardianName}</strong></span>}
+                        {entity.guardianContact && <span>{t("contact")}: <strong className="text-foreground font-mono">{entity.guardianContact}</strong></span>}
+                      </>
+                    )}
+
+                    {statementType === "STAFF" && (
+                      <>
+                        <span>{t("staffId")}: <strong className="text-foreground font-mono">{entity.staffId}</strong></span>
+                        <span>{t("department")}: <strong className="text-foreground">{entity.department}</strong></span>
+                        <span>{t("baseSalary")}: <strong className="text-foreground font-mono">{entity.baseSalary?.toLocaleString()}</strong></span>
+                      </>
+                    )}
+
+                    {statementType === "ACCOUNT" && (
+                      <>
+                        <span>{t("bank")}: <strong className="text-foreground">{entity.bankName}</strong></span>
+                        <span>{t("accountNumber")}: <strong className="text-foreground font-mono">{entity.accountNumber}</strong></span>
+                        <span>{t("currency")}: <strong className="text-foreground font-mono">{entity.currency}</strong></span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Date Filters */}
-              <div className="md:col-span-3 space-y-1.5">
-                <Label htmlFor="start-date" className="text-xs font-semibold flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  {t("fromDate")}
-                </Label>
-                <TenantDateInput
-                  id="start-date"
-                  value={startDate}
-                  onChange={setStartDate}
-                  className="h-10 text-xs"
-                />
+              <div className="text-right border-t md:border-t-0 pt-3 md:pt-0 border-border">
+                <span className="text-xs text-muted-foreground font-semibold uppercase">{t("netRunningBalance")}</span>
+                <h4 className={`text-2xl font-extrabold font-mono ${statement.closingBalance > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  {statement.closingBalance.toLocaleString()}
+                </h4>
               </div>
+            </div>
+          )}
 
-              <div className="md:col-span-3 space-y-1.5">
-                <Label htmlFor="end-date" className="text-xs font-semibold flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  {t("toDate")}
-                </Label>
-                <TenantDateInput
-                  id="end-date"
-                  value={endDate}
-                  onChange={setEndDate}
-                  className="h-10 text-xs"
-                />
-              </div>
+          {/* Aging Analysis Ribbon (Students) */}
+          {statementType === "STUDENT" && statement.aging && (
+            <Card className="border border-border/80 shadow-xs bg-muted/20">
+              <CardHeader className="p-4 pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {t("agingAnalysis")}
+                    </CardTitle>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs font-mono font-bold",
+                      statement.aging.totalOverdue > 0
+                        ? "text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40"
+                        : "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40"
+                    )}
+                  >
+                    {t("totalOverdue")}: {statement.aging.totalOverdue.toLocaleString()}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg border border-border bg-card">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">
+                      {t("agingCurrent")}
+                    </span>
+                    <span className="text-base font-extrabold font-mono text-foreground">
+                      {statement.aging.current.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-card">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">
+                      {t("aging30Days")}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-base font-extrabold font-mono",
+                        statement.aging.days30 > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
+                      )}
+                    >
+                      {statement.aging.days30.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-card">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">
+                      {t("aging60Days")}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-base font-extrabold font-mono",
+                        statement.aging.days60 > 0 ? "text-orange-600 dark:text-orange-400" : "text-foreground"
+                      )}
+                    >
+                      {statement.aging.days60.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-card">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">
+                      {t("aging90Plus")}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-base font-extrabold font-mono",
+                        statement.aging.days90Plus > 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"
+                      )}
+                    >
+                      {statement.aging.days90Plus.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-              <div className="md:col-span-1">
-                <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground text-xs">
-                  <Filter className="h-3.5 w-3.5" />
+          {/* KPI Financial Metric Summary Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border border-border/80 shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">
+                  {t("openingBalance")}
+                </span>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <h3 className="text-2xl font-extrabold text-foreground font-mono">
+                  {statement.openingBalance.toLocaleString()}
+                </h3>
+                <p className="text-[11px] text-muted-foreground">{t("openingDescription")}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/80 shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    {statementType === "STUDENT" ? t("totalBilled") : statementType === "STAFF" ? t("totalDisbursed") : t("totalDeposits")}
+                  </span>
+                  <div className="p-1 rounded-md bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <h3 className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono">
+                  +{statement.totalDebit.toLocaleString()}
+                </h3>
+                <p className="text-[11px] text-muted-foreground">{t("debitDescription")}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/80 shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">
+                    {statementType === "STUDENT" ? t("totalCollected") : statementType === "STAFF" ? t("salaryAccrued") : t("totalOutflow")}
+                  </span>
+                  <div className="p-1 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+                    <ArrowDownLeft className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                  -{statement.totalCredit.toLocaleString()}
+                </h3>
+                <p className="text-[11px] text-muted-foreground">{t("creditDescription")}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border/80 shadow-xs">
+              <CardHeader className="p-4 pb-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">
+                  {t("closingBalance")}
+                </span>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <h3 className="text-2xl font-extrabold text-foreground font-mono">
+                  {statement.closingBalance.toLocaleString()}
+                </h3>
+                <p className="text-[11px] text-muted-foreground">{t("closingDescription")}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Ledger Table */}
+          <ERPDataTable<any>
+            title={t("ledgerTitle")}
+            subtitle={t("showingTransactions", { count: statement.entries?.length || 0 })}
+            data={statement.entries || []}
+            columns={columns}
+            keyExtractor={(row) => row.id}
+            searchPlaceholder={t("filterPlaceholder")}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            onRowClick={(row) => setSelectedRowDetail(row)}
+          />
+
+          {/* Drill-Down Details TopSheet */}
+          <TopSheet
+            isOpen={!!selectedRowDetail}
+            onClose={() => setSelectedRowDetail(null)}
+            title={t("transactionDetails")}
+            subtitle={selectedRowDetail ? `${selectedRowDetail.refId} • ${selectedRowDetail.description}` : ""}
+            maxWidth="2xl"
+            footer={
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedRowDetail(null)}
+                >
+                  {t("close")}
                 </Button>
               </div>
-            </div>
+            }
+          >
+            {selectedRowDetail && (
+              <div className="space-y-5">
+                {/* Header Information Card */}
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-muted/30">
+                  <div>
+                    <span className="text-[11px] text-muted-foreground uppercase font-mono">{t("refHeader")}</span>
+                    <p className="text-sm font-bold font-mono text-foreground">{selectedRowDetail.refId}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] text-muted-foreground uppercase font-mono">{t("dateHeader")}</span>
+                    <p className="text-xs font-mono text-foreground">
+                      {formatDateWithSettings(selectedRowDetail.date, settings)}
+                    </p>
+                  </div>
+                </div>
 
-            {/* Quick Presets */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-[11px] font-semibold text-muted-foreground">{t("quickFilters")}</span>
-              {[
-                { label: t("thisMonth"), value: "THIS_MONTH" as const },
-                { label: t("lastMonth"), value: "LAST_MONTH" as const },
-                { label: t("thisYear"), value: "THIS_YEAR" as const },
-                { label: t("allRecords"), value: "ALL" as const },
-              ].map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  onClick={() => {
-                    handleQuickDatePreset(p.value);
-                  }}
-                  className="px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                {/* Categorized Drill-Down Breakdown */}
+                {selectedRowDetail.category === "FEE_BILLING" && selectedRowDetail.details && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      {t("voucherDetails")}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("billingPeriod")}</span>
+                        <span className="font-semibold">
+                          {selectedRowDetail.details.billingMonth
+                            ? `${selectedRowDetail.details.billingMonth}/${selectedRowDetail.details.billingYear}`
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("academicYear")}</span>
+                        <span className="font-semibold">{selectedRowDetail.details.academicYear || "—"}</span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("dueDate")}</span>
+                        <span className="font-semibold">
+                          {selectedRowDetail.details.dueDate
+                            ? formatDateWithSettings(selectedRowDetail.details.dueDate, settings)
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("statusHeader")}</span>
+                        <Badge variant="outline" className="text-[10px] mt-0.5">
+                          {selectedRowDetail.details.status}
+                        </Badge>
+                      </div>
+                    </div>
 
-      {/* Entity Profile Ribbon */}
-      {entity && (
-        <div className="p-4 rounded-lg border border-border/80 bg-card flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-semibold text-lg">
-              {statementType === "STUDENT" && <GraduationCap className="h-6 w-6" />}
-              {statementType === "STAFF" && <Users className="h-6 w-6" />}
-              {statementType === "ACCOUNT" && <Landmark className="h-6 w-6" />}
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-foreground">
-                  {statementType === "ACCOUNT" ? entity.accountName : `${entity.firstName} ${entity.lastName}`}
-                </h3>
-                <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                  {statementType === "STUDENT"
-                    ? `Roll #${entity.rollNumber}`
-                    : statementType === "STAFF"
-                    ? entity.designation
-                    : entity.accountType}
-                </Badge>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
-                {statementType === "STUDENT" && (
-                  <>
-                    <span>{t("studentId")}: <strong className="text-foreground font-mono">{entity.studentId}</strong></span>
-                    {entity.guardianName && <span>{t("guardian")}: <strong className="text-foreground">{entity.guardianName}</strong></span>}
-                    {entity.guardianContact && <span>{t("contact")}: <strong className="text-foreground font-mono">{entity.guardianContact}</strong></span>}
-                  </>
+                    <div className="p-3 rounded-lg border border-border bg-card space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("baseAmount")}</span>
+                        <span className="font-mono">{selectedRowDetail.details.baseAmount?.toLocaleString()}</span>
+                      </div>
+                      {selectedRowDetail.details.discount > 0 && (
+                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                          <span>{t("discountAmount")}</span>
+                          <span className="font-mono">-{selectedRowDetail.details.discount?.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {selectedRowDetail.details.arrears > 0 && (
+                        <div className="flex justify-between text-rose-600 dark:text-rose-400">
+                          <span>{t("arrears")}</span>
+                          <span className="font-mono">+{selectedRowDetail.details.arrears?.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="border-t border-border pt-2 flex justify-between font-bold text-sm">
+                        <span>{t("totalBilled")}</span>
+                        <span className="font-mono text-rose-600 dark:text-rose-400">
+                          +{selectedRowDetail.details.totalDue?.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
-                {statementType === "STAFF" && (
-                  <>
-                    <span>{t("staffId")}: <strong className="text-foreground font-mono">{entity.staffId}</strong></span>
-                    <span>{t("department")}: <strong className="text-foreground">{entity.department}</strong></span>
-                    <span>{t("baseSalary")}: <strong className="text-foreground font-mono">{entity.baseSalary?.toLocaleString()}</strong></span>
-                  </>
+                {selectedRowDetail.category === "FEE_PAYMENT" && selectedRowDetail.details && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      {t("receiptDetails")}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("methodHeader")}</span>
+                        <span className="font-semibold uppercase">{selectedRowDetail.details.paymentMethod}</span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("collectedBy")}</span>
+                        <span className="font-semibold">{selectedRowDetail.details.collectedBy || "—"}</span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("paymentReference")}</span>
+                        <span className="font-mono">
+                          {selectedRowDetail.details.chequeNumber || selectedRowDetail.details.reference || "—"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("refHeader")}</span>
+                        <span className="font-mono">{selectedRowDetail.details.voucherId || "—"}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg border border-border bg-emerald-50/50 dark:bg-emerald-950/20 flex justify-between items-center text-sm font-bold">
+                      <span className="text-emerald-700 dark:text-emerald-300">{t("totalCollected")}</span>
+                      <span className="font-mono text-emerald-600 dark:text-emerald-400 text-lg">
+                        -{selectedRowDetail.details.amountPaid?.toLocaleString()}
+                      </span>
+                    </div>
+                    {selectedRowDetail.details.note && (
+                      <p className="text-xs text-muted-foreground italic px-1">
+                        Note: {selectedRowDetail.details.note}
+                      </p>
+                    )}
+                  </div>
                 )}
 
-                {statementType === "ACCOUNT" && (
-                  <>
-                    <span>{t("bank")}: <strong className="text-foreground">{entity.bankName}</strong></span>
-                    <span>{t("accountNumber")}: <strong className="text-foreground font-mono">{entity.accountNumber}</strong></span>
-                    <span>{t("currency")}: <strong className="text-foreground font-mono">{entity.currency}</strong></span>
-                  </>
+                {selectedRowDetail.category === "SALARY_ACCRUAL" && selectedRowDetail.details && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      {t("salaryDetails")}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("billingPeriod")}</span>
+                        <span className="font-semibold">
+                          {selectedRowDetail.details.monthLabel} {selectedRowDetail.details.year}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("academicYear")}</span>
+                        <span className="font-semibold">{selectedRowDetail.details.academicYear || "—"}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg border border-border bg-card space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("baseSalary")}</span>
+                        <span className="font-mono">{selectedRowDetail.details.baseSalary?.toLocaleString()}</span>
+                      </div>
+                      {selectedRowDetail.details.deductions &&
+                        Object.entries(selectedRowDetail.details.deductions).map(([k, v]) => (
+                          <div key={k} className="flex justify-between text-muted-foreground">
+                            <span className="capitalize">{k}</span>
+                            <span className="font-mono">-{Number(v).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      <div className="border-t border-border pt-2 flex justify-between font-bold text-sm">
+                        <span>{t("totalDisbursed")}</span>
+                        <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                          {selectedRowDetail.details.netPayable?.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 )}
+
+                {selectedRowDetail.category === "SALARY_DISBURSEMENT" && selectedRowDetail.details && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      {t("salaryDetails")}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("billingPeriod")}</span>
+                        <span className="font-semibold">{selectedRowDetail.details.monthLabel}</span>
+                      </div>
+                      <div className="p-3 rounded-lg border border-border">
+                        <span className="text-muted-foreground block text-[11px]">{t("methodHeader")}</span>
+                        <span className="font-semibold">{selectedRowDetail.details.paymentMethod}</span>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg border border-border bg-rose-50/50 dark:bg-rose-950/20 flex justify-between items-center text-sm font-bold">
+                      <span className="text-rose-700 dark:text-rose-300">{t("totalDisbursed")}</span>
+                      <span className="font-mono text-rose-600 dark:text-rose-400 text-lg">
+                        {selectedRowDetail.details.paidAmount?.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedRowDetail.category !== "FEE_BILLING" &&
+                  selectedRowDetail.category !== "FEE_PAYMENT" &&
+                  selectedRowDetail.category !== "SALARY_ACCRUAL" &&
+                  selectedRowDetail.category !== "SALARY_DISBURSEMENT" && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                        {t("journalDetails")}
+                      </h4>
+                      <div className="p-3 rounded-lg border border-border bg-card space-y-2 text-xs">
+                        <p className="text-sm font-medium text-foreground">{selectedRowDetail.description}</p>
+                        <div className="flex justify-between pt-2">
+                          <span className="text-muted-foreground">{t("debitHeader")}</span>
+                          <span className="font-mono font-bold">
+                            {selectedRowDetail.debit > 0 ? `+${selectedRowDetail.debit.toLocaleString()}` : "0"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">{t("creditHeader")}</span>
+                          <span className="font-mono font-bold">
+                            {selectedRowDetail.credit > 0 ? `-${selectedRowDetail.credit.toLocaleString()}` : "0"}
+                          </span>
+                        </div>
+                        <div className="border-t border-border pt-2 flex justify-between font-extrabold text-sm">
+                          <span>{t("balanceHeader")}</span>
+                          <span className="font-mono">{selectedRowDetail.runningBalance?.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
               </div>
-            </div>
-          </div>
-
-          <div className="text-right border-t md:border-t-0 pt-3 md:pt-0 border-border">
-            <span className="text-xs text-muted-foreground font-semibold uppercase">{t("netRunningBalance")}</span>
-            <h4 className={`text-2xl font-extrabold font-mono ${statement.closingBalance > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-              {statement.closingBalance.toLocaleString()}
-            </h4>
-          </div>
-        </div>
-      )}
-
-      {/* KPI Financial Metric Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border border-border/80 shadow-xs">
-          <CardHeader className="p-4 pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase">
-              {t("openingBalance")}
-            </span>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <h3 className="text-2xl font-extrabold text-foreground font-mono">
-              {statement.openingBalance.toLocaleString()}
-            </h3>
-            <p className="text-[11px] text-muted-foreground">{t("openingDescription")}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border/80 shadow-xs">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">
-                {statementType === "STUDENT" ? t("totalBilled") : statementType === "STAFF" ? t("totalDisbursed") : t("totalDeposits")}
-              </span>
-              <div className="p-1 rounded-md bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <h3 className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono">
-              +{statement.totalDebit.toLocaleString()}
-            </h3>
-            <p className="text-[11px] text-muted-foreground">{t("debitDescription")}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border/80 shadow-xs">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">
-                {statementType === "STUDENT" ? t("totalCollected") : statementType === "STAFF" ? t("salaryAccrued") : t("totalOutflow")}
-              </span>
-              <div className="p-1 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                <ArrowDownLeft className="h-3.5 w-3.5" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <h3 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
-              -{statement.totalCredit.toLocaleString()}
-            </h3>
-            <p className="text-[11px] text-muted-foreground">{t("creditDescription")}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border/80 shadow-xs">
-          <CardHeader className="p-4 pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase">
-              {t("closingBalance")}
-            </span>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <h3 className="text-2xl font-extrabold text-foreground font-mono">
-              {statement.closingBalance.toLocaleString()}
-            </h3>
-            <p className="text-[11px] text-muted-foreground">{t("closingDescription")}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Ledger Table */}
-      <ERPDataTable<any>
-        title={t("ledgerTitle")}
-        subtitle={t("showingTransactions", { count: statement.entries?.length || 0 })}
-        data={statement.entries || []}
-        columns={columns}
-        keyExtractor={(row) => row.id}
-        searchPlaceholder={t("filterPlaceholder")}
-        selectedIds={selectedIds}
-        onSelectionChange={setSelectedIds}
-      />
+            )}
+          </TopSheet>
         </>
       )}
     </div>
