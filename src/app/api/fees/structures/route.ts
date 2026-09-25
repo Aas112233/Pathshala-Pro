@@ -8,7 +8,7 @@ import {
 } from "@/lib/api-response";
 import { createClassFeeStructureSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 import { addCurrency } from "@/lib/math-utils";
 
 /**
@@ -22,11 +22,18 @@ export async function GET(request: NextRequest) {
 
     const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
-    const academicYearId = searchParams.get("academicYearId");
+    const academicYearIdParam = searchParams.get("academicYearId");
     const classId = searchParams.get("classId");
 
+    // Explicit param wins; otherwise the header-selected year applies so the
+    // structures hub tracks the year switch instead of leaking all years.
+    const academicYearId =
+      academicYearIdParam ||
+      (await resolveRequestAcademicYearId(request, tenantId)) ||
+      null;
+
     const where: any = { tenantId };
-    if (academicYearId) where.academicYearId = academicYearId;
+    if (academicYearId && academicYearId !== "ALL") where.academicYearId = academicYearId;
     if (classId) where.classId = classId;
 
     const structures = await prisma.classFeeStructure.findMany({
@@ -42,7 +49,7 @@ export async function GET(request: NextRequest) {
                 academicSessions: {
                   where: {
                     tenantId,
-                    ...(academicYearId ? { academicYearId } : {}),
+                    ...(academicYearId && academicYearId !== "ALL" ? { academicYearId } : {}),
                   },
                 },
                 studentProfiles: {

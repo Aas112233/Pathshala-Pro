@@ -12,7 +12,7 @@ import { createSalaryLedgerSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
-import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 import { Prisma } from "@prisma/client";
 
 /**
@@ -54,8 +54,12 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
-    const academicYearId = searchParams.get("academicYearId") || "";
-    if (academicYearId) where.academicYearId = academicYearId;
+    const academicYearIdParam = searchParams.get("academicYearId") || "";
+    const academicYearId =
+      academicYearIdParam ||
+      (await resolveRequestAcademicYearId(request, tenantId)) ||
+      "";
+    if (academicYearId && academicYearId !== "ALL") where.academicYearId = academicYearId;
 
     const [totalCount, salaryLedgers] = await Promise.all([
       prisma.salaryLedger.count({ where }),

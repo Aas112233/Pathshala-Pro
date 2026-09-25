@@ -7,7 +7,6 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TenantDateInput } from "@/components/ui/tenant-date-input";
-import { Label } from "@/components/ui/label";
 import { TopSheet } from "@/components/ui/top-sheet";
 import { ERPMetricCard } from "@/components/ui/erp-metric-card";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
@@ -22,6 +21,8 @@ import {
   Layers,
   Star,
   CalendarPlus,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -30,6 +31,7 @@ import {
   useUpdateAcademicYear,
   useDeleteAcademicYear,
   useSetCurrentAcademicYear,
+  useCloseAcademicYear,
 } from "@/hooks/use-queries";
 import { useYearClosePreflight } from "@/hooks/use-exams";
 import { RolloverPreflightPanel } from "@/components/shared/rollover-preflight-panel";
@@ -45,7 +47,6 @@ interface AcademicYearFormData {
   label: string;
   startDate: string;
   endDate: string;
-  isClosed: boolean;
 }
 
 const INITIAL_FORM: AcademicYearFormData = {
@@ -53,7 +54,6 @@ const INITIAL_FORM: AcademicYearFormData = {
   label: "",
   startDate: "",
   endDate: "",
-  isClosed: false,
 };
 
 export default function AcademicYearPage() {
@@ -76,6 +76,12 @@ export default function AcademicYearPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<AcademicYearFormData>(INITIAL_FORM);
 
+  // Separate Close Session (Archive) flow: explicit target + explicit confirm.
+  // Never pre-selected: the operator picks a row, then ticks the confirm box.
+  const [closeTarget, setCloseTarget] = useState<any | null>(null);
+  const [closeConfirmed, setCloseConfirmed] = useState(false);
+  const isCloseSheetOpen = Boolean(closeTarget);
+
   const { data, isLoading } = useAcademicYears({
     page,
     limit: 20,
@@ -86,34 +92,28 @@ export default function AcademicYearPage() {
   const updateMutation = useUpdateAcademicYear(editingId || "");
   const deleteMutation = useDeleteAcademicYear();
   const setCurrentMutation = useSetCurrentAcademicYear();
-
-  // Whether the year being edited was already closed when the sheet opened.
-  // Without it the readiness panel would appear for a year that is already
-  // frozen, and "resolve these blockers first" would be advice nobody can take.
-  const [editingWasClosed, setEditingWasClosed] = useState(false);
+  const closeMutation = useCloseAcademicYear();
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isClosing = closeMutation.isPending;
 
   /**
-   * Year-close readiness.
+   * Year-close readiness for the dedicated Close Session sheet.
    *
-   * Only fetched once the operator actually ticks "closed": the report is a
-   * whole-year scan, and running it on every visit to the edit sheet would be
-   * a lot of work for a question nobody asked.
+   * Only fetched while the close sheet is open: the report is a whole-year
+   * scan, and running it on every page visit would be work for a question
+   * nobody asked.
    */
-  const closingNow = Boolean(editingId) && formData.isClosed && !editingWasClosed;
-  const closePreflight = useYearClosePreflight(closingNow ? editingId! : undefined);
+  const closePreflight = useYearClosePreflight(isCloseSheetOpen ? closeTarget!.id : undefined);
 
   const handleOpenCreate = () => {
     setEditingId(null);
-    setEditingWasClosed(false);
     setFormData(INITIAL_FORM);
     setIsSheetOpen(true);
   };
 
   const handleOpenEdit = (year: any) => {
     setEditingId(year.id);
-    setEditingWasClosed(Boolean(year.isClosed));
     setFormData({
       yearId: year.yearId || "",
       label: year.label || "",
@@ -123,7 +123,6 @@ export default function AcademicYearPage() {
       endDate: year.endDate
         ? new Date(year.endDate).toISOString().split("T")[0]
         : "",
-      isClosed: Boolean(year.isClosed),
     });
     setIsSheetOpen(true);
   };
@@ -131,8 +130,45 @@ export default function AcademicYearPage() {
   const handleCloseSheet = () => {
     setIsSheetOpen(false);
     setEditingId(null);
-    setEditingWasClosed(false);
     setFormData(INITIAL_FORM);
+  };
+
+  const handleOpenClose = (year: any) => {
+    setCloseTarget(year);
+    setCloseConfirmed(false);
+  };
+
+  const handleCloseCloseSheet = () => {
+    if (isClosing) return;
+    setCloseTarget(null);
+    setCloseConfirmed(false);
+  };
+
+  const handleConfirmClose = () => {
+    if (!closeTarget || !closeConfirmed || isClosing) return;
+    closeMutation.mutate(closeTarget.id, {
+      onSuccess: (response) => {
+        const finalisation = (response as any)?.data?.finalisation;
+        if (finalisation) {
+          // A close freezes the year and there is no undo, so the counts are
+          // shown rather than swallowed.
+          toast.success(
+            finalisation.withoutResults > 0
+              ? t("closeSuccessMissingResults", {
+                  finalised: finalisation.withResults,
+                  missing: finalisation.withoutResults,
+                })
+              : t("closeSuccess", { finalised: finalisation.withResults })
+          );
+        } else {
+          toast.success(t("closeSuccess", { finalised: 0 }));
+        }
+        handleCloseCloseSheet();
+      },
+      onError: (err: any) => {
+        toast.error(err.message || t("closeSession.closeError"));
+      },
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,27 +196,10 @@ export default function AcademicYearPage() {
           label: formData.label.trim(),
           startDate: formData.startDate,
           endDate: formData.endDate,
-          isClosed: formData.isClosed,
         },
         {
-          onSuccess: (response) => {
-            const finalisation = response?.data?.finalisation;
-            if (finalisation) {
-              // A close freezes the year and there is no undo, so the counts are
-              // shown rather than swallowed. A student with no results is left
-              // without a final percentage, and this is the office's last chance
-              // to notice before the year is out of reach.
-              toast.success(
-                finalisation.withoutResults > 0
-                  ? t("closeSuccessMissingResults", {
-                      finalised: finalisation.withResults,
-                      missing: finalisation.withoutResults,
-                    })
-                  : t("closeSuccess", { finalised: finalisation.withResults })
-              );
-            } else {
-              toast.success(t("updateSuccess"));
-            }
+          onSuccess: () => {
+            toast.success(t("updateSuccess"));
             handleCloseSheet();
           },
           onError: (err: any) => {
@@ -334,6 +353,17 @@ export default function AcademicYearPage() {
               title={t("editAcademicYear")}
             >
               <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canManage && !row.original.isClosed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpenClose(row.original)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+              title={t("closeSession.rowAction")}
+            >
+              <Archive className="h-4 w-4" />
             </Button>
           )}
           {canManage && (
@@ -525,51 +555,140 @@ export default function AcademicYearPage() {
               </ERPFormField>
             </ERPFormGrid>
           </ERPFormSection>
-
-          {editingId && (
-            <ERPFormSection
-              title={t("lifecycleTitle")}
-              description={t("lifecycleDescription")}
-            >
-              <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card">
-                <input
-                  type="checkbox"
-                  id="isClosed"
-                  checked={formData.isClosed}
-                  onChange={(e) =>
-                    setFormData({ ...formData, isClosed: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                />
-                <Label htmlFor="isClosed" className="cursor-pointer">
-                  <span className="font-semibold text-foreground block text-sm">
-                    {t("isClosed")}
-                  </span>
-                  <span className="text-xs text-muted-foreground block">
-                    {t("closedHelper")}
-                  </span>
-                </Label>
-              </div>
-
-              {closingNow && (
-                <RolloverPreflightPanel
-                  report={closePreflight.data}
-                  isChecking={closePreflight.isFetching}
-                  onRecheck={() => closePreflight.refetch()}
-                  scope="yearClose"
-                  scanTruncated={closePreflight.data?.scan.truncated}
-                  contextNote={
-                    closePreflight.data
-                      ? tPreflight("studentsScanned", {
-                          count: closePreflight.data.scan.students,
-                        })
-                      : null
-                  }
-                />
-              )}
-            </ERPFormSection>
-          )}
         </form>
+      </TopSheet>
+
+      {/* Separate Close Session (Archive) TopSheet. Metadata editing stays in
+          the sheet above; freezing a year lives here with its own readiness
+          report and explicit confirm. */}
+      <TopSheet
+        isOpen={isCloseSheetOpen}
+        onClose={handleCloseCloseSheet}
+        title={t("closeSession.title")}
+        description={t("closeSession.description")}
+        maxWidth="2xl"
+        badge={
+          closeTarget ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+              {closeTarget.yearId || closeTarget.label}
+            </span>
+          ) : undefined
+        }
+        footer={
+          <div className="flex w-full items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCloseCloseSheet}
+              disabled={isClosing}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmClose}
+              disabled={
+                isClosing ||
+                !closeConfirmed ||
+                (closePreflight.data ? !closePreflight.data.canProceed : false)
+              }
+            >
+              {isClosing ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Archive className="mr-2 h-3.5 w-3.5" />
+              )}
+              {isClosing ? t("closeSession.closingButton") : t("closeSession.confirmButton")}
+            </Button>
+          </div>
+        }
+      >
+        {closeTarget && (
+          <div className="space-y-6">
+            <ERPFormSection
+              title={t("closeSession.summaryTitle")}
+              description={closeTarget.label || closeTarget.yearId}
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-border/80 bg-card p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("tableColumns.label")}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {closeTarget.label}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/80 bg-card p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("tableColumns.startDate")}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {closeTarget.startDate ? formatDate(closeTarget.startDate) : "-"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/80 bg-card p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("tableColumns.endDate")}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {closeTarget.endDate ? formatDate(closeTarget.endDate) : "-"}
+                  </p>
+                </div>
+              </div>
+            </ERPFormSection>
+
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("closeSession.warningTitle")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("closeSession.warningBody")}
+                </p>
+              </div>
+            </div>
+
+            <RolloverPreflightPanel
+              report={closePreflight.data}
+              isChecking={closePreflight.isFetching}
+              onRecheck={() => closePreflight.refetch()}
+              scope="yearClose"
+              scanTruncated={closePreflight.data?.scan.truncated}
+              contextNote={
+                closePreflight.data
+                  ? tPreflight("studentsScanned", {
+                      count: closePreflight.data.scan.students,
+                    })
+                  : null
+              }
+            />
+
+            {closePreflight.data && !closePreflight.data.canProceed && (
+              <p className="text-xs font-medium text-rose-700 dark:text-rose-400">
+                {t("closeSession.blockedNote")}
+              </p>
+            )}
+
+            <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4">
+              <input
+                type="checkbox"
+                id="close-session-confirm"
+                checked={closeConfirmed}
+                onChange={(e) => setCloseConfirmed(e.target.checked)}
+                disabled={isClosing}
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <label
+                htmlFor="close-session-confirm"
+                className="cursor-pointer text-sm font-medium text-foreground"
+              >
+                {t("closeSession.confirmLabel")}
+              </label>
+            </div>
+          </div>
+        )}
       </TopSheet>
 
       {/* The rollover wizard. Mounted only for an operator holding the

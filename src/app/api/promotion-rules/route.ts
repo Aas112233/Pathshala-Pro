@@ -11,7 +11,7 @@ import {
 } from "@/lib/api-response";
 import { createPromotionRuleSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
+import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 
 /**
  * GET /api/promotion-rules
@@ -24,13 +24,18 @@ export async function GET(request: NextRequest) {
 
     const { tenantId } = access.authContext;
     const { searchParams } = new URL(request.url);
-    const academicYearId = searchParams.get("academicYearId");
+    const academicYearIdParam = searchParams.get("academicYearId");
     const classId = searchParams.get("classId");
     const isActive = searchParams.get("isActive");
 
     const where: any = { tenantId };
 
-    if (academicYearId) where.academicYearId = academicYearId;
+    // Explicit param wins; otherwise the header-selected year applies.
+    const academicYearId =
+      academicYearIdParam ||
+      (await resolveRequestAcademicYearId(request, tenantId)) ||
+      null;
+    if (academicYearId && academicYearId !== "ALL") where.academicYearId = academicYearId;
     if (classId) where.classId = classId;
     if (isActive !== null) where.isActive = isActive === "true";
 

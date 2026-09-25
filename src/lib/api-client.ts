@@ -130,6 +130,10 @@ export class ApiClient {
     if ((params as any).sectionId) searchParams.set("sectionId", String((params as any).sectionId));
     if ((params as any).groupId) searchParams.set("groupId", String((params as any).groupId));
     if ((params as any).status) searchParams.set("status", String((params as any).status));
+    // Year scoping: callers pass the header-selected year explicitly (e.g.
+    // dashboard, fees hub). Dropping it here forced every read onto the
+    // cookie fallback and made per-year query keys lie about what they hold.
+    if ((params as any).academicYearId) searchParams.set("academicYearId", String((params as any).academicYearId));
 
     // Handle gender filter specifically
     if ((params as any).gender) {

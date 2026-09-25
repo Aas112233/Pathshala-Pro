@@ -121,7 +121,7 @@ export default function AdmissionsPage() {
   const { data: academicYearsData, isLoading: isAcademicYearsLoading } = useQuery({
     queryKey: ["academic-years", "all"],
     queryFn: async () => {
-      const res = await fetch("/api/academic-years?limit=100");
+      const res = await fetch("/api/academic-years?limit=500");
       if (!res.ok) throw new Error(t('admissions.fetchAcademicYearsError'));
       return res.json();
     },

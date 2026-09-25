@@ -271,11 +271,31 @@ export const createExamSchema = z.object({
   totalMarks: z.number().min(1).default(100),
   passPercentage: z.number().min(1).max(100).default(33),
   isPublished: z.boolean().default(false),
+  /// The class this exam originates from — the one whose `ClassSubject` roster
+  /// the subject picker was scoped to.
+  ///
+  /// Previously this selection existed only in component state and was
+  /// discarded on submit; the class was then re-derived on read by
+  /// subject-intersection, which is ambiguous whenever two classes share a
+  /// subject. Storing it makes the admin's explicit choice authoritative.
+  classId: z.string().min(1, "Class is required"),
   subjects: z.array(z.object({
     subjectId: z.string().min(1, "Subject is required"),
     maxMarks: z.number().min(1),
     passMarks: z.number().min(1),
   })).min(1, "At least one class subject is required"),
+  /// Which classes sit this exam, and the per-student exam fee each charges.
+  ///
+  /// Optional so existing exam-creation callers keep working: when omitted,
+  /// no `ExamClass` rows are written and the exam simply carries no exam fee
+  /// (the legacy subject-intersection heuristic still describes its classes in
+  /// read APIs). A blank `feeAmount` means "listed, not charged" — it is never
+  /// read as a zero-value charge, per AGENTS rule 15.
+  classFees: z.array(z.object({
+    classId: z.string().min(1, "Class is required"),
+    feeAmount: z.union([z.number(), z.string()]).optional().nullable(),
+    isFeeApplicable: z.boolean().optional(),
+  })).optional(),
 });
 
 export const updateExamSchema = createExamSchema.partial();

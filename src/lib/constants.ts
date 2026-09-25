@@ -275,6 +275,15 @@ export const SIDEBAR_NAV: NavGroup[] = [
         icon: Users,
       },
       {
+        // Per-exam fees are collected at their own counter/bulk desks rather
+        // than through the monthly tuition desk, because the charge is keyed
+        // to an exam, not a billing month. Sits in Finance alongside the other
+        // collection desks since that is where a cashier looks for it.
+        titleKey: "nav.examFeeCollection",
+        href: "/exam-fees/collection",
+        icon: ClipboardCheck,
+      },
+      {
         titleKey: "nav.feeCollectors",
         href: "/fees/collectors",
         icon: UserCog,

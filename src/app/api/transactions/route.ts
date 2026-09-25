@@ -11,6 +11,7 @@ import {
 } from "@/lib/api-response";
 import { createTransactionSchema } from "@/lib/schemas";
 import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
+import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
@@ -67,6 +68,17 @@ export async function GET(request: NextRequest) {
     const studentProfileId = searchParams.get("studentProfileId");
     if (studentProfileId) {
       where.feeVoucher = { ...where.feeVoucher, studentProfileId };
+    }
+
+    // Transactions carry no year column; the voucher does. Explicit param
+    // wins, otherwise the header-selected year scopes the day book.
+    const academicYearIdParam = searchParams.get("academicYearId");
+    const academicYearId =
+      academicYearIdParam ||
+      (await resolveRequestAcademicYearId(request, tenantId)) ||
+      "";
+    if (academicYearId && academicYearId !== "ALL") {
+      where.feeVoucher = { ...where.feeVoucher, academicYearId };
     }
 
     // C1 self-scoping: transactions reach students through their voucher.

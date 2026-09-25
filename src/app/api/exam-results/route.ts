@@ -9,6 +9,7 @@ import {
 } from "@/lib/api-response";
 import { createExamResultNewSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 import { validateExamResultBatch } from "@/lib/exam-result-service";
 
 /**
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const examId = searchParams.get("examId");
     const subjectId = searchParams.get("subjectId");
     const studentProfileId = searchParams.get("studentProfileId");
-    const academicYearId = searchParams.get("academicYearId");
+    const academicYearIdParam = searchParams.get("academicYearId");
     const classId = searchParams.get("classId");
 
     const where: any = { tenantId };
@@ -43,7 +44,17 @@ export async function GET(request: NextRequest) {
     if (examId) where.examId = examId;
     if (subjectId) where.subjectId = subjectId;
     if (studentProfileId) where.studentProfileId = studentProfileId;
-    if (academicYearId) where.academicYearId = academicYearId;
+    // Exam-scoped reads (marks entry) stay exam-determined: the exam owns its
+    // year, and forcing the header year there would blank the form whenever
+    // the operator browses another year. Unscoped reads follow the header.
+    if (academicYearIdParam) {
+      if (academicYearIdParam !== "ALL") where.academicYearId = academicYearIdParam;
+    } else if (!examId) {
+      const resolvedAcademicYearId = await resolveRequestAcademicYearId(request, tenantId);
+      if (resolvedAcademicYearId && resolvedAcademicYearId !== "ALL") {
+        where.academicYearId = resolvedAcademicYearId;
+      }
+    }
     if (status) where.status = status;
 
     if (classId) {

@@ -84,7 +84,7 @@ export default function TimetablePage() {
   const { data: yearsData } = useQuery({
     queryKey: ["academic-years", "timetable"],
     queryFn: async () => {
-      const r = await fetch("/api/academic-years?limit=100", { credentials: "include" });
+      const r = await fetch("/api/academic-years?limit=500", { credentials: "include" });
       if (!r.ok) throw new Error("Failed to fetch years");
       return r.json();
     },

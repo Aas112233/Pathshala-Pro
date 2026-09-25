@@ -82,7 +82,7 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
     async function loadAcademicYears() {
       setIsLoading(true);
       try {
-        const response = await fetch("/api/academic-years?limit=100", { credentials: "include" });
+        const response = await fetch("/api/academic-years?limit=500", { credentials: "include" });
         if (!response.ok) {
           throw new Error("Failed to fetch academic years");
         }
@@ -133,6 +133,11 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
 
   const setSelectedAcademicYearId = useCallback(
     (id: string) => {
+      // Re-selecting the year already showing must not reload the app: the
+      // dropdown fires on every selection, including a no-op one, and a full
+      // page load for nothing reads as the app being broken.
+      if (id === selectedAcademicYearId) return;
+
       setSelectedId(id);
       if (typeof window !== "undefined") {
         if (tenantId) {
@@ -148,16 +153,36 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
           // cookie unavailable
         }
       }
-      // AGENTS rule 7: Invalidate academic domains across the app on session switch
+      // AGENTS rule 7: Invalidate academic domains across the app on session switch.
+      // Every key here is a prefix: ["fees"] also catches ["fees", params].
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["fees"] });
       queryClient.invalidateQueries({ queryKey: ["exams"] });
+      queryClient.invalidateQueries({ queryKey: ["exam-results"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["timetables"] });
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       queryClient.invalidateQueries({ queryKey: ["class-fee-structures"] });
+      queryClient.invalidateQueries({ queryKey: ["salary"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["promotion-rules"] });
+      queryClient.invalidateQueries({ queryKey: ["promotion-history"] });
+      queryClient.invalidateQueries({ queryKey: ["promotion-calculation"] });
+      queryClient.invalidateQueries({ queryKey: ["promotion-preflight"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["holidays"] });
+
+      // The cache invalidation above reaches every TanStack Query consumer, but
+      // it cannot reach data that was rendered on the server or fetched in a
+      // component's own effect. Switching the year changes what every one of
+      // those reads means, so the app reloads into the new year rather than
+      // leaving half of it pointing at the old one. The cookie and localStorage
+      // are written before this line, so the reload opens on the year chosen.
+      if (typeof window !== "undefined") {
+        window.location.reload();
+      }
     },
-    [tenantId, queryClient]
+    [tenantId, queryClient, selectedAcademicYearId]
   );
 
   const activeAcademicYear = useMemo(

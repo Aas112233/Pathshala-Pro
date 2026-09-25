@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { handleApiError } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
+import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { Prisma } from "@prisma/client";
 
@@ -24,13 +25,17 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "";
     const department = searchParams.get("department") || "";
     const search = searchParams.get("search")?.trim() || "";
-    const academicYearId = searchParams.get("academicYearId") || "";
+    const academicYearIdParam = searchParams.get("academicYearId") || "";
+    const academicYearId =
+      academicYearIdParam ||
+      (await resolveRequestAcademicYearId(request, tenantId)) ||
+      "";
 
     const skip = (page - 1) * limit;
 
     const where: Prisma.SalaryLedgerWhereInput = { tenantId };
 
-    if (academicYearId) where.academicYearId = academicYearId;
+    if (academicYearId && academicYearId !== "ALL") where.academicYearId = academicYearId;
     if (month && month !== "all") where.month = parseInt(month);
     if (year && year !== "all") where.year = parseInt(year);
 

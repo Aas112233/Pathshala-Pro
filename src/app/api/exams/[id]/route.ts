@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   successResponse,
@@ -21,6 +22,7 @@ import {
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
 import { fastCache } from "@/lib/fast-memory-cache";
+import { validateExamClassFees } from "@/lib/exam-fee-service";
 
 /**
  * GET /api/exams/[id]
@@ -61,6 +63,11 @@ export async function GET(
             },
           },
         },
+        classFees: {
+          include: {
+            class: { select: { id: true, classId: true, name: true } },
+          },
+        },
         results: {
           include: {
             studentProfile: {
@@ -86,27 +93,40 @@ export async function GET(
       return notFound("Exam not found");
     }
 
-    // Find associated class based on subjects
-    const subjectIds = exam.subjects.map((s) => s.subjectId);
+    // Authoritative class membership, in priority order:
+    //   1. `Exam.classId`  — the class the admin actually chose at creation
+    //   2. `ExamClass`     — every class the exam bills (incl. combined exams)
+    //   3. subject-intersection — legacy fallback for exams predating both
     let classInfo: { id: string; classId: string; name: string } | null = null;
-    if (subjectIds.length > 0) {
-      const classSubject = await prisma.classSubject.findFirst({
-        where: {
-          tenantId,
-          subjectId: { in: subjectIds },
-        },
-        select: {
-          class: {
-            select: {
-              id: true,
-              classId: true,
-              name: true,
+    const primaryClassId = exam.classId ?? exam.classFees[0]?.classId ?? null;
+    if (primaryClassId) {
+      classInfo = await prisma.class
+        .findFirst({
+          where: { tenantId, id: primaryClassId },
+          select: { id: true, classId: true, name: true },
+        });
+    }
+    if (!classInfo) {
+      const subjectIds = exam.subjects.map((s) => s.subjectId);
+      if (subjectIds.length > 0) {
+        const classSubject = await prisma.classSubject.findFirst({
+          where: {
+            tenantId,
+            subjectId: { in: subjectIds },
+          },
+          select: {
+            class: {
+              select: {
+                id: true,
+                classId: true,
+                name: true,
+              },
             },
           },
-        },
-      });
-      if (classSubject) {
-        classInfo = classSubject.class;
+        });
+        if (classSubject) {
+          classInfo = classSubject.class;
+        }
       }
     }
 
@@ -114,6 +134,11 @@ export async function GET(
       ...exam,
       classId: classInfo?.id || null,
       class: classInfo,
+      classIds: exam.classFees.length
+        ? exam.classFees.map((cf) => cf.classId)
+        : classInfo
+          ? [classInfo.id]
+          : [],
     };
 
     return successResponse(examWithClass, "Exam retrieved successfully");
@@ -150,6 +175,10 @@ export async function PUT(
 
     const data = { ...validation.data };
     delete data.subjects;
+    // classFees is a relation, not an Exam scalar: it is synced separately so
+    // a class can be added/removed/fee-changed without touching locked fields.
+    const classFeesInput = data.classFees;
+    delete data.classFees;
 
     const existingExam = await prisma.exam.findUnique({
       where: { id, tenantId },
@@ -193,6 +222,23 @@ export async function PUT(
       return integrityViolation(
         lockedUpdateMessage("Exam", reason),
         details
+      );
+    }
+
+    // A collected exam fee is money already posted to the EXAM revenue head
+    // and settled against AR. Re-pricing the schedule afterwards would make
+    // the ledger disagree with the configuration, so it is refused outright
+    // rather than silently allowed to drift.
+    if (classFeesInput !== undefined && usageCounts.feeVouchers > 0) {
+      return integrityViolation(
+        "Cannot change the exam class fee schedule because exam fee vouchers have already been generated for this exam.",
+        [
+          {
+            field: "classFees",
+            code: "locked",
+            message: `classFees cannot be changed because ${usageCounts.feeVouchers} exam fee voucher(s) already exist. Void those first, or raise a separate adjustment.`,
+          },
+        ]
       );
     }
 
@@ -262,24 +308,90 @@ export async function PUT(
       }
     }
 
-    const updatedExam = await prisma.exam.update({
-      where: { id },
-      data: {
-        ...(() => {
-          const { subjects: _ignoredSubjects, ...scalarData } = data;
-          return scalarData;
-        })(),
-        startDate: data.startDate ? new Date(data.startDate) : undefined,
-        endDate: data.endDate ? new Date(data.endDate) : undefined,
-      },
-      include: {
-        academicYear: {
-          select: {
-            yearId: true,
-            label: true,
+    // Per-class exam fees: replace the schedule wholesale. `classFees` is the
+    // complete desired set, not a patch, so a class the admin removed is
+    // genuinely unlinked instead of lingering at its old amount.
+    let normalisedClassFees: ReturnType<typeof validateExamClassFees> = [];
+    if (classFeesInput !== undefined) {
+      normalisedClassFees = validateExamClassFees(classFeesInput);
+      // The originating class stays in the schedule even if the admin
+      // removed its fee row, so the exam's class and its billed classes can
+      // never drift apart.
+      if (data.classId && !normalisedClassFees.some((r) => r.classId === data.classId)) {
+        normalisedClassFees.push({
+          classId: data.classId,
+          feeAmount: new Prisma.Decimal(0),
+          isFeeApplicable: false,
+        });
+      }
+      if (normalisedClassFees.length > 0) {
+        const wantedIds = normalisedClassFees.map((r) => r.classId);
+        const validClasses = await prisma.class.findMany({
+          where: { tenantId, id: { in: wantedIds } },
+          select: { id: true },
+        });
+        if (validClasses.length !== wantedIds.length) {
+          const found = new Set(validClasses.map((c) => c.id));
+          const missing = wantedIds.filter((cid) => !found.has(cid));
+          return badRequest("One or more selected classes were not found", [
+            { field: "classFees", code: "not_found", message: `Unknown class id(s): ${missing.join(", ")}` },
+          ]);
+        }
+      }
+    }
+
+    const updatedExam = await prisma.$transaction(async (tx) => {
+      // Typed explicitly rather than spread from the Zod output: an inferred
+      // object literal here makes Prisma's Without<Unchecked, Checked> union
+      // unresolvable. `subjects`/`classFees` are already stripped above (they
+      // are relations, handled separately), so only scalars remain.
+      const scalarData: Prisma.ExamUncheckedUpdateInput = {
+        ...(data.examId !== undefined ? { examId: data.examId } : {}),
+        ...(data.academicYearId !== undefined ? { academicYearId: data.academicYearId } : {}),
+        ...(data.classId !== undefined ? { classId: data.classId } : {}),
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.type !== undefined ? { type: data.type } : {}),
+        ...(data.totalMarks !== undefined ? { totalMarks: data.totalMarks } : {}),
+        ...(data.passPercentage !== undefined ? { passPercentage: data.passPercentage } : {}),
+        ...(data.isPublished !== undefined ? { isPublished: data.isPublished } : {}),
+        ...(data.startDate ? { startDate: new Date(data.startDate) } : {}),
+        ...(data.endDate ? { endDate: new Date(data.endDate) } : {}),
+      };
+
+      const updated = await tx.exam.update({
+        where: { id },
+        data: scalarData,
+        include: {
+          academicYear: {
+            select: {
+              yearId: true,
+              label: true,
+            },
+          },
+          classFees: {
+            include: {
+              class: { select: { id: true, classId: true, name: true } },
+            },
           },
         },
-      },
+      });
+
+      if (classFeesInput !== undefined) {
+        await tx.examClass.deleteMany({ where: { tenantId, examId: id } });
+        if (normalisedClassFees.length > 0) {
+          await tx.examClass.createMany({
+            data: normalisedClassFees.map((row) => ({
+              tenantId,
+              examId: id,
+              classId: row.classId,
+              feeAmount: row.feeAmount,
+              isFeeApplicable: row.isFeeApplicable,
+            })),
+          });
+        }
+      }
+
+      return updated;
     });
 
     if (!existingExam.isPublished && data.isPublished === true) {

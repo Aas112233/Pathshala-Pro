@@ -95,7 +95,7 @@ export default function ExamsPage() {
   const [filterType, setFilterType] = useState<string>("all");
   const [selectedClassId, setSelectedClassId] = useState("");
   const [subjectSelectionByClass, setSubjectSelectionByClass] = useState<Record<string, string[]>>({});
-  const { formatDate } = useTenantFormatting();
+  const { formatDate, currencySymbol } = useTenantFormatting();
   const { settings } = useTenantSettings();
   const { exportExamAdmitCardPDF, exportBatchAdmitCardsPDF, exportTranscriptPDF } = usePDFExport();
   const [printingExamId, setPrintingExamId] = useState<string | null>(null);
@@ -153,7 +153,20 @@ export default function ExamsPage() {
     subjects?: string;
     startDate?: string;
     endDate?: string;
+    classFees?: string;
   }>({});
+
+  // The per-student exam fee for the class selected above.
+  //
+  // This is a single value, not a per-class list: the exam's class is chosen
+  // once in the Class dropdown, and that choice drives this fee. The amount
+  // starts EMPTY — per AGENTS rule 15 a blank field means "this class is not
+  // charged for this exam", which is a decision the admin makes, not an
+  // implicit zero that would silently under-bill the class.
+  const [feeRowValue, setFeeRowValue] = useState("");
+
+  const parsedFee = feeRowValue.trim() === "" ? null : Number(feeRowValue);
+  const isFeeInvalid = parsedFee !== null && (!Number.isFinite(parsedFee) || parsedFee < 0);
 
   const filteredExams = filterType === "all"
     ? exams
@@ -170,6 +183,7 @@ export default function ExamsPage() {
     });
     setSelectedClassId("");
     setSubjectSelectionByClass({});
+    setFeeRowValue("");
     setFormErrors({});
   }
 
@@ -206,6 +220,11 @@ export default function ExamsPage() {
     if (!formData.startDate) nextErrors.startDate = `${t('startDate')} is required`;
     if (!formData.endDate) nextErrors.endDate = `${t('endDate')} is required`;
     if (selectedSubjectIds.length === 0) nextErrors.subjects = t('subjectsRequired');
+    // A non-numeric or negative amount is a hard stop: it would otherwise be
+    // silently coerced to 0 and under-bill the class.
+    if (isFeeInvalid) {
+      nextErrors.classFees = t('examFeeInvalid');
+    }
     setFormErrors(nextErrors);
 
     if (nextErrors.academicYearId || nextErrors.name || nextErrors.type || nextErrors.classId || nextErrors.startDate || nextErrors.endDate) {
@@ -215,6 +234,11 @@ export default function ExamsPage() {
 
     if (nextErrors.subjects) {
       toast.error(t('subjectsRequired'));
+      return;
+    }
+
+    if (nextErrors.classFees) {
+      toast.error(nextErrors.classFees);
       return;
     }
 
@@ -231,7 +255,16 @@ export default function ExamsPage() {
       return;
     }
 
-    createExam.mutate({ ...formData, subjects }, {
+    // Blank amount is sent as null, not 0: the server reads null as
+    // "listed, not charged" (isFeeApplicable = false), which is different
+    // from a deliberate zero. Exactly one class is submitted — the one chosen
+    // in the Class dropdown.
+    const classFees =
+      selectedClassId && feeRowValue.trim() !== ""
+        ? [{ classId: selectedClassId, feeAmount: Number(feeRowValue) }]
+        : undefined;
+
+    createExam.mutate({ ...formData, classId: selectedClassId, subjects, classFees } as any, {
       onSuccess: () => {
         setCreateOpen(false);
         resetForm();
@@ -650,28 +683,32 @@ export default function ExamsPage() {
               />
             </ERPFormField>
 
-            <ERPFormField label={t('class')} required error={formErrors.classId}>
-              <Select
-                value={selectedClassId}
-                onValueChange={(value) => {
-                  setSelectedClassId(value);
-                  if (formErrors.classId || formErrors.subjects) {
-                    setFormErrors((prev) => ({ ...prev, classId: undefined, subjects: undefined }));
-                  }
-                }}
-              >
-                <SelectTrigger id="classId" aria-invalid={Boolean(formErrors.classId)} className={formErrors.classId ? "border-destructive ring-destructive" : undefined}>
-                  <SelectValue placeholder={t('selectClass')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes.map((classItem) => (
-                    <SelectItem key={classItem.id} value={classItem.id}>
-                      {classItem.name} ({classItem.classId})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </ERPFormField>
+              <ERPFormField label={t('class')} required error={formErrors.classId}>
+                <Select
+                  value={selectedClassId}
+                  onValueChange={(value) => {
+                    setSelectedClassId(value);
+                    // Clear the fee with the class: the amount belongs to the
+                    // class just deselected, and carrying it over to a
+                    // different class would silently mis-price the new one.
+                    setFeeRowValue("");
+                    if (formErrors.classId || formErrors.subjects) {
+                      setFormErrors((prev) => ({ ...prev, classId: undefined, subjects: undefined }));
+                    }
+                  }}
+                >
+                  <SelectTrigger id="classId" aria-invalid={Boolean(formErrors.classId)} className={formErrors.classId ? "border-destructive ring-destructive" : undefined}>
+                    <SelectValue placeholder={t('selectClass')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((classItem) => (
+                      <SelectItem key={classItem.id} value={classItem.id}>
+                        {classItem.name} ({classItem.classId})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ERPFormField>
 
             <ERPFormField
               label={t('classSubjects')}
@@ -721,6 +758,68 @@ export default function ExamsPage() {
                   ))
                 )}
               </div>
+            </ERPFormField>
+
+            <ERPFormField
+              label={t('examFeeForSelectedClass')}
+              error={formErrors.classFees}
+              action={
+                feeRowValue !== "" && Number.isFinite(Number(feeRowValue)) && Number(feeRowValue) > 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    {currencySymbol}
+                    {Number(feeRowValue).toFixed(2)} {t("perStudent")}
+                  </span>
+                ) : undefined
+              }
+            >
+              {!selectedClassId ? (
+                <div
+                  className={cn(
+                    "rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground",
+                    formErrors.classFees && "border-destructive"
+                  )}
+                >
+                  {t("selectClassFirstForFee")}
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border border-border/80 bg-muted/20 px-3 py-2",
+                    formErrors.classFees && "border-destructive"
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-medium">
+                      {classes.find((c: any) => c.id === selectedClassId)?.name ?? selectedClassId}
+                    </span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {classes.find((c: any) => c.id === selectedClassId)?.classId}
+                    </span>
+                  </div>
+                  <div className="relative w-[160px]">
+                    <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      {currencySymbol}
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      className={cn("h-8 pl-7 text-right", isFeeInvalid && "border-destructive ring-destructive")}
+                      value={feeRowValue}
+                      placeholder={t("notCharged")}
+                      aria-label={t("examFeeFor", {
+                        className: classes.find((c: any) => c.id === selectedClassId)?.name ?? "",
+                      })}
+                      aria-invalid={isFeeInvalid}
+                      onChange={(e) => {
+                        setFeeRowValue(e.target.value);
+                        if (formErrors.classFees) {
+                          setFormErrors((prev) => ({ ...prev, classFees: undefined }));
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </ERPFormField>
 
             <ERPFormGrid cols={2}>

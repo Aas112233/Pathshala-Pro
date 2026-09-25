@@ -70,6 +70,7 @@ model Tenant {
   subjects               Subject[]
   exams                  Exam[]
   examSubjects           ExamSubject[]
+  examClasses            ExamClass[]
   questions              Question[]
   questionPapers         QuestionPaper[]
   promotionRules         PromotionRule[]
@@ -380,6 +381,10 @@ model FeeVoucher {
   fiscalYearId      String?
   financialPeriodId String?
   feeType           String
+  /// Set only for per-exam charges (`feeType = "EXAM"`). A monthly tuition
+  /// voucher leaves this null and is identified by (feeType, billingYear,
+  /// billingMonth) instead.
+  examId            String?
   billingMonth      Int?
   billingYear       Int?
   baseAmount        Decimal   @db.Decimal(15, 2)
@@ -400,10 +405,18 @@ model FeeVoucher {
   tenant         Tenant         @relation(fields: [tenantId], references: [tenantId])
   studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
   academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
+  exam           Exam?          @relation(fields: [examId], references: [id])
   transactions   Transaction[]
 
   @@unique([tenantId, voucherId])
   @@unique([tenantId, studentProfileId, academicYearId, feeType, billingYear, billingMonth])
+  // Guards against double-billing one exam to one student. The composite
+  // uniqueness above cannot cover exam rows: an exam voucher has a NULL
+  // billingMonth, and PostgreSQL treats NULLs as distinct in a unique index,
+  // so two identical EXAM vouchers would both be accepted. This index does
+  // the job, and stays inert for monthly rows because their examId is NULL.
+  @@unique([tenantId, studentProfileId, examId])
+  @@index([tenantId, examId])
   @@index([tenantId, studentProfileId])
   @@index([tenantId, status])
   @@index([tenantId, academicYearId])
@@ -677,6 +690,15 @@ model Exam {
   tenantId       String
   examId         String
   academicYearId String
+  /// The class this exam was created against — the one whose ClassSubject
+  /// roster the subject picker was scoped to.
+  ///
+  /// This selection used to live only in component state and was discarded on
+  /// submit, with the class re-derived on read by intersecting ClassSubject
+  /// rosters. That heuristic is ambiguous whenever two classes share a
+  /// subject, so the admin's explicit choice is now stored. Nullable so
+  /// exams created before this column keep their existing resolution path.
+  classId        String?
   name           String // "Mid-Term", "Final", "Unit Test"
   type           String // "MID_TERM", "FINAL", "UNIT_TEST", "ANNUAL"
   startDate      DateTime
@@ -689,13 +711,51 @@ model Exam {
 
   tenant         Tenant          @relation(fields: [tenantId], references: [tenantId])
   academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
+  class          Class?          @relation(fields: [classId], references: [id])
   subjects       ExamSubject[]
   results        ExamResult[]
   questionPapers QuestionPaper[]
+  classFees      ExamClass[]
+  feeVouchers    FeeVoucher[]
 
   @@unique([tenantId, examId])
   @@index([tenantId, academicYearId])
   @@index([tenantId, type])
+}
+
+/// Which classes sit an exam, and what each one charges as a per-student
+/// exam fee.
+///
+/// This is authoritative data, not a derived view. `Exam` previously had no
+/// class relation at all — the API inferred eligible classes by intersecting
+/// `ClassSubject` rosters and requiring a class to teach *every* exam
+/// subject. That heuristic silently dropped any class with an incomplete
+/// curriculum row, which is unacceptable once the same link decides who gets
+/// billed. Money-bearing membership must be explicit.
+model ExamClass {
+  id        String  @id @default(cuid())
+  tenantId  String
+  examId    String
+  classId   String
+  /// Per-student exam fee for this class. Decimal, never Float: this figure is
+  /// invoiced straight into AR and posted to the EXAM revenue head, so a
+  /// binary-float representation error would land in the ledger.
+  /// A class is *listed* (row exists, amount 0) but charges nothing.
+  feeAmount Decimal @default(0.00) @db.Decimal(15, 2)
+  /// Admin intent: is this class actually being examined, or listed for
+  /// context only? Lets a school register all classes on an exam while
+  /// charging only some, instead of encoding that as an ambiguous 0.00.
+  isFeeApplicable Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, examId, classId])
+  @@index([tenantId, examId])
+  @@index([tenantId, classId])
 }
 
 model ExamSubject {
@@ -965,6 +1025,8 @@ model Class {
   toClassPromotions   ClassPromotion[]         @relation("ToClassPromotions")
   classSubjects       ClassSubject[]
   classFeeStructures  ClassFeeStructure[]
+  examClasses         ExamClass[]
+  exams               Exam[]
   timetables          Timetable[]
   homeworks           Homework[]
   calendarEvents      CalendarEvent[]

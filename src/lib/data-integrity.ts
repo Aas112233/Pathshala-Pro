@@ -82,12 +82,16 @@ export async function getStudentUsageCounts(tenantId: string, studentId: string)
 }
 
 export async function getExamUsageCounts(tenantId: string, examId: string) {
-  const [results, subjects] = await Promise.all([
+  const [results, subjects, feeVouchers] = await Promise.all([
     prisma.examResult.count({ where: { tenantId, examId } }),
     prisma.examSubject.count({ where: { tenantId, examId } }),
+    // Exam-fee vouchers. A collected exam fee is a posted journal entry
+    // against the EXAM revenue head; silently changing the class fee schedule
+    // afterwards would leave the ledger and the schedule disagreeing.
+    prisma.feeVoucher.count({ where: { tenantId, examId } }),
   ]);
 
-  return { results, subjects };
+  return { results, subjects, feeVouchers };
 }
 
 export async function getSubjectUsageCounts(tenantId: string, subjectId: string) {

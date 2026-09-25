@@ -351,6 +351,25 @@ export function useDeleteAcademicYear() {
 }
 
 /**
+ * Close (archive) one academic year.
+ *
+ * Takes the id as a mutation variable rather than closing over it, because the
+ * row action that triggers it is not the row currently being edited — reusing
+ * `useUpdateAcademicYear(editingId)` here would fire against whatever year the
+ * edit sheet last held.
+ */
+export function useCloseAcademicYear() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => academicYearsApi.update(id, { isClosed: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+      queryClient.invalidateQueries({ queryKey: ["academicYears"] });
+    },
+  });
+}
+
+/**
  * Make one year the year the institute is operating in.
  *
  * Takes the id as a mutation variable rather than closing over it, because the

@@ -11,12 +11,12 @@ export function AcademicYearSelector() {
     useAcademicYearContext();
 
   if (academicYears.length === 0) {
-    return <div className="hidden md:block h-9 w-[180px] shrink-0" aria-hidden="true" />;
+    return <div className="hidden md:block h-10 w-[264px] shrink-0" aria-hidden="true" />;
   }
 
   return (
-    <div className="hidden md:flex items-center gap-1.5 h-9 rounded-xl border border-border/60 bg-card px-2">
-      <CalendarRange className="h-3.5 w-3.5 shrink-0 text-primary" />
+    <div className="hidden md:flex items-center gap-2 h-10 rounded-xl border border-border/60 bg-card px-3">
+      <CalendarRange className="h-4 w-4 shrink-0 text-primary" />
       <AppDropdown
         value={selectedAcademicYearId}
         onChange={setSelectedAcademicYearId}
@@ -31,8 +31,8 @@ export function AcademicYearSelector() {
         }))}
         searchable
         searchPlaceholder={t("searchPlaceholder")}
-        className="w-[140px]"
-        triggerClassName="h-7 text-xs border-0 shadow-none px-1 bg-transparent"
+        className="w-[220px]"
+        triggerClassName="h-8 text-sm border-0 shadow-none px-1 bg-transparent"
       />
     </div>
   );
