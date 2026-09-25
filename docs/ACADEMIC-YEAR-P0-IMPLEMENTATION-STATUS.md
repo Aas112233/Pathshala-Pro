@@ -1182,16 +1182,19 @@ must be passed through `params`, not through `message`, which is not a display c
 | `tsc --noEmit` | clean |
 | `eslint` on changed files | 0 errors |
 
-### 16.8 One repository-level risk, noted and not fixed
+### 16.8 One repository-level risk — RESOLVED (see §21)
 
-Every module this wave depends on is **untracked by git**: `promotion-engine.ts`,
+Every module this wave depends on was **untracked by git**: `promotion-engine.ts`,
 `rollover-preflight.ts`, `attendance-rate.ts`, `academic-year-finalisation.ts`,
-`certificate-numbering.ts` and all of their test files — 32 untracked entries under `src/`. They exist
-only in the working tree, so a `git clean -fd` or a lost checkout would delete the promotion engine
-and every guard test protecting it. This is the same root cause as §15.2's finding that the 146 i18n
-keys were never committed: work in this repository is not being committed. It is flagged here because
-it is the largest risk to this wave's work, and it is not something to fix silently inside a
-documentation pass.
+`certificate-numbering.ts` and all of their test files — 32 untracked entries under `src/`. They existed
+only in the working tree, so a `git clean -fd` or a lost checkout would have deleted the promotion
+engine and every guard test protecting it. This was the same root cause as §15.2's finding that the 146
+i18n keys were never committed: work in this repository was not being committed. It was flagged rather
+than fixed silently because a commit is a decision the operator owns.
+
+**Resolved in §21.** The working tree — by then 83 modified, 7 deleted and 59 new paths — was committed
+in 21 logically grouped commits, and `.codebuddy/` was added to `.gitignore` so a machine-local
+settings file is not swept in.
 
 ## 17. Working days are a set, not a subtraction (Wave P2, item 21)
 
@@ -1464,8 +1467,8 @@ now fixed at the source, and the parser reads the `Tests` line specifically.
 - **Items 16–20, 22–26 remain open.** Items **22** (default fee-balance policy at rollover) and **23**
   (outstanding-fee write-off sweep) are still refused rather than invented: both are money policy and
   neither is derivable from the code.
-- **The untracked-files risk stands** (§16.8). The pure modules — `working-days.ts` among them — and
-  their tests exist only in the working tree.
+- **The untracked-files risk stood here** (§16.8) — resolved in §21. The pure modules —
+  `working-days.ts` among them — and their tests existed only in the working tree.
 
 ## 19. The rollover wizard, minus its face (Wave P2, items 16–20 and 24)
 
@@ -1656,9 +1659,9 @@ Two smaller harness repairs in the same pass:
   policy and neither is derivable from the code.
 - **Item 25**, the post-rollover checklist, now has a natural home: the `AcademicYearRollover` row
   records exactly what the run did, so a verification screen has something to verify against.
-- **The untracked-files risk has grown again** (§16.8). `rollover-plan.ts`, `rollover-roster.ts`, the
-  two new test files and the three mutation scripts exist only in the working tree, alongside the 36
-  previously untracked entries under `src/`.
+- **The untracked-files risk had grown again here** (§16.8) — resolved in §21. `rollover-plan.ts`,
+  `rollover-roster.ts`, the two new test files and the three mutation scripts existed only in the
+  working tree, alongside the 36 previously untracked entries under `src/`.
 
 ## 20. The wizard's face (Wave P2, items 16–20 and 24, continued)
 
@@ -1888,11 +1891,84 @@ harness is heavy relative to the risk that remains. Recorded as a gap rather tha
   invented — both are money policy, neither is derivable from the code.
 - **Item 25**, the post-rollover checklist, has its data source: the `AcademicYearRollover` row records
   exactly what the run did.
-- **The untracked-files risk, fifth flag** (§16.8). This increment added **six more** files that exist
-  only in the working tree: `rollover-wizard.tsx`, `rollover-plan-panel.tsx` and its test,
-  `rollover-preflight-panel.test.tsx`, `use-rollover.ts`, and both merge scripts. The working tree now
-  holds **49 untracked entries under `src/` and 6 under `scripts/`** — every pure module, every test for
-  them, and every script that authored or mutation-tested them. One `git clean` loses the lot, and none
-  of it can be recovered from the repository.
+- **The untracked-files risk, fifth flag** (§16.8) — **resolved in §21**. This increment had added six
+  more files that existed only in the working tree: `rollover-wizard.tsx`, `rollover-plan-panel.tsx` and
+  its test, `rollover-preflight-panel.test.tsx`, `use-rollover.ts`, and both merge scripts. The working
+  tree then held **49 untracked entries under `src/` and 6 under `scripts/`** — every pure module, every
+  test for them, and every script that authored or mutation-tested them. One `git clean` would have lost
+  the lot.
+
+## 21. The working tree is committed (repository hygiene)
+
+### 21.1 What was at risk
+
+Every increment in this document had been written to the working tree and never committed. By the end
+of §20 that was:
+
+| | Count |
+|---|---|
+| Modified tracked paths | 83 |
+| Deleted tracked paths | 7 |
+| New (untracked) paths | 59 |
+| **Total** | **150** |
+
+The last commit before this work was `319a65d feat(fees): enhance bulk payment process`, which predates
+the entire academic-year module. Every pure module, every guard test, both i18n merge scripts and the
+shared mutation harness existed only on disk. A single `git clean -fd` would have destroyed the
+promotion engine and the tests that protect it, with no way to recover any of it.
+
+This is the same root cause as §15.2's 146 uncommitted i18n keys. It was flagged five times across five
+increments and never acted on, which is its own lesson: **a risk that is only reported is a risk that is
+still open.**
+
+### 21.2 How it was split
+
+Twenty-one commits, grouped by concern rather than by file. The ordering runs foundation → consumer, so
+the schema lands before the modules that read it and the pure modules land before their routes:
+
+| # | Commit |
+|---|---|
+| 1 | `chore(git)` — ignore the local agent settings directory |
+| 2 | `chore(db)` — extend the schema for the academic-year module |
+| 3 | `feat(promotions)` — extract one shared promotion decision engine |
+| 4 | `feat(promotions)` — server-authoritative promotion routes and UI |
+| 5 | `feat(certificates)` — bulk issuance, one numbering scheme, shared printing |
+| 6 | `feat(attendance)` — one attendance rate across every surface |
+| 7 | `feat(academic-year)` — year-close finalisation and the closed-year write boundary |
+| 8 | `feat(academic-year)` — the rollover pre-flight gate |
+| 9 | `feat(academic-year)` — working days are a set, not a subtraction |
+| 10 | `feat(academic-year)` — the rollover plan and its commit endpoint |
+| 11 | `feat(i18n)` — author the promotions, rollover and pre-flight namespaces |
+| 12 | `feat(academic-year)` — one current-year resolver and a lifecycle audit trail |
+| 13 | `feat(academic-year)` — the rollover wizard UI |
+| 14 | `feat(session)` — session pinning, idle guard and tenant session policy |
+| 15 | `feat(system-admin)` — report a measured health status, not a hardcoded one |
+| 16 | `feat(accounting)` — rework the statements page |
+| 17 | `refactor` — remove the legacy client-side PDF generators and unused providers |
+| 18 | `feat(ui)` — require an explicit choice instead of pre-selecting one |
+| 19 | `feat(ui)` — accept a digit-run date typed without separators |
+| 20 | `docs` — academic-year audit, gap analysis and implementation status |
+| 21 | `test(attendance)` — route-level coverage for the attendance API |
+
+Each commit body records the invariant it protects and *why* it exists, not just what changed — the
+same reasoning these sections carry, attached to the code it belongs to.
+
+### 21.3 The honest caveat
+
+**The commits are split by concern, not by build order, so an intermediate commit is not guaranteed to
+compile or pass tests on its own.** The working tree accumulated many increments at once and several
+files serve more than one of them — `src/messages/*.json` and `src/prisma/schema.prisma` in particular
+were touched by nearly every increment, and splitting a single file's changes across commits is not
+possible without interactive staging.
+
+What is guaranteed is that **HEAD is exactly the verified state**: `git status` is clean, no file
+content was altered by the commit (only the index was), and the full suite at HEAD is the
+109 files / 1265 tests recorded in §20.10.
+
+### 21.4 One thing that was not committed, on purpose
+
+`.codebuddy/settings.local.json` — a machine-local MCP and permission file. `.codebuddy/` is now in
+`.gitignore` alongside `.claude/`, `.cursor/` and `.workbuddy-ai/`, so a local editor's settings do not
+become a repository artefact.
 
 
