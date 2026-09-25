@@ -38,6 +38,9 @@ model Tenant {
   timezone       String @default("Asia/Dhaka")
   firstDayOfWeek String @default("sunday")
 
+  // Security Settings
+  allowConcurrentSessions Boolean @default(true) // true = same user may stay logged in on multiple devices; false = latest login wins
+
   // Academic Settings
   academicYearStart  String @default("january")
   gradingSystem      String @default("GPA")
@@ -118,6 +121,56 @@ model Tenant {
   questionPaperSets      QuestionPaperSet[]
   syllabusWeights        SyllabusWeight[]
   calendarEvents         CalendarEvent[]
+  academicYearRollovers  AcademicYearRollover[]
+}
+
+/// One run of the rollover wizard: what it was asked to carry, and what it
+/// actually wrote.
+///
+/// Deliberately a record and not just an `AuditLog` row. The audit entry is a
+/// Json blob written for humans to read in a timeline; this is the structured
+/// home for the run — which is what the wizard reads back to say what happened,
+/// and where the fee-balance policy choice (roadmap item 22) will be recorded
+/// once that money decision is made rather than invented.
+model AcademicYearRollover {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  sourceAcademicYearId String
+  targetAcademicYearId String
+  /// "CREATE" — the wizard opened the target year. "EXISTING" — it rolled into
+  /// a year that was already there.
+  mode                 String
+
+  /// What the operator asked to carry.
+  ///
+  /// Recorded because "the target year has no fee structures" and "the operator
+  /// chose not to copy them" look identical from the target year, and only one
+  /// of them is a problem.
+  copyPromotionRules   Boolean  @default(false)
+  copyFeeStructures    Boolean  @default(false)
+
+  /// What this run actually wrote. A re-run updates rather than duplicates, so
+  /// these are per-run counts, not the target year's totals.
+  promotionRulesCreated Int     @default(0)
+  promotionRulesUpdated Int     @default(0)
+  feeStructuresCreated  Int     @default(0)
+  feeStructuresUpdated  Int     @default(0)
+
+  /// Whether the source year's working-day policy was carried across. False
+  /// means the target year is **undeclared**, which is not the same as a year
+  /// with no days off — see `src/lib/working-days.ts`.
+  workingDayPolicyCarried Boolean @default(false)
+
+  performedByUserId    String?
+  performedAt          DateTime @default(now())
+
+  tenant Tenant       @relation(fields: [tenantId], references: [tenantId])
+  source AcademicYear @relation("RolloverSource", fields: [sourceAcademicYearId], references: [id], onDelete: Cascade)
+  target AcademicYear @relation("RolloverTarget", fields: [targetAcademicYearId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, performedAt])
+  @@index([tenantId, sourceAcademicYearId])
+  @@index([tenantId, targetAcademicYearId])
 }
 
 model User {
@@ -133,6 +186,7 @@ model User {
   staffProfileId   String?
   studentProfileId String?   @unique
   lastLoginAt      DateTime?
+  sessionVersion   Int       @default(0) // bumped on login (single-session tenants) + credential/role/status changes; tokens pin this value
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -187,6 +241,13 @@ model StudentProfile {
   sectionId          String?
   status             StudentStatus @default(ACTIVE)
   admissionDate      DateTime      @default(now())
+  /**
+   * When the student left the active roster (graduated or transferred out).
+   * Null while they are still enrolled. Set by the year-end promotion run and
+   * by the exit/transfer workflow; an exit that cannot be dated is not
+   * auditable, so this is never inferred from `updatedAt`.
+   */
+  exitDate           DateTime?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -216,6 +277,7 @@ model StudentProfile {
   @@index([tenantId, rollNumber])
   @@index([tenantId, status])
   @@index([tenantId, classId, status])
+  @@index([tenantId, exitDate])
   @@index([tenantId, sectionId])
   @@index([tenantId, groupId])
   @@index([tenantId, createdAt])
@@ -230,10 +292,45 @@ model AcademicYear {
   startDate DateTime
   endDate   DateTime
   isClosed  Boolean  @default(false)
+  /// The year the institute is operating in, stated rather than inferred.
+  /// Date ranges overlap in practice (a year is often opened before the
+  /// previous one is closed), so "which year is current" cannot be derived
+  /// from `startDate`/`endDate` alone. At most one year per tenant should hold
+  /// this flag; the switch is transactional in the API. Deliberately not a
+  /// unique index: Prisma cannot express the partial index that would be needed
+  /// (only the `true` rows must be unique), and this project applies schema with
+  /// `db push` rather than migrations.
+  isCurrent Boolean  @default(false)
+  /// Which weekdays this year does not teach, as a JSON array of weekday
+  /// numbers (0 = Sunday … 6 = Saturday).
+  ///
+  /// Recorded per year rather than read from `Tenant.firstDayOfWeek` at use
+  /// time. A working-day count is an arithmetic input — it is a denominator on
+  /// a payslip and on the attendance rate — and a count computed under one
+  /// convention must not be silently reinterpreted when the tenant's calendar
+  /// display setting later changes. `firstDayOfWeek` says which column a month
+  /// grid starts on; it is not the weekend.
+  ///
+  /// Null means **undeclared**, and callers must handle that explicitly rather
+  /// than assume Saturday and Sunday. See `src/lib/working-days.ts`.
+  nonWorkingWeekdays Json?
+  /// The year this one was rolled over from, when it was opened by the rollover
+  /// wizard. Null for a year created by hand.
+  ///
+  /// A pointer only. The options the operator chose and the row counts actually
+  /// written live on `AcademicYearRollover`, because "which year did this come
+  /// from" is a single cell on the year list and joining a rollover record to
+  /// render one cell would make the list query depend on a table it otherwise
+  /// never touches.
+  clonedFromId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tenant                     Tenant                   @relation(fields: [tenantId], references: [tenantId])
+  clonedFrom                 AcademicYear?            @relation("AcademicYearClones", fields: [clonedFromId], references: [id])
+  clones                     AcademicYear[]           @relation("AcademicYearClones")
+  rolloversAsSource          AcademicYearRollover[]   @relation("RolloverSource")
+  rolloversAsTarget          AcademicYearRollover[]   @relation("RolloverTarget")
   feeVouchers                FeeVoucher[]
   salaryLedgers              SalaryLedger[]
   examResults                ExamResult[]
@@ -252,6 +349,7 @@ model AcademicYear {
 
   @@unique([tenantId, yearId])
   @@index([tenantId])
+  @@index([tenantId, isCurrent])
 }
 
 model FeeVoucher {
@@ -482,7 +580,7 @@ model Attendance {
   staffProfileId        String?
   academicYearId        String?
   date                  DateTime
-  status                String // PRESENT, ABSENT, LATE, HALF_DAY, EXCUSED, HOLIDAY
+  status                String // PRESENT, ABSENT, LATE, HALF_DAY, EXCUSED, HOLIDAY, LEAVE — see ATTENDANCE_STATUSES in src/lib/attendance-rate.ts
   checkInTime           DateTime?
   checkOutTime          DateTime?
   lateMinutes           Int       @default(0)
