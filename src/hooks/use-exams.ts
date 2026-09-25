@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api-client";
+import type { ExecutePromotionsInput } from "@/lib/schemas";
 import { toast } from "sonner";
 
 export interface Subject {
@@ -118,29 +119,190 @@ export interface PromotionRule {
   } | null;
 }
 
-export interface PromotionEligibility {
+export type PromotionAction =
+  | "PROMOTED"
+  | "RETAINED"
+  | "CONDITIONAL_PROMOTED"
+  | "GRADUATED"
+  | "DEMOTED"
+  | "TRANSFERRED";
+
+export type PromotionReasonCode =
+  | "MEETS_CRITERIA"
+  | "FAILED_SUBJECTS"
+  | "LOW_OVERALL"
+  | "LOW_ATTENDANCE"
+  | "NO_EXAM_RESULTS"
+  | "CONDITIONAL_ELIGIBLE"
+  | "GRADUATED_FINAL_CLASS"
+  | "RETAINED_FINAL_CLASS"
+  | "MANUAL_OVERRIDE"
+  | "TRANSFERRED_OUT";
+
+/**
+ * A structured reason returned by the promotion engine. `code` + `params` are
+ * meant for translation; `message` is an English fallback.
+ */
+export interface PromotionReason {
+  code: PromotionReasonCode;
+  params: Record<string, string | number>;
+  message: string;
+}
+
+export interface PromotionMetrics {
+  overallPercentage: number;
+  totalSubjects: number;
+  failedSubjectsCount: number;
+  failedSubjects: string[];
+  attendanceRate: number;
+  attendanceTracked: boolean;
+  attendancePresentDays: number;
+  attendanceTotalDays: number;
+  minimumAttendance: number;
+  minimumOverallPercentage: number;
+  minimumPerSubject: number;
+  maxFailedSubjects: number;
+}
+
+export interface PromotionSubjectDetail {
+  subjectId: string;
+  subjectName: string;
+  percentage: number;
+  status: string;
+  grade: string;
+  isFailed: boolean;
+}
+
+export interface PromotionDecisionView {
+  id: string;
+  studentProfileId: string;
   studentId: string;
   studentName: string;
   rollNumber: string;
   currentClass: string;
+  currentClassId: string;
+  fromClassId: string;
+  fromClassName: string;
+
+  action: PromotionAction;
   eligible: boolean;
-  action: "PROMOTED" | "RETAINED" | "CONDITIONAL_PROMOTED";
-  reasons: string[];
-  metrics: {
-    overallPercentage: string;
-    totalSubjects: number;
-    failedSubjectsCount: number;
-    failedSubjects: string[];
+  advances: boolean;
+  repeats: boolean;
+  exits: boolean;
+  requiresReExam: boolean;
+  insufficientData: boolean;
+  isTerminalClass: boolean;
+
+  targetClassId: string;
+  targetClassName: string | null;
+  suggestedNextClassId: string | null;
+  suggestedNextClassName: string | null;
+
+  reasons: PromotionReason[];
+  metrics: PromotionMetrics;
+  subjectDetails: PromotionSubjectDetail[];
+  placementSource: "session" | "profile";
+}
+
+export interface PromotionSummary {
+  total: number;
+  promoted: number;
+  conditionalPromoted: number;
+  retained: number;
+  graduated: number;
+  demoted: number;
+  transferred: number;
+  advancing: number;
+  exiting: number;
+  requiringReExam: number;
+  insufficientData: number;
+}
+
+export interface PromotionAcademicYearOption {
+  id: string;
+  yearId: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+  isClosed: boolean;
+  isSource: boolean;
+  isValidTarget: boolean;
+}
+
+export interface PromotionCalculationResult {
+  class: { id: string; classId: string; name: string; classNumber: number };
+  academicYear: {
+    id: string;
+    yearId: string;
+    label: string;
+    startDate: string;
+    isClosed: boolean;
   };
-  subjectDetails: Array<{
-    subjectName: string;
-    percentage: number;
-    status: string;
-    grade: string;
-  }>;
-  suggestedNextClassId?: string | null;
-  suggestedNextClassName?: string | null;
-  reExamAllowed: boolean;
+  targetAcademicYear: {
+    id: string;
+    yearId: string;
+    label: string;
+    startDate: string;
+    isClosed: boolean;
+    isSuggested: boolean;
+  } | null;
+  targetAcademicYearOptions: PromotionAcademicYearOption[];
+  /** No later academic year exists; the operator must create or pick one. */
+  requiresTargetYearSelection: boolean;
+
+  nextClass: { id: string; classId: string; name: string; classNumber: number } | null;
+  isTerminalClass: boolean;
+
+  promotionRule: {
+    id: string;
+    minimumAttendance: number;
+    minimumOverallPercentage: number;
+    minimumPerSubject: number;
+    maxFailedSubjects: number;
+    allowConditionalPromotion: boolean;
+    autoPromote: boolean;
+    nextClassId: string | null;
+    nextClassName: string | null;
+  };
+
+  summary: PromotionSummary;
+  totalStudents: number;
+  eligibleCount: number;
+  retainedCount: number;
+  conditionalCount: number;
+  graduatedCount: number;
+
+  warnings: {
+    legacyPlacement: Array<{
+      studentProfileId: string;
+      studentName: string;
+      message: string;
+    }>;
+    insufficientData: Array<{
+      studentProfileId: string;
+      studentName: string;
+      message: string;
+    }>;
+  };
+
+  students: PromotionDecisionView[];
+}
+
+export interface ExecutePromotionsResult {
+  fromAcademicYear: { id: string; label: string };
+  toAcademicYear: { id: string; label: string };
+  fromClass: { id: string; name: string; classNumber: number };
+  rollNumberPolicy: "PRESERVE" | "SEQUENTIAL";
+  decidedAt: string;
+  exitDate: string;
+  summary: PromotionSummary;
+  warnings: {
+    legacyPlacement: Array<{ studentProfileId: string; studentName: string; message: string }>;
+    insufficientData: Array<{ studentProfileId: string; studentName: string; message: string }>;
+    provisionalRollNumbers: number;
+    targetEnrollmentsCreated: number;
+  };
+  promotions: ClassPromotion[];
 }
 
 export interface ClassPromotion {
@@ -151,7 +313,7 @@ export interface ClassPromotion {
   toAcademicYearId: string;
   fromClassId: string;
   toClassId: string;
-  status: "PROMOTED" | "RETAINED" | "CONDITIONAL_PROMOTED";
+  status: PromotionAction;
   reason?: string;
   reExamRequired: boolean;
   decidedBy: string;
@@ -170,6 +332,44 @@ export interface ClassPromotion {
     classId: string;
     name: string;
   };
+}
+
+/**
+ * One pre-flight finding.
+ *
+ * `code` + `params` are the translatable pair; `message` is the server's
+ * English fallback and is only used if a code has no translation. `subject`
+ * identifies what the finding is about so the UI can deep-link to the row.
+ */
+export interface PreflightFinding {
+  code: string;
+  severity: "blocker" | "warning";
+  subject: { kind: "year" | "class" | "student"; id: string; label: string };
+  params: Record<string, string | number>;
+  message: string;
+}
+
+export interface PreflightReport {
+  canProceed: boolean;
+  blockers: PreflightFinding[];
+  warnings: PreflightFinding[];
+  counts: { blockers: number; warnings: number };
+  countsByCode: Partial<Record<string, number>>;
+  truncatedCodes: string[];
+}
+
+export interface PromotionPreflightResult extends PreflightReport {
+  scope: "promotion";
+  fromAcademicYear: { id: string; label: string; isClosed: boolean };
+  toAcademicYear: { id: string; label: string; isClosed: boolean };
+  class: { id: string; name: string; classNumber: number };
+  studentsConsidered: number;
+}
+
+export interface YearClosePreflightResult extends PreflightReport {
+  scope: "yearClose";
+  year: { id: string; label: string; startDate: string; isClosed: boolean };
+  scan: { students: number; truncated: boolean };
 }
 
 // Subject hooks
@@ -429,26 +629,89 @@ export function useDeletePromotionRule() {
 }
 
 // Promotion Calculation hooks
-export function usePromotionCalculation(classId?: string, academicYearId?: string) {
+export function usePromotionCalculation(
+  classId?: string,
+  academicYearId?: string,
+  toAcademicYearId?: string
+) {
   return useQuery({
-    queryKey: ["promotion-calculation", classId, academicYearId],
+    queryKey: ["promotion-calculation", classId, academicYearId, toAcademicYearId ?? null],
     queryFn: async () => {
       if (!classId || !academicYearId) return null;
       const searchParams = new URLSearchParams({ classId, academicYearId });
-      const response = await api.get<{
-        class: { classId: string; name: string; classNumber: number };
-        nextClass?: { id: string; classId: string; name: string; classNumber: number } | null;
-        academicYearId: string;
-        promotionRule: PromotionRule;
-        totalStudents: number;
-        eligibleCount: number;
-        retainedCount: number;
-        conditionalCount: number;
-        students: PromotionEligibility[];
-      }>(`/api/promotions/calculate?${searchParams}`);
-      return response.data;
+      if (toAcademicYearId) searchParams.set("toAcademicYearId", toAcademicYearId);
+      const response = await api.get<PromotionCalculationResult>(
+        `/api/promotions/calculate?${searchParams}`
+      );
+      // This endpoint always returns a single object, never a paginated list.
+      return response.data as PromotionCalculationResult;
     },
     enabled: !!classId && !!academicYearId,
+  });
+}
+
+/**
+ * Read-only readiness report for one promotion run.
+ *
+ * The server runs the same pure checks here that POST /api/promotions/execute
+ * enforces, so a cohort that reads as ready here cannot be refused there for a
+ * reason the operator could not see. A blocked report is still a successful
+ * response (`canProceed: false`), not an error.
+ */
+export function usePromotionPreflight(
+  classId?: string,
+  academicYearId?: string,
+  toAcademicYearId?: string,
+  studentProfileIds?: string[]
+) {
+  // Sorted so that selecting the same students in a different order does not
+  // produce a second cache entry.
+  const selection = studentProfileIds?.length
+    ? [...studentProfileIds].sort().join(",")
+    : "";
+
+  return useQuery({
+    queryKey: [
+      "promotion-preflight",
+      classId,
+      academicYearId,
+      toAcademicYearId ?? null,
+      selection,
+    ],
+    queryFn: async () => {
+      if (!classId || !academicYearId || !toAcademicYearId) return null;
+      const searchParams = new URLSearchParams({
+        classId,
+        academicYearId,
+        toAcademicYearId,
+      });
+      // Only sent for an explicit selection: omitting it means the whole class,
+      // while sending it empty would mean "nothing selected".
+      if (selection) searchParams.set("studentProfileIds", selection);
+      const response = await api.get<PromotionPreflightResult>(
+        `/api/promotions/preflight?${searchParams}`
+      );
+      return response.data as PromotionPreflightResult;
+    },
+    enabled: !!classId && !!academicYearId && !!toAcademicYearId,
+  });
+}
+
+/**
+ * Readiness report for closing one academic year. Whole-year by nature, so it
+ * is not paginated — `scan.truncated` says whether the report is partial.
+ */
+export function useYearClosePreflight(academicYearId?: string) {
+  return useQuery({
+    queryKey: ["academic-year-preflight", academicYearId ?? null],
+    queryFn: async () => {
+      if (!academicYearId) return null;
+      const response = await api.get<YearClosePreflightResult>(
+        `/api/academic-years/${academicYearId}/preflight`
+      );
+      return response.data as YearClosePreflightResult;
+    },
+    enabled: !!academicYearId,
   });
 }
 
@@ -456,13 +719,17 @@ export function useExecutePromotions() {
   const t = useTranslations("exams");
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: Partial<ClassPromotion> | Partial<ClassPromotion>[]) => {
-      const response = await api.post<ClassPromotion[]>("/api/promotions/execute", data);
+    mutationFn: async (data: ExecutePromotionsInput) => {
+      const response = await api.post<ExecutePromotionsResult>("/api/promotions/execute", data);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["promotion-calculation"] });
+      // The report describes a cohort that has just changed, so it is stale.
+      queryClient.invalidateQueries({ queryKey: ["promotion-preflight"] });
+      queryClient.invalidateQueries({ queryKey: ["promotion-history"] });
       queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
       toast.success(t("promotionsExecuted"));
     },
     onError: (error: any) => {

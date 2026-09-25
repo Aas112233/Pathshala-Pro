@@ -20,6 +20,7 @@ import {
 import {
   resolveRequestAcademicYearId,
   ensureStudentAcademicSession,
+  assertAcademicYearOpen,
 } from "@/lib/academic-year-guards";
 import { fastCache } from "@/lib/fast-memory-cache";
 
@@ -229,6 +230,26 @@ export async function PUT(
     if (prismaData.groupId === "") prismaData.groupId = null;
     if (prismaData.sectionId === "") prismaData.sectionId = null;
 
+    // ---------------------------------------------------------------------
+    // Closed-year guard.
+    //
+    // Only the year-scoped placement is protected, never the profile. A
+    // StudentProfile is "where this student is now" and belongs to no single
+    // year, so correcting a guardian's phone number must keep working even when
+    // the year the operator has selected in the switcher is closed. Moving the
+    // student is different: that writes their StudentAcademicSession row.
+    //
+    // Checked before the profile update rather than after it, so a refusal is a
+    // clean no-op instead of a half-applied edit the caller has to reason about.
+    // ---------------------------------------------------------------------
+    const targetAcademicYearId = (data as any).academicYearId || await resolveRequestAcademicYearId(request, tenantId);
+    const effectiveClassId =
+      prismaData.classId !== undefined ? prismaData.classId : existingStudent.classId;
+
+    if (targetAcademicYearId && effectiveClassId) {
+      await assertAcademicYearOpen(tenantId, targetAcademicYearId);
+    }
+
     const updatedStudent = await prisma.studentProfile.update({
       where: { id },
       data: prismaData,
@@ -273,8 +294,8 @@ export async function PUT(
       },
     });
 
-    // Synchronize active session if academic year and class are present
-    const targetAcademicYearId = (data as any).academicYearId || await resolveRequestAcademicYearId(request, tenantId);
+    // Synchronize active session if academic year and class are present. The
+    // target year was resolved and its lock checked above.
     if (targetAcademicYearId && updatedStudent.classId) {
       const cls = await prisma.class.findFirst({
         where: { id: updatedStudent.classId, tenantId },

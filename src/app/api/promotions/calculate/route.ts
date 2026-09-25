@@ -7,21 +7,36 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
-import type { StudentProfile as BaseStudentProfile } from "@/types/entities";
-import type { ExamResult as PrismaExamResult } from "@prisma/client";
-
-interface StudentProfileWithClass extends BaseStudentProfile {
-  class?: { classId: string; name: string; classNumber: number } | null;
-}
-
-interface ExamResultWithRelations extends PrismaExamResult {
-  exam: { name: string; type: string };
-  subject: { name: string; code: string };
-}
+import { loadPromotionCohort } from "@/lib/promotion-roster";
+import {
+  decidePromotion,
+  summariseDecisions,
+  suggestTargetAcademicYear,
+  type PromotionDecision,
+  type PromotionRuleInput,
+} from "@/lib/promotion-engine";
 
 /**
  * GET /api/promotions/calculate
- * Calculate promotion eligibility for all students in a class
+ *
+ * Preview of a promotion run for one class, moving out of one academic year and
+ * into another.
+ *
+ * This route is a *courtesy*: it runs the exact same decision engine and the
+ * exact same cohort loader as POST /api/promotions/execute. The write path
+ * recomputes everything and trusts nothing from here, so a stale or tampered
+ * preview cannot influence what actually gets written.
+ *
+ * Query parameters:
+ *   classId           (required) source class
+ *   academicYearId    (required) source academic year
+ *   toAcademicYearId  (optional) target academic year. When omitted the next
+ *                     year after the source is suggested. When no later year
+ *                     exists the response reports `requiresTargetYearSelection`
+ *                     instead of silently reusing the source year — reusing the
+ *                     source year was the original defect that made promotions
+ *                     advance a student's class without enrolling them in the
+ *                     following year.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -32,224 +47,259 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
     const academicYearId = searchParams.get("academicYearId");
+    const requestedTargetYearId = searchParams.get("toAcademicYearId");
 
     if (!classId || !academicYearId) {
       return badRequest("classId and academicYearId are required");
     }
 
-    // Get promotion rule for this class
-    const promotionRule = await prisma.promotionRule.findFirst({
-      where: {
-        tenantId,
-        classId,
-        academicYearId,
-        isActive: true,
-      },
-      include: {
-        class: {
-          select: {
-            classId: true,
-            name: true,
-            classNumber: true,
-          },
-        },
-      },
+    const [fromClass, sourceYear] = await Promise.all([
+      prisma.class.findFirst({
+        where: { id: classId, tenantId },
+        select: { id: true, classId: true, name: true, classNumber: true },
+      }),
+      prisma.academicYear.findFirst({
+        where: { id: academicYearId, tenantId },
+        select: { id: true, yearId: true, label: true, startDate: true, endDate: true, isClosed: true },
+      }),
+    ]);
+
+    if (!fromClass) return notFound("Class not found");
+    if (!sourceYear) return notFound("Academic year not found");
+
+    const ruleRow = await prisma.promotionRule.findFirst({
+      where: { tenantId, classId: fromClass.id, academicYearId: sourceYear.id, isActive: true },
     });
 
-    if (!promotionRule) {
-      return notFound("Promotion rule not found for this class and academic year");
+    if (!ruleRow) {
+      return notFound(
+        `No active promotion rule is configured for '${fromClass.name}' in '${sourceYear.label}'. Create the rule before previewing promotions.`
+      );
     }
 
-    // If nextClassId exists, fetch nextClass details
-    let nextClass: { id: string; classId: string; name: string; classNumber: number } | null = null;
-    if (promotionRule.nextClassId) {
-      nextClass = await prisma.class.findUnique({
-        where: {
-          id: promotionRule.nextClassId,
-          tenantId,
-        },
-        select: {
-          id: true,
-          classId: true,
-          name: true,
-          classNumber: true,
-        },
-      });
+    // PromotionRule.nextClassId is a plain column, not a relation, so the next
+    // class is resolved explicitly.
+    const nextClass = ruleRow.nextClassId
+      ? await prisma.class.findFirst({
+          where: { id: ruleRow.nextClassId, tenantId },
+          select: { id: true, classId: true, name: true, classNumber: true },
+        })
+      : null;
+
+    const rule: PromotionRuleInput = {
+      id: ruleRow.id,
+      classId: ruleRow.classId,
+      academicYearId: ruleRow.academicYearId,
+      minimumAttendance: ruleRow.minimumAttendance,
+      minimumOverallPercentage: ruleRow.minimumOverallPercentage,
+      minimumPerSubject: ruleRow.minimumPerSubject,
+      maxFailedSubjects: ruleRow.maxFailedSubjects,
+      allowConditionalPromotion: ruleRow.allowConditionalPromotion,
+      autoPromote: ruleRow.autoPromote,
+      nextClassId: ruleRow.nextClassId,
+    };
+
+    // ---------------------------------------------------------------------
+    // Resolve the target academic year.
+    // ---------------------------------------------------------------------
+    const allYears = await prisma.academicYear.findMany({
+      where: { tenantId },
+      select: { id: true, yearId: true, label: true, startDate: true, endDate: true, isClosed: true },
+      orderBy: { startDate: "asc" },
+    });
+
+    const sourceStart = new Date(sourceYear.startDate).getTime();
+
+    const targetYearOptions = allYears.map((year) => ({
+      id: year.id,
+      yearId: year.yearId,
+      label: year.label,
+      startDate: year.startDate.toISOString(),
+      endDate: year.endDate.toISOString(),
+      isClosed: year.isClosed,
+      isSource: year.id === sourceYear.id,
+      /** Only a year that starts after the source year is a legal target. */
+      isValidTarget: year.id !== sourceYear.id && new Date(year.startDate).getTime() > sourceStart,
+    }));
+
+    const suggestedTargetYear = suggestTargetAcademicYear(sourceYear.id, allYears);
+
+    const targetYear = requestedTargetYearId
+      ? allYears.find((year) => year.id === requestedTargetYearId) ?? null
+      : suggestedTargetYear;
+
+    if (requestedTargetYearId && !targetYear) {
+      return notFound("Target academic year not found");
     }
 
-    // Get all students in this class
-    const students = (await prisma.studentProfile.findMany({
-      where: {
-        tenantId,
-        classId,
-        status: "ACTIVE",
-      },
-      include: {
-        class: {
-          select: {
-            classId: true,
-            name: true,
-            classNumber: true,
+    // An explicitly requested target year must still be a legal target.
+    if (
+      targetYear &&
+      (targetYear.id === sourceYear.id ||
+        new Date(targetYear.startDate).getTime() <= sourceStart)
+    ) {
+      return badRequest(
+        "The target academic year must start after the source academic year.",
+        [
+          {
+            field: "toAcademicYearId",
+            code: "TARGET_YEAR_NOT_AFTER_SOURCE",
+            message: `'${targetYear.label}' does not start after '${sourceYear.label}'.`,
           },
-        },
-      },
-    })) as StudentProfileWithClass[];
+        ]
+      );
+    }
 
-    const isFinalClass = !promotionRule.nextClassId;
+    // ---------------------------------------------------------------------
+    // Cohort + evidence via the shared loader (no per-student query storm).
+    // ---------------------------------------------------------------------
+    const cohort = await loadPromotionCohort({
+      tenantId,
+      fromAcademicYearId: sourceYear.id,
+      classId: fromClass.id,
+      className: fromClass.name,
+      classNumber: fromClass.classNumber,
+    });
 
-    const promotionEligibility = await Promise.all(
-      students.map(async (student: StudentProfileWithClass) => {
-        // Get all exam results for this student in the academic year
-        const results = await prisma.examResult.findMany({
-          where: {
-            tenantId,
-            studentProfileId: student.id,
-            academicYearId,
-          },
-          include: {
-            exam: {
-              select: {
-                name: true,
-                type: true,
-              },
-            },
-            subject: {
-              select: {
-                name: true,
-                code: true,
-              },
-            },
-          },
-        });
-
-        // Group results by exam
-        const examGroups = results.reduce<Record<string, ExamResultWithRelations[]>>((acc, result) => {
-          if (!acc[result.examId]) {
-            acc[result.examId] = [];
-          }
-          acc[result.examId].push(result);
-          return acc;
-        }, {} as Record<string, ExamResultWithRelations[]>);
-
-        // Calculate overall performance (use final exam or average all)
-        let totalPercentage = 0;
-        let totalSubjects = 0;
-        const failedSubjects: string[] = [];
-        const subjectDetails: Array<{
-          subjectName: string;
-          percentage: number;
-          status: string;
-          grade: string;
-        }> = [];
-
-        // Use the most recent exam results for each subject
-        const latestResults = new Map<string, ExamResultWithRelations>();
-        results.forEach((result) => {
-          const existing = latestResults.get(result.subjectId);
-          if (!existing || new Date(result.createdAt) > new Date(existing.createdAt)) {
-            latestResults.set(result.subjectId, result);
-          }
-        });
-
-        latestResults.forEach((result) => {
-          totalPercentage += result.percentage;
-          totalSubjects++;
-          subjectDetails.push({
-            subjectName: result.subject.name,
-            percentage: result.percentage,
-            status: result.status,
-            grade: result.grade,
-          });
-
-          if (result.status === "FAIL") {
-            failedSubjects.push(result.subject.name);
-          }
-        });
-
-        const overallPercentage = totalSubjects > 0 ? totalPercentage / totalSubjects : 0;
-
-        // Determine eligibility
-        let eligible = true;
-        let action: "PROMOTED" | "RETAINED" | "CONDITIONAL_PROMOTED" = "PROMOTED";
-        const reasons: string[] = [];
-
-        // Check failed subjects
-        if (failedSubjects.length > promotionRule.maxFailedSubjects) {
-          eligible = false;
-          action = "RETAINED";
-          reasons.push(`Failed in ${failedSubjects.length} subject(s): ${failedSubjects.join(", ")}`);
-
-          // Check if conditional promotion is allowed
-          if (
-            promotionRule.allowConditionalPromotion &&
-            failedSubjects.length <= 2 &&
-            overallPercentage >= 30
-          ) {
-            action = "CONDITIONAL_PROMOTED";
-            reasons.push("Eligible for conditional promotion with re-exam");
-          }
-        }
-
-        // Check overall percentage
-        if (overallPercentage < promotionRule.minimumOverallPercentage) {
-          eligible = false;
-          if (action !== "CONDITIONAL_PROMOTED") {
-            action = "RETAINED";
-          }
-          reasons.push(`Low overall percentage: ${overallPercentage.toFixed(2)}% (Required: ${promotionRule.minimumOverallPercentage}%)`);
-        }
-
-        // If no next class ID (final year), mark as graduated
-        if (isFinalClass) {
-          action = "RETAINED";
-          reasons.push("Final class - No promotion needed");
-        }
-
-        return {
-          id: student.id,
-          studentProfileId: student.id,
-          studentId: student.studentId,
-          studentName: `${student.firstName} ${student.lastName}`,
-          rollNumber: student.rollNumber,
-          currentClass: student.class?.name || "Unknown",
-          currentClassId: student.classId,
-          fromClassId: student.classId,
-          eligible,
-          action,
-          reasons,
-          metrics: {
-            overallPercentage: overallPercentage.toFixed(2),
-            totalSubjects,
-            failedSubjectsCount: failedSubjects.length,
-            failedSubjects,
-          },
-          subjectDetails,
-          suggestedNextClassId: promotionRule.nextClassId,
-          suggestedNextClassName: nextClass?.name || (isFinalClass ? "Graduated / Final Class" : null),
-          reExamAllowed: action === "CONDITIONAL_PROMOTED" && !isFinalClass,
-        };
-      })
+    const decisions: PromotionDecision[] = cohort.entries.map((entry) =>
+      decidePromotion(entry.candidate, rule)
     );
+
+    const summary = summariseDecisions(decisions);
+
+    // Resolve every class the decisions point at, so a target is never guessed.
+    const targetClassIds = [...new Set(decisions.map((decision) => decision.targetClassId))];
+    const targetClasses = targetClassIds.length
+      ? await prisma.class.findMany({
+          where: { tenantId, id: { in: targetClassIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const classNameById = new Map(targetClasses.map((cls) => [cls.id, cls.name]));
+
+    const entryByStudent = new Map(
+      cohort.entries.map((entry) => [entry.seed.studentProfileId, entry])
+    );
+
+    const students = decisions.map((decision) => {
+      const entry = entryByStudent.get(decision.studentProfileId);
+      const targetClassName = decision.exits
+        ? null
+        : classNameById.get(decision.targetClassId) ?? decision.fromClassName;
+
+      return {
+        id: decision.studentProfileId,
+        studentProfileId: decision.studentProfileId,
+        studentId: decision.studentId,
+        studentName: decision.studentName,
+        rollNumber: decision.rollNumber,
+        currentClass: decision.fromClassName,
+        currentClassId: decision.fromClassId,
+        fromClassId: decision.fromClassId,
+        fromClassName: decision.fromClassName,
+
+        action: decision.action,
+        eligible: decision.meetsCriteria,
+        advances: decision.advances,
+        repeats: decision.repeats,
+        exits: decision.exits,
+        requiresReExam: decision.requiresReExam,
+        insufficientData: decision.insufficientData,
+        isTerminalClass: decision.isTerminalClass,
+
+        targetClassId: decision.targetClassId,
+        targetClassName,
+        /** Kept for existing consumers of the previous response shape. */
+        suggestedNextClassId: decision.exits ? null : decision.targetClassId,
+        suggestedNextClassName: decision.exits ? null : targetClassName,
+
+        /**
+         * Structured reason codes. The UI translates `code` + `params`; the
+         * `message` is an English fallback for logs and API consumers.
+         */
+        reasons: decision.reasons,
+        metrics: decision.metrics,
+        subjectDetails: decision.subjectDetails,
+
+        /** Placement provenance, so the operator can see why a student is here. */
+        placementSource: entry?.seed.placementSource ?? "session",
+      };
+    });
 
     return successResponse(
       {
-        class: promotionRule.class,
-        nextClass,
-        academicYearId,
-        promotionRule: {
-          minimumAttendance: promotionRule.minimumAttendance,
-          minimumOverallPercentage: promotionRule.minimumOverallPercentage,
-          minimumPerSubject: promotionRule.minimumPerSubject,
-          maxFailedSubjects: promotionRule.maxFailedSubjects,
-          allowConditionalPromotion: promotionRule.allowConditionalPromotion,
-          nextClassId: promotionRule.nextClassId,
-          nextClassName: nextClass?.name || (isFinalClass ? "Graduated / Final Class" : null),
+        class: {
+          id: fromClass.id,
+          classId: fromClass.classId,
+          name: fromClass.name,
+          classNumber: fromClass.classNumber,
         },
-        totalStudents: students.length,
-        eligibleCount: promotionEligibility.filter((e) => e.eligible && e.action === "PROMOTED").length,
-        retainedCount: promotionEligibility.filter((e) => e.action === "RETAINED").length,
-        conditionalCount: promotionEligibility.filter((e) => e.action === "CONDITIONAL_PROMOTED").length,
-        students: promotionEligibility,
+        academicYear: {
+          id: sourceYear.id,
+          yearId: sourceYear.yearId,
+          label: sourceYear.label,
+          startDate: sourceYear.startDate.toISOString(),
+          isClosed: sourceYear.isClosed,
+        },
+        targetAcademicYear: targetYear
+          ? {
+              id: targetYear.id,
+              yearId: targetYear.yearId,
+              label: targetYear.label,
+              startDate: targetYear.startDate.toISOString(),
+              isClosed: targetYear.isClosed,
+              isSuggested: !requestedTargetYearId,
+            }
+          : null,
+        targetAcademicYearOptions: targetYearOptions,
+        /**
+         * True when no target year could be resolved (no later year exists).
+         * The UI must block execution and ask the operator to create or select
+         * the next academic year.
+         */
+        requiresTargetYearSelection: !targetYear,
+
+        nextClass,
+        isTerminalClass: !ruleRow.nextClassId,
+
+        promotionRule: {
+          id: ruleRow.id,
+          minimumAttendance: ruleRow.minimumAttendance,
+          minimumOverallPercentage: ruleRow.minimumOverallPercentage,
+          minimumPerSubject: ruleRow.minimumPerSubject,
+          maxFailedSubjects: ruleRow.maxFailedSubjects,
+          allowConditionalPromotion: ruleRow.allowConditionalPromotion,
+          autoPromote: ruleRow.autoPromote,
+          nextClassId: ruleRow.nextClassId,
+          nextClassName: nextClass?.name ?? null,
+        },
+
+        summary,
+
+        // Counters kept for the existing UI; `summary` is the richer source.
+        totalStudents: summary.total,
+        eligibleCount: summary.promoted,
+        retainedCount: summary.retained,
+        conditionalCount: summary.conditionalPromoted,
+        graduatedCount: summary.graduated,
+
+        warnings: {
+          legacyPlacement: cohort.legacyPlacementIds.map((id) => ({
+            studentProfileId: id,
+            studentName: cohort.nameByStudent.get(id) ?? id,
+            message:
+              "Placement taken from the student profile; no enrollment exists for this academic year.",
+          })),
+          insufficientData: decisions
+            .filter((decision) => decision.insufficientData)
+            .map((decision) => ({
+              studentProfileId: decision.studentProfileId,
+              studentName: decision.studentName,
+              message: "No examination results were found, so the decision rests on absent data.",
+            })),
+        },
+
+        students,
       },
       "Promotion eligibility calculated successfully"
     );

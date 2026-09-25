@@ -15,6 +15,7 @@ import { fastCache } from "@/lib/fast-memory-cache";
 import {
   resolveRequestAcademicYearId,
   ensureStudentAcademicSession,
+  assertAcademicYearOpen,
 } from "@/lib/academic-year-guards";
 
 /**
@@ -91,24 +92,44 @@ export async function GET(request: NextRequest) {
 
     // If an academic year is active and class hierarchy filters are present,
     // filter students whose academic session for that year matches the class/section/group.
-    // Fall back to student profile fields if no session filter matches.
+    //
+    // Two invariants this block has to hold:
+    //
+    //  1. The placement clause is appended to `AND`, never assigned to `OR`.
+    //     Assigning to `OR` used to clobber the single-term search filter set
+    //     above, so searching inside a class silently returned the whole class.
+    //
+    //  2. The profile fallback is guarded by `academicSessions.none`. Without
+    //     that guard a promoted student matches BOTH their new placement (via
+    //     the session) and their old one (via the still-stale profile), and is
+    //     listed twice in the roster.
     if (resolvedAcademicYearId && (classId || sectionId || groupId)) {
-      where.OR = [
+      const profileFields = {
+        ...(classId ? { classId } : {}),
+        ...(sectionId ? { sectionId } : {}),
+        ...(groupId ? { groupId } : {}),
+      };
+
+      where.AND = [
+        ...(where.AND ?? []),
         {
-          academicSessions: {
-            some: {
-              academicYearId: resolvedAcademicYearId,
-              ...(classId ? { classId } : {}),
-              ...(sectionId ? { sectionId } : {}),
-              ...(groupId ? { groupId } : {}),
+          OR: [
+            // Authoritative: the placement recorded for this academic year.
+            {
+              academicSessions: {
+                some: {
+                  academicYearId: resolvedAcademicYearId,
+                  ...profileFields,
+                },
+              },
             },
-          },
-        },
-        // Fallback for newly created or legacy rows where session wasn't written yet
-        {
-          ...(classId ? { classId } : {}),
-          ...(sectionId ? { sectionId } : {}),
-          ...(groupId ? { groupId } : {}),
+            // Legacy fallback for rows written before sessions existed, or for
+            // students not yet enrolled for the requested year.
+            {
+              academicSessions: { none: { academicYearId: resolvedAcademicYearId } },
+              ...profileFields,
+            },
+          ],
         },
       ];
     } else {
@@ -417,6 +438,15 @@ export async function POST(request: NextRequest) {
     if (!groupOk) return badRequest("Selected group does not exist in your institution.");
 
     const targetAcademicYearId = (data as any).academicYearId || await resolveRequestAcademicYearId(request, tenantId);
+
+    // Admitting a student is not itself year-scoped — the profile is not owned
+    // by any one year — but placing them writes a StudentAcademicSession into
+    // the year, and that row is exactly what a closed year protects. Checked
+    // before the transaction so a refusal cannot leave a profile behind with no
+    // placement in it.
+    if (targetAcademicYearId && prismaDataWithDates.classId) {
+      await assertAcademicYearOpen(tenantId, targetAcademicYearId);
+    }
 
     const student = await prisma.$transaction(async (tx) => {
       const createdStudent = await tx.studentProfile.create({

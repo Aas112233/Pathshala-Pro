@@ -9,6 +9,7 @@ import {
 } from "@/lib/api-response";
 import { updatePromotionRuleSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -107,6 +108,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return notFound("Promotion rule not found");
     }
 
+    // A closed year is frozen, and that refusal comes first: it holds whether or
+    // not historical promotions exist, so a rule in a closed year with no
+    // promotions recorded is still uneditable.
+    await assertAcademicYearOpen(tenantId, existingRule.academicYearId);
+
     // Historical Lock Enforcement
     if (existingRule.isLocked) {
       return badRequest(
@@ -134,6 +140,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const data = validation.data;
+
+    // A rule can also be *moved* between years: the update schema is a partial of
+    // the create schema, so `academicYearId` is writable. Relocating a rule into
+    // a closed year is a write to that closed year, so the destination needs the
+    // same check as the source — guarding only the source would leave a door
+    // into the frozen year wide open.
+    if (data.academicYearId && data.academicYearId !== existingRule.academicYearId) {
+      await assertAcademicYearOpen(tenantId, data.academicYearId);
+    }
 
     // Validate nextClassId if modified
     if (data.nextClassId) {
@@ -224,6 +239,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (!existingRule) {
       return notFound("Promotion rule not found");
     }
+
+    await assertAcademicYearOpen(tenantId, existingRule.academicYearId);
 
     // Historical Lock Enforcement
     if (existingRule.isLocked) {

@@ -11,6 +11,7 @@ import {
 } from "@/lib/api-response";
 import { createPromotionRuleSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 
 /**
  * GET /api/promotion-rules
@@ -130,14 +131,11 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
-    // Verify academic year exists
-    const academicYear = await prisma.academicYear.findUnique({
-      where: { id: data.academicYearId, tenantId },
-    });
-
-    if (!academicYear) {
-      return badRequest("Academic year not found");
-    }
+    // The year must exist, belong to this tenant, and be open. A promotion rule
+    // in a closed year is the recorded basis on which students were retained or
+    // advanced; rewriting it after the fact changes the reason without changing
+    // the outcome, which is exactly the kind of retro-edit a frozen year forbids.
+    await assertAcademicYearOpen(tenantId, data.academicYearId);
 
     // Verify class exists
     const classObj = await prisma.class.findUnique({
