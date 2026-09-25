@@ -11,7 +11,11 @@ import {
   bulkTimetableSchema,
 } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
+import {
+  resolveRequestAcademicYearId,
+  assertAcademicYearOpen,
+  assertAcademicYearsOpen,
+} from "@/lib/academic-year-guards";
 
 /**
  * GET /api/timetables
@@ -127,6 +131,17 @@ export async function POST(request: NextRequest) {
         return validationError(errors);
       }
 
+      // Every entry is year-scoped, so every year this batch targets has to be
+      // open. Checked as a set before the loop below, so a batch that touches a
+      // closed year is refused whole rather than half-written.
+      const batchYearIds = parsed.data.entries
+        .map((entry) => entry.academicYearId || defaultAcademicYearId || null)
+        .filter((yearId): yearId is string => Boolean(yearId));
+
+      if (batchYearIds.length > 0) {
+        await assertAcademicYearsOpen(tenantId, batchYearIds);
+      }
+
       // Validate section ownership and clashes before writing
       for (const e of parsed.data.entries) {
         const targetYearId = e.academicYearId || defaultAcademicYearId || null;
@@ -203,6 +218,12 @@ export async function POST(request: NextRequest) {
     }
 
     const targetYearId = d.academicYearId || defaultAcademicYearId || null;
+
+    // A timetable entry belongs to a year, so a closed year's timetable is
+    // frozen with the rest of it.
+    if (targetYearId) {
+      await assertAcademicYearOpen(tenantId, targetYearId);
+    }
 
     if (d.staffProfileId) {
       const clash = await checkTeacherClash(tenantId, d.staffProfileId, d.dayOfWeek, d.periodNumber, targetYearId);

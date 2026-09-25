@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import {
   successResponse,
   notFound,
+  badRequest,
   handleApiError,
   safeParseBody,
 } from "@/lib/api-response";
 import { updateClassFeeStructureSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 import { integrityViolation, lockedUpdateMessage, buildLockedFieldsDetails } from "@/lib/data-integrity";
 import { addCurrency } from "@/lib/math-utils";
 
@@ -58,6 +60,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     });
     if (!existing) return notFound("Class fee structure not found.");
 
+    // Checked before the voucher lock: "this year is frozen" is the stronger
+    // statement, and it holds even for a year with no vouchers issued yet.
+    await assertAcademicYearOpen(tenantId, existing.academicYearId);
+
     const issuedVouchers = await prisma.feeVoucher.count({
       where: { tenantId, academicYearId: existing.academicYearId },
     });
@@ -76,6 +82,27 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const data = bodyResult.data;
 
+    // The update schema is a partial of the create schema and the write below
+    // spreads it, so `academicYearId` is writable — meaning a structure can be
+    // *moved* to another year. That is the one remaining route by which a frozen
+    // year could gain a structure, so the destination is resolved and checked the
+    // same way the create path resolves it (which accepts an internal id or a
+    // `yearId` code).
+    let destinationAcademicYearId: string | undefined;
+    if (data.academicYearId && data.academicYearId !== existing.academicYearId) {
+      const destination = await prisma.academicYear.findFirst({
+        where: { tenantId, OR: [{ id: data.academicYearId }, { yearId: data.academicYearId }] },
+        select: { id: true },
+      });
+      if (!destination) {
+        return badRequest(`Selected academic year (${data.academicYearId}) not found.`);
+      }
+      await assertAcademicYearOpen(tenantId, destination.id);
+      // Write the resolved internal id, never the raw value: a `yearId` code
+      // landing in the `academicYearId` column would corrupt the year reference.
+      destinationAcademicYearId = destination.id;
+    }
+
     const tuitionFee = data.tuitionFee !== undefined ? data.tuitionFee : existing.tuitionFee;
     const labFee = data.labFee !== undefined ? data.labFee : existing.labFee;
     const computerFee = data.computerFee !== undefined ? data.computerFee : existing.computerFee;
@@ -91,6 +118,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       where: { id },
       data: {
         ...data,
+        ...(destinationAcademicYearId && { academicYearId: destinationAcademicYearId }),
         tuitionFee,
         labFee,
         computerFee,
@@ -127,6 +155,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       where: { id, tenantId },
     });
     if (!existing) return notFound("Class fee structure not found.");
+
+    await assertAcademicYearOpen(tenantId, existing.academicYearId);
 
     const issuedVouchers = await prisma.feeVoucher.count({
       where: { tenantId, academicYearId: existing.academicYearId },

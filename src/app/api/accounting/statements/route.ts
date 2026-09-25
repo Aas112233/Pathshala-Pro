@@ -17,11 +17,12 @@ export async function GET(req: NextRequest) {
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
+    const academicYearId = searchParams.get("academicYearId") || "";
     const startDate = startDateParam ? new Date(startDateParam) : null;
     const endDate = endDateParam ? new Date(endDateParam + "T23:59:59.999Z") : null;
 
     // 1. Return list of available entities for dropdowns if requested or alongside data
-    const [students, staffList, bankAccounts] = await Promise.all([
+    const [students, staffList, bankAccounts, academicYears] = await Promise.all([
       prisma.studentProfile.findMany({
         where: { tenantId, status: "ACTIVE" },
         select: {
@@ -67,15 +68,19 @@ export async function GET(req: NextRequest) {
         },
         orderBy: { createdAt: "asc" },
       }),
+      prisma.academicYear.findMany({
+        where: { tenantId },
+        select: {
+          id: true,
+          label: true,
+          isCurrent: true,
+        },
+        orderBy: { startDate: "desc" },
+      }),
     ]);
 
-    // If no specific entity selected, return first available or empty state with selector lists
-    let targetEntityId = entityId;
-    if (!targetEntityId) {
-      if (type === "STUDENT" && students.length > 0) targetEntityId = students[0].id;
-      else if (type === "STAFF" && staffList.length > 0) targetEntityId = staffList[0].id;
-      else if (type === "ACCOUNT" && bankAccounts.length > 0) targetEntityId = bankAccounts[0].id;
-    }
+    // Target specific entity if provided; if none selected, empty state is returned with options
+    const targetEntityId = entityId;
 
     // =========================================================================
     // STUDENT FEE STATEMENT
@@ -85,7 +90,7 @@ export async function GET(req: NextRequest) {
         return successResponse({
           type: "STUDENT",
           entity: null,
-          options: { students, staffList, bankAccounts },
+          options: { students, staffList, bankAccounts, academicYears },
           statement: {
             openingBalance: 0,
             totalDebit: 0,
@@ -109,11 +114,12 @@ export async function GET(req: NextRequest) {
         where: {
           studentProfileId: student.id,
           tenantId,
+          ...(academicYearId ? { academicYearId } : {}),
         },
         orderBy: { createdAt: "asc" },
       });
 
-      const [academicYears, transactions] = await Promise.all([
+      const [voucherAcademicYears, transactions] = await Promise.all([
         prisma.academicYear.findMany({
           where: {
             tenantId,
@@ -127,11 +133,14 @@ export async function GET(req: NextRequest) {
             isVoided: false,
             feeVoucherId: { in: vouchers.map((voucher) => voucher.id) },
           },
+          include: {
+            collectedBy: { select: { name: true } },
+          },
           orderBy: { timestamp: "asc" },
         }),
       ]);
       const academicYearLabels = new Map(
-        academicYears.map((academicYear) => [academicYear.id, academicYear.label])
+        voucherAcademicYears.map((ay) => [ay.id, ay.label])
       );
       const transactionsByVoucherId = new Map<string, typeof transactions>();
       for (const transaction of transactions) {
@@ -140,42 +149,75 @@ export async function GET(req: NextRequest) {
         transactionsByVoucherId.set(transaction.feeVoucherId, voucherTransactions);
       }
 
-      let runningBalance = 0;
-      let totalBilled = 0;
-      let totalPaid = 0;
-      const allEntries: any[] = [];
+      // Calculate Aging Analysis (0-30, 31-60, 61-90, 90+ days)
+      let currentAging = 0;
+      let days30Aging = 0;
+      let days60Aging = 0;
+      let days90PlusAging = 0;
+      const now = new Date();
 
       vouchers.forEach((v) => {
-        // Debit: Voucher Generated / Billed
-        runningBalance += Number(v.totalDue);
-        totalBilled += Number(v.totalDue);
+        const vTx = transactionsByVoucherId.get(v.id) || [];
+        const paidForVoucher = vTx.reduce((sum, tx) => sum + Number(tx.amountPaid), 0);
+        const outstanding = Math.max(0, Number(v.totalDue) - paidForVoucher);
+        if (outstanding > 0 && v.status !== "PAID" && v.status !== "VOID") {
+          const dueTime = v.dueDate ? new Date(v.dueDate).getTime() : new Date(v.createdAt).getTime();
+          const daysPastDue = Math.floor((now.getTime() - dueTime) / (1000 * 60 * 60 * 24));
+          if (daysPastDue <= 30) {
+            currentAging += outstanding;
+          } else if (daysPastDue <= 60) {
+            days30Aging += outstanding;
+          } else if (daysPastDue <= 90) {
+            days60Aging += outstanding;
+          } else {
+            days90PlusAging += outstanding;
+          }
+        }
+      });
 
-        allEntries.push({
+      const aging = {
+        current: Math.round(currentAging * 100) / 100,
+        days30: Math.round(days30Aging * 100) / 100,
+        days60: Math.round(days60Aging * 100) / 100,
+        days90Plus: Math.round(days90PlusAging * 100) / 100,
+        totalOverdue: Math.round((currentAging + days30Aging + days60Aging + days90PlusAging) * 100) / 100,
+      };
+
+      const rawEntries: any[] = [];
+
+      vouchers.forEach((v) => {
+        const vTx = transactionsByVoucherId.get(v.id) || [];
+        const paidForVoucher = vTx.reduce((sum, tx) => sum + Number(tx.amountPaid), 0);
+
+        rawEntries.push({
           id: `voucher-${v.id}`,
           date: v.createdAt,
           refId: v.voucherId,
           type: "DEBIT",
           category: "FEE_BILLING",
-          description: `${v.feeType} (${academicYearLabels.get(v.academicYearId) || "General"})`,
-          debit: v.totalDue,
+          description: `${v.feeType} (${academicYearLabels.get(v.academicYearId) || "General"})${v.billingMonth ? ` - ${v.billingMonth}/${v.billingYear}` : ""}`,
+          debit: Number(v.totalDue),
           credit: 0,
-          runningBalance,
           status: v.status,
           paymentMethod: "-",
           details: {
-            baseAmount: v.baseAmount,
-            discount: v.discountAmount,
-            arrears: v.arrears,
+            voucherId: v.voucherId,
+            feeType: v.feeType,
+            billingMonth: v.billingMonth,
+            billingYear: v.billingYear,
+            dueDate: v.dueDate,
+            baseAmount: Number(v.baseAmount),
+            discount: Number(v.discountAmount),
+            arrears: Number(v.arrears),
+            totalDue: Number(v.totalDue),
+            paidAmount: paidForVoucher,
+            academicYear: academicYearLabels.get(v.academicYearId),
+            status: v.status,
           },
         });
 
-        // Credit: Transactions / Payments Made
-        const voucherTransactions = transactionsByVoucherId.get(v.id) || [];
-        voucherTransactions.forEach((tx) => {
-          runningBalance -= Number(tx.amountPaid);
-          totalPaid += Number(tx.amountPaid);
-
-          allEntries.push({
+        vTx.forEach((tx) => {
+          rawEntries.push({
             id: `tx-${tx.id}`,
             date: tx.timestamp || tx.createdAt,
             refId: tx.receiptNumber || tx.transactionId,
@@ -183,19 +225,36 @@ export async function GET(req: NextRequest) {
             category: "FEE_PAYMENT",
             description: `Payment for ${v.voucherId} - ${tx.note || "Tuition Receipt"}`,
             debit: 0,
-            credit: tx.amountPaid,
-            runningBalance,
+            credit: Number(tx.amountPaid),
             status: "PAID",
             paymentMethod: tx.paymentMethod,
             details: {
+              receiptNumber: tx.receiptNumber,
               transactionId: tx.transactionId,
+              paymentMethod: tx.paymentMethod,
+              amountPaid: Number(tx.amountPaid),
+              timestamp: tx.timestamp || tx.createdAt,
+              note: tx.note,
+              voucherId: v.voucherId,
+              reference: tx.reference,
+              chequeNumber: tx.chequeNumber,
+              collectedBy: tx.collectedBy?.name || "Cashier Desk",
             },
           });
         });
       });
 
-      // Sort chronologically
-      allEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // Sort chronologically BEFORE computing running balance
+      rawEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      let runningBalance = 0;
+      const allEntries = rawEntries.map((e) => {
+        runningBalance = Math.round((runningBalance + e.debit - e.credit) * 100) / 100;
+        return {
+          ...e,
+          runningBalance,
+        };
+      });
 
       // Filter by Date Range if provided
       let filteredEntries = allEntries;
@@ -213,20 +272,21 @@ export async function GET(req: NextRequest) {
         filteredEntries = filteredEntries.filter((e) => new Date(e.date) <= endDate);
       }
 
-      const periodDebit = filteredEntries.reduce((sum, e) => sum + e.debit, 0);
-      const periodCredit = filteredEntries.reduce((sum, e) => sum + e.credit, 0);
-      const closingBalance = openingBalance + periodDebit - periodCredit;
+      const periodDebit = Math.round(filteredEntries.reduce((sum, e) => sum + e.debit, 0) * 100) / 100;
+      const periodCredit = Math.round(filteredEntries.reduce((sum, e) => sum + e.credit, 0) * 100) / 100;
+      const closingBalance = Math.round((openingBalance + periodDebit - periodCredit) * 100) / 100;
 
       return successResponse({
         type: "STUDENT",
         entity: student,
-        options: { students, staffList, bankAccounts },
+        options: { students, staffList, bankAccounts, academicYears },
         statement: {
           openingBalance,
           totalDebit: periodDebit,
           totalCredit: periodCredit,
           closingBalance,
           entries: filteredEntries,
+          aging,
         },
       });
     }
@@ -239,7 +299,7 @@ export async function GET(req: NextRequest) {
         return successResponse({
           type: "STAFF",
           entity: null,
-          options: { students, staffList, bankAccounts },
+          options: { students, staffList, bankAccounts, academicYears },
           statement: {
             openingBalance: 0,
             totalDebit: 0,
@@ -262,6 +322,7 @@ export async function GET(req: NextRequest) {
         where: {
           staffProfileId: staff.id,
           tenantId,
+          ...(academicYearId ? { academicYearId } : {}),
         },
         include: {
           academicYear: true,
@@ -269,24 +330,15 @@ export async function GET(req: NextRequest) {
         orderBy: [{ year: "asc" }, { month: "asc" }],
       });
 
-      let runningBalance = 0;
-      const allEntries: any[] = [];
-
+      const rawStaffEntries: any[] = [];
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
       salaryRecords.forEach((sal) => {
         const monthLabel = `${monthNames[sal.month - 1] || sal.month} ${sal.year}`;
-        // sal.netPayable is a Prisma.Decimal (schema: Decimal(15,2)). Convert to
-        // a plain number before any arithmetic: `number += Decimal` coerces the
-        // Decimal via its `valueOf()`, which returns a *string*, so `+=` does
-        // STRING CONCATENATION rather than addition (e.g. 0 += "5000" yields
-        // the string "05000", and a second record then concatenates onto that
-        // string too, producing a garbled running balance instead of a sum).
-        const netPayableNum = sal.netPayable.toNumber();
+        const netPayableNum = Number(sal.netPayable);
 
         // Credit: Salary Accrual (Institution owes staff)
-        runningBalance += netPayableNum;
-        allEntries.push({
+        rawStaffEntries.push({
           id: `salary-accrual-${sal.id}`,
           date: sal.createdAt,
           refId: `PAY-${sal.year}-${String(sal.month).padStart(2, "0")}`,
@@ -295,36 +347,55 @@ export async function GET(req: NextRequest) {
           description: `Salary Accrual for ${monthLabel}`,
           debit: 0,
           credit: netPayableNum,
-          runningBalance,
           status: sal.status,
           paymentMethod: "-",
           details: {
-            baseSalary: sal.baseSalary,
+            year: sal.year,
+            month: sal.month,
+            monthLabel,
+            baseSalary: Number(sal.baseSalary),
             deductions: sal.deductions,
             advances: sal.advances,
+            netPayable: netPayableNum,
+            academicYear: sal.academicYear?.label,
+            status: sal.status,
           },
         });
 
         // Debit: Salary Payout (Disbursed to staff)
-        if (sal.paidAmount > 0) {
-          runningBalance -= sal.paidAmount;
-          allEntries.push({
+        if (Number(sal.paidAmount) > 0) {
+          rawStaffEntries.push({
             id: `salary-paid-${sal.id}`,
             date: sal.paidAt || sal.updatedAt,
             refId: `DISB-${sal.id.slice(-6).toUpperCase()}`,
             type: "DEBIT",
             category: "SALARY_DISBURSEMENT",
             description: `Salary Payout Disbursed for ${monthLabel}`,
-            debit: sal.paidAmount,
+            debit: Number(sal.paidAmount),
             credit: 0,
-            runningBalance,
             status: "PAID",
             paymentMethod: "BANK_TRANSFER",
             details: {
+              disbursementRef: `DISB-${sal.id.slice(-6).toUpperCase()}`,
+              paidAmount: Number(sal.paidAmount),
               paidAt: sal.paidAt,
+              monthLabel,
+              paymentMethod: "BANK_TRANSFER",
             },
           });
         }
+      });
+
+      // Sort chronologically BEFORE computing running balance
+      rawStaffEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      let staffRunningBalance = 0;
+      const allEntries = rawStaffEntries.map((e) => {
+        staffRunningBalance = Math.round((staffRunningBalance + e.credit - e.debit) * 100) / 100;
+        return {
+          ...e,
+          runningBalance: staffRunningBalance,
+        };
       });
 
       // Filter by Date Range
@@ -343,14 +414,14 @@ export async function GET(req: NextRequest) {
         filteredEntries = filteredEntries.filter((e) => new Date(e.date) <= endDate);
       }
 
-      const periodDebit = filteredEntries.reduce((sum, e) => sum + e.debit, 0);
-      const periodCredit = filteredEntries.reduce((sum, e) => sum + e.credit, 0);
-      const closingBalance = openingBalance + periodCredit - periodDebit;
+      const periodDebit = Math.round(filteredEntries.reduce((sum, e) => sum + e.debit, 0) * 100) / 100;
+      const periodCredit = Math.round(filteredEntries.reduce((sum, e) => sum + e.credit, 0) * 100) / 100;
+      const closingBalance = Math.round((openingBalance + periodCredit - periodDebit) * 100) / 100;
 
       return successResponse({
         type: "STAFF",
         entity: staff,
-        options: { students, staffList, bankAccounts },
+        options: { students, staffList, bankAccounts, academicYears },
         statement: {
           openingBalance,
           totalDebit: periodDebit,
@@ -369,7 +440,7 @@ export async function GET(req: NextRequest) {
         return successResponse({
           type: "ACCOUNT",
           entity: null,
-          options: { students, staffList, bankAccounts },
+          options: { students, staffList, bankAccounts, academicYears },
           statement: {
             openingBalance: 0,
             totalDebit: 0,
@@ -464,7 +535,7 @@ export async function GET(req: NextRequest) {
           return successResponse({
             type: "ACCOUNT",
             entity: account,
-            options: { students, staffList, bankAccounts },
+            options: { students, staffList, bankAccounts, academicYears },
             statement: {
               openingBalance,
               totalDebit: periodDebit,
@@ -642,7 +713,7 @@ export async function GET(req: NextRequest) {
       return successResponse({
         type: "ACCOUNT",
         entity: account,
-        options: { students, staffList, bankAccounts },
+        options: { students, staffList, bankAccounts, academicYears },
         statement: {
           openingBalance,
           totalDebit: periodDebit,

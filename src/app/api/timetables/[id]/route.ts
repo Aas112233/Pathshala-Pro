@@ -9,6 +9,7 @@ import {
 } from "@/lib/api-response";
 import { updateTimetableSchema } from "@/lib/schemas";
 import { requireApiAccess, isTenantOwned } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 
 export async function PUT(
   request: NextRequest,
@@ -67,6 +68,13 @@ export async function PUT(
     const nextClass = d.classId ?? existing.classId;
     const nextSection = d.sectionId !== undefined ? d.sectionId : existing.sectionId;
     const nextYear = d.academicYearId !== undefined ? d.academicYearId : existing.academicYearId;
+
+    // The entry's year governs the write, whether or not this request is the
+    // one changing it: editing the room of a slot that belongs to a closed year
+    // is still an edit to a closed year's timetable.
+    if (nextYear) {
+      await assertAcademicYearOpen(tenantId, nextYear);
+    }
 
     if (nextSection) {
       const section = await prisma.section.findFirst({
@@ -165,6 +173,12 @@ export async function DELETE(
 
     const existing = await prisma.timetable.findFirst({ where: { id, tenantId } });
     if (!existing) return notFound("Timetable entry not found");
+
+    // Deleting is the most consequential mutation of a closed year's timetable:
+    // the slot cannot be reconstructed from anything else.
+    if (existing.academicYearId) {
+      await assertAcademicYearOpen(tenantId, existing.academicYearId);
+    }
 
     await prisma.timetable.delete({ where: { id } });
 

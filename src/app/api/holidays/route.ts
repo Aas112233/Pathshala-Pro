@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, badRequest, validationError, handleApiError } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 import { createAcademicHolidaySchema } from "@/lib/schemas";
 
 /**
@@ -59,6 +60,12 @@ export async function POST(request: NextRequest) {
     if (!data.endDate || new Date(data.endDate) < new Date(data.startDate)) {
       return badRequest("End date cannot be before start date");
     }
+
+    // A holiday is a year-scoped calendar record, so a closed year must not gain
+    // one. This also scopes the year to the tenant: the create below writes the
+    // id straight through, so without the guard a caller could attach a holiday
+    // to another tenant's year.
+    await assertAcademicYearOpen(tenantId, data.academicYearId);
 
     const holiday = await prisma.academicHoliday.create({
       data: {

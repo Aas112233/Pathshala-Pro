@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { successResponse, notFound, validationError, handleApiError } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 import { updateAcademicHolidaySchema } from "@/lib/schemas";
 
 /**
@@ -25,6 +26,11 @@ export async function PUT(
     if (!existing) {
       return notFound("Holiday not found");
     }
+
+    // The holiday's own year governs, not any year in the request: the update
+    // schema cannot move a holiday between years, so editing the dates of a
+    // holiday in a closed year is still an edit to a closed year.
+    await assertAcademicYearOpen(tenantId, existing.academicYearId);
 
     const body = await request.json();
     const validation = updateAcademicHolidaySchema.safeParse(body);
@@ -87,6 +93,8 @@ export async function DELETE(
     if (!existing) {
       return notFound("Holiday not found");
     }
+
+    await assertAcademicYearOpen(tenantId, existing.academicYearId);
 
     await prisma.academicHoliday.delete({
       where: { id: existing.id },

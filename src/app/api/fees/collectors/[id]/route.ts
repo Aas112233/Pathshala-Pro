@@ -19,6 +19,7 @@ import {
   type UserPermissions,
 } from "@/lib/permissions";
 import { logAuditEvent } from "@/lib/audit-logger";
+import { evictUserAuthCache } from "@/lib/auth";
 
 /**
  * PATCH /api/fees/collectors/[id]
@@ -104,7 +105,8 @@ export async function PATCH(
 
     const updated = await prisma.user.update({
       where: { id: target.id },
-      data: { permissions: next },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { permissions: next, sessionVersion: { increment: 1 } } as any,
       select: {
         id: true,
         name: true,
@@ -115,6 +117,7 @@ export async function PATCH(
         lastLoginAt: true,
       },
     });
+    evictUserAuthCache(tenantId, target.id);
 
     await logAuditEvent({
       tenantId,

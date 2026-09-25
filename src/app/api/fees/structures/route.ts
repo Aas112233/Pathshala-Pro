@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-response";
 import { createClassFeeStructureSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { assertAcademicYearOpen } from "@/lib/academic-year-guards";
 import { addCurrency } from "@/lib/math-utils";
 
 /**
@@ -116,6 +117,12 @@ export async function POST(request: NextRequest) {
 
     if (!cls) return badRequest(`Selected class (${data.classId}) not found.`);
     if (!ay) return badRequest(`Selected academic year (${data.academicYearId}) not found.`);
+
+    // This route is an upsert, so it can both create and change a year's fee
+    // structure — and a closed year must not gain or change one. The request may
+    // name the year by its `yearId` code, so the guard is given `ay.id`, the
+    // resolved internal id.
+    await assertAcademicYearOpen(tenantId, ay.id);
 
     const tuitionFee = data.tuitionFee || 0;
     const labFee = data.labFee || 0;

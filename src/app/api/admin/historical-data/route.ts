@@ -12,6 +12,7 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { hasRolePermission, type UserRole } from "@/lib/permissions";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { calculateGradeFromPercentage } from "@/lib/grading";
+import { PROMOTION_ACTIONS } from "@/lib/promotion-engine";
 import { z } from "zod";
 
 // Strict authorization helper: ONLY School Admin, Platform Owner, or Super Admin
@@ -331,12 +332,61 @@ export async function PATCH(request: NextRequest) {
           }
 
           const updateData: any = {};
-          if (changes.status) updateData.status = changes.status;
+
+          if (changes.status) {
+            if (!(PROMOTION_ACTIONS as readonly string[]).includes(String(changes.status))) {
+              throw new Error(
+                `Invalid promotion status '${changes.status}'. Expected one of: ${PROMOTION_ACTIONS.join(", ")}.`
+              );
+            }
+            updateData.status = changes.status;
+          }
           if (changes.reason !== undefined) updateData.reason = changes.reason;
           if (changes.toClassId) updateData.toClassId = changes.toClassId;
           if (changes.reExamRequired !== undefined) updateData.reExamRequired = Boolean(changes.reExamRequired);
           if (changes.reExamCompleted !== undefined) updateData.reExamCompleted = Boolean(changes.reExamCompleted);
           if (changes.reExamPassed !== undefined) updateData.reExamPassed = changes.reExamPassed;
+
+          /**
+           * Repair path for records written by the old promotion endpoint, which
+           * persisted `toAcademicYearId === fromAcademicYearId`. Without this,
+           * the only way to fix historical data is raw SQL.
+           *
+           * The same invariants the live endpoint enforces apply here: the
+           * target year must exist, must differ from the source year, and must
+           * start after it.
+           */
+          if (changes.toAcademicYearId) {
+            const targetYearId = String(changes.toAcademicYearId);
+
+            if (targetYearId === previousRecord.fromAcademicYearId) {
+              throw new Error(
+                "The target academic year must differ from the source academic year. A promotion that targets its own year leaves the student without an enrollment in the following year."
+              );
+            }
+
+            const [fromYear, toYear] = await Promise.all([
+              tx.academicYear.findFirst({
+                where: { id: previousRecord.fromAcademicYearId, tenantId },
+                select: { label: true, startDate: true },
+              }),
+              tx.academicYear.findFirst({
+                where: { id: targetYearId, tenantId },
+                select: { label: true, startDate: true },
+              }),
+            ]);
+
+            if (!toYear) {
+              throw new Error("Target academic year not found.");
+            }
+            if (fromYear && new Date(toYear.startDate) <= new Date(fromYear.startDate)) {
+              throw new Error(
+                `'${toYear.label}' does not start after '${fromYear.label}'.`
+              );
+            }
+
+            updateData.toAcademicYearId = targetYearId;
+          }
 
           updatedRecord = await tx.classPromotion.update({
             where: { id: recordId },
