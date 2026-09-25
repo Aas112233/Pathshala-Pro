@@ -31,7 +31,8 @@ export default function SystemAdminDashboard() {
     totalStudents: 0,
     totalStaff: 0,
     estimatedMRR: 0,
-    systemHealth: "100% Operational",
+    infraStatus: "Checking…",
+    dbLatencyMs: null as number | null,
   });
   const [recentTenants, setRecentTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,28 +40,56 @@ export default function SystemAdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/tenants");
-      const json = await res.json();
-      const tenants = json?.data ?? (Array.isArray(json) ? json : []);
+      const [tenantsRes, healthRes] = await Promise.allSettled([
+        fetch("/api/tenants"),
+        fetch("/api/system-admin/health", { cache: "no-store" }),
+      ]);
 
-      if (Array.isArray(tenants)) {
-        const active = tenants.filter((t: any) => t.subscriptionStatus === "ACTIVE").length;
-        const students = tenants.reduce((acc: number, t: any) => acc + (t._count?.studentProfiles || 0), 0);
-        const staff = tenants.reduce((acc: number, t: any) => acc + (t._count?.users || 0), 0);
+      // Liveness probe: what the health endpoint measured, not a hardcoded string.
+      // A failed probe means "Unreachable" — never "Healthy".
+      let infraStatus = "Unreachable";
+      let dbLatencyMs: number | null = null;
+      if (healthRes.status === "fulfilled" && healthRes.value.ok) {
+        const health = await healthRes.value.json().catch(() => null);
+        const data = health?.data;
+        if (data?.checks?.database?.reachable) {
+          infraStatus = data.status === "Degraded" ? "Degraded" : "Operational";
+          dbLatencyMs =
+            typeof data.checks.database.latencyMs === "number"
+              ? data.checks.database.latencyMs
+              : null;
+        }
+      }
 
-        setStats({
-          totalTenants: tenants.length,
-          activeTenants: active,
-          totalStudents: students,
-          totalStaff: staff,
-          estimatedMRR: active * 249,
-          systemHealth: "100% Operational",
-        });
+      if (tenantsRes.status === "fulfilled") {
+        const json = await tenantsRes.value.json();
+        const tenants = json?.data ?? (Array.isArray(json) ? json : []);
 
-        setRecentTenants(tenants.slice(0, 5));
+        if (Array.isArray(tenants)) {
+          const active = tenants.filter((t: any) => t.subscriptionStatus === "ACTIVE").length;
+          const students = tenants.reduce((acc: number, t: any) => acc + (t._count?.studentProfiles || 0), 0);
+          const staff = tenants.reduce((acc: number, t: any) => acc + (t._count?.users || 0), 0);
+
+          setStats({
+            totalTenants: tenants.length,
+            activeTenants: active,
+            totalStudents: students,
+            totalStaff: staff,
+            estimatedMRR: active * 249,
+            infraStatus,
+            dbLatencyMs,
+          });
+
+          setRecentTenants(tenants.slice(0, 5));
+        } else {
+          setStats((prev) => ({ ...prev, infraStatus, dbLatencyMs }));
+        }
+      } else {
+        setStats((prev) => ({ ...prev, infraStatus, dbLatencyMs }));
       }
     } catch (err) {
       console.error(err);
+      setStats((prev) => ({ ...prev, infraStatus: "Unreachable", dbLatencyMs: null }));
     } finally {
       setLoading(false);
     }
@@ -69,6 +98,15 @@ export default function SystemAdminDashboard() {
   useEffect(() => {
     fetchStats();
   }, []);
+
+  const infraTheme =
+    stats.infraStatus === "Operational"
+      ? { color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950" }
+      : stats.infraStatus === "Degraded"
+        ? { color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950" }
+        : stats.infraStatus === "Checking…"
+          ? { color: "text-slate-500 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-800" }
+          : { color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950" };
 
   const cards = [
     {
@@ -97,11 +135,16 @@ export default function SystemAdminDashboard() {
     },
     {
       title: "Platform Infrastructure",
-      value: "Healthy",
-      unit: stats.systemHealth,
+      value: stats.infraStatus,
+      unit:
+        stats.dbLatencyMs !== null
+          ? `DB ${stats.dbLatencyMs}ms round-trip`
+          : stats.infraStatus === "Checking…"
+            ? "Probing database…"
+            : "Health probe failed",
       icon: Activity,
-      color: "text-amber-600 dark:text-amber-400",
-      bg: "bg-amber-50 dark:bg-amber-950",
+      color: infraTheme.color,
+      bg: infraTheme.bg,
     },
   ];
 
