@@ -2096,3 +2096,80 @@ position — and both were caught before any of it reached a screen.
   code compensates, the schema cannot express the fix.
 
 
+
+## 23. The last two roadmap items (Wave P2, items 23 and 25)
+
+### 23.1 Item 23 — the outstanding-fee sweep
+
+`fee-write-off.ts` plans and applies the disposal of balances a school has decided it will not
+collect. `POST /api/academic-years/[id]/write-off-sweep` runs it, gated on `fees:waiver:approve`
+because giving up money the school billed is the same class of decision that permission already
+governs.
+
+**The shape of the entry is a waiver, and that is derivable rather than chosen.** A balance is a
+financial record — it says "this was billed and not paid" — so it cannot be deleted, only disposed of
+through a journal. The sweep posts the same double entry every other forgiveness in this codebase
+posts: **debit an expense, credit accounts receivable**, then brings the voucher's `totalDue` and
+`balance` down and re-derives its status. The voucher stays; the record of what was billed stays; only
+the receivable clears.
+
+**One decision was made rather than requested, and it is made visible instead of hidden.** The
+roadmap's "write-off / waive" ambiguity resolves to: *waive* before billing is a concession (already
+built); *write off* after it is an expense. So the sweep charges **`WRITE_OFF_EXPENSE` (5070)**, which
+sits beside the existing `CONCESSION_EXPENSE` (5060) in the same 5-series for the same shape of entry.
+The sweep **refuses until the tenant's chart of accounts carries that code** — an account code this
+module invented and wrote to silently would be an accounting policy nobody chose. Refusing puts the
+decision back with the school, which is where item 23 has always said it belongs.
+
+Two guards worth stating:
+
+- **The plan's figure is an approval, not a truth.** Each voucher's row is re-read `FOR UPDATE` at
+  write time and the sweep disposes of the *smaller* of the approved amount and what is actually owed,
+  so a payment that lands between preview and confirm can never over-write the debt.
+- **Per voucher, not per student.** Consolidating would produce one tidy figure and lose which fee
+  head and month the money was owed on. The plan reports per student — that is how an operator reads
+  it — while the write stays per voucher.
+
+Dry run and commit share one planner; a blocked dry run is 200, only the committing path refuses.
+A sweep that finds nothing is **blocked rather than successful**, because reporting success over zero
+rows is how a button stops meaning anything.
+
+### 23.2 Item 25 — the post-rollover verification checklist
+
+`rollover-verification.ts` turns what the last run *did* plus the target year's current state into
+seven checks an operator walks through before treating a year as live, and
+`GET /api/academic-years/[id]/rollover-verification` serves it.
+
+**It is deliberately read-only.** A checklist that can be "completed" is a checklist that can be
+completed without being read, so nothing here flips a flag or writes a row. `ready` is the absence of
+`attention`, and one item — the operating-year note — is always `info` rather than a defect, because a
+rollover deliberately does not switch the operating year.
+
+Two checks are decided against the **outcome** rather than the request: the promotion-rule check reads
+the active count (inactive rules promote nobody), and the fee-structure check is `info` rather than
+`attention` when the operator *declined* the copy — a school that chose not to carry them should not
+be told it failed.
+
+### 23.3 One thing that is deliberately not in this increment
+
+Neither item ships with its UI surface yet. The academic-year page is being worked on concurrently —
+a close-session (archive) sheet and its `useCloseAcademicYear` hook landed in the working tree while
+this increment was being built — and wiring two new surfaces into a file someone else is actively
+editing is how one session's work overwrites another's. Both endpoints are complete, tested and
+wired to the permissions they need; the surfaces are a rendering exercise against responses that are
+already shaped for display, and the checklist in particular needs the four `rollover.verification.*`
+message keys authored when it is drawn.
+
+### 23.4 Verification
+
+| Check | Result |
+|---|---|
+| Full suite | **113 files / 1325 tests, 0 failures** (was 110 / 1288) |
+| `tsc --noEmit` | clean on every file in this increment |
+| `eslint` on the 8 new files | **0 errors, 0 warnings** |
+
+### 23.5 Where the roadmap stands
+
+Every item in the gap analysis is now built: **16–26**, plus all of P0 and P1. What remains open is
+not a roadmap item — it is the two UI surfaces named above, and the `sectionId` null-distinctness gap
+recorded in §22.2, which application code compensates for and the schema cannot express.

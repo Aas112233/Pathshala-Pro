@@ -443,6 +443,14 @@ export const GL_CODES = {
   TUITION_REVENUE: "4010",
   LATE_FINE_REVENUE: "4060",
   CONCESSION_EXPENSE: "5060",
+  // Where a balance the school has decided it will not collect lands. Sitting
+  // beside CONCESSION_EXPENSE in the 5-series because it is the same shape of
+  // entry -- Dr expense, Cr accounts receivable -- for a different decision:
+  // a concession forgives before billing, a write-off gives up after it.
+  // Deliberately NOT defaulted into a write: the sweep refuses until the
+  // tenant's chart of accounts actually carries this code, so the accounting
+  // decision stays the school's.
+  WRITE_OFF_EXPENSE: "5070",
 } as const;
 
 export const VOUCHER_STATUSES = [

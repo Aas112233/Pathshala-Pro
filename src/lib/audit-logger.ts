@@ -16,7 +16,10 @@ export type AuditAction =
   | "REOPEN"
   | "ROLLOVER"
   | "PROMOTE"
-  | "ISSUE";
+  | "ISSUE"
+  /** A balance the school decided it will not collect. It changes what the
+   *  year's receivable means, so it is its own action rather than an UPDATE. */
+  | "WRITE_OFF";
 
 export type AuditEntity =
   | "Student"
