@@ -53,22 +53,6 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    if (payload.sessionVersion !== undefined && Number(payload.sessionVersion) !== user.updatedAt.getTime()) {
-      const response = unauthorized("Session expired");
-      clearAuthCookie(response);
-      return response;
-    }
-    if (payload.sessionVersion === undefined && (!payload.iat || Math.floor(user.updatedAt.getTime() / 1000) > Number(payload.iat))) {
-      const response = unauthorized("Session expired");
-      clearAuthCookie(response);
-      return response;
-    }
-    if (payload.role && payload.role !== user.role) {
-      const response = unauthorized("Session expired");
-      clearAuthCookie(response);
-      return response;
-    }
-
     const sessionImpersonatedBy = typeof payload.impersonatedBy === "string" ? payload.impersonatedBy : undefined;
     const hasImpersonationClaims = payload.impersonatedBy !== undefined || payload.isImpersonated !== undefined;
     if (hasImpersonationClaims && (!sessionImpersonatedBy || payload.isImpersonated !== true)) {
@@ -76,6 +60,26 @@ export async function GET(request: NextRequest) {
       clearAuthCookie(response);
       return response;
     }
+
+    // Dedicated sessionVersion pin (legacy tokens without a claim read as 0).
+    // Impersonation tokens are short-lived platform grants and bypass the pin.
+    if (!sessionImpersonatedBy) {
+      const tokenVersion =
+        payload.sessionVersion === undefined ? 0 : Number(payload.sessionVersion);
+      const currentVersion =
+        (user as unknown as { sessionVersion?: number }).sessionVersion ?? 0;
+      if (tokenVersion !== currentVersion) {
+        const response = unauthorized("Session expired");
+        clearAuthCookie(response);
+        return response;
+      }
+    }
+    if (payload.role && payload.role !== user.role) {
+      const response = unauthorized("Session expired");
+      clearAuthCookie(response);
+      return response;
+    }
+
     if (sessionImpersonatedBy) {
       const originalAdmin = await prisma.user.findFirst({
         where: { email: sessionImpersonatedBy, isActive: true },

@@ -8,7 +8,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { loginSchema } from "@/lib/schemas";
-import { verifyPassword, generateAuthToken } from "@/lib/auth";
+import { verifyPassword, generateAuthToken, evictUserAuthCache } from "@/lib/auth";
 import {
   smartRateLimitAsync,
   recordRateLimitFailureAsync,
@@ -88,11 +88,21 @@ export async function POST(request: NextRequest) {
     // Successful authentication — clear any adaptive penalties for this client.
     await recordRateLimitSuccessAsync(limitKey);
 
-    // Update last login
+    // Session policy: concurrent tenants keep the pinned version so other
+    // devices stay logged in; single-session tenants rotate it so this login
+    // becomes the only valid one. `data` is loosely typed until the Prisma
+    // client is regenerated (npm run prisma:generate) after the schema change.
+    const allowConcurrent =
+      (user.tenant as unknown as { allowConcurrentSessions?: boolean })
+        ?.allowConcurrentSessions ?? true;
+    const loginTouch: Record<string, unknown> = { lastLoginAt: new Date() };
+    if (!allowConcurrent) loginTouch.sessionVersion = { increment: 1 };
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: loginTouch as any,
     });
+    evictUserAuthCache(user.tenantId, user.id);
 
     // Class-level app access gate for PARENT/STUDENT (principal-controlled)
     if (user.role === "PARENT" || user.role === "STUDENT") {
@@ -125,7 +135,15 @@ export async function POST(request: NextRequest) {
 
     // Generate cryptographically signed JWT NextAuth token (subscription state is
     // embedded so the edge middleware can gate blocked tenants on page routes).
-    const token = await generateAuthToken(user.id, user.tenantId, user.role, user.email, updatedUser.updatedAt.getTime(), restricted);
+    // The token pins User.sessionVersion (legacy tokens without a claim read as 0).
+    const token = await generateAuthToken(
+      user.id,
+      user.tenantId,
+      user.role,
+      user.email,
+      (updatedUser as unknown as { sessionVersion?: number }).sessionVersion ?? 0,
+      restricted
+    );
 
     const response = successResponse(
       {

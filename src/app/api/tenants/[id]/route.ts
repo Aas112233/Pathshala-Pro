@@ -184,7 +184,12 @@ export async function PUT(
         maxGracePerSubject: body.maxGracePerSubject !== undefined ? Number(body.maxGracePerSubject) : undefined,
         maxGracePerStudent: body.maxGracePerStudent !== undefined ? Number(body.maxGracePerStudent) : undefined,
         featureFlags: updatedFeatureFlags ?? undefined,
-      },
+        // Session policy is platform-admin-only like subscriptionStatus.
+        allowConcurrentSessions:
+          isPlatformAdmin && typeof body.allowConcurrentSessions === "boolean"
+            ? body.allowConcurrentSessions
+            : undefined,
+      } as any,
     });
 
     if (updatedFeatureFlags) {

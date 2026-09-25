@@ -5,6 +5,8 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { GlobalActionGuard } from "@/components/providers/global-action-guard";
+import { IdleSessionGuard } from "@/components/providers/idle-session-guard";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { TenantSettingsProvider } from "@/components/providers/tenant-settings-provider";
@@ -132,6 +134,8 @@ export default async function RootLayout({
             <AuthProvider>
               <TenantSettingsProvider>
                 <QueryProvider>
+                  <GlobalActionGuard />
+                  <IdleSessionGuard />
                   <AcademicYearProvider>
                     <ErrorBoundary>
                     <UnsavedChangesProvider>

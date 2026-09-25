@@ -30,6 +30,7 @@ import { EditTenantModal } from "@/components/system-admin/edit-tenant-modal";
 import { ForceDeleteTenantModal } from "@/components/system-admin/force-delete-tenant-modal";
 import { SubscriptionControlPanel } from "@/components/system-admin/subscription-control-panel";
 import { TenantModuleAccessPanel } from "@/components/system-admin/tenant-module-access-panel";
+import { TenantSessionPolicyPanel } from "@/components/system-admin/tenant-session-policy-panel";
 
 export default function TenantDetailPage() {
   const t = useTranslations();
@@ -250,6 +251,13 @@ export default function TenantDetailPage() {
       <TenantModuleAccessPanel
         tenantId={tenant.tenantId}
         initialModules={tenant.moduleAccess || tenant.featureFlags}
+        onUpdated={fetchTenantDetails}
+      />
+
+      {/* Login Session Policy: concurrent vs single active session */}
+      <TenantSessionPolicyPanel
+        tenantId={tenant.tenantId}
+        initialAllowConcurrent={tenant.allowConcurrentSessions ?? true}
         onUpdated={fetchTenantDetails}
       />
 

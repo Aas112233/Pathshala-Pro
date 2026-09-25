@@ -20,6 +20,11 @@ interface CachedUserEntry {
 }
 const userAuthCache = new Map<string, CachedUserEntry>();
 
+/** Drop a cached user entry after its row changes (login bump, role/password update). */
+export function evictUserAuthCache(tenantId: string, userId: string) {
+  userAuthCache.delete(`${tenantId}:${userId}`);
+}
+
 /**
  * Extract and validate user from request headers
  * In production, this validates JWT tokens from the Authorization header using jose
@@ -105,11 +110,20 @@ export async function getAuthContext(
       return null;
     }
 
-    if (sessionVersion !== undefined && sessionVersion !== user.updatedAt.getTime()) {
-      return null;
-    }
-    if (sessionVersion === undefined && Math.floor(user.updatedAt.getTime() / 1000) > issuedAt!) {
-      return null;
+    // Session pinning uses the dedicated User.sessionVersion counter, bumped
+    // only on login for single-session tenants and on credential/role/status
+    // changes. Routine row touches (lastLoginAt, profile edits) no longer
+    // kill other devices. Legacy tokens without a claim map to 0, the column
+    // default, so pre-existing sessions survive the rollout. Impersonation
+    // tokens are short-lived platform grants and bypass the pin. Note: the
+    // 30s user cache can delay a single-session kick by up to 30s.
+    if (!isImpersonated) {
+      const tokenVersion = sessionVersion ?? 0;
+      const currentVersion = (user as unknown as { sessionVersion?: number }).sessionVersion ?? 0;
+      if (tokenVersion !== currentVersion) {
+        userAuthCache.delete(cacheKey);
+        return null;
+      }
     }
 
     if (isImpersonated && impersonatedBy) {

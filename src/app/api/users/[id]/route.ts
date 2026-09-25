@@ -10,7 +10,7 @@ import {
   handleApiError,
 } from "@/lib/api-response";
 import { updateUserSchema } from "@/lib/schemas";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, evictUserAuthCache } from "@/lib/auth";
 import { requireApiAccess } from "@/lib/api-auth";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 import {
@@ -155,6 +155,19 @@ export async function PUT(
       delete updateData.password;
     }
 
+    // Credential / privilege / status changes rotate the session pin so all
+    // other devices are signed out. Loosely typed until Prisma regenerates.
+    if (
+      data.password ||
+      (data as any).role ||
+      (data as any).accessLevel !== undefined ||
+      (data as any).isActive !== undefined ||
+      (data as any).email ||
+      (data as any).permissions
+    ) {
+      updateData.sessionVersion = { increment: 1 };
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id },
       data: updateData,
@@ -169,6 +182,7 @@ export async function PUT(
         updatedAt: true,
       },
     });
+    evictUserAuthCache(tenantId, id);
 
     return successResponse(updatedUser, "User updated successfully");
   } catch (error) {

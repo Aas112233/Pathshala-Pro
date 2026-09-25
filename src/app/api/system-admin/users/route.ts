@@ -4,7 +4,7 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { successResponse, unauthorized, badRequest, handleApiError } from "@/lib/api-response";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, evictUserAuthCache } from "@/lib/auth";
 
 /**
  * GET /api/system-admin/users
@@ -118,9 +118,12 @@ export async function PATCH(request: NextRequest) {
         role: role || undefined,
         accessLevel: typeof accessLevel === "number" ? accessLevel : undefined,
         ...(hash ? { hash } : {}),
-      },
+        // Any of these fields is security-sensitive: rotate the session pin.
+        sessionVersion: { increment: 1 },
+      } as any,
       select: { id: true, email: true, role: true, accessLevel: true, isActive: true, tenantId: true },
     });
+    evictUserAuthCache(updated.tenantId, updated.id);
 
     return successResponse(updated, "User updated");
   } catch (error) {

@@ -81,6 +81,15 @@ export default function LoginPage() {
     if (isSessionExpired) {
       toast.error("Your session expired. Please sign in again.");
     }
+    // Scrub credentials if a native pre-hydration submit ever leaked them
+    // into the URL (email/password must never persist in history or logs).
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("email") || params.has("password")) {
+      params.delete("email");
+      params.delete("password");
+      const clean = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState(null, "", clean);
+    }
   }, [isSessionExpired]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -381,8 +390,8 @@ export default function LoginPage() {
           </div>
 
 
-          {/* Authentication Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Authentication Form (method=post: native fallback must never serialize credentials into the URL) */}
+          <form onSubmit={handleSubmit} method="post" className="space-y-4">
             {/* Email Field */}
             <div className="space-y-1.5">
               <label

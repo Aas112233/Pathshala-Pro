@@ -103,6 +103,14 @@ export async function DELETE(request: NextRequest) {
       return unauthorized("Original administrator account is no longer active.");
     }
 
+    // Pin the same sessionVersion getAuthContext enforces. Read loosely so
+    // this compiles before/after `prisma generate`; falls back to 0.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const versionRow = await ((prisma.user as any).findFirst({
+      where: { email: originalAdminEmail },
+      select: { sessionVersion: true },
+    }).catch(() => null) as Promise<{ sessionVersion?: number } | null>);
+
     // Re-issue a token for the real System Admin account so getAuthContext
     // can validate it against the database.
     const systemAdminToken = await new SignJWT({
@@ -110,7 +118,7 @@ export async function DELETE(request: NextRequest) {
       tenantId: originalAdmin.tenantId,
       email: originalAdmin.email,
       role: originalAdmin.role,
-      sessionVersion: originalAdmin.updatedAt.getTime(),
+      sessionVersion: versionRow?.sessionVersion ?? 0,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
