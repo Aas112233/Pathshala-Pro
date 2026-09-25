@@ -12,6 +12,8 @@ import {
 } from "@/lib/api-response";
 import { createAcademicYearSchema, updateAcademicYearSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { clearAcademicYearCache } from "@/lib/academic-year-guards";
+import { logAuditEvent } from "@/lib/audit-logger";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
 /**
@@ -62,6 +64,7 @@ export async function GET(request: NextRequest) {
         startDate: true,
         endDate: true,
         isClosed: true,
+        isCurrent: true,
         createdAt: true,
       },
     })
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
     const access = await requireApiAccess(request);
     if ("response" in access) return access.response;
 
-    const { tenantId } = access.authContext;
+    const { tenantId, user } = access.authContext;
 
     const body = await request.json();
     const validation = createAcademicYearSchema.safeParse(body);
@@ -148,24 +151,66 @@ export async function POST(request: NextRequest) {
       ]);
     }
 
-    const academicYear = await prisma.academicYear.create({
-      data: {
-        tenantId,
-        yearId: data.yearId,
-        label: data.label,
-        startDate,
-        endDate,
-      },
-      select: {
-        id: true,
-        yearId: true,
-        label: true,
-        startDate: true,
-        endDate: true,
-        isClosed: true,
-        createdAt: true,
-      },
+    // The first year an institute creates becomes its current year. Without
+    // that, a fresh tenant would have academic years but no answer to "which
+    // year are we in", and every read would fall through to the date-range
+    // inference — which is exactly the guesswork `isCurrent` exists to remove.
+    const academicYear = await prisma.$transaction(async (tx) => {
+      const created = await tx.academicYear.create({
+        data: {
+          tenantId,
+          yearId: data.yearId,
+          label: data.label,
+          startDate,
+          endDate,
+        },
+        select: {
+          id: true,
+          yearId: true,
+          label: true,
+          startDate: true,
+          endDate: true,
+          isClosed: true,
+          isCurrent: true,
+          createdAt: true,
+        },
+      });
+
+      const existingCurrent = await tx.academicYear.findFirst({
+        where: { tenantId, isCurrent: true, isClosed: false },
+        select: { id: true },
+      });
+
+      if (!existingCurrent) {
+        await tx.academicYear.update({ where: { id: created.id }, data: { isCurrent: true } });
+        created.isCurrent = true;
+      }
+
+      // Written inside the transaction: an academic year that exists without a
+      // record of who created it is not auditable.
+      await logAuditEvent(
+        {
+          tenantId,
+          userId: user.id,
+          userEmail: user.email,
+          action: "CREATE",
+          entity: "AcademicYear",
+          entityId: created.id,
+          details: {
+            yearId: created.yearId,
+            label: created.label,
+            startDate: created.startDate,
+            endDate: created.endDate,
+            isCurrent: created.isCurrent,
+          },
+        },
+        tx
+      );
+
+      return created;
     });
+
+    clearAcademicYearCache();
 
     return successResponse(academicYear, "Academic year created successfully", 201);
   } catch (error) {

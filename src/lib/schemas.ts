@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { internalFileUrlSchema } from "@/lib/file-url";
 import { birthDateSchema, dateInputSchema, isDateRangeValid, optionalDateInputSchema, validateDateRangeFields } from "@/lib/date-validation";
+import { PROMOTION_ACTIONS } from "@/lib/promotion-engine";
+import { ATTENDANCE_STATUSES } from "@/lib/attendance-rate";
+import { MAX_BULK_CERTIFICATE_ISSUE } from "@/lib/constants";
 
 // Auth schemas
 export const loginSchema = z.object({
@@ -219,14 +222,27 @@ export const createAcademicYearSchema = z.object({
   isClosed: z.boolean().optional(),
 });
 
-export const updateAcademicYearSchema = createAcademicYearSchema.partial();
+/**
+ * `isCurrent` is deliberately absent from create. A new year becomes current
+ * only when the tenant has no current year, and the route decides that — letting
+ * a create request carry the flag would allow a client to silently displace the
+ * year the institute is operating in.
+ */
+export const updateAcademicYearSchema = createAcademicYearSchema.partial().extend({
+  isCurrent: z.boolean().optional(),
+});
 
 // Attendance schemas
 export const createAttendanceSchema = z.object({
   date: dateInputSchema(),
   studentProfileId: z.string().optional(),
   staffProfileId: z.string().optional(),
-  status: z.enum(["PRESENT", "ABSENT", "LATE", "LEAVE"]),
+  // The shared vocabulary, not a local subset. It used to allow only
+  // PRESENT/ABSENT/LATE/LEAVE, so the manual path could not express `HOLIDAY`
+  // (which the fast grid writes school-wide), `EXCUSED` (which the register and
+  // the reports use) or `HALF_DAY` — three statuses the rest of the system
+  // understands and this endpoint would reject.
+  status: z.enum(ATTENDANCE_STATUSES),
   note: z.string().optional(),
 });
 
@@ -318,18 +334,54 @@ export const createPromotionRuleSchema = z.object({
 export const updatePromotionRuleSchema = createPromotionRuleSchema.partial();
 
 // Class Promotion schemas
-export const createClassPromotionSchema = z.object({
-  studentProfileId: z.string().min(1, "Student is required"),
-  fromAcademicYearId: z.string().min(1, "From academic year is required"),
-  toAcademicYearId: z.string().min(1, "To academic year is required"),
-  fromClassId: z.string().min(1, "From class is required"),
-  toClassId: z.string().min(1, "To class is required"),
-  status: z.enum(["PROMOTED", "RETAINED", "CONDITIONAL_PROMOTED"]).default("PROMOTED"),
+/**
+ * How the target year's roll numbers are established when a promotion batch
+ * creates the next year's enrollment rows.
+ */
+export const PROMOTION_ROLL_NUMBER_POLICIES = ["PRESERVE", "SEQUENTIAL"] as const;
+export type PromotionRollNumberPolicy = (typeof PROMOTION_ROLL_NUMBER_POLICIES)[number];
+
+/**
+ * POST /api/promotions/execute payload.
+ *
+ * Cohort-scoped and server-authoritative: the caller states which class is
+ * moving from which year into which year, and the server recomputes every
+ * student's action from the promotion rule and their results. Actions are never
+ * accepted from the client except as explicit, audited per-student overrides.
+ *
+ * The former `createClassPromotionSchema` was removed deliberately: it accepted
+ * a client-supplied `status` and `toAcademicYearId`, which is how promotions
+ * came to be written with the source year as their own target.
+ */
+export const executePromotionsSchema = z.object({
+  fromAcademicYearId: z.string().min(1, "Source academic year is required"),
+  toAcademicYearId: z.string().min(1, "Target academic year is required"),
+  classId: z.string().min(1, "Class is required"),
+  rollNumberPolicy: z.enum(PROMOTION_ROLL_NUMBER_POLICIES).default("PRESERVE"),
+  /** Optional subset of the cohort. Omit to act on every candidate. */
+  studentProfileIds: z.array(z.string().min(1)).optional(),
+  /** Explicit per-student decisions that override the computed action. */
+  overrides: z
+    .array(
+      z.object({
+        studentProfileId: z.string().min(1),
+        action: z.enum(PROMOTION_ACTIONS),
+        toClassId: z.string().min(1).optional().nullable(),
+        reason: z.string().optional(),
+      })
+    )
+    .optional(),
+  /** Batch-level justification recorded on every promotion row. */
   reason: z.string().optional(),
-  reExamRequired: z.boolean().default(false),
+  /**
+   * Effective date of any exits in this batch (graduation or transfer-out).
+   * Defaults to the moment the batch is committed when omitted. Exits are
+   * never back-dated implicitly — an undated exit is not auditable.
+   */
+  exitDate: optionalDateInputSchema,
 });
 
-export const updateClassPromotionSchema = createClassPromotionSchema.partial();
+export type ExecutePromotionsInput = z.infer<typeof executePromotionsSchema>;
 
 // Salary ledger schemas
 export const SALARY_LEDGER_STATUSES = [
@@ -787,6 +839,32 @@ export const updateCertificateSchema = z.object({
   remarks: z.string().optional().nullable(),
   status: z.enum(["ISSUED", "REVOKED", "DRAFT"]).optional(),
 });
+
+/**
+ * POST /api/certificates/bulk payload.
+ *
+ * Issues one certificate per student in a single transaction. The per-student
+ * certificate number is never supplied by the client — a batch that allocates
+ * its own numbers is the only way to get a contiguous, race-free run.
+ */
+export const bulkIssueCertificatesSchema = z.object({
+  studentProfileIds: z
+    .array(z.string().min(1))
+    .min(1, "Select at least one student")
+    .max(
+      MAX_BULK_CERTIFICATE_ISSUE,
+      `At most ${MAX_BULK_CERTIFICATE_ISSUE} certificates may be issued in one batch`
+    ),
+  certificateType: z
+    .enum(["TRANSFER", "CHARACTER", "BONAFIDE", "STUDY", "MARKSHEET", "OTHER"])
+    .default("TRANSFER"),
+  issueDate: z.string().optional(),
+  validUntil: z.preprocess((v) => (v === "" ? null : v), z.string().optional().nullable()),
+  purpose: z.string().optional().nullable(),
+  remarks: z.string().optional().nullable(),
+});
+
+export type BulkIssueCertificatesInput = z.infer<typeof bulkIssueCertificatesSchema>;
 
 // Health schemas
 export const createHealthRecordSchema = z.object({

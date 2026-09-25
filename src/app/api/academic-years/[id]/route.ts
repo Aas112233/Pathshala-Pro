@@ -11,6 +11,16 @@ import {
 } from "@/lib/api-response";
 import { updateAcademicYearSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { hasRolePermission } from "@/lib/permissions";
+import {
+  clearAcademicYearCache,
+  clearCurrentAcademicYear,
+  setCurrentAcademicYear,
+} from "@/lib/academic-year-guards";
+import { logAuditEvent } from "@/lib/audit-logger";
+import { loadYearClosePreflight } from "@/lib/rollover-preflight-roster";
+import { runYearClosePreflight } from "@/lib/rollover-preflight";
+import { finaliseAcademicYearSessions } from "@/lib/academic-year-finalisation-roster";
 import {
   buildLockedFieldsDetails,
   getAcademicYearUsageCounts,
@@ -106,7 +116,7 @@ export async function PUT(
     const access = await requireApiAccess(request);
     if ("response" in access) return access.response;
 
-    const { tenantId } = access.authContext;
+    const { tenantId, user } = access.authContext;
     const { id } = await params;
 
     const body = await request.json();
@@ -122,6 +132,17 @@ export async function PUT(
     }
 
     const data = validation.data;
+
+    // Year-lifecycle changes carry their own capability. `academic:manage`
+    // already gates this route's module tier, but promotion and day-to-day
+    // academic administration are different responsibilities from freezing a
+    // year, so the flag writes are re-checked against the dedicated grant.
+    const changesLifecycle = data.isClosed !== undefined || data.isCurrent !== undefined;
+    if (changesLifecycle && !hasRolePermission(user.role, "academic:rollover:execute")) {
+      return forbidden(
+        "Closing an academic year or switching the operating year requires the academic rollover capability."
+      );
+    }
 
     // Check if academic year exists
     const existingYear = await prisma.academicYear.findUnique({
@@ -207,28 +228,182 @@ export async function PUT(
       ]);
     }
 
-    const updatePayload: Record<string, any> = {};
+    // A year that is closed and current at the same time has no meaning, and
+    // the two flags are written by different branches below.
+    if (data.isClosed === true && data.isCurrent === true) {
+      return badRequest("A year cannot be closed and made current in the same request.", [
+        {
+          field: "isCurrent",
+          code: "CONFLICTING_FLAGS",
+          message: "A closed academic year cannot be the current year.",
+        },
+      ]);
+    }
+
+    const updatePayload: Record<string, unknown> = {};
     if (data.yearId !== undefined) updatePayload.yearId = data.yearId;
     if (data.label !== undefined) updatePayload.label = data.label;
     if (startDate !== undefined) updatePayload.startDate = startDate;
     if (endDate !== undefined) updatePayload.endDate = endDate;
     if (data.isClosed !== undefined) updatePayload.isClosed = data.isClosed;
 
-    const updatedAcademicYear = await prisma.academicYear.update({
-      where: { id },
-      data: updatePayload,
-      select: {
-        id: true,
-        yearId: true,
-        label: true,
-        startDate: true,
-        endDate: true,
-        isClosed: true,
-        updatedAt: true,
-      },
-    });
+    const closingYear = data.isClosed === true && !existingYear.isClosed;
+    const makingCurrent = data.isCurrent === true;
 
-    return successResponse(updatedAcademicYear, "Academic year updated successfully");
+    // ---------------------------------------------------------------------
+    // Pre-flight gate on close.
+    //
+    // Closing is the last moment at which "this cohort never crossed the
+    // boundary" is still fixable. Afterwards the year is read-only and the
+    // students are stranded in it, so a blocker here is terminal — the same
+    // checks GET /api/academic-years/[id]/preflight reports are enforced here.
+    // ---------------------------------------------------------------------
+    if (closingYear) {
+      // The year row is already in hand, so it is handed over rather than read
+      // again — which also removes the case where the loader cannot find a year
+      // this route just proved exists.
+      const { input } = await loadYearClosePreflight({
+        tenantId,
+        academicYearId: id,
+        year: existingYear,
+      });
+      const preflight = runYearClosePreflight(input);
+
+      if (!preflight.canProceed) {
+        return errorResponse(
+          `Pre-flight checks blocked closing '${existingYear.label}': ${preflight.counts.blockers} blocker(s) must be resolved first.`,
+          409,
+          [
+            ...preflight.blockers.map((item) => ({
+              field: item.subject.kind,
+              code: item.code,
+              message: item.message,
+            })),
+            ...(preflight.truncatedCodes.length > 0
+              ? [
+                  {
+                    code: "PREFLIGHT_TRUNCATED",
+                    message: `Some findings were omitted from this response. Totals: ${preflight.counts.blockers} blocker(s), ${preflight.counts.warnings} warning(s).`,
+                  },
+                ]
+              : []),
+          ]
+        );
+      }
+    }
+
+    const { updated: updatedAcademicYear, finalisation } = await prisma.$transaction(async (tx) => {
+      const displacedCurrent = makingCurrent
+        ? await tx.academicYear.findFirst({
+            where: { tenantId, isCurrent: true, id: { not: id } },
+            select: { id: true, label: true },
+          })
+        : null;
+
+      const updated = await tx.academicYear.update({
+        where: { id },
+        data: updatePayload,
+        select: {
+          id: true,
+          yearId: true,
+          label: true,
+          startDate: true,
+          endDate: true,
+          isClosed: true,
+          isCurrent: true,
+          updatedAt: true,
+        },
+      });
+
+      if (makingCurrent) {
+        await setCurrentAcademicYear(tx, tenantId, id);
+      }
+
+      // Closing the operating year retires it as "current": a closed year
+      // cannot be the year the institute is working in, and leaving the flag
+      // set would make resolution skip past it to a weaker tier.
+      if (closingYear) {
+        await clearCurrentAcademicYear(tx, tenantId, id);
+      }
+
+      // ---------------------------------------------------------------------
+      // Freeze the year's results onto every session in it.
+      //
+      // Deliberately inside the transaction and after the flags are settled: a
+      // year must never end up closed without its snapshot, and there is no
+      // inverse — nothing in this codebase reopens a closed year — so a failure
+      // here has to abort the close rather than leave the year frozen and
+      // unfinalised forever.
+      // ---------------------------------------------------------------------
+      const finalisation = closingYear
+        ? await finaliseAcademicYearSessions(tx, { tenantId, academicYearId: id })
+        : null;
+
+      // Written inside the transaction. Switching or closing the operating year
+      // changes what every other record means, so the entry cannot be optional.
+      await logAuditEvent(
+        {
+          tenantId,
+          userId: user.id,
+          userEmail: user.email,
+          action: closingYear ? "CLOSE" : makingCurrent ? "ROLLOVER" : "UPDATE",
+          entity: "AcademicYear",
+          entityId: id,
+          details: {
+            changedFields: Object.keys(updatePayload),
+            before: {
+              yearId: existingYear.yearId,
+              label: existingYear.label,
+              isClosed: existingYear.isClosed,
+              isCurrent: existingYear.isCurrent,
+            },
+            displacedCurrentYear: displacedCurrent ?? null,
+            // Recorded on the close entry so the audit trail can answer "what
+            // was frozen, and for how many students" without re-deriving it.
+            finalisation: finalisation
+              ? {
+                  sessions: finalisation.sessions,
+                  withResults: finalisation.withResults,
+                  withoutResults: finalisation.withoutResults,
+                  resultsConsidered: finalisation.resultsConsidered,
+                  averagePercentage: finalisation.averagePercentage,
+                  pages: finalisation.pages,
+                }
+              : null,
+          },
+        },
+        tx
+      );
+
+      return { updated, finalisation };
+      },
+      // A close finalises every session in the year, which is thousands of
+      // writes; the default five-second interactive budget is nowhere near
+      // enough and would fail only on the largest schools, which is the worst
+      // possible place to discover a timeout.
+      { timeout: 120_000, maxWait: 15_000 }
+    );
+
+    // The resolved-year cache is keyed by tenant and lives 60s; a switch or a
+    // close makes it wrong immediately.
+    clearAcademicYearCache();
+
+    if (!finalisation) {
+      return successResponse(updatedAcademicYear, "Academic year updated successfully");
+    }
+
+    // The count is surfaced rather than logged, because a student with no
+    // results is left without a final percentage — and that is the operator's
+    // last chance to notice before the year is out of reach for good.
+    const noResultsNote =
+      finalisation.withoutResults > 0
+        ? ` ${finalisation.withoutResults} student(s) had no results recorded and were left without a final percentage.`
+        : "";
+
+    return successResponse(
+      { ...updatedAcademicYear, finalisation },
+      `Academic year '${updatedAcademicYear.label}' closed. ${finalisation.withResults} transcript(s) finalised.${noResultsNote}`
+    );
   } catch (error) {
     return handleApiError(error);
   }
@@ -246,8 +421,13 @@ export async function DELETE(
     const access = await requireApiAccess(request);
     if ("response" in access) return access.response;
 
-    const { tenantId } = access.authContext;
+    const { tenantId, user } = access.authContext;
     const { id } = await params;
+
+    // Deleting a year is a lifecycle act, like closing it.
+    if (!hasRolePermission(user.role, "academic:rollover:execute")) {
+      return forbidden("Deleting an academic year requires the academic rollover capability.");
+    }
 
     // Check if academic year exists
     const existingYear = await prisma.academicYear.findUnique({
@@ -270,9 +450,32 @@ export async function DELETE(
       ]);
     }
 
-    await prisma.academicYear.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      await tx.academicYear.delete({ where: { id } });
+
+      // Deleting a year is a lifecycle event like any other; the audit row has
+      // to outlive the row it describes, so it is written in the same
+      // transaction as the delete.
+      await logAuditEvent(
+        {
+          tenantId,
+          userId: user.id,
+          userEmail: user.email,
+          action: "DELETE",
+          entity: "AcademicYear",
+          entityId: id,
+          details: {
+            yearId: existingYear.yearId,
+            label: existingYear.label,
+            isClosed: existingYear.isClosed,
+            isCurrent: existingYear.isCurrent,
+          },
+        },
+        tx
+      );
     });
+
+    clearAcademicYearCache();
 
     return successResponse(null, "Academic year deleted successfully");
   } catch (error) {

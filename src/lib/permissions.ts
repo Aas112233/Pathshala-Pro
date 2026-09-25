@@ -17,6 +17,14 @@ export type Permission =
   | "exams:marks:write"
   | "exams:grade:override"
   | "academic:promote:execute"
+  /**
+   * Closing an academic year and switching which year the institute operates
+   * in. Deliberately separate from `academic:manage`: promotion moves a class
+   * within the year, whereas a rollover freezes every record in the year being
+   * closed and changes what "current" means for every other module. A role that
+   * runs the timetable should not implicitly be able to close the year.
+   */
+  | "academic:rollover:execute"
   // Fees & Finance
   | "fees:read"
   | "fees:invoice:create"
@@ -69,7 +77,7 @@ export type UserRole =
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   PLATFORM_OWNER: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
+    "exams:grade:override", "academic:promote:execute", "academic:rollover:execute", "fees:read", "fees:invoice:create",
     "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
     "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
@@ -78,7 +86,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   SUPER_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
+    "exams:grade:override", "academic:promote:execute", "academic:rollover:execute", "fees:read", "fees:invoice:create",
     "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
     "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
@@ -87,7 +95,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   SYSTEM_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
+    "exams:grade:override", "academic:promote:execute", "academic:rollover:execute", "fees:read", "fees:invoice:create",
     "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
     "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
@@ -96,7 +104,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   INSTITUTE_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
+    "exams:grade:override", "academic:promote:execute", "academic:rollover:execute", "fees:read", "fees:invoice:create",
     "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
     "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
@@ -105,7 +113,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
+    "exams:grade:override", "academic:promote:execute", "academic:rollover:execute", "fees:read", "fees:invoice:create",
     "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
     "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
@@ -114,7 +122,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   SCHOOL_ADMIN: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "exams:grade:override", "academic:promote:execute", "fees:read", "fees:invoice:create",
+    "exams:grade:override", "academic:promote:execute", "academic:rollover:execute", "fees:read", "fees:invoice:create",
     "fees:payment:collect", "fees:pos:collect", "fees:bulk:collect", "fees:waiver:approve",
     "accounting:read", "accounting:journal:post",
     "accounting:period:close", "payroll:read", "payroll:process", "payroll:approve", "payroll:disburse",
@@ -123,13 +131,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   PRINCIPAL: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "exams:grade:override", "academic:promote:execute", "fees:read", "fees:waiver:approve",
+    "exams:grade:override", "academic:promote:execute", "academic:rollover:execute", "fees:read", "fees:waiver:approve",
     "accounting:read", "payroll:read", "students:read", "staff:read", "attendance:read", "attendance:mark",
   ],
   /** Vice-principal / operations manager: runs academics and campus, never the cash box. */
   MANAGER: [
     "academic:read", "academic:manage", "exams:read", "exams:manage", "exams:marks:write",
-    "academic:promote:execute", "students:read", "students:manage", "staff:read",
+    "academic:promote:execute", "academic:rollover:execute", "students:read", "students:manage", "staff:read",
     "attendance:read", "attendance:mark", "attendance:manage",
     "fees:read", "accounting:read", "payroll:read",
   ],
@@ -222,6 +230,7 @@ const PERMISSION_MODULE_GRANTS: Record<Permission, ReadonlyArray<[string, Permis
   "exams:marks:write": [["exams", "write"], ["exam-results", "write"]],
   "exams:grade:override": [["exam-results", "manage"]],
   "academic:promote:execute": [["exams", "manage"], ["academic", "manage"]],
+  "academic:rollover:execute": [["academic-years", "manage"]],
   "fees:read": [["fees", "read"], ["transactions", "read"]],
   "fees:invoice:create": [["fees", "write"]],
   // The umbrella keeps a role's cash entitlement expressible as one grant.

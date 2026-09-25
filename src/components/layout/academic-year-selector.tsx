@@ -22,7 +22,12 @@ export function AcademicYearSelector() {
         onChange={setSelectedAcademicYearId}
         options={academicYears.map((year) => ({
           value: year.id,
-          label: `${year.label}${year.isClosed ? ` ${t("closedSuffix")}` : ""}`,
+          // The operating year is marked so an operator can tell "the year I am
+          // looking at" apart from "the year the institute is in" — these are
+          // different things as soon as they switch the selector to browse.
+          label: `${year.label}${
+            year.isCurrent && !year.isClosed ? ` ${t("currentSuffix")}` : ""
+          }${year.isClosed ? ` ${t("closedSuffix")}` : ""}`,
         }))}
         searchable
         searchPlaceholder={t("searchPlaceholder")}

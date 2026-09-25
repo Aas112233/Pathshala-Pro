@@ -12,6 +12,8 @@ export interface AcademicYearOption {
   startDate: string;
   endDate: string;
   isClosed?: boolean;
+  /** The year the institute stated it is operating in. */
+  isCurrent?: boolean;
 }
 
 interface AcademicYearContextType {
@@ -28,11 +30,32 @@ function getCacheKey(tenantId: string) {
   return `academic_year_${tenantId}`;
 }
 
+/**
+ * Pick the year to open the app in.
+ *
+ * The tiers mirror `resolveActiveAcademicYear` on the server exactly, so the
+ * year the UI shows and the year the API reads for the same tenant cannot
+ * disagree — which they could before, when each side inferred it separately
+ * from the date range.
+ *
+ * The list is re-sorted newest-first here rather than relying on the API's
+ * `orderBy`, so the choice does not silently depend on response ordering.
+ */
 function resolveDefaultYearId(years: AcademicYearOption[]): string {
-  const current = years.find((y) => isCurrentAcademicYear(y.startDate, y.endDate));
+  const newestFirst = [...years].sort(
+    (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+  );
+
+  // 1. The year the institute stated it is operating in.
+  const flagged = newestFirst.find((y) => y.isCurrent && !y.isClosed);
+  if (flagged) return flagged.id;
+
+  // 2. Fallback for tenants that have not set the flag yet: the open year whose
+  //    range covers today, then the latest open year, then the latest year.
+  const current = newestFirst.find((y) => isCurrentAcademicYear(y.startDate, y.endDate));
   if (current) return current.id;
-  const open = years.find((y) => !y.isClosed);
-  return open?.id || years[0]?.id || "";
+  const open = newestFirst.find((y) => !y.isClosed);
+  return open?.id || newestFirst[0]?.id || "";
 }
 
 export function AcademicYearProvider({ children }: { children: React.ReactNode }) {
