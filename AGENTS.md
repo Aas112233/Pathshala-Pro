@@ -172,6 +172,17 @@ npm run prisma:seed  # seed data
 
 ---
 
+### 15. 🚫 Zero Unsolicited Pre-selections & Auto-Selections Anti-Pattern (Explicit User Choice)
+- **STRICT PROHIBITION OF PRE-SELECTIONS:**
+  Forms, modals, drawers, filters, and transaction desks (POS collection, bulk fees, expense entry, bank deposits, salary payments, question paper creation, student/staff registration, attendance marking) MUST NOT automatically pre-select options, entities, payment methods, transaction months, expense categories, bank accounts, genders, or form values by default, nor silently fallback to array index 0 (`items[0]`, `data[0]`, `categories[0]`, `subjects[0]`, `"CASH"`, `"MALE"`, current calendar month, etc.).
+- **EXPLICIT USER INTENT:**
+  - All selectable options must start empty (`""` or `null`) with an informative placeholder (e.g. *"Select payment method..."*, *"Select month..."*, *"Select category..."*, *"Select student..."*).
+  - The system must never make assumptions or execute mutations on unconfirmed pre-selected values.
+  - Form submit buttons and transaction triggers must remain disabled or validate with a clear error if the user has not explicitly made a selection.
+  - In POS / fee collection, selecting a student must NEVER auto-select a billing month or payment method; the cashier must explicitly choose which month(s) to collect and how the customer is paying.
+
+---
+
 ## 🎨 Design System & Reusable Components Reference
 
 | UI Element | Component | Import Path |
