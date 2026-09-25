@@ -269,6 +269,36 @@ export function parseDateWithSettings(
   return toISODate(y, m, d);
 }
 
+/**
+ * Insert separators into a completed 8-digit run typed without separators
+ * (e.g. "31122026" → "31/12/2026" under DD/MM/YYYY). Returns "" when the
+ * run is not exactly 8 digits or the tenant format is not numeric-only
+ * (month-name formats cannot be reconstructed from digits). Callers must
+ * still validate the result with parseDateWithSettings — this only places
+ * the separators, it never invents a valid date.
+ */
+export function formatDigitRunDate(
+  digits: string,
+  dateFormat?: string
+): string {
+  if (!/^\d{8}$/.test(digits)) return "";
+  const format = dateFormat || DEFAULT_TENANT_SETTINGS.dateFormat;
+  switch (format) {
+    case "YYYY-MM-DD":
+      return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+    case "MM/DD/YYYY":
+      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+    case "DD-MM-YYYY":
+      return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 8)}`;
+    case "DD/MM/YYYY":
+    default:
+      // Unknown formats fall through only when they are slash-based numeric;
+      // month-name formats return "" via the caller-free path below.
+      if (format !== "DD/MM/YYYY" && /[A-Za-z]/.test(format)) return "";
+      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+  }
+}
+
 export function formatTimeWithSettings(
   date: Date | string | null | undefined,
   settings: Partial<TenantSettings> = DEFAULT_TENANT_SETTINGS,

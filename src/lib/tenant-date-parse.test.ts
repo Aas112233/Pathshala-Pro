@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   parseDateWithSettings,
   formatDateWithSettings,
+  formatDigitRunDate,
   DEFAULT_TENANT_SETTINGS,
 } from "@/lib/tenant-settings";
 
@@ -41,5 +42,41 @@ describe("parseDateWithSettings", () => {
       const display = formatDateWithSettings("2026-08-25", settings);
       expect(parseDateWithSettings(display, settings)).toBe("2026-08-25");
     }
+  });
+});
+
+describe("formatDigitRunDate", () => {
+  it("inserts separators per tenant format", () => {
+    expect(formatDigitRunDate("31122026", "DD/MM/YYYY")).toBe("31/12/2026");
+    expect(formatDigitRunDate("12312026", "MM/DD/YYYY")).toBe("12/31/2026");
+    expect(formatDigitRunDate("20261231", "YYYY-MM-DD")).toBe("2026-12-31");
+    expect(formatDigitRunDate("31122026", "DD-MM-YYYY")).toBe("31-12-2026");
+    expect(formatDigitRunDate("31122026")).toBe("31/12/2026"); // default format
+  });
+
+  it("formatted runs validate through parseDateWithSettings", () => {
+    for (const [run, format, iso] of [
+      ["31122026", "DD/MM/YYYY", "2026-12-31"],
+      ["12312026", "MM/DD/YYYY", "2026-12-31"],
+      ["20261231", "YYYY-MM-DD", "2026-12-31"],
+      ["29022024", "DD/MM/YYYY", "2024-02-29"],
+    ] as const) {
+      const settings = withFormat(format);
+      expect(parseDateWithSettings(formatDigitRunDate(run, format), settings)).toBe(iso);
+    }
+  });
+
+  it("rejects impossible runs and non-numeric formats", () => {
+    // Impossible calendar dates format fine but never validate:
+    for (const run of ["32132026", "31132026", "00000000"]) {
+      expect(parseDateWithSettings(formatDigitRunDate(run, "DD/MM/YYYY"), withFormat("DD/MM/YYYY"))).toBe("");
+    }
+    // Wrong lengths and non-digits place nothing:
+    expect(formatDigitRunDate("311226", "DD/MM/YYYY")).toBe("");
+    expect(formatDigitRunDate("311220260", "DD/MM/YYYY")).toBe("");
+    expect(formatDigitRunDate("31/12/2026", "DD/MM/YYYY")).toBe("");
+    // Month-name formats cannot be reconstructed from digits:
+    expect(formatDigitRunDate("31122026", "DD MMM YYYY")).toBe("");
+    expect(formatDigitRunDate("31122026", "MMM DD, YYYY")).toBe("");
   });
 });

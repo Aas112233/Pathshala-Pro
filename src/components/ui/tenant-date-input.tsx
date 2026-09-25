@@ -7,6 +7,7 @@ import { useTenantSettings } from "@/components/providers/tenant-settings-provid
 import {
   DEFAULT_TENANT_SETTINGS,
   formatDateWithSettings,
+  formatDigitRunDate,
   parseDateWithSettings,
 } from "@/lib/tenant-settings";
 import { cn } from "@/lib/utils";
@@ -57,7 +58,22 @@ export function TenantDateInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, settings, dateFormat]);
 
-  const commit = (next: string) => {    setText(next);
+  const commit = (next: string) => {
+    // Digit-run shortcut: a completed 8-digit run typed without separators
+    // ("31122026") is formatted in place before validation.
+    const trimmed = next.trim();
+    if (/^\d{8}$/.test(trimmed)) {
+      const formatted = formatDigitRunDate(trimmed, dateFormat);
+      const iso = formatted ? parseDateWithSettings(formatted, settings) : "";
+      if (iso) {
+        setText(formatted);
+        setInvalid(false);
+        if (iso !== value) onChange(iso);
+        return;
+      }
+      // Invalid run (e.g. 32132026) falls through to the invalid flag below.
+    }
+    setText(next);
     if (!next.trim()) {
       setInvalid(false);
       if (value) onChange("");
