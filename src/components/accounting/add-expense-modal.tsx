@@ -32,7 +32,7 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
     title: "",
     categoryId: "",
     amount: "",
-    paymentMethod: "CASH" as "CASH" | "BANK" | "CHEQUE" | "DIGITAL",
+    paymentMethod: "" as "CASH" | "BANK" | "CHEQUE" | "DIGITAL" | "",
     expenseDate: new Date().toISOString().split("T")[0],
     payeeName: "",
     receiptNumber: "",
@@ -47,9 +47,13 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
       return;
     }
 
-    const selectedCat = formData.categoryId || categories[0]?.id;
-    if (!selectedCat) {
+    if (!formData.categoryId) {
       toast.error(t("accounting.expensesForm.errCategory"));
+      return;
+    }
+
+    if (!formData.paymentMethod) {
+      toast.error("Please select a payment method");
       return;
     }
 
@@ -62,8 +66,9 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
     createExpenseMutation.mutate(
       {
         ...formData,
-        categoryId: selectedCat,
+        categoryId: formData.categoryId,
         amount: amountNum,
+        paymentMethod: formData.paymentMethod as any,
       },
       {
         onSuccess: () => {
@@ -72,7 +77,7 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
             title: "",
             categoryId: "",
             amount: "",
-            paymentMethod: "CASH",
+            paymentMethod: "",
             expenseDate: new Date().toISOString().split("T")[0],
             payeeName: "",
             receiptNumber: "",
@@ -115,7 +120,7 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">{t("accounting.expensesForm.categoryLabel")}</Label>
             <AppDropdown
-              value={formData.categoryId || categories[0]?.id || ""}
+              value={formData.categoryId}
               onChange={(v) => setFormData({ ...formData, categoryId: v })}
               options={categories.map((cat: any) => ({ value: cat.id, label: cat.name }))}
               placeholder={t("accounting.expensesForm.categoryLabel")}
@@ -147,6 +152,7 @@ export function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpenseModalP
             <AppDropdown
               value={formData.paymentMethod}
               onChange={(v) => setFormData({ ...formData, paymentMethod: v as any })}
+              placeholder="Select payment method..."
               options={[
                 { value: "CASH", label: "Petty Cash Register" },
                 { value: "BANK", label: "Bank Account Transfer" },

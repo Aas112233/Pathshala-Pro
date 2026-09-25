@@ -45,8 +45,8 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
       index === self.findIndex((o) => o.value === item.value)
   );
 
-  const [fromCode, setFromCode] = useState<string>(GL_CODES.CASH);
-  const [toCode, setToCode] = useState(uniqueBankOptions[0]?.value || GL_CODES.BANK);
+  const [fromCode, setFromCode] = useState<string>("");
+  const [toCode, setToCode] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [bankReference, setBankReference] = useState("");
@@ -60,12 +60,15 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
 
   const handleSubmit = async () => {
     const amt = parseFloat(amount);
-    const from = fromCode || GL_CODES.CASH;
+    if (!fromCode) {
+      toast.error(t("selectSource"));
+      return;
+    }
     if (!toCode) {
       toast.error(t("selectDestination"));
       return;
     }
-    if (from === toCode) {
+    if (fromCode === toCode) {
       toast.error(t("sameAccount"));
       return;
     }
@@ -75,7 +78,7 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
     }
     try {
       await createDeposit.mutateAsync({
-        fromCode: from,
+        fromCode,
         toCode,
         amount: amt,
         note: note || undefined,
@@ -83,6 +86,7 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
         receiptRefs: receiptRefs.trim() || undefined,
       });
       toast.success(t("depositRecorded"));
+      setFromCode("");
       setToCode("");
       setAmount("");
       setNote("");
@@ -106,7 +110,7 @@ export function RecordDepositSheet({ isOpen, onClose, accounts }: RecordDepositS
           <Button variant="outline" onClick={onClose} disabled={createDeposit.isPending}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={handleSubmit} disabled={createDeposit.isPending || !toCode || !amount} className="gap-2">
+          <Button onClick={handleSubmit} disabled={createDeposit.isPending || !fromCode || !toCode || !amount} className="gap-2">
             {createDeposit.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (

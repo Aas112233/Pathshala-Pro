@@ -383,9 +383,9 @@ export default function QuestionPapersLibraryPage() {
               variant="outline"
               onClick={() => {
                 setBpClassId("");
-                if (subjects.length > 0) setBpSubjectId(subjects[0].id);
-                if (academicYears.length > 0) setBpAcademicYearId(academicYears[0].id);
-                setBpTitle("Annual Examination 2026-2027");
+                setBpSubjectId("");
+                setBpAcademicYearId("");
+                setBpTitle("");
                 setIsBlueprintOpen(true);
               }}
               className="gap-2 border-primary/30 hover:bg-primary/5 text-primary"

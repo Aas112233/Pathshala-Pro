@@ -126,13 +126,13 @@ export default function ExamsPage() {
   const exams = examsData ?? [];
   const classes = classesData;
   const selectedSubjectIds = selectedClassId
-    ? (subjectSelectionByClass[selectedClassId] ?? classSubjects.map((item) => item.subjectId))
+    ? (subjectSelectionByClass[selectedClassId] ?? [])
     : [];
 
   const [formData, setFormData] = useState({
     academicYearId: selectedAcademicYearId,
     name: "",
-    type: "MID_TERM" as Exam["type"],
+    type: "" as Exam["type"],
     startDate: "",
     endDate: "",
     isPublished: false,
@@ -148,6 +148,7 @@ export default function ExamsPage() {
   const [formErrors, setFormErrors] = useState<{
     academicYearId?: string;
     name?: string;
+    type?: string;
     classId?: string;
     subjects?: string;
     startDate?: string;
@@ -162,7 +163,7 @@ export default function ExamsPage() {
     setFormData({
       academicYearId: selectedAcademicYearId,
       name: "",
-      type: "MID_TERM",
+      type: "" as Exam["type"],
       startDate: "",
       endDate: "",
       isPublished: false,
@@ -183,7 +184,7 @@ export default function ExamsPage() {
     }
 
     setSubjectSelectionByClass((current) => {
-      const currentSelection = current[selectedClassId] ?? classSubjects.map((item) => item.subjectId);
+      const currentSelection = current[selectedClassId] ?? [];
       const nextSelection = currentSelection.includes(subjectId)
         ? currentSelection.filter((id) => id !== subjectId)
         : [...currentSelection, subjectId];
@@ -200,13 +201,14 @@ export default function ExamsPage() {
     const nextErrors: typeof formErrors = {};
     if (!formData.academicYearId) nextErrors.academicYearId = `${t('academicYear')} is required`;
     if (!formData.name.trim()) nextErrors.name = `${t('examName')} is required`;
+    if (!formData.type) nextErrors.type = t('selectExamType');
     if (!selectedClassId) nextErrors.classId = `${t('class')} is required`;
     if (!formData.startDate) nextErrors.startDate = `${t('startDate')} is required`;
     if (!formData.endDate) nextErrors.endDate = `${t('endDate')} is required`;
     if (selectedSubjectIds.length === 0) nextErrors.subjects = t('subjectsRequired');
     setFormErrors(nextErrors);
 
-    if (nextErrors.academicYearId || nextErrors.name || nextErrors.classId || nextErrors.startDate || nextErrors.endDate) {
+    if (nextErrors.academicYearId || nextErrors.name || nextErrors.type || nextErrors.classId || nextErrors.startDate || nextErrors.endDate) {
       toast.error(t('fillRequiredFields'));
       return;
     }
@@ -722,13 +724,16 @@ export default function ExamsPage() {
             </ERPFormField>
 
             <ERPFormGrid cols={2}>
-              <ERPFormField label={t('examType')}>
+              <ERPFormField label={t('examType')} required error={formErrors.type}>
                 <Select
-                  value={formData.type}
-                  onValueChange={(value: Exam["type"]) => setFormData({ ...formData, type: value })}
+                  value={formData.type || undefined}
+                  onValueChange={(value: Exam["type"]) => {
+                    setFormData({ ...formData, type: value });
+                    if (formErrors.type) setFormErrors((prev) => ({ ...prev, type: undefined }));
+                  }}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger aria-invalid={Boolean(formErrors.type)} className={formErrors.type ? "border-destructive ring-destructive" : undefined}>
+                    <SelectValue placeholder={t('selectExamType')} />
                   </SelectTrigger>
                   <SelectContent>
                     {EXAM_TYPES.map((type) => (

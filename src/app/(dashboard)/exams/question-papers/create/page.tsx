@@ -329,9 +329,9 @@ export default function CreateQuestionPaperStudioPage() {
   // Save to Database Mutation
   const saveMutation = useMutation({
     mutationFn: async (status: 'DRAFT' | 'READY') => {
-      const effectiveAcademicYearId = academicYearId || (academicYears[0]?.id as string);
+      const effectiveAcademicYearId = academicYearId;
       const effectiveClassId = classId;
-      const effectiveSubjectId = subjectId || (subjects[0]?.id as string);
+      const effectiveSubjectId = subjectId;
 
       if (!effectiveAcademicYearId || !effectiveClassId || !effectiveSubjectId) {
         throw new Error('অনুগ্রহ করে শিক্ষাবর্ষ, শ্রেণি ও বিষয় নির্বাচন করুন');
@@ -498,7 +498,7 @@ export default function CreateQuestionPaperStudioPage() {
                   label: (y.label || y.yearId || y.id) + (!y.isClosed ? ' (চলতি বছর)' : ''),
                   value: y.id,
                 }))}
-                value={academicYearId || academicYears[0]?.id || ''}
+                value={academicYearId || ''}
                 onChange={handleSelectAcademicYear}
                 placeholder="শিক্ষাবর্ষ নির্বাচন করুন..."
                 searchable

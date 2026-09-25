@@ -92,7 +92,7 @@ export default function FeeCollectionPage() {
 
   // Cashier Payment Form State
   const [paymentAmount, setPaymentAmount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [cashTendered, setCashTendered] = useState<string>("");
   const [paymentNote, setPaymentNote] = useState<string>("");
   const [walletAmount, setWalletAmount] = useState<string>("");
@@ -448,8 +448,11 @@ export default function FeeCollectionPage() {
     setPaymentAmount(total > 0 ? String(total) : "");
   };
 
+  const isPaymentBusy = collectPaymentMutation.isPending || isGuardedPayment;
+
   // Handle student selection
   const handleSelectStudent = (student: any) => {
+    if (isPaymentBusy) return;
     setSelectedStudent(student);
     setIsSearchDropdownOpen(false);
     setSearchTerm("");
@@ -464,10 +467,12 @@ export default function FeeCollectionPage() {
     setAutoApplyWallet(false);
     setChequeNumber("");
     setPaymentReference("");
+    setPaymentMethod("");
     setInvoicesTab("pending");
   };
 
   const handleClearStudent = () => {
+    if (isPaymentBusy) return;
     setSelectedStudent(null);
     setLastPaymentResult(null);
     setSelectedVoucherIds([]);
@@ -480,6 +485,7 @@ export default function FeeCollectionPage() {
     setAutoApplyWallet(false);
     setChequeNumber("");
     setPaymentReference("");
+    setPaymentMethod("");
     setSearchTerm("");
     setIsSearchDropdownOpen(false);
     setInvoicesTab("pending");
@@ -488,24 +494,9 @@ export default function FeeCollectionPage() {
     }, 50);
   };
 
-  // Initial default: select first unpaid month or current month if unpaid
-  useEffect(() => {
-    if (selectedStudent?.id && !isLoadingVouchers) {
-      const curM = new Date().getMonth();
-      if (unpaidMonthIndices.includes(curM)) {
-        applyMonthSelection([curM]);
-      } else if (unpaidMonthIndices.length > 0) {
-        applyMonthSelection([unpaidMonthIndices[0]]);
-      } else {
-        setSelectedMonths([]);
-        setSelectedVoucherIds([]);
-        setPaymentAmount("");
-      }
-    }
-  }, [selectedStudent?.id, isLoadingVouchers, unpaidMonthIndices]);
-
   // Toggle selection on a month (click again deselects, supports multi-month)
   const handleToggleMonth = (idx: number) => {
+    if (isPaymentBusy) return;
     const mNum = idx + 1;
     const mV = vouchersByMonth.get(mNum);
     const isPaid = mV
@@ -526,6 +517,7 @@ export default function FeeCollectionPage() {
 
   // Two-way sync for toggling vouchers from the Invoices list
   const handleToggleVoucher = (v: any) => {
+    if (isPaymentBusy) return;
     const isCurrentlySelected = selectedVoucherIds.includes(v.id);
     if (v.billingMonth) {
       const mIdx = v.billingMonth - 1;
@@ -561,6 +553,7 @@ export default function FeeCollectionPage() {
 
   // Quick Pay Presets handler: selects upcoming unpaid months and computes total
   const handleApplyPreset = (count: number | "full") => {
+    if (isPaymentBusy) return;
     setInspectingPaidMonth(null);
     const targetIndices = count === "full"
       ? unpaidMonthIndices
@@ -575,6 +568,7 @@ export default function FeeCollectionPage() {
   };
 
   const handleClearSelection = () => {
+    if (isPaymentBusy) return;
     setInspectingPaidMonth(null);
     setSelectedMonths([]);
     setSelectedVoucherIds([]);
@@ -582,12 +576,14 @@ export default function FeeCollectionPage() {
   };
 
   const handleSetExactAmount = () => {
+    if (isPaymentBusy) return;
     if (selectedPeriodDue > 0) {
       setPaymentAmount(String(selectedPeriodDue));
     }
   };
 
   const handleSetHalfAmount = () => {
+    if (isPaymentBusy) return;
     if (selectedPeriodDue > 0) {
       setPaymentAmount(String(roundCurrency(selectedPeriodDue / 2)));
     }
@@ -596,6 +592,14 @@ export default function FeeCollectionPage() {
   const handlePay = () => {
     if (!selectedStudent) {
       toast.error(t("selectStudentError"));
+      return;
+    }
+    if (selectedMonths.length === 0 && selectedVoucherIds.length === 0) {
+      toast.error(t("selectMonthsPrompt"));
+      return;
+    }
+    if (!paymentMethod) {
+      toast.error(t("selectPaymentMethodError"));
       return;
     }
     const hasUnbilledSelected = selectedMonths.some((m) => !vouchersByMonth.has(m + 1));
@@ -750,7 +754,7 @@ export default function FeeCollectionPage() {
       }
 
       // Actions requiring student to be selected
-      if (!selectedStudent) return;
+      if (!selectedStudent || isPaymentBusy) return;
 
       // F4 or Alt+A: Select Full Year / All Remaining
       if (e.key === "F4" || (e.altKey && (e.key === "a" || e.key === "A"))) {
@@ -804,7 +808,7 @@ export default function FeeCollectionPage() {
 
       // Ctrl+Enter or F8: Trigger Payment Collection
       if ((e.ctrlKey && e.key === "Enter") || e.key === "F8") {
-        if (canCollectCurrentSelection && !collectPaymentMutation.isPending && !isGuardedPayment && payNum > 0) {
+        if (canCollectCurrentSelection && !isPaymentBusy && payNum > 0) {
           e.preventDefault();
           handlePay();
         }
@@ -820,8 +824,7 @@ export default function FeeCollectionPage() {
     unpaidMonthIndices,
     selectedPeriodDue,
     canCollectCurrentSelection,
-    collectPaymentMutation.isPending,
-    isGuardedPayment,
+    isPaymentBusy,
     payNum,
     handlePay,
   ]);
@@ -1205,8 +1208,11 @@ export default function FeeCollectionPage() {
                           <button
                             key={month.key}
                             type="button"
+                            disabled={isPaymentBusy}
                             onClick={() => handleToggleMonth(idx)}
-                            className={`p-2 rounded-lg border text-center transition-all cursor-pointer relative ${
+                            className={`p-2 rounded-lg border text-center transition-all relative ${
+                              isPaymentBusy ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                            } ${
                               isInspecting
                                 ? "ring-2 ring-emerald-500 border-emerald-500 bg-emerald-100/50 dark:bg-emerald-950/60 shadow-xs"
                                 : isSelected
@@ -1262,7 +1268,7 @@ export default function FeeCollectionPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={unpaidMonthIndices.length === 0}
+                          disabled={isPaymentBusy || unpaidMonthIndices.length === 0}
                           onClick={() => handleApplyPreset(1)}
                           className="h-7 text-[11px] px-2 rounded-lg border-primary/40 text-primary hover:bg-primary/10"
                         >
@@ -1273,7 +1279,7 @@ export default function FeeCollectionPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={unpaidMonthIndices.length < 2}
+                          disabled={isPaymentBusy || unpaidMonthIndices.length < 2}
                           onClick={() => handleApplyPreset(2)}
                           className="h-7 text-[11px] px-2 rounded-lg"
                         >
@@ -1284,7 +1290,7 @@ export default function FeeCollectionPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={unpaidMonthIndices.length < 3}
+                          disabled={isPaymentBusy || unpaidMonthIndices.length < 3}
                           onClick={() => handleApplyPreset(3)}
                           className="h-7 text-[11px] px-2 rounded-lg"
                         >
@@ -1295,7 +1301,7 @@ export default function FeeCollectionPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={unpaidMonthIndices.length < 6}
+                          disabled={isPaymentBusy || unpaidMonthIndices.length < 6}
                           onClick={() => handleApplyPreset(6)}
                           className="h-7 text-[11px] px-2 rounded-lg"
                         >
@@ -1306,7 +1312,7 @@ export default function FeeCollectionPage() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={unpaidMonthIndices.length === 0}
+                          disabled={isPaymentBusy || unpaidMonthIndices.length === 0}
                           onClick={() => handleApplyPreset("full")}
                           className="h-7 text-[11px] px-2.5 rounded-lg font-bold border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
                         >
@@ -1318,6 +1324,7 @@ export default function FeeCollectionPage() {
                             type="button"
                             variant="ghost"
                             size="sm"
+                            disabled={isPaymentBusy}
                             onClick={handleClearSelection}
                             className="h-7 text-[11px] px-2 rounded-lg text-muted-foreground hover:text-foreground"
                           >
@@ -1653,6 +1660,7 @@ export default function FeeCollectionPage() {
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={isPaymentBusy}
                       onClick={handleSetExactAmount}
                       className={`flex-1 text-[11px] h-7 font-bold ${
                         paymentAmount === String(selectedPeriodDue)
@@ -1667,6 +1675,7 @@ export default function FeeCollectionPage() {
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={isPaymentBusy}
                       onClick={handleSetHalfAmount}
                       className={`text-[11px] h-7 font-medium ${
                         paymentAmount === String(roundCurrency(selectedPeriodDue / 2))
@@ -1686,7 +1695,7 @@ export default function FeeCollectionPage() {
                     placeholder={t("amountReceived")}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    disabled={!selectedStudent || (unpaidMonthIndices.length === 0 && selectedVoucherIds.length === 0)}
+                    disabled={isPaymentBusy || !selectedStudent || (unpaidMonthIndices.length === 0 && selectedVoucherIds.length === 0)}
                     className="h-11 text-base font-mono font-bold pr-12"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
@@ -1706,8 +1715,9 @@ export default function FeeCollectionPage() {
                       <button
                         key={mode.id}
                         type="button"
+                        disabled={isPaymentBusy}
                         onClick={() => setPaymentMethod(mode.id)}
-                        className={`p-2 rounded-lg border text-center transition-all flex flex-col items-center gap-1 ${
+                        className={`p-2 rounded-lg border text-center transition-all flex flex-col items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed ${
                           isSelected
                             ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
                             : "border-border bg-card hover:bg-muted/40 text-foreground"
@@ -1739,7 +1749,7 @@ export default function FeeCollectionPage() {
                     placeholder={t("chequeNumberPlaceholder")}
                     value={chequeNumber}
                     onChange={(e) => setChequeNumber(e.target.value)}
-                    disabled={!selectedStudent}
+                    disabled={isPaymentBusy || !selectedStudent}
                     className={cn(
                       "h-9 text-sm font-mono transition-colors",
                       isChequeEmpty && "border-destructive focus-visible:ring-destructive bg-destructive/5 text-destructive placeholder:text-destructive/50"
@@ -1772,7 +1782,7 @@ export default function FeeCollectionPage() {
                     placeholder={t("paymentReferencePlaceholder")}
                     value={paymentReference}
                     onChange={(e) => setPaymentReference(e.target.value)}
-                    disabled={!selectedStudent}
+                    disabled={isPaymentBusy || !selectedStudent}
                     className={cn(
                       "h-9 text-sm font-mono transition-colors",
                       isReferenceEmpty && "border-destructive focus-visible:ring-destructive bg-destructive/5 text-destructive placeholder:text-destructive/50"
@@ -1797,7 +1807,7 @@ export default function FeeCollectionPage() {
                         type="checkbox"
                         checked={autoApplyWallet}
                         onChange={(e) => setAutoApplyWallet(e.target.checked)}
-                        disabled={!selectedStudent}
+                        disabled={isPaymentBusy || !selectedStudent}
                         className="h-3.5 w-3.5 accent-violet-600"
                       />
                       {t("autoApplyWallet")}
@@ -1809,13 +1819,14 @@ export default function FeeCollectionPage() {
                     placeholder={t("walletAmountPlaceholder")}
                     value={walletAmount}
                     onChange={(e) => setWalletAmount(e.target.value)}
-                    disabled={!selectedStudent || autoApplyWallet}
+                    disabled={isPaymentBusy || !selectedStudent || autoApplyWallet}
                     className="h-9 text-sm font-mono font-bold"
                   />
                 </div>
               )}
 
-              {/* 3. Cash Calculator (if cash) */}              {isCashMode && (
+              {/* 3. Cash Calculator (if cash) */}
+              {isCashMode && (
                 <div className="p-3 rounded-lg border border-border/80 bg-muted/20 space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-semibold text-foreground">{t("cashHanded")}</span>
@@ -1831,7 +1842,7 @@ export default function FeeCollectionPage() {
                     placeholder={t("cashPlaceholder")}
                     value={cashTendered}
                     onChange={(e) => setCashTendered(e.target.value)}
-                    disabled={!selectedStudent || (unpaidMonthIndices.length === 0 && selectedVoucherIds.length === 0)}
+                    disabled={isPaymentBusy || !selectedStudent || (unpaidMonthIndices.length === 0 && selectedVoucherIds.length === 0)}
                     className="h-9 text-sm font-mono font-bold"
                   />
 
@@ -1860,7 +1871,7 @@ export default function FeeCollectionPage() {
                   placeholder={t("notePlaceholder")}
                   value={paymentNote}
                   onChange={(e) => setPaymentNote(e.target.value)}
-                  disabled={!selectedStudent || (unpaidMonthIndices.length === 0 && selectedVoucherIds.length === 0)}
+                  disabled={isPaymentBusy || !selectedStudent || (unpaidMonthIndices.length === 0 && selectedVoucherIds.length === 0)}
                   className="h-8 text-xs"
                 />
               </div>
@@ -1872,6 +1883,8 @@ export default function FeeCollectionPage() {
                   onClick={handlePay}
                   disabled={
                     !selectedStudent ||
+                    !paymentMethod ||
+                    (selectedMonths.length === 0 && selectedVoucherIds.length === 0) ||
                     !paymentAmount ||
                     payNum <= 0 ||
                     isCheckingFeeStructure ||
@@ -1897,6 +1910,14 @@ export default function FeeCollectionPage() {
                   ) : !canCollectCurrentSelection ? (
                     <>
                       <AlertTriangle className="h-4 w-4" /> {t("feeStructureRequired")}
+                    </>
+                  ) : (selectedMonths.length === 0 && selectedVoucherIds.length === 0) ? (
+                    <>
+                      <Calendar className="h-4 w-4" /> {t("selectMonthsPrompt")}
+                    </>
+                  ) : !paymentMethod ? (
+                    <>
+                      <CreditCard className="h-4 w-4" /> {t("selectPaymentMethodPrompt")}
                     </>
                   ) : selectedMonths.length > 1 ? (
                     <>

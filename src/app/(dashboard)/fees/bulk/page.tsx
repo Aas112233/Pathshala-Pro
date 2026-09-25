@@ -109,8 +109,8 @@ export default function BulkFeeEntryPage() {
   // Filter State
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
-  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(new Date().getMonth());
-  const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(-1);
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [paymentReference, setPaymentReference] = useState<string>("" );
   const [chequeNumber, setChequeNumber] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -205,7 +205,7 @@ export default function BulkFeeEntryPage() {
 
   // Derived 12-Month Roster in useMemo
   const roster: StudentRowState[] = useMemo(() => {
-    if (!rawStudents.length) return [];
+    if (selectedMonthIndex < 0 || !rawStudents.length) return [];
 
     const targetMonth = selectedMonthIndex + 1;
     const openVouchersMap = new Map<string, any>();
@@ -600,9 +600,13 @@ export default function BulkFeeEntryPage() {
     toast.info(t("autoFullToast"));
   };
 
-  const currentMonthName = MONTH_NAMES[selectedMonthIndex];
+  const currentMonthName = selectedMonthIndex >= 0 ? MONTH_NAMES[selectedMonthIndex] : "";
 
   const handleDownloadChallans = async () => {
+    if (selectedMonthIndex < 0) {
+      toast.error(t("targetMonth"));
+      return;
+    }
     if (!selectedRows.length) { toast.error(t("selectError")); return; }
     const vouchers = selectedRows.map((r)=>({
       schoolName: settings.name || "Pathshala Pro School",
@@ -619,6 +623,14 @@ export default function BulkFeeEntryPage() {
   };
 
   const handleSubmitBulk = async () => {
+    if (selectedMonthIndex < 0) {
+      toast.error(t("targetMonth"));
+      return;
+    }
+    if (!paymentMethod) {
+      toast.error(t("paymentMode"));
+      return;
+    }
     if (!selectedRows.length) {
       toast.error(t("selectError"));
       return;
@@ -762,12 +774,13 @@ export default function BulkFeeEntryPage() {
                 <Calendar className="h-3.5 w-3.5" /> {t("targetMonth")}
               </Label>
               <AppDropdown
-                value={String(selectedMonthIndex)}
-                onChange={(v) => setSelectedMonthIndex(Number(v))}
+                value={selectedMonthIndex >= 0 ? String(selectedMonthIndex) : ""}
+                onChange={(v) => setSelectedMonthIndex(v !== "" ? Number(v) : -1)}
                 options={MONTH_NAMES.map((m, idx) => ({
                   value: String(idx),
                   label: `${t("month")} ${idx + 1}: ${m}`
                 }))}
+                placeholder={t("targetMonth")}
                 searchable
               />
             </div>
@@ -779,6 +792,7 @@ export default function BulkFeeEntryPage() {
                 value={paymentMethod}
                 onChange={(v) => setPaymentMethod(v)}
                 options={paymentModes.map((m) => ({ value: m.id, label: m.label }))}
+                placeholder={t("paymentMode")}
               />
             </div>
 

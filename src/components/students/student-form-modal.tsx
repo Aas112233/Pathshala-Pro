@@ -62,7 +62,7 @@ export function StudentFormModal({
     guardianName: "",
     guardianContact: "",
     guardianEmail: "",
-    gender: "MALE",
+    gender: "",
     status: "ACTIVE",
     profilePictureUrl: "",
     driveFileId: "",
@@ -150,7 +150,7 @@ export function StudentFormModal({
         guardianName: initialData.guardianName || "",
         guardianContact: initialData.guardianContact || "",
         guardianEmail: initialData.guardianEmail || "",
-        gender: initialData.gender || "MALE",
+        gender: initialData.gender || "",
         status: initialData.status || "ACTIVE",
         profilePictureUrl: initialData.profilePictureUrl || "",
         driveFileId: initialData.driveFileId || "",
@@ -171,7 +171,7 @@ export function StudentFormModal({
         guardianName: "",
         guardianContact: "",
         guardianEmail: "",
-        gender: "MALE",
+        gender: "",
         status: "ACTIVE",
         profilePictureUrl: "",
         driveFileId: "",
@@ -504,6 +504,7 @@ export function StudentFormModal({
                     value={formData.gender}
                     onChange={(val) => handleDropdownChange("gender", val)}
                     disabled={isLoading || isUploading}
+                    placeholder={t("selectGender")}
                     options={[
                       { value: "MALE", label: t("male") },
                       { value: "FEMALE", label: t("female") },

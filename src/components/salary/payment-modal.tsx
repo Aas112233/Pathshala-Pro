@@ -59,9 +59,9 @@ export function PaymentModal({
     }));
   }, [settings.paymentMethods, t]);
 
-  const [formData, setFormData] = useState<PaymentDTO>({
+  const [formData, setFormData] = useState<Omit<PaymentDTO, "paymentMethod"> & { paymentMethod: string }>({
     paidAmount: salary?.netPayable || 0,
-    paymentMethod: "CASH",
+    paymentMethod: "",
     paymentDate: new Date().toISOString().split('T')[0],
     note: "",
   });
@@ -131,7 +131,7 @@ export function PaymentModal({
     setIsLoading(true);
 
     try {
-      await onSubmit(salary.id, formData);
+      await onSubmit(salary.id, formData as PaymentDTO);
       onClose();
     } catch (error: any) {
       // Error is handled by the view model
