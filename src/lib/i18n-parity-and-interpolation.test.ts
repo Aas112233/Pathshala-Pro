@@ -293,7 +293,14 @@ describe("Repository-wide message-key guard", () => {
     );
   }
 
-  it("every literal key referenced from src/ resolves in all 4 locales", () => {
+  // 30s, not the 5s default: this walks every file under src/ (698 at the last
+  // count) and re-resolves each literal key against four locale bundles. That
+  // is an inherently whole-repository scan, and it began hitting the 5s ceiling
+  // once the tree passed ~700 files -- the failure read as a missing
+  // translation when it was really the scan running out of time.
+  it(
+    "every literal key referenced from src/ resolves in all 4 locales",
+    () => {
     const files = collectSourceFiles(path.join(process.cwd(), "src"));
     expect(files.length).toBeGreaterThan(100);
 
@@ -342,5 +349,7 @@ describe("Repository-wide message-key guard", () => {
     // Guard against the scanner silently degrading into a no-op.
     expect(checkedKeys).toBeGreaterThan(300);
     expect(problems).toEqual([]);
-  });
+    },
+    30_000
+  );
 });
