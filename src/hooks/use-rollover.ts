@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { academicYearsApi } from "@/lib/api-client";
-import type { RolloverMode, RolloverPlan } from "@/lib/rollover-plan";
+import type {
+  FeeBalancePolicy,
+  RolloverCopyOptions,
+  RolloverMode,
+  RolloverPlan,
+} from "@/lib/rollover-plan";
 
 /**
  * The rollover wizard's data layer (roadmap item 16).
@@ -38,10 +43,12 @@ export interface RolloverRequest {
   /** `EXISTING` only. */
   academicYearId?: string;
   /**
-   * Both flags are required. The server rejects a request that omits them, and
-   * the UI must state what it is carrying rather than let a default decide.
+   * All three flags are required. The server rejects a request that omits them,
+   * and the UI must state what it is carrying rather than let a default decide.
    */
-  copy: { promotionRules: boolean; feeStructures: boolean };
+  copy: RolloverCopyOptions;
+  /** Stated by the operator. The server refuses a request that omits it. */
+  feeBalancePolicy: FeeBalancePolicy;
 }
 
 export interface RolloverApplication {

@@ -66,6 +66,22 @@ export const ROLLOVER_SEVERITIES = ["blocker", "warning"] as const;
 export type RolloverSeverity = (typeof ROLLOVER_SEVERITIES)[number];
 
 /**
+ * How the target year treats balances left over from the source year.
+ *
+ * **ZERO** is the only option whose behaviour is derivable from the code: a year
+ * that said zero inherits nothing, so the invoice run must not sweep the source
+ * year's rows into its arrears. `CARRY_BALANCE` and `CARRY_UNPAID` both mean
+ * "inherit", and at the write boundary they behave identically — the distinction
+ * the roadmap draws between them (a net opening balance versus the itemised
+ * unpaid dues) is an accounting presentation question, and consolidating or
+ * re-cutting financial records is a decision this module will not make silently.
+ * What each option *does* guarantee is that the operator saw the outstanding
+ * total before choosing it, because {@link RolloverPlan.feeBalance} reports it.
+ */
+export const FEE_BALANCE_POLICIES = ["CARRY_BALANCE", "CARRY_UNPAID", "ZERO"] as const;
+export type FeeBalancePolicy = (typeof FEE_BALANCE_POLICIES)[number];
+
+/**
  * Every way a rollover can be refused or flagged.
  *
  * A runtime list with a derived union, so a code that is added here and not
@@ -102,6 +118,36 @@ export const ROLLOVER_FINDING_CODES = [
   "DANGLING_NEXT_CLASS",
   /** A rule's class no longer exists, so the rule cannot be carried. */
   "ORPHAN_RULE_CLASS",
+  /**
+   * The source has no timetable slots to carry, so the toggle copied nothing.
+   */
+  "SOURCE_HAS_NO_TIMETABLES",
+  /**
+   * Copied timetable slots arrived flagged for review. Always raised when the
+   * toggle copies anything, because a copied grid is a proposal to confirm and
+   * must not be read as an allocation the school made.
+   */
+  "TIMETABLE_ARRIVES_NEEDING_REVIEW",
+  /**
+   * The source holds more than one slot under the same match key — possible,
+   * because Postgres treats NULLs as distinct in a unique index and a slot with
+   * no section is not covered by the constraint. The run carries one of them;
+   * the others are the source's own defect, surfaced rather than multiplied.
+   */
+  "SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS",
+  /**
+   * The operator chose ZERO for the balance and there was something to zero.
+   * A warning rather than a blocker: writing a balance off is exactly what the
+   * operator asked for, and refusing it would make the option a lie.
+   */
+  "FEE_BALANCE_WRITTEN_OFF",
+  /**
+   * A roll-into where the target already holds a different balance policy. The
+   * operator's choice is recorded on the run, but the year keeps its own, for
+   * the same reason it keeps its own working-day policy: invoices already
+   * issued under one policy must not change meaning retroactively.
+   */
+  "TARGET_FEE_BALANCE_POLICY_KEPT",
 ] as const;
 
 export type RolloverFindingCode = (typeof ROLLOVER_FINDING_CODES)[number];
@@ -135,6 +181,11 @@ export const ROLLOVER_FINDING_SEVERITY: Record<RolloverFindingCode, RolloverSeve
   // the target year is still open, so this is surfaced and the run proceeds.
   DANGLING_NEXT_CLASS: "warning",
   ORPHAN_RULE_CLASS: "warning",
+  SOURCE_HAS_NO_TIMETABLES: "warning",
+  TIMETABLE_ARRIVES_NEEDING_REVIEW: "warning",
+  SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS: "warning",
+  FEE_BALANCE_WRITTEN_OFF: "warning",
+  TARGET_FEE_BALANCE_POLICY_KEPT: "warning",
 };
 
 /** Why a row will not be written. Machine-readable so the UI can translate it. */
@@ -157,7 +208,6 @@ export const NOT_COPIED_KEYS = [
   "students",
   "examSessions",
   "feeVouchers",
-  "timetables",
   "attendance",
   "certificates",
   "feeBalancePolicy",
@@ -207,11 +257,6 @@ export const NOT_COPIED_CONFIGURATION: readonly NotCopiedEntry[] = [
       "Vouchers, invoices and payments are financial records of the year that raised them. Carrying them forward would double-count revenue.",
   },
   {
-    key: "timetables",
-    reason:
-      "The timetable table has no unique key, so a copy cannot be made idempotent — a second run would duplicate the whole grid rather than update it. It is excluded until a match key exists.",
-  },
-  {
     key: "attendance",
     reason:
       "Attendance is a record of what happened, one row per student per day. A new year has no days that have happened yet.",
@@ -224,7 +269,7 @@ export const NOT_COPIED_CONFIGURATION: readonly NotCopiedEntry[] = [
   {
     key: "feeBalancePolicy",
     reason:
-      "Whether a student's unpaid balance is carried, partially carried, or zeroed is a money policy decision the school must make, not one this system can infer.",
+      "The policy the school chooses governs whether balances are inherited, but the balances themselves stay in the year that raised them. Nothing is copied; what is carried forward is a figure on the next invoice, not a financial record.",
   },
 ];
 
@@ -268,16 +313,48 @@ export interface RolloverFeeStructure {
 }
 
 /**
+ * One timetable slot as it is stored, minus its own id and year.
+ *
+ * The match key is the table's own unique constraint —
+ * `(tenantId, academicYearId, classId, sectionId, dayOfWeek, periodNumber)` —
+ * so a re-run updates the slot rather than duplicating it. `classId` is carried
+ * separately like the other copyable tables; `sectionId`, `dayOfWeek` and
+ * `periodNumber` stay inside `values` because they are part of the key the
+ * write targets, not a change to it.
+ */
+export interface RolloverTimetable {
+  classId: string;
+  sectionId: string | null;
+  dayOfWeek: string;
+  periodNumber: number;
+  startTime: string;
+  endTime: string;
+  subjectId: string | null;
+  staffProfileId: string | null;
+  roomNumber: string | null;
+  isBreak: boolean;
+  breakLabel: string | null;
+  needsReview: boolean;
+}
+
+/**
  * The configuration a rollover is asked to carry.
  *
- * Both fields are **required**. A default would mean the caller that forgot to
- * decide silently gets a year with no configuration, and the operator would read
- * that as "there was nothing to copy". Making them required moves the decision to
- * the compiler, which is where it belongs.
+ * All three fields are **required**. A default would mean the caller that forgot
+ * to decide silently gets a year with no configuration, and the operator would
+ * read that as "there was nothing to copy". Making them required moves the
+ * decision to the compiler, which is where it belongs.
  */
 export interface RolloverCopyOptions {
   promotionRules: boolean;
   feeStructures: boolean;
+  /**
+   * Copy the timetable grid. Copied slots arrive flagged `needsReview` — see
+   * {@link TIMETABLE_ARRIVES_NEEDING_REVIEW} — because a slot's staff, room and
+   * period are an allocation for the year that made it, and last year's
+   * allocation must not read as this year's.
+   */
+  timetables: boolean;
 }
 
 export type RolloverTarget =
@@ -312,16 +389,41 @@ export interface RolloverPlanInput {
     nonWorkingWeekdays: unknown;
     promotionRules: readonly RolloverRule[];
     feeStructures: readonly RolloverFeeStructure[];
+    timetables: readonly RolloverTimetable[];
   };
   target: RolloverTarget;
   /** Configuration already on the target year. Empty when the year is new. */
   targetPromotionRules: readonly RolloverRule[];
   targetFeeStructures: readonly RolloverFeeStructure[];
+  targetTimetables: readonly RolloverTimetable[];
   /** The tenant's whole class ladder, so a class reference can be checked. */
   allClasses: readonly RolloverClass[];
+  /** The tenant's sections, so a timetable slot's row label can name its own. */
+  allSections: readonly { id: string; name: string }[];
   /** Year ids already in use, so a collision is reported before the write. */
   existingYearIds: readonly string[];
   copy: RolloverCopyOptions;
+  /**
+   * The fee-balance policy for this transition, stated by the operator.
+   *
+   * Required rather than defaulted for the same reason `copy` is: a default
+   * would mean the caller that forgot to decide silently wrote off, or
+   * inherited, money nobody decided about.
+   */
+  feeBalancePolicy: FeeBalancePolicy;
+  /**
+   * The policy the target year already holds, if any. Null for a new year.
+   * Read rather than assumed so the plan can refuse to silently overwrite a
+   * policy that invoices may already have been swept under.
+   */
+  targetFeeBalancePolicy: FeeBalancePolicy | null;
+  /**
+   * The source year's unpaid exposure, aggregated by the loader.
+   *
+   * Reported rather than looked up here so the plan stays free of the database,
+   * and so the operator sees the same figure the write boundary will act on.
+   */
+  sourceOutstanding: { studentCount: number; totalBalance: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -342,6 +444,14 @@ export type RolloverRowAction = "created" | "updated" | "skipped";
 export interface RolloverDiffRow<TValues> {
   classId: string;
   className: string;
+  /**
+   * A label for the row when it is finer-grained than its class. Rules and fee
+   * structures are one row per class, so `className` is the whole identity and
+   * this stays unset. A timetable slot is one of many for its class, so the
+   * label names the slot — a UI that renders `className` alone would show
+   * twenty identical-looking rows for one class.
+   */
+  rowLabel?: string;
   /** The payload that will be written. For a skipped row, what it would have been. */
   values: TValues;
   /** Fields that differ from the target's current row. Empty unless updated. */
@@ -388,6 +498,10 @@ export interface RolloverPlanTarget {
   nonWorkingWeekdays: readonly Weekday[] | null;
   /** Whether this run writes the policy. False when the target keeps its own. */
   writesWorkingDayPolicy: boolean;
+  /** The balance policy the target will hold after the run. */
+  feeBalancePolicy: FeeBalancePolicy;
+  /** Whether this run writes the balance policy. See the working-day asymmetry. */
+  writesFeeBalancePolicy: boolean;
   /** The names, for a message that reads as a sentence. */
   nonWorkingWeekdayNames: string[];
 }
@@ -407,9 +521,28 @@ export interface RolloverPlan {
   target: RolloverPlanTarget;
   promotionRules: RolloverConfigDiff<Omit<RolloverRule, "classId">>;
   feeStructures: RolloverConfigDiff<Omit<RolloverFeeStructure, "classId">>;
+  timetables: RolloverConfigDiff<Omit<RolloverTimetable, "classId">>;
   /** Rows this run will write, across every requested configuration. */
   writes: { created: number; updated: number };
   notCopied: readonly NotCopiedEntry[];
+  /**
+   * The balance policy and what it acts on. Reported even when nothing is
+   * outstanding, so the operator can tell "nothing to carry" from "the figure
+   * was never shown to me".
+   */
+  feeBalance: {
+    policy: FeeBalancePolicy;
+    /** Students in the source year holding an unpaid voucher. */
+    studentCount: number;
+    /** The sum of those balances, in the tenant's currency. */
+    totalBalance: number;
+    /**
+     * False only for `ZERO` with something outstanding. Recorded as a field
+     * rather than re-derived by the UI, so the panel and the audit entry cannot
+     * disagree about whether money was written off.
+     */
+    writesOffBalance: boolean;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -487,6 +620,37 @@ const FEE_FIELDS = [
 ] as const satisfies readonly (keyof Omit<RolloverFeeStructure, "classId">)[];
 
 /**
+ * The timetable fields a copy compares, and so the ones `changedFields` can
+ * name.
+ *
+ * `sectionId`, `dayOfWeek` and `periodNumber` are **not** here: they are part of
+ * the match key, so two rows that differ on them are two different slots rather
+ * than one slot that changed.
+ *
+ * `needsReview` is **not** here either, and that is deliberate. It is not
+ * compared — it is *forced* onto every row this run writes (see the timetable
+ * diff in {@link planRollover}). Comparing it would break re-run idempotency:
+ * after a first copy the target holds `needsReview: true` while the source holds
+ * `false`, so a second run would report every slot as updated forever. Forcing
+ * without comparing means a re-run finds the slots identical and skips them.
+ */
+export const TIMETABLE_FIELDS = [
+  "sectionId",
+  "dayOfWeek",
+  "periodNumber",
+  "startTime",
+  "endTime",
+  "subjectId",
+  "staffProfileId",
+  "roomNumber",
+  "isBreak",
+  "breakLabel",
+] as const satisfies readonly Exclude<
+  keyof Omit<RolloverTimetable, "classId">,
+  "needsReview"
+>[];
+
+/**
  * A row's configuration fields, without the match key.
  *
  * The match key is separated out rather than left in the payload because it is
@@ -505,10 +669,14 @@ function configValues<TValues extends object>(
 /**
  * Build the create/update/skip diff for one year-scoped configuration table.
  *
- * Both copyable tables share the same shape — a class-keyed row with a unique
- * constraint on `(tenantId, academicYearId, classId)` — so they share one
- * implementation. A second copy of this loop would be a second place for the
- * match key to drift.
+ * Every copyable table shares one shape — a year-scoped row with a unique
+ * constraint that makes a re-run an update rather than a duplicate — so they
+ * share one implementation. What differs is the match key: rules and fee
+ * structures are one row per class, so the class is the whole key; the timetable
+ * holds many slots per class, so {@link params.slotOf} extends the key with the
+ * slot. Passing the key through here rather than writing a second loop is what
+ * keeps "a re-run updates rather than duplicates" true of all three tables at
+ * once.
  */
 function buildDiff<TValues extends object>(params: {
   requested: boolean;
@@ -516,6 +684,13 @@ function buildDiff<TValues extends object>(params: {
   target: readonly ({ classId: string } & TValues)[];
   fields: readonly (keyof TValues & string)[];
   classById: Map<string, RolloverClass>;
+  /**
+   * Extends the match key beyond the class for a table that holds more than one
+   * row per class. Omitted for a class-keyed table.
+   */
+  slotOf?: (row: { classId: string } & TValues) => string;
+  /** Builds the row label for a table finer-grained than its class. */
+  rowLabelOf?: (row: { classId: string } & TValues, className: string) => string;
   /** Named in the skip reason so the operator knows which table was skipped. */
   missingClassReason: string;
 }): RolloverConfigDiff<TValues> {
@@ -531,7 +706,10 @@ function buildDiff<TValues extends object>(params: {
   // that renders `created` show writes that will never happen.
   if (!params.requested) return diff;
 
-  const targetByClass = new Map(params.target.map((row) => [row.classId, row]));
+  const matchKey = (row: { classId: string } & TValues): string =>
+    params.slotOf ? `${row.classId}\u0000${params.slotOf(row)}` : row.classId;
+
+  const targetByKey = new Map(params.target.map((row) => [matchKey(row), row]));
 
   for (const sourceRow of params.source) {
     const classId = sourceRow.classId;
@@ -549,12 +727,14 @@ function buildDiff<TValues extends object>(params: {
       continue;
     }
 
-    const existing = targetByClass.get(classId);
+    const rowLabel = params.rowLabelOf?.(sourceRow, rolloverClass.name);
+    const existing = targetByKey.get(matchKey(sourceRow));
 
     if (!existing) {
       diff.created.push({
         classId,
         className: rolloverClass.name,
+        ...(rowLabel ? { rowLabel } : {}),
         values,
         changedFields: [],
         reason: null,
@@ -570,6 +750,7 @@ function buildDiff<TValues extends object>(params: {
       diff.skipped.push({
         classId,
         className: rolloverClass.name,
+        ...(rowLabel ? { rowLabel } : {}),
         values,
         changedFields: [],
         reason: {
@@ -583,6 +764,7 @@ function buildDiff<TValues extends object>(params: {
     diff.updated.push({
       classId,
       className: rolloverClass.name,
+      ...(rowLabel ? { rowLabel } : {}),
       values,
       changedFields: fields,
       reason: null,
@@ -777,6 +959,35 @@ export function planRollover(input: RolloverPlanInput): RolloverPlan {
       "The class this fee structure belongs to is no longer in the class ladder, so the structure cannot be carried.",
   });
 
+  const sectionById = new Map(input.allSections.map((row) => [row.id, row.name]));
+
+  // A copied slot always arrives flagged for review, so the flag is forced here
+  // rather than copied from the source — a source slot has `needsReview: false`
+  // precisely because the source year confirmed it. Forcing it in the plan
+  // rather than in the write keeps the dry run describing exactly what the
+  // commit will write, and keeping it out of TIMETABLE_FIELDS keeps a re-run a
+  // no-op: the flag is not compared, so the second run finds the slots
+  // identical and skips them.
+  const timetables = buildDiff<Omit<RolloverTimetable, "classId">>({
+    requested: copy.timetables,
+    source: source.timetables,
+    target: input.targetTimetables,
+    fields: TIMETABLE_FIELDS,
+    classById,
+    slotOf: (row) => `${row.sectionId ?? ""}\u0000${row.dayOfWeek}\u0000${row.periodNumber}`,
+    rowLabelOf: (row, className) => {
+      const section = row.sectionId ? sectionById.get(row.sectionId) : undefined;
+      const slot = `${row.dayOfWeek} · P${row.periodNumber}`;
+      return section ? `${className} · ${section} · ${slot}` : `${className} · ${slot}`;
+    },
+    missingClassReason:
+      "The class this timetable slot belongs to is no longer in the class ladder, so the slot cannot be carried.",
+  });
+
+  for (const row of [...timetables.created, ...timetables.updated]) {
+    row.values.needsReview = true;
+  }
+
   // -------------------------------------------------------------------------
   // Consequences the diff alone cannot show.
   // -------------------------------------------------------------------------
@@ -818,6 +1029,55 @@ export function planRollover(input: RolloverPlanInput): RolloverPlan {
     );
   }
 
+  if (copy.timetables && source.timetables.length === 0) {
+    warnings.push(
+      finding(
+        "SOURCE_HAS_NO_TIMETABLES",
+        { sourceLabel: source.label },
+        `'${source.label}' has no timetable slots, so there was nothing to carry.`
+      )
+    );
+  }
+
+  // Stated rather than left to be noticed in the diff, because a grid that
+  // arrived flagged is easy to read as reviewed. The count is of the slots this
+  // run wrote, which is the number a review has to cover.
+  const timetableWrites = timetables.counts.created + timetables.counts.updated;
+  if (copy.timetables && timetableWrites > 0) {
+    warnings.push(
+      finding(
+        "TIMETABLE_ARRIVES_NEEDING_REVIEW",
+        { targetLabel: target.label, count: timetableWrites },
+        `${timetableWrites} timetable slot(s) copied into '${target.label}' are flagged for review. A copied grid is a starting point, not an allocation the school made — confirm the staff, rooms and periods before it is treated as this year's timetable.`
+      )
+    );
+  }
+
+  // The timetable's unique key cannot see a slot with no section, because
+  // Postgres treats NULLs as distinct. A duplicate is therefore invisible to
+  // the database and has to be caught here, where the whole source grid is in
+  // memory. Reported rather than silently de-duplicated: the school's own grid
+  // holding two slots for the same period is a defect someone should see.
+  if (copy.timetables) {
+    const slotKey = (row: RolloverTimetable): string =>
+      `${row.classId}\u0000${row.sectionId ?? ""}\u0000${row.dayOfWeek}\u0000${row.periodNumber}`;
+
+    const sourceSlotCounts = new Map<string, number>();
+    for (const row of source.timetables) {
+      sourceSlotCounts.set(slotKey(row), (sourceSlotCounts.get(slotKey(row)) ?? 0) + 1);
+    }
+    const duplicated = [...sourceSlotCounts.values()].filter((count) => count > 1).length;
+    if (duplicated > 0) {
+      warnings.push(
+        finding(
+          "SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS",
+          { sourceLabel: source.label, count: duplicated },
+          `'${source.label}' holds ${duplicated} timetable slot(s) that share a class, section, day and period with another slot. The database cannot prevent this for a class with no section, so the copy carried one of them rather than both.`
+        )
+      );
+    }
+  }
+
   // The check that stops the wizard producing a year it cannot then promote.
   // Computed from the outcome rather than from the request, so "the operator
   // declined the copy" and "the target was never configured" are one blocker.
@@ -843,7 +1103,7 @@ export function planRollover(input: RolloverPlanInput): RolloverPlan {
     );
   }
 
-  if (!copy.promotionRules && !copy.feeStructures) {
+  if (!copy.promotionRules && !copy.feeStructures && !copy.timetables) {
     warnings.push(
       finding(
         "NOTHING_REQUESTED",
@@ -854,9 +1114,59 @@ export function planRollover(input: RolloverPlanInput): RolloverPlan {
   }
 
   const writes = {
-    created: promotionRules.counts.created + feeStructures.counts.created,
-    updated: promotionRules.counts.updated + feeStructures.counts.updated,
+    created:
+      promotionRules.counts.created +
+      feeStructures.counts.created +
+      timetables.counts.created,
+    updated:
+      promotionRules.counts.updated +
+      feeStructures.counts.updated +
+      timetables.counts.updated,
   };
+
+  // The balance policy is stated, never inferred. What the plan adds is the
+  // figure the statement acts on, so "ZERO" is a decision about a number the
+  // operator has seen rather than a tick in a form.
+  const { studentCount, totalBalance } = input.sourceOutstanding;
+  const writesOffBalance = input.feeBalancePolicy === "ZERO" && totalBalance > 0;
+  if (writesOffBalance) {
+    warnings.push(
+      finding(
+        "FEE_BALANCE_WRITTEN_OFF",
+        { sourceLabel: source.label, targetLabel: target.label, count: studentCount, total: totalBalance },
+        `'${target.label}' will not inherit balances from '${source.label}'. ${studentCount} student(s) owe a total of ${totalBalance}, and that amount will not be carried forward as a balance. The vouchers themselves are not touched — they stay in '${source.label}' as the record of what was billed.`
+      )
+    );
+  }
+
+  // The same asymmetry the working-day policy has, for the same reason. A new
+  // year has no invoices, so stating its policy writes nothing that already
+  // exists. A year already in use may have had invoices swept under its current
+  // policy, so overwriting it would change the meaning of records after the
+  // fact — the operator's choice is recorded on the run instead.
+  const writesFeeBalancePolicy =
+    target.mode === "CREATE" ||
+    input.targetFeeBalancePolicy === null ||
+    input.targetFeeBalancePolicy === input.feeBalancePolicy;
+
+  if (
+    target.mode === "EXISTING" &&
+    input.targetFeeBalancePolicy !== null &&
+    input.targetFeeBalancePolicy !== input.feeBalancePolicy
+  ) {
+    warnings.push(
+      finding(
+        "TARGET_FEE_BALANCE_POLICY_KEPT",
+        {
+          targetLabel: target.label,
+          sourceLabel: source.label,
+          targetPolicy: input.targetFeeBalancePolicy,
+          requestedPolicy: input.feeBalancePolicy,
+        },
+        `'${target.label}' already states a fee-balance policy of ${input.targetFeeBalancePolicy}, so the policy chosen here (${input.feeBalancePolicy}) was recorded on this run but not applied. Invoices already issued under ${input.targetFeeBalancePolicy} must not change meaning retroactively.`
+      )
+    );
+  }
 
   return {
     canProceed: blockers.length === 0,
@@ -890,11 +1200,20 @@ export function planRollover(input: RolloverPlanInput): RolloverPlan {
       clonedFromId: target.mode === "CREATE" ? source.id : null,
       nonWorkingWeekdays: targetPolicy,
       writesWorkingDayPolicy,
+      feeBalancePolicy: input.feeBalancePolicy,
+      writesFeeBalancePolicy,
       nonWorkingWeekdayNames: targetPolicy ? nonWorkingWeekdayNames(targetPolicy) : [],
     },
     promotionRules,
     feeStructures,
+    timetables,
     writes,
     notCopied: NOT_COPIED_CONFIGURATION,
+    feeBalance: {
+      policy: input.feeBalancePolicy,
+      studentCount,
+      totalBalance,
+      writesOffBalance,
+    },
   };
 }

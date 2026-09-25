@@ -8,9 +8,11 @@ import messages from "@/messages/en.json";
 import {
   NOT_COPIED_CONFIGURATION,
   planRollover,
+  type RolloverCopyOptions,
   type RolloverFeeStructure,
   type RolloverPlan,
   type RolloverRule,
+  type RolloverTimetable,
 } from "@/lib/rollover-plan";
 import { RolloverPlanPanel } from "./rollover-plan-panel";
 
@@ -83,6 +85,7 @@ interface PlanOverrides {
   source?: Partial<typeof SOURCE> & {
     promotionRules?: RolloverRule[];
     feeStructures?: RolloverFeeStructure[];
+    timetables?: RolloverTimetable[];
   };
   target?: {
     mode: "CREATE";
@@ -94,7 +97,7 @@ interface PlanOverrides {
   targetPromotionRules?: RolloverRule[];
   targetFeeStructures?: RolloverFeeStructure[];
   existingYearIds?: string[];
-  copy?: { promotionRules: boolean; feeStructures: boolean };
+  copy?: RolloverCopyOptions;
 }
 
 /**
@@ -120,6 +123,7 @@ function plan(overrides: PlanOverrides = {}): RolloverPlan {
       ...SOURCE,
       promotionRules: [rule()],
       feeStructures: [fee()],
+      timetables: [],
       ...overrides.source,
     },
     target: overrides.target ?? {
@@ -131,9 +135,14 @@ function plan(overrides: PlanOverrides = {}): RolloverPlan {
     },
     targetPromotionRules: overrides.targetPromotionRules ?? [],
     targetFeeStructures: overrides.targetFeeStructures ?? [],
+    targetTimetables: [],
     allClasses: CLASSES,
+    allSections: [],
     existingYearIds: overrides.existingYearIds ?? [],
-    copy: overrides.copy ?? { promotionRules: true, feeStructures: true },
+    copy: overrides.copy ?? { promotionRules: true, feeStructures: true, timetables: false },
+    feeBalancePolicy: "CARRY_BALANCE",
+    targetFeeBalancePolicy: null,
+    sourceOutstanding: { studentCount: 0, totalBalance: 0 },
   });
 }
 
@@ -246,7 +255,7 @@ describe("RolloverPlanPanel — a clear plan", () => {
   });
 
   it("marks a configuration the operator declined as not requested", () => {
-    const declined = plan({ copy: { promotionRules: false, feeStructures: true } });
+    const declined = plan({ copy: { promotionRules: false, feeStructures: true, timetables: false } });
 
     expect(declined.promotionRules.requested).toBe(false);
     expect(declined.promotionRules.counts.created).toBe(0);
@@ -288,6 +297,7 @@ describe("RolloverPlanPanel — a blocked plan", () => {
         ...SOURCE,
         promotionRules: [rule()],
         feeStructures: [fee()],
+        timetables: [],
       },
       target: {
         mode: "EXISTING",
@@ -301,9 +311,14 @@ describe("RolloverPlanPanel — a blocked plan", () => {
       },
       targetPromotionRules: [],
       targetFeeStructures: [],
+      targetTimetables: [],
       allClasses: CLASSES,
+      allSections: [],
       existingYearIds: ["AY2026"],
-      copy: { promotionRules: true, feeStructures: true },
+      copy: { promotionRules: true, feeStructures: true, timetables: false },
+      feeBalancePolicy: "CARRY_BALANCE",
+      targetFeeBalancePolicy: null,
+      sourceOutstanding: { studentCount: 0, totalBalance: 0 },
     });
 
     const { container } = renderPanel(<RolloverPlanPanel plan={blocked} />);
@@ -382,7 +397,16 @@ describe("RolloverPlanPanel — every locale renders its own text", () => {
         localised.rollover.fixes.TARGET_YEAR_NOT_AFTER_SOURCE
       );
       expect(text, `${locale} exclusion`).toContain(
-        localised.rollover.notCopied.timetables.title
+        localised.rollover.notCopied.feeVouchers.title
+      );
+      // The timetable is copied now, so it must not be presented as an
+      // exclusion. An exclusion claiming otherwise would contradict the third
+      // bucket in the same panel.
+      const exclusionTitles = Object.values(localised.rollover.notCopied).map(
+        (entry) => entry.title
+      );
+      expect(exclusionTitles, `${locale} no timetable exclusion`).not.toContain(
+        localised.rollover.copyTimetables
       );
       // The week the year runs on, named in this script rather than in English.
       expect(text, `${locale} weekday`).toContain(localised.weekdays.sunday);

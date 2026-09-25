@@ -5,10 +5,13 @@ import {
   ROLLOVER_FINDING_SEVERITY,
   ROLLOVER_SEVERITIES,
   planRollover,
+  type FeeBalancePolicy,
+  type RolloverCopyOptions,
   type RolloverFeeStructure,
   type RolloverFindingCode,
   type RolloverPlan,
   type RolloverRule,
+  type RolloverTimetable,
 } from "@/lib/rollover-plan";
 
 /**
@@ -23,6 +26,30 @@ const CLASSES = [
   { id: "cls-2", name: "Class 2", classNumber: 2 },
   { id: "cls-3", name: "Class 3", classNumber: 3 },
 ];
+
+const SECTIONS = [
+  { id: "sec-a", name: "A" },
+  { id: "sec-b", name: "B" },
+];
+
+/** A timetable slot for Class 1, section A, Monday period 1. */
+function slot(overrides: Partial<RolloverTimetable> = {}): RolloverTimetable {
+  return {
+    classId: "cls-1",
+    sectionId: "sec-a",
+    dayOfWeek: "MONDAY",
+    periodNumber: 1,
+    startTime: "08:00",
+    endTime: "08:45",
+    subjectId: null,
+    staffProfileId: null,
+    roomNumber: null,
+    isBreak: false,
+    breakLabel: null,
+    needsReview: false,
+    ...overrides,
+  };
+}
 
 function rule(overrides: Partial<RolloverRule> = {}): RolloverRule {
   return {
@@ -96,13 +123,18 @@ interface PlanOverrides {
   source?: Partial<typeof SOURCE> & {
     promotionRules?: RolloverRule[];
     feeStructures?: RolloverFeeStructure[];
+    timetables?: RolloverTimetable[];
   };
   target?: ReturnType<typeof createTarget> | ReturnType<typeof existingTarget>;
   targetPromotionRules?: RolloverRule[];
   targetFeeStructures?: RolloverFeeStructure[];
+  targetTimetables?: RolloverTimetable[];
   allClasses?: typeof CLASSES;
   existingYearIds?: string[];
-  copy?: { promotionRules: boolean; feeStructures: boolean };
+  copy?: RolloverCopyOptions;
+  feeBalancePolicy?: FeeBalancePolicy;
+  targetFeeBalancePolicy?: FeeBalancePolicy | null;
+  sourceOutstanding?: { studentCount: number; totalBalance: number };
 }
 
 function plan(overrides: PlanOverrides = {}): RolloverPlan {
@@ -111,14 +143,22 @@ function plan(overrides: PlanOverrides = {}): RolloverPlan {
       ...SOURCE,
       promotionRules: [rule()],
       feeStructures: [fee()],
+      timetables: [],
       ...overrides.source,
     },
     target: overrides.target ?? createTarget(),
     targetPromotionRules: overrides.targetPromotionRules ?? [],
     targetFeeStructures: overrides.targetFeeStructures ?? [],
+    targetTimetables: overrides.targetTimetables ?? [],
     allClasses: overrides.allClasses ?? CLASSES,
+    allSections: SECTIONS,
     existingYearIds: overrides.existingYearIds ?? [],
-    copy: overrides.copy ?? { promotionRules: true, feeStructures: true },
+    copy: overrides.copy ?? { promotionRules: true, feeStructures: true, timetables: false },
+    // CARRY_BALANCE by default, with nothing outstanding, so a test only sees
+    // the fee-balance warnings when it asks for them.
+    feeBalancePolicy: overrides.feeBalancePolicy ?? "CARRY_BALANCE",
+    targetFeeBalancePolicy: overrides.targetFeeBalancePolicy ?? null,
+    sourceOutstanding: overrides.sourceOutstanding ?? { studentCount: 0, totalBalance: 0 },
   });
 }
 
@@ -330,7 +370,7 @@ describe("the configuration diff", () => {
   });
 
   it("writes nothing at all for a configuration that was not requested", () => {
-    const result = plan({ copy: { promotionRules: false, feeStructures: true } });
+    const result = plan({ copy: { promotionRules: false, feeStructures: true, timetables: false } });
 
     // Empty rather than "here is what you would have copied": a UI that renders
     // `created` must not show writes that will never happen.
@@ -373,7 +413,7 @@ describe("the configuration diff", () => {
 
 describe("the outcome the wizard must not produce", () => {
   it("refuses a new year that would hold no promotion rule", () => {
-    const result = plan({ copy: { promotionRules: false, feeStructures: true } });
+    const result = plan({ copy: { promotionRules: false, feeStructures: true, timetables: false } });
 
     // Without a rule the target cannot promote anyone, so the wizard's own next
     // step is impossible. This is the "looks finished" trap, as a blocker.
@@ -399,7 +439,7 @@ describe("the outcome the wizard must not produce", () => {
     const result = plan({
       target: existingTarget(),
       targetPromotionRules: [rule({ classId: "cls-3", nextClassId: null })],
-      copy: { promotionRules: false, feeStructures: false },
+      copy: { promotionRules: false, feeStructures: false, timetables: false },
     });
 
     expect(result.canProceed).toBe(true);
@@ -471,14 +511,138 @@ describe("the published exclusion list", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("includes the two exclusions that matter most", () => {
+  it("includes the exclusion that matters most", () => {
     const keys = NOT_COPIED_CONFIGURATION.map((entry) => entry.key);
-    // The timetable is excluded structurally — it has no unique key, so item
-    // 18's upsert semantics are unsatisfiable for it.
-    expect(keys).toContain("timetables");
+    // The timetable is NOT on this list, and it must not return to it: it has
+    // carried a match key since before the rollover existed, and an earlier
+    // version of this module excluded it on the false claim that it did not.
+    // Recording that here is what keeps the correction from quietly reversing.
+    expect(keys).not.toContain("timetables");
     // The fee-balance policy is excluded because it is a money decision, not
     // because it was overlooked.
     expect(keys).toContain("feeBalancePolicy");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("the timetable copy", () => {
+  const timetableCopy = { promotionRules: true, feeStructures: true, timetables: true };
+
+  it("copies every source slot into a new year", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot(), slot({ periodNumber: 2 }), slot({ classId: "cls-2" })] },
+    });
+
+    expect(result.timetables.requested).toBe(true);
+    expect(result.timetables.counts.created).toBe(3);
+    expect(result.writes.created).toBe(
+      result.promotionRules.counts.created + result.feeStructures.counts.created + 3
+    );
+  });
+
+  it("labels a slot by its class, section, day and period, not just its class", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot()] },
+    });
+
+    expect(result.timetables.created[0].className).toBe("Class 1");
+    expect(result.timetables.created[0].rowLabel).toBe("Class 1 · A · MONDAY · P1");
+  });
+
+  it("labels an unsectioned slot without inventing a section", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot({ sectionId: null })] },
+    });
+
+    expect(result.timetables.created[0].rowLabel).toBe("Class 1 · MONDAY · P1");
+  });
+
+  it("flags every slot it will write for review", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot()] },
+    });
+
+    for (const row of [...result.timetables.created, ...result.timetables.updated]) {
+      expect(row.values.needsReview).toBe(true);
+    }
+    expect(codes(result)).toContain("TIMETABLE_ARRIVES_NEEDING_REVIEW");
+  });
+
+  it("reports a re-run as nothing to do, which is what keeps the flag from churning", () => {
+    const copied = { ...slot(), needsReview: true };
+
+    // The target now holds what the first run wrote. The second run must find
+    // it identical, not report an update — a comparison that included
+    // `needsReview` would report every slot as changed forever.
+    const second = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot()] },
+      targetTimetables: [copied],
+    });
+
+    expect(second.timetables.counts.skipped).toBe(1);
+    expect(second.timetables.counts.updated).toBe(0);
+    expect(second.timetables.skipped[0].reason?.code).toBe("ALREADY_IDENTICAL");
+    expect(copied.needsReview).toBe(true);
+  });
+
+  it("updates rather than duplicates when the target's slot differs", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot({ roomNumber: "204" })] },
+      targetTimetables: [slot({ roomNumber: "101" })],
+    });
+
+    expect(result.timetables.counts.updated).toBe(1);
+    expect(result.timetables.updated[0].changedFields).toEqual(["roomNumber"]);
+  });
+
+  it("does not write a slot for a configuration that was not requested", () => {
+    const result = plan({
+      source: { timetables: [slot()] },
+      copy: { promotionRules: true, feeStructures: true, timetables: false },
+    });
+
+    expect(result.timetables.requested).toBe(false);
+    expect(result.timetables.counts.created).toBe(0);
+    expect(codes(result)).not.toContain("TIMETABLE_ARRIVES_NEEDING_REVIEW");
+  });
+
+  it("skips a slot whose class is gone, and says which one", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot({ classId: "cls-gone" })] },
+    });
+
+    expect(result.timetables.counts.skipped).toBe(1);
+    expect(result.timetables.skipped[0].reason?.code).toBe("CLASS_MISSING");
+  });
+
+  it("warns when the source holds two slots the database cannot tell apart", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: {
+        timetables: [
+          slot({ sectionId: null, roomNumber: "1" }),
+          slot({ sectionId: null, roomNumber: "2" }),
+        ],
+      },
+    });
+
+    expect(codes(result)).toContain("SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS");
+  });
+
+  it("stays quiet about duplicates when the two slots differ in section", () => {
+    const result = plan({
+      copy: timetableCopy,
+      source: { timetables: [slot(), slot({ sectionId: "sec-b" })] },
+    });
+
+    expect(codes(result)).not.toContain("SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS");
   });
 });
 
@@ -510,7 +674,7 @@ describe("the finding vocabulary", () => {
     },
     {
       code: "TARGET_WILL_HAVE_NO_PROMOTION_RULES",
-      make: () => plan({ copy: { promotionRules: false, feeStructures: false } }),
+      make: () => plan({ copy: { promotionRules: false, feeStructures: false, timetables: false } }),
     },
     {
       code: "SOURCE_YEAR_STILL_OPEN",
@@ -522,7 +686,7 @@ describe("the finding vocabulary", () => {
     },
     {
       code: "NOTHING_REQUESTED",
-      make: () => plan({ copy: { promotionRules: false, feeStructures: false } }),
+      make: () => plan({ copy: { promotionRules: false, feeStructures: false, timetables: false } }),
     },
     {
       code: "WORKING_DAY_POLICY_UNDECLARED",
@@ -543,6 +707,42 @@ describe("the finding vocabulary", () => {
     {
       code: "ORPHAN_RULE_CLASS",
       make: () => plan({ source: { promotionRules: [rule({ classId: "cls-gone" })] } }),
+    },
+    {
+      code: "SOURCE_HAS_NO_TIMETABLES",
+      make: () => plan({ copy: { promotionRules: true, feeStructures: true, timetables: true } }),
+    },
+    {
+      code: "TIMETABLE_ARRIVES_NEEDING_REVIEW",
+      make: () => plan({
+        copy: { promotionRules: true, feeStructures: true, timetables: true },
+        source: { timetables: [slot()] },
+      }),
+    },
+    {
+      code: "SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS",
+      make: () => plan({
+        copy: { promotionRules: true, feeStructures: true, timetables: true },
+        // The same slot twice, without a section — exactly the shape the
+        // database's unique key cannot see, because Postgres treats NULLs as
+        // distinct and the constraint therefore does not cover it.
+        source: { timetables: [slot({ sectionId: null }), slot({ sectionId: null })] },
+      }),
+    },
+    {
+      code: "FEE_BALANCE_WRITTEN_OFF",
+      make: () => plan({
+        feeBalancePolicy: "ZERO",
+        sourceOutstanding: { studentCount: 12, totalBalance: 48000 },
+      }),
+    },
+    {
+      code: "TARGET_FEE_BALANCE_POLICY_KEPT",
+      make: () => plan({
+        target: existingTarget(),
+        feeBalancePolicy: "ZERO",
+        targetFeeBalancePolicy: "CARRY_UNPAID",
+      }),
     },
   ];
 

@@ -5874,7 +5874,12 @@
       "TARGET_WORKING_DAY_POLICY_KEPT": "“{targetLabel}” keeps its own working-day policy ({targetPolicy}); “{sourceLabel}” declares ({sourcePolicy}). The source's policy was not applied.",
       "SOURCE_HAS_NO_FEE_STRUCTURES": "“{sourceLabel}” has no class fee structures, so there was nothing to carry.",
       "DANGLING_NEXT_CLASS": "{className}”s promotion rule names a next class that does not exist. The rule was carried as it stands.",
-      "ORPHAN_RULE_CLASS": "“{sourceLabel}” holds a promotion rule for a class that no longer exists, so it was not carried."
+      "ORPHAN_RULE_CLASS": "“{sourceLabel}” holds a promotion rule for a class that no longer exists, so it was not carried.",
+      "SOURCE_HAS_NO_TIMETABLES": "“{sourceLabel}” has no timetable slots, so there was nothing to carry.",
+      "TIMETABLE_ARRIVES_NEEDING_REVIEW": "{count} timetable slot(s) copied into “{targetLabel}” are flagged for review. A copied grid is a starting point, not an allocation the school made.",
+      "SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS": "“{sourceLabel}” holds {count} timetable slot(s) sharing a class, section, day and period with another slot. The copy carried one of them rather than both.",
+      "FEE_BALANCE_WRITTEN_OFF": "“{targetLabel}” will not inherit balances from “{sourceLabel}”. {count} student(s) owe a total of {total}, and that amount will not be carried forward as a balance.",
+      "TARGET_FEE_BALANCE_POLICY_KEPT": "“{targetLabel}” already states a fee-balance policy of {targetPolicy}, so the policy chosen here ({requestedPolicy}) was recorded on this run but not applied."
     },
     "fixes": {
       "TARGET_IS_SOURCE": "Choose a different target year.",
@@ -5890,7 +5895,12 @@
       "TARGET_WORKING_DAY_POLICY_KEPT": "Change the target year's policy if the source's should apply.",
       "SOURCE_HAS_NO_FEE_STRUCTURES": "Configure the source year's fee structures first, if they are missing.",
       "DANGLING_NEXT_CLASS": "Repoint the rule at a class that exists in the source year.",
-      "ORPHAN_RULE_CLASS": "Delete the orphaned rule from the source year."
+      "ORPHAN_RULE_CLASS": "Delete the orphaned rule from the source year.",
+      "SOURCE_HAS_NO_TIMETABLES": "Nothing to do. Build the timetable for “{targetLabel}” once the year is open.",
+      "TIMETABLE_ARRIVES_NEEDING_REVIEW": "Open the timetable for “{targetLabel}” and confirm the {count} flagged slot(s): the staff, the rooms and the periods.",
+      "SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS": "Remove the duplicated slots from “{sourceLabel}” so the copy is unambiguous.",
+      "FEE_BALANCE_WRITTEN_OFF": "Confirm the write-off, or choose a carry option instead before running the rollover.",
+      "TARGET_FEE_BALANCE_POLICY_KEPT": "Nothing to do. “{targetLabel}” keeps its own policy; this run's choice is on the rollover record."
     },
     "skipReasons": {
       "CLASS_MISSING": "The class no longer exists in the class ladder.",
@@ -5916,10 +5926,6 @@
       "feeVouchers": {
         "title": "Fee vouchers, invoices and payments",
         "reason": "Vouchers, invoices and payments are financial records of the year that raised them. Carrying them forward would double-count revenue."
-      },
-      "timetables": {
-        "title": "Timetables",
-        "reason": "The timetable has no unique key, so a copy cannot be repeated safely — a second run would duplicate the whole grid rather than update it. It is excluded until a match key exists."
       },
       "attendance": {
         "title": "Attendance",
@@ -5952,10 +5958,31 @@
       "otherFee": "Other fee",
       "totalMonthlyFee": "Total monthly fee",
       "billingCycle": "Billing cycle",
-      "notes": "Notes"
+      "notes": "Notes",
+      "sectionId": "Section",
+      "dayOfWeek": "Day",
+      "periodNumber": "Period",
+      "startTime": "Starts",
+      "endTime": "Ends",
+      "subjectId": "Subject",
+      "staffProfileId": "Teacher",
+      "roomNumber": "Room",
+      "isBreak": "Break",
+      "breakLabel": "Break label"
     },
     "selectSourceYear": "Select the year being rolled over.",
     "selectTargetYear": "Select the year the configuration is written into.",
-    "fillTargetDetails": "Complete the session code, the label and both dates."
+    "fillTargetDetails": "Complete the session code, the label and both dates.",
+    "copyTimetables": "Timetable grid",
+    "copyTimetablesHint": "The weekly slot grid per class. Copied slots are flagged for review, because last year's staff, rooms and periods are a starting point, not this year's allocation.",
+    "feeBalanceLabel": "Fee balances left over",
+    "feeBalanceHint": "What happens to unpaid balances from the year being left behind. The figure outstanding is shown in the plan before you run it.",
+    "feeBalancePlaceholder": "Choose what happens to the balances...",
+    "feeBalance": {
+      "CARRY_BALANCE": "Carry the balance forward",
+      "CARRY_UNPAID": "Carry unpaid dues only",
+      "ZERO": "Carry nothing (write the balance off)"
+    },
+    "feeBalanceOutstanding": "{count} student(s) owe a total of {total}"
   }
 }

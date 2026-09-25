@@ -133,7 +133,7 @@ model Tenant {
 /// and where the fee-balance policy choice (roadmap item 22) will be recorded
 /// once that money decision is made rather than invented.
 model AcademicYearRollover {
-  id                   String   @id @default(cuid())
+  id                   String @id @default(cuid())
   tenantId             String
   sourceAcademicYearId String
   targetAcademicYearId String
@@ -146,23 +146,33 @@ model AcademicYearRollover {
   /// Recorded because "the target year has no fee structures" and "the operator
   /// chose not to copy them" look identical from the target year, and only one
   /// of them is a problem.
-  copyPromotionRules   Boolean  @default(false)
-  copyFeeStructures    Boolean  @default(false)
+  copyPromotionRules Boolean @default(false)
+  copyFeeStructures  Boolean @default(false)
+  copyTimetables     Boolean @default(false)
 
   /// What this run actually wrote. A re-run updates rather than duplicates, so
   /// these are per-run counts, not the target year's totals.
-  promotionRulesCreated Int     @default(0)
-  promotionRulesUpdated Int     @default(0)
-  feeStructuresCreated  Int     @default(0)
-  feeStructuresUpdated  Int     @default(0)
+  promotionRulesCreated Int @default(0)
+  promotionRulesUpdated Int @default(0)
+  feeStructuresCreated  Int @default(0)
+  feeStructuresUpdated  Int @default(0)
+  timetablesCreated     Int @default(0)
+  timetablesUpdated     Int @default(0)
+
+  /// The fee-balance policy the operator stated for this transition, one of
+  /// FEE_BALANCE_POLICIES in `src/lib/rollover-plan.ts`. Recorded here as well
+  /// as on the target year because "the operator was never asked" and "the
+  /// operator chose ZERO" must stay distinguishable — the same reasoning as the
+  /// copy flags above.
+  feeBalancePolicy String?
 
   /// Whether the source year's working-day policy was carried across. False
   /// means the target year is **undeclared**, which is not the same as a year
   /// with no days off — see `src/lib/working-days.ts`.
   workingDayPolicyCarried Boolean @default(false)
 
-  performedByUserId    String?
-  performedAt          DateTime @default(now())
+  performedByUserId String?
+  performedAt       DateTime @default(now())
 
   tenant Tenant       @relation(fields: [tenantId], references: [tenantId])
   source AcademicYear @relation("RolloverSource", fields: [sourceAcademicYearId], references: [id], onDelete: Cascade)
@@ -285,13 +295,13 @@ model StudentProfile {
 }
 
 model AcademicYear {
-  id        String   @id @default(cuid())
-  tenantId  String
-  yearId    String
-  label     String
-  startDate DateTime
-  endDate   DateTime
-  isClosed  Boolean  @default(false)
+  id                 String   @id @default(cuid())
+  tenantId           String
+  yearId             String
+  label              String
+  startDate          DateTime
+  endDate            DateTime
+  isClosed           Boolean  @default(false)
   /// The year the institute is operating in, stated rather than inferred.
   /// Date ranges overlap in practice (a year is often opened before the
   /// previous one is closed), so "which year is current" cannot be derived
@@ -300,7 +310,7 @@ model AcademicYear {
   /// unique index: Prisma cannot express the partial index that would be needed
   /// (only the `true` rows must be unique), and this project applies schema with
   /// `db push` rather than migrations.
-  isCurrent Boolean  @default(false)
+  isCurrent          Boolean  @default(false)
   /// Which weekdays this year does not teach, as a JSON array of weekday
   /// numbers (0 = Sunday … 6 = Saturday).
   ///
@@ -322,9 +332,18 @@ model AcademicYear {
   /// from" is a single cell on the year list and joining a rollover record to
   /// render one cell would make the list query depend on a table it otherwise
   /// never touches.
-  clonedFromId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  clonedFromId       String?
+  /// How this year treats balances left over from the year before it, one of
+  /// FEE_BALANCE_POLICIES in `src/lib/rollover-plan.ts`.
+  ///
+  /// Lives on the year rather than only on the rollover record because the
+  /// consumer is the invoice run, which knows the year it is billing into and
+  /// not the rollover that opened it. Null means the operator was never asked,
+  /// which the invoice path must treat as "do not sweep prior-year balances"
+  /// rather than guessing a policy on the school's behalf.
+  feeBalancePolicy   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   tenant                     Tenant                   @relation(fields: [tenantId], references: [tenantId])
   clonedFrom                 AcademicYear?            @relation("AcademicYearClones", fields: [clonedFromId], references: [id])
@@ -1137,6 +1156,10 @@ model Timetable {
   roomNumber     String?
   isBreak        Boolean  @default(false)
   breakLabel     String?
+  // Set on rows a rollover copies, so last year's allocation cannot silently
+  // become this year's timetable. A copied slot is a proposal to confirm, not
+  // an allocation that was made. See item 26 of the roadmap.
+  needsReview    Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1148,6 +1171,12 @@ model Timetable {
   staffProfile  StaffProfile?         @relation(fields: [staffProfileId], references: [id])
   substitutions TeacherSubstitution[]
 
+  /// Postgres treats NULLs as distinct in a unique index, so this key is only
+  /// fully enforcing for slots that have a section: two unsectioned slots for
+  /// the same class, day and period are both allowed. `Timetable.needsReview`
+  /// and the rollover's duplicate-slot warning exist partly because of that.
+  /// Prisma 6.19 has no `nullsNotDistinct` argument to close it at the schema
+  /// level, so the rollover plan checks for duplicates itself.
   @@unique([tenantId, academicYearId, classId, sectionId, dayOfWeek, periodNumber])
   @@index([tenantId, classId, sectionId])
   @@index([tenantId, staffProfileId, dayOfWeek, periodNumber])

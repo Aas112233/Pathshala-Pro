@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/select";
 import { ERPFormSection, ERPFormGrid, ERPFormField } from "@/components/ui/erp-form-layout";
 import { RolloverPlanPanel } from "@/components/shared/rollover-plan-panel";
+import { AppDropdown } from "@/components/ui/app-dropdown";
 import { ApiError } from "@/lib/api-client";
+import { FEE_BALANCE_POLICIES, type FeeBalancePolicy } from "@/lib/rollover-plan";
 import {
   useExecuteRollover,
   useRolloverPreview,
@@ -121,6 +123,16 @@ export function RolloverWizard({
   const [endDate, setEndDate] = useState("");
   const [copyRules, setCopyRules] = useState(true);
   const [copyFees, setCopyFees] = useState(true);
+  // Off by default. A copied grid is a proposal to confirm, not an allocation
+  // the school made, so the operator has to ask for it.
+  const [copyTimetables, setCopyTimetables] = useState(false);
+
+  /**
+   * Stated, never defaulted. The three options decide what happens to money,
+   * and an empty select that blocks the request is the honest control: it makes
+   * the operator look at the choice instead of accepting one.
+   */
+  const [feeBalancePolicy, setFeeBalancePolicy] = useState<string>("");
 
   /**
    * The request the panel is describing — not the form's current state.
@@ -173,6 +185,10 @@ export function RolloverWizard({
         toast.error(t("selectTargetYear"));
         return null;
       }
+      if (!feeBalancePolicy) {
+        toast.error(t("feeBalancePlaceholder"));
+        return null;
+      }
       if (targetYearId === sourceId) {
         // The server refuses this too, but there is no reason to spend a round
         // trip telling the operator what the two selects already show. The
@@ -184,12 +200,18 @@ export function RolloverWizard({
         sourceAcademicYearId: sourceId,
         mode: "EXISTING",
         academicYearId: targetYearId,
-        copy: { promotionRules: copyRules, feeStructures: copyFees },
+        copy: { promotionRules: copyRules, feeStructures: copyFees, timetables: copyTimetables },
+        feeBalancePolicy: feeBalancePolicy as FeeBalancePolicy,
       };
     }
 
     if (!yearId.trim() || !label.trim() || !startDate || !endDate) {
       toast.error(t("fillTargetDetails"));
+      return null;
+    }
+
+    if (!feeBalancePolicy) {
+      toast.error(t("feeBalancePlaceholder"));
       return null;
     }
 
@@ -200,7 +222,8 @@ export function RolloverWizard({
       label: label.trim(),
       startDate,
       endDate,
-      copy: { promotionRules: copyRules, feeStructures: copyFees },
+      copy: { promotionRules: copyRules, feeStructures: copyFees, timetables: copyTimetables },
+      feeBalancePolicy: feeBalancePolicy as FeeBalancePolicy,
     };
   };
 
@@ -456,6 +479,13 @@ export function RolloverWizard({
                 label: t("copyFeeStructures"),
                 hint: t("copyFeeStructuresHint"),
               },
+              {
+                id: "rollover-copy-timetable",
+                checked: copyTimetables,
+                onChange: setCopyTimetables,
+                label: t("copyTimetables"),
+                hint: t("copyTimetablesHint"),
+              },
             ].map((option) => (
               <div
                 key={option.id}
@@ -477,11 +507,29 @@ export function RolloverWizard({
               </div>
             ))}
 
-            {!copyRules && !copyFees && (
+            {!copyRules && !copyFees && !copyTimetables && (
               <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
                 {t("nothingSelected")}
               </p>
             )}
+
+            <ERPFormField
+              label={t("feeBalanceLabel")}
+              helperText={t("feeBalanceHint")}
+            >
+              <AppDropdown
+                value={feeBalancePolicy}
+                onChange={(value) => {
+                  setFeeBalancePolicy(value);
+                  setSubmitted(null);
+                }}
+                placeholder={t("feeBalancePlaceholder")}
+                options={FEE_BALANCE_POLICIES.map((policy) => ({
+                  value: policy,
+                  label: t(`feeBalance.${policy}` as never),
+                }))}
+              />
+            </ERPFormField>
           </div>
         </ERPFormSection>
 

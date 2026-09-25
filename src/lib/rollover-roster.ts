@@ -3,12 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-error";
 import { logAuditEvent } from "@/lib/audit-logger";
 import {
+  FEE_BALANCE_POLICIES,
   planRollover,
+  type FeeBalancePolicy,
   type RolloverCopyOptions,
   type RolloverFeeStructure,
   type RolloverPlan,
   type RolloverRule,
   type RolloverTarget,
+  type RolloverTimetable,
 } from "@/lib/rollover-plan";
 
 /**
@@ -49,6 +52,21 @@ const FEE_SELECT = {
   isActive: true,
 } as const;
 
+const TIMETABLE_SELECT = {
+  classId: true,
+  sectionId: true,
+  dayOfWeek: true,
+  periodNumber: true,
+  startTime: true,
+  endTime: true,
+  subjectId: true,
+  staffProfileId: true,
+  roomNumber: true,
+  isBreak: true,
+  breakLabel: true,
+  needsReview: true,
+} as const;
+
 // ---------------------------------------------------------------------------
 // The request
 // ---------------------------------------------------------------------------
@@ -69,6 +87,8 @@ export interface RolloverRequestBody {
   sourceAcademicYearId: string;
   target: RolloverRequestTarget;
   copy: RolloverCopyOptions;
+  /** Stated by the operator. Required, never defaulted — see the plan module. */
+  feeBalancePolicy: FeeBalancePolicy;
   dryRun: boolean;
 }
 
@@ -160,14 +180,14 @@ export function parseRolloverRequest(body: unknown): RolloverRequestBody {
   const copy = raw.copy;
   if (!copy || typeof copy !== "object") {
     throw invalidRequest(
-      "A 'copy' object is required, stating whether to carry the promotion rules and the fee structures.",
+      "A 'copy' object is required, stating whether to carry the promotion rules, the fee structures and the timetable.",
       "copy",
       "MISSING_COPY_OPTIONS"
     );
   }
 
   const copyRaw = copy as Record<string, unknown>;
-  for (const key of ["promotionRules", "feeStructures"] as const) {
+  for (const key of ["promotionRules", "feeStructures", "timetables"] as const) {
     if (typeof copyRaw[key] !== "boolean") {
       throw invalidRequest(
         `'copy.${key}' must be true or false. It is required, so that a rollover never carries configuration nobody asked for.`,
@@ -177,13 +197,26 @@ export function parseRolloverRequest(body: unknown): RolloverRequestBody {
     }
   }
 
+  if (
+    typeof raw.feeBalancePolicy !== "string" ||
+    !FEE_BALANCE_POLICIES.includes(raw.feeBalancePolicy as FeeBalancePolicy)
+  ) {
+    throw invalidRequest(
+      `'feeBalancePolicy' must be one of ${FEE_BALANCE_POLICIES.join(", ")}. It states what happens to balances left over in the source year, and a default would decide that on the school's behalf.`,
+      "feeBalancePolicy",
+      "INVALID_FEE_BALANCE_POLICY"
+    );
+  }
+
   return {
     sourceAcademicYearId,
     target,
     copy: {
       promotionRules: copyRaw.promotionRules as boolean,
       feeStructures: copyRaw.feeStructures as boolean,
+      timetables: copyRaw.timetables as boolean,
     },
+    feeBalancePolicy: raw.feeBalancePolicy as FeeBalancePolicy,
     dryRun: raw.dryRun === true,
   };
 }
@@ -197,6 +230,7 @@ export interface LoadRolloverPlanParams {
   sourceAcademicYearId: string;
   target: RolloverRequestTarget;
   copy: RolloverCopyOptions;
+  feeBalancePolicy: FeeBalancePolicy;
 }
 
 /**
@@ -215,7 +249,7 @@ export interface LoadRolloverPlanParams {
 export async function loadRolloverPlan(
   params: LoadRolloverPlanParams
 ): Promise<RolloverPlan> {
-  const { tenantId, sourceAcademicYearId, target, copy } = params;
+  const { tenantId, sourceAcademicYearId, target, copy, feeBalancePolicy } = params;
 
   const source = await prisma.academicYear.findFirst({
     where: { id: sourceAcademicYearId, tenantId },
@@ -228,12 +262,13 @@ export async function loadRolloverPlan(
       nonWorkingWeekdays: true,
       promotionRules: { select: RULE_SELECT },
       classFeeStructures: { select: FEE_SELECT },
+      timetables: { select: TIMETABLE_SELECT },
     },
   });
 
   if (!source) throw ApiError.notFound("Source academic year not found");
 
-  const [allYears, allClasses] = await Promise.all([
+  const [allYears, allClasses, allSections] = await Promise.all([
     prisma.academicYear.findMany({
       where: { tenantId },
       select: {
@@ -244,6 +279,7 @@ export async function loadRolloverPlan(
         endDate: true,
         isClosed: true,
         nonWorkingWeekdays: true,
+        feeBalancePolicy: true,
       },
     }),
     prisma.class.findMany({
@@ -251,17 +287,44 @@ export async function loadRolloverPlan(
       select: { id: true, name: true, classNumber: true },
       orderBy: { classNumber: "asc" },
     }),
+    prisma.section.findMany({
+      where: { tenantId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
+
+  // The figure the balance policy acts on. Aggregated here rather than in the
+  // plan, so the plan never touches the database and the operator is shown the
+  // same number the invoice boundary will enforce.
+  // One row per student, so the count is *students who owe* rather than
+  // vouchers that are owed on — a student with six unpaid months owes once,
+  // not six times, and that is the figure a write-off decision is about.
+  const outstandingRows = await prisma.feeVoucher.groupBy({
+    by: ["studentProfileId"],
+    where: {
+      tenantId,
+      academicYearId: sourceAcademicYearId,
+      status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+    },
+    _sum: { balance: true },
+  });
+  const studentCount = outstandingRows.length;
+  const totalBalance = outstandingRows.reduce(
+    (sum, row) => sum + Number(row._sum.balance ?? 0),
+    0
+  );
 
   let planTarget: RolloverTarget;
   let targetRules: RolloverRule[] = [];
   let targetFees: RolloverFeeStructure[] = [];
+  let targetTimetables: RolloverTimetable[] = [];
 
   if (target.mode === "EXISTING") {
     const existing = allYears.find((year) => year.id === target.academicYearId);
     if (!existing) throw ApiError.notFound("Target academic year not found");
 
-    const [enrolledStudents, rules, fees] = await Promise.all([
+    const [enrolledStudents, rules, fees, slots] = await Promise.all([
       prisma.studentAcademicSession.count({
         where: { tenantId, academicYearId: existing.id },
       }),
@@ -272,6 +335,10 @@ export async function loadRolloverPlan(
       prisma.classFeeStructure.findMany({
         where: { tenantId, academicYearId: existing.id },
         select: FEE_SELECT,
+      }),
+      prisma.timetable.findMany({
+        where: { tenantId, academicYearId: existing.id },
+        select: TIMETABLE_SELECT,
       }),
     ]);
 
@@ -287,6 +354,7 @@ export async function loadRolloverPlan(
     };
     targetRules = rules;
     targetFees = fees;
+    targetTimetables = slots;
   } else {
     planTarget = {
       mode: "CREATE",
@@ -310,13 +378,23 @@ export async function loadRolloverPlan(
       nonWorkingWeekdays: source.nonWorkingWeekdays,
       promotionRules: source.promotionRules,
       feeStructures: source.classFeeStructures,
+      timetables: source.timetables,
     },
     target: planTarget,
     targetPromotionRules: targetRules,
     targetFeeStructures: targetFees,
+    targetTimetables,
     allClasses,
+    allSections,
     existingYearIds: allYears.map((year) => year.yearId),
     copy,
+    feeBalancePolicy,
+    targetFeeBalancePolicy:
+      target.mode === "EXISTING"
+        ? ((allYears.find((year) => year.id === target.academicYearId)?.feeBalancePolicy ??
+            null) as FeeBalancePolicy | null)
+        : null,
+    sourceOutstanding: { studentCount, totalBalance },
   });
 }
 
@@ -338,6 +416,8 @@ export interface RolloverApplication {
   promotionRulesUpdated: number;
   feeStructuresCreated: number;
   feeStructuresUpdated: number;
+  timetablesCreated: number;
+  timetablesUpdated: number;
   workingDayPolicyCarried: boolean;
 }
 
@@ -379,6 +459,12 @@ export async function applyRolloverPlan(
             ? Prisma.DbNull
             : [...plan.target.nonWorkingWeekdays],
         clonedFromId: plan.target.clonedFromId,
+        // A new year has no invoices, so stating the policy here writes nothing
+        // that already exists. For an existing target the plan decides whether
+        // the year keeps its own, and the write below honours that.
+        feeBalancePolicy: plan.target.writesFeeBalancePolicy
+          ? plan.target.feeBalancePolicy
+          : undefined,
       },
       select: { id: true },
     });
@@ -442,6 +528,41 @@ export async function applyRolloverPlan(
     });
   }
 
+  // The timetable's match key is the table's own unique constraint, so the
+  // update targets a slot rather than a class. `needsReview: true` arrives
+  // already forced inside the plan's values, so writing them verbatim is what
+  // makes the copy a proposal rather than an allocation.
+  if (plan.timetables.created.length > 0) {
+    await tx.timetable.createMany({
+      data: plan.timetables.created.map((row) => ({
+        tenantId,
+        academicYearId: targetAcademicYearId,
+        classId: row.classId,
+        ...row.values,
+      })),
+    });
+  }
+
+  // `updateMany` rather than the compound-key `update`, because Prisma types a
+  // nullable column inside a compound unique as non-nullable — a slot with no
+  // section is unaddressable that way. The where is the match key, which the
+  // unique constraint holds unique for sectioned slots; for unsectioned ones
+  // the plan's duplicate check has already surfaced anything ambiguous, and
+  // updating the rows that share a key to one value reconciles them.
+  for (const row of plan.timetables.updated) {
+    await tx.timetable.updateMany({
+      where: {
+        tenantId,
+        academicYearId: targetAcademicYearId,
+        classId: row.classId,
+        sectionId: row.values.sectionId,
+        dayOfWeek: row.values.dayOfWeek,
+        periodNumber: row.values.periodNumber,
+      },
+      data: row.values,
+    });
+  }
+
   const workingDayPolicyCarried =
     targetCreated &&
     plan.target.writesWorkingDayPolicy &&
@@ -458,10 +579,14 @@ export async function applyRolloverPlan(
       mode: plan.target.mode,
       copyPromotionRules: plan.promotionRules.requested,
       copyFeeStructures: plan.feeStructures.requested,
+      copyTimetables: plan.timetables.requested,
       promotionRulesCreated: plan.promotionRules.counts.created,
       promotionRulesUpdated: plan.promotionRules.counts.updated,
       feeStructuresCreated: plan.feeStructures.counts.created,
       feeStructuresUpdated: plan.feeStructures.counts.updated,
+      timetablesCreated: plan.timetables.counts.created,
+      timetablesUpdated: plan.timetables.counts.updated,
+      feeBalancePolicy: plan.feeBalance.policy,
       workingDayPolicyCarried,
       performedByUserId: userId,
     },
@@ -495,12 +620,25 @@ export async function applyRolloverPlan(
         copy: {
           promotionRules: plan.promotionRules.requested,
           feeStructures: plan.feeStructures.requested,
+          timetables: plan.timetables.requested,
         },
         workingDayPolicy: {
           carried: workingDayPolicyCarried,
           nonWorkingWeekdays: plan.target.nonWorkingWeekdays,
         },
         writes: plan.writes,
+        // Copied slots are a proposal, not an allocation. Recorded so the audit
+        // trail answers "was this grid reviewed" without re-deriving the plan.
+        timetableNeedsReview: plan.timetables.counts.created + plan.timetables.counts.updated,
+        // Both what was asked and what the target will actually hold, because
+        // "the operator chose ZERO" and "the year already said ZERO" differ.
+        feeBalance: {
+          requested: plan.feeBalance.policy,
+          applied: plan.target.writesFeeBalancePolicy ? plan.target.feeBalancePolicy : null,
+          studentCount: plan.feeBalance.studentCount,
+          totalBalance: plan.feeBalance.totalBalance,
+          writtenOff: plan.feeBalance.writesOffBalance,
+        },
         // What the operator was told this would not do. Recorded because
         // "nobody said the timetables were not copied" is otherwise a
         // disagreement with no evidence either way.
@@ -520,6 +658,8 @@ export async function applyRolloverPlan(
     promotionRulesUpdated: plan.promotionRules.counts.updated,
     feeStructuresCreated: plan.feeStructures.counts.created,
     feeStructuresUpdated: plan.feeStructures.counts.updated,
+    timetablesCreated: plan.timetables.counts.created,
+    timetablesUpdated: plan.timetables.counts.updated,
     workingDayPolicyCarried,
   };
 }

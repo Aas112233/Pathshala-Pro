@@ -124,6 +124,20 @@ export async function POST(request: NextRequest) {
     // For arrears, we need to compute once outside loop via map to avoid N+1
     const arrearsMap = new Map<string, Prisma.Decimal>();
     if (data.carryForwardArrears) {
+      // A year that stated a fee-balance policy of ZERO inherits nothing from a
+      // year before it. The arrears query therefore reaches back over earlier
+      // periods **within this year only**; without the restriction, the sweep
+      // would silently undo a write-off the operator chose at rollover.
+      // `null` means the operator was never asked, which also restricts — a
+      // policy that was never stated is not the same as one that says carry.
+      const currentYearPolicy = await prisma.academicYear.findUnique({
+        where: { id: data.academicYearId },
+        select: { feeBalancePolicy: true },
+      });
+      const inheritsFromEarlierYears =
+        currentYearPolicy?.feeBalancePolicy === "CARRY_BALANCE" ||
+        currentYearPolicy?.feeBalancePolicy === "CARRY_UNPAID";
+
       // Single query for all students' pending balances. Only vouchers from a
       // period strictly before the one we're about to generate are counted:
       // otherwise every re-run of batch invoicing would re-sum balances that
@@ -136,6 +150,9 @@ export async function POST(request: NextRequest) {
           tenantId,
           studentProfileId: { in: studentIds },
           status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+          ...(inheritsFromEarlierYears
+            ? {}
+            : { academicYearId: data.academicYearId }),
           OR: [
             { billingYear: null },
             { billingYear: { lt: billingYear } },

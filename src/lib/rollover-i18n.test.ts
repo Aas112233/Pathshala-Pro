@@ -9,6 +9,7 @@ import {
   ROLLOVER_FINDING_CODES,
   ROLLOVER_MODES,
   ROLLOVER_SKIP_REASONS,
+  TIMETABLE_FIELDS,
   type RolloverFeeStructure,
   type RolloverRule,
 } from "@/lib/rollover-plan";
@@ -89,12 +90,17 @@ const FEE_SAMPLE: RolloverFeeStructure = {
   isActive: true,
 };
 
-/** Every column either table can report as changed, minus the match key. */
+/** Every column any copyable table can report as changed, minus the match key. */
 const DIFFABLE_COLUMNS = [
   ...new Set(
-    [...Object.keys(RULE_SAMPLE), ...Object.keys(FEE_SAMPLE)].filter(
-      (column) => column !== "classId"
-    )
+    [
+      ...Object.keys(RULE_SAMPLE),
+      ...Object.keys(FEE_SAMPLE),
+      // The timetable slot's own match key fields are named in `changedFields`
+      // because they travel in `values`, even though they identify the row
+      // rather than describe a change to it.
+      ...TIMETABLE_FIELDS,
+    ].filter((column) => column !== "classId")
   ),
 ].sort();
 
@@ -138,6 +144,21 @@ const CODE_PARAMS: Record<string, Record<string, string | number>> = {
   SOURCE_HAS_NO_FEE_STRUCTURES: { sourceLabel: "2025-2026" },
   DANGLING_NEXT_CLASS: { className: "Class 5", nextClassId: "cls-gone" },
   ORPHAN_RULE_CLASS: { classId: "cls-gone", sourceLabel: "2025-2026" },
+  SOURCE_HAS_NO_TIMETABLES: { sourceLabel: "2025-2026" },
+  TIMETABLE_ARRIVES_NEEDING_REVIEW: { targetLabel: "2026-2027", count: 24 },
+  SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS: { sourceLabel: "2025-2026", count: 3 },
+  FEE_BALANCE_WRITTEN_OFF: {
+    sourceLabel: "2025-2026",
+    targetLabel: "2026-2027",
+    count: 12,
+    total: 48000,
+  },
+  TARGET_FEE_BALANCE_POLICY_KEPT: {
+    targetLabel: "2026-2027",
+    sourceLabel: "2025-2026",
+    targetPolicy: "CARRY_UNPAID",
+    requestedPolicy: "ZERO",
+  },
 };
 
 /** The chrome keys that carry interpolation. */

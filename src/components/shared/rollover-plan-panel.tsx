@@ -61,6 +61,8 @@ import { cn } from "@/lib/utils";
 interface PlanRow {
   classId: string;
   className: string;
+  /** Names the slot for a table that holds more than one row per class. */
+  rowLabel?: string;
   changedFields: string[];
   reason: { code: RolloverSkipReason; message: string } | null;
 }
@@ -166,7 +168,7 @@ function DiffBucket({
         <ul className="space-y-1 pl-5">
           {rows.map((row) => (
             <li key={`${tone}-${row.classId}`} className="text-xs">
-              <span className="font-medium text-foreground">{row.className}</span>
+              <span className="font-medium text-foreground">{row.rowLabel ?? row.className}</span>
               {row.changedFields.length > 0 && (
                 <span className="text-muted-foreground">
                   {" — "}
@@ -460,6 +462,23 @@ export function RolloverPlanPanel({
               </p>
             </div>
 
+            {/* The balance figure is the whole reason the policy is a choice:
+                rendering it here means "ZERO" is a decision about a number the
+                operator has seen. */}
+            <div className="rounded-md border border-border/60 px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("feeBalanceLabel")}
+              </p>
+              <p className="mt-0.5 text-xs text-foreground">
+                {t(`feeBalance.${plan.feeBalance.policy}` as never)}
+                {plan.feeBalance.totalBalance > 0 &&
+                  ` — ${t("feeBalanceOutstanding", {
+                    count: plan.feeBalance.studentCount,
+                    total: plan.feeBalance.totalBalance,
+                  } as never)}`}
+              </p>
+            </div>
+
             <ConfigBlock
               title={t("copyPromotionRules")}
               hint={t("copyPromotionRulesHint")}
@@ -481,6 +500,23 @@ export function RolloverPlanPanel({
               title={t("copyFeeStructures")}
               hint={t("copyFeeStructuresHint")}
               section={plan.feeStructures as ConfigSection}
+              translateField={translateField}
+              translateReason={translateReason}
+              labels={{
+                created: t("createdLabel"),
+                updated: t("updatedLabel"),
+                skipped: t("skippedLabel"),
+                notRequested: t("notRequested"),
+                emptyCreated: t("emptyCreated"),
+                emptyUpdated: t("emptyUpdated"),
+                emptySkipped: t("emptySkipped"),
+              }}
+            />
+
+            <ConfigBlock
+              title={t("copyTimetables")}
+              hint={t("copyTimetablesHint")}
+              section={plan.timetables as unknown as ConfigSection}
               translateField={translateField}
               translateReason={translateReason}
               labels={{

@@ -19,6 +19,9 @@ import { Prisma } from "@prisma/client";
 const db = vi.hoisted(() => ({
   academicYear: { findFirst: vi.fn(), findMany: vi.fn() },
   class: { findMany: vi.fn() },
+  section: { findMany: vi.fn() },
+  timetable: { findMany: vi.fn() },
+  feeVoucher: { groupBy: vi.fn() },
   promotionRule: { findMany: vi.fn() },
   classFeeStructure: { findMany: vi.fn() },
   studentAcademicSession: { count: vi.fn() },
@@ -29,6 +32,7 @@ const tx = vi.hoisted(() => ({
   academicYear: { create: vi.fn() },
   promotionRule: { createMany: vi.fn(), update: vi.fn() },
   classFeeStructure: { createMany: vi.fn(), update: vi.fn() },
+  timetable: { createMany: vi.fn(), updateMany: vi.fn() },
   academicYearRollover: { create: vi.fn() },
   auditLog: { create: vi.fn() },
 }));
@@ -117,14 +121,16 @@ const CREATE_BODY = {
   label: "2026-2027",
   startDate: "2026-04-01",
   endDate: "2027-03-31",
-  copy: { promotionRules: true, feeStructures: true },
+  copy: { promotionRules: true, feeStructures: true, timetables: false },
+  feeBalancePolicy: "CARRY_BALANCE",
 };
 
 const EXISTING_BODY = {
   sourceAcademicYearId: "ay-2025",
   mode: "EXISTING",
   academicYearId: "ay-2026",
-  copy: { promotionRules: true, feeStructures: true },
+  copy: { promotionRules: true, feeStructures: true, timetables: false },
+  feeBalancePolicy: "CARRY_BALANCE",
 };
 
 beforeEach(() => {
@@ -142,6 +148,10 @@ beforeEach(() => {
   // lookup, so it carries every year the tenant has.
   db.academicYear.findMany.mockResolvedValue([SOURCE_YEAR, TARGET_YEAR]);
   db.class.findMany.mockResolvedValue(CLASSES);
+  db.section.findMany.mockResolvedValue([{ id: "sec-a", name: "A" }]);
+  db.timetable.findMany.mockResolvedValue([]);
+  // Nothing outstanding by default, so the fee-balance warning is silent.
+  db.feeVoucher.groupBy.mockResolvedValue([]);
   db.promotionRule.findMany.mockResolvedValue([RULE]);
   db.classFeeStructure.findMany.mockResolvedValue([FEE]);
   db.studentAcademicSession.count.mockResolvedValue(0);
@@ -151,6 +161,8 @@ beforeEach(() => {
   tx.promotionRule.update.mockResolvedValue({});
   tx.classFeeStructure.createMany.mockResolvedValue({ count: 1 });
   tx.classFeeStructure.update.mockResolvedValue({});
+  tx.timetable.createMany.mockResolvedValue({ count: 0 });
+  tx.timetable.updateMany.mockResolvedValue({ count: 0 });
   tx.academicYearRollover.create.mockResolvedValue({ id: "rollover-1" });
   tx.auditLog.create.mockResolvedValue({ id: "audit-1" });
   db.$transaction.mockImplementation(async (fn: (client: unknown) => unknown) => fn(tx));
@@ -241,7 +253,7 @@ describe("a blocked commit", () => {
 
   it("refuses a rollover that would leave the target unable to promote anyone", async () => {
     const res = await POST(
-      post({ ...CREATE_BODY, copy: { promotionRules: false, feeStructures: true } })
+      post({ ...CREATE_BODY, copy: { promotionRules: false, feeStructures: true, timetables: false } })
     );
     const json = await res.json();
 
@@ -321,6 +333,103 @@ describe("mode CREATE", () => {
     });
   });
 
+  it("states the chosen balance policy on the year it opens and records the figure", async () => {
+    // Two students owe a combined 15000, so ZERO has something to write off.
+    db.feeVoucher.groupBy.mockResolvedValue([
+      { studentProfileId: "sp-1", _sum: { balance: 10000 } },
+      { studentProfileId: "sp-2", _sum: { balance: 5000 } },
+    ]);
+
+    const res = await POST(post({ ...CREATE_BODY, feeBalancePolicy: "ZERO" }));
+    expect(res.status).toBe(201);
+
+    const year = tx.academicYear.create.mock.calls[0][0];
+    expect(year.data.feeBalancePolicy).toBe("ZERO");
+
+    const { data: record } = tx.academicYearRollover.create.mock.calls[0][0];
+    expect(record.feeBalancePolicy).toBe("ZERO");
+
+    const { data: audit } = tx.auditLog.create.mock.calls[0][0];
+    expect(audit.details.feeBalance).toMatchObject({
+      requested: "ZERO",
+      applied: "ZERO",
+      studentCount: 2,
+      totalBalance: 15000,
+      writtenOff: true,
+    });
+    expect(audit.details.warnings).toContain("FEE_BALANCE_WRITTEN_OFF");
+  });
+
+  it("leaves an existing year's own balance policy alone and says so", async () => {
+    db.academicYear.findMany.mockResolvedValue([
+      SOURCE_YEAR,
+      { ...TARGET_YEAR, feeBalancePolicy: "CARRY_UNPAID" },
+    ]);
+
+    const res = await POST(post({ ...EXISTING_BODY, feeBalancePolicy: "ZERO" }));
+    expect(res.status).toBe(201);
+
+    // Nothing was written to the year, because the year already existed.
+    expect(tx.academicYear.create).not.toHaveBeenCalled();
+
+    const { data: audit } = tx.auditLog.create.mock.calls[0][0];
+    expect(audit.details.feeBalance).toMatchObject({
+      requested: "ZERO",
+      applied: null,
+    });
+    expect(audit.details.warnings).toContain("TARGET_FEE_BALANCE_POLICY_KEPT");
+  });
+
+  it("copies timetable slots flagged for review, against the new year's id", async () => {
+    // One source slot, an unsectioned one — the shape the database's own unique
+    // key cannot see, which is why the plan reports duplicates itself.
+    db.academicYear.findFirst.mockResolvedValue({
+      ...SOURCE_YEAR,
+      timetables: [
+        {
+          classId: "cls-1",
+          sectionId: null,
+          dayOfWeek: "MONDAY",
+          periodNumber: 3,
+          startTime: "10:00",
+          endTime: "10:45",
+          subjectId: "sub-1",
+          staffProfileId: "staff-1",
+          roomNumber: "204",
+          isBreak: false,
+          breakLabel: null,
+          needsReview: false,
+        },
+      ],
+    });
+
+    // Rules stay on: a rollover that copies no rule would be refused for
+    // leaving the target unable to promote, which is a different gate.
+    const res = await POST(post({ ...CREATE_BODY, copy: { promotionRules: true, feeStructures: true, timetables: true } }));
+    // 201, not 200: this path committed, and the response carries what it wrote.
+    expect(res.status).toBe(201);
+
+    // The slot is written against the *new* year, and `needsReview` is forced
+    // rather than inherited: a source slot is false precisely because the
+    // source year confirmed it.
+    expect(tx.timetable.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          tenantId: "tenant-1",
+          academicYearId: "ay-2026-new",
+          classId: "cls-1",
+          sectionId: null,
+          dayOfWeek: "MONDAY",
+          periodNumber: 3,
+          needsReview: true,
+        }),
+      ],
+    });
+
+    const { data: record } = tx.academicYearRollover.create.mock.calls[0][0];
+    expect(record).toMatchObject({ copyTimetables: true, timetablesCreated: 1 });
+  });
+
   it("records the run and audits it inside the same transaction", async () => {
     await POST(post(CREATE_BODY));
 
@@ -334,6 +443,7 @@ describe("mode CREATE", () => {
       mode: "CREATE",
       copyPromotionRules: true,
       copyFeeStructures: true,
+      copyTimetables: false,
       promotionRulesCreated: 1,
       feeStructuresCreated: 1,
       workingDayPolicyCarried: true,
@@ -356,9 +466,10 @@ describe("mode CREATE", () => {
     await POST(post(CREATE_BODY));
 
     const { data: audit } = tx.auditLog.create.mock.calls[0][0];
-    // "Nobody said the timetables were not copied" is otherwise a
-    // disagreement with no evidence either way.
-    expect(audit.details.notCopied).toContain("timetables");
+    // The timetable is copied now, so it must NOT be on the exclusion list the
+    // run recorded — an exclusion claiming otherwise would contradict the copy
+    // the same run just made.
+    expect(audit.details.notCopied).not.toContain("timetables");
     expect(audit.details.notCopied).toContain("feeBalancePolicy");
     expect(audit.details.warnings).toEqual([]);
   });
@@ -473,13 +584,23 @@ describe("the request itself", () => {
     ["no target year for EXISTING", { ...EXISTING_BODY, academicYearId: "" }, "MISSING_TARGET_YEAR"],
     ["no copy options", { ...CREATE_BODY, copy: undefined }, "MISSING_COPY_OPTIONS"],
     [
+      "a fee-balance policy that is not one of the three",
+      { ...CREATE_BODY, feeBalancePolicy: "FORGIVE" },
+      "INVALID_FEE_BALANCE_POLICY",
+    ],
+    [
+      "a missing fee-balance policy",
+      { ...CREATE_BODY, feeBalancePolicy: undefined },
+      "INVALID_FEE_BALANCE_POLICY",
+    ],
+    [
       "a copy option that is not a boolean",
-      { ...CREATE_BODY, copy: { promotionRules: "yes", feeStructures: true } },
+      { ...CREATE_BODY, copy: { promotionRules: "yes", feeStructures: true, timetables: true } },
       "INVALID_COPY_OPTION",
     ],
     [
       "a missing copy option",
-      { ...CREATE_BODY, copy: { promotionRules: true } },
+      { ...CREATE_BODY, copy: { promotionRules: true, feeStructures: true } },
       "INVALID_COPY_OPTION",
     ],
   ])("refuses %s with a 400", async (_label, body, code) => {
@@ -523,6 +644,8 @@ describe("the response", () => {
       promotionRulesUpdated: 0,
       feeStructuresCreated: 1,
       feeStructuresUpdated: 0,
+      timetablesCreated: 0,
+      timetablesUpdated: 0,
       workingDayPolicyCarried: true,
     });
     expect(json.data.plan.notCopied.length).toBeGreaterThan(0);

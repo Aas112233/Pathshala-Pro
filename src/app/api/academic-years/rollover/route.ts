@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
       sourceAcademicYearId: parsed.sourceAcademicYearId,
       target: parsed.target,
       copy: parsed.copy,
+      feeBalancePolicy: parsed.feeBalancePolicy,
     });
 
     if (parsed.dryRun) {

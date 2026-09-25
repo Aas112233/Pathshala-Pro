@@ -15,11 +15,14 @@ const h = React.createElement;
 
 export function PortalView({ section }: { section: Section }) {
   const t = useTranslations("portal") as unknown as T;
+  // Weekday names come from the shared top-level `weekdays` namespace rather
+  // than a `portal.days` copy of the same six words.
+  const tDay = useTranslations("weekdays");
   const { data, isLoading, error } = usePortalData();
   if (isLoading) return h(Loading);
   if (!data) return h(Empty, null, error || t("noData"));
   if (section === "homework") return h(Homework, { data, t });
-  if (section === "timetable") return h(Timetable, { data, t });
+  if (section === "timetable") return h(Timetable, { data, t, tDay });
   if (section === "results") return h(Results, { data, t });
   if (section === "parent-dashboard") return h(ParentDashboard, { data, t });
   if (section === "fees") return h(Fees, { data, t });
@@ -113,11 +116,11 @@ function Homework({ data, t }: { data: any; t: T }) {
   return h("div", { className: "space-y-6" }, h("div", null, h("h1", { className: "text-2xl font-bold" }, t("homework.title")), h("p", { className: "mt-1 text-sm text-muted-foreground" }, t("homework.description"))), data.homework.length ? h("div", { className: "grid gap-4 lg:grid-cols-2" }, cards) : h(Empty, null, t("homework.none")));
 }
 
-function Timetable({ data, t }: { data: any; t: T }) {
+function Timetable({ data, t, tDay }: { data: any; t: T; tDay: T }) {
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
   const periods = Array.from(new Set(data.timetable.map((item: any) => item.periodNumber))).sort((a: any, b: any) => a - b);
   const rows = periods.map((period: any) => h("div", { key: period, className: "grid grid-cols-7 border-b" }, h("div", { className: "p-4 text-sm font-semibold" }, period), days.map((day) => { const item = data.timetable.find((entry: any) => entry.periodNumber === period && entry.dayOfWeek === day); return h("div", { key: day, className: "border-l p-3" }, item ? h("div", { className: "rounded-xl bg-primary/10 p-3" }, h("p", { className: "text-sm font-semibold" }, item.isBreak ? item.breakLabel : item.subject?.name || t("timetable.free")), h("p", { className: "mt-1 text-xs text-muted-foreground" }, `${item.startTime}–${item.endTime}`)) : h("span", { className: "text-sm text-muted-foreground" }, "—")); })));
-  return h("div", { className: "space-y-6" }, h("div", null, h("h1", { className: "text-2xl font-bold" }, t("timetable.title")), h("p", { className: "mt-1 text-sm text-muted-foreground" }, t("timetable.description"))), h(Card, { className: "overflow-x-auto p-0" }, h("div", { className: "min-w-[760px]" }, h("div", { className: "grid grid-cols-7 border-b bg-muted/40 text-xs font-semibold uppercase text-muted-foreground" }, h("div", { className: "p-4" }, t("timetable.period")), days.map((day) => h("div", { key: day, className: "p-4" }, t(`days.${day}`)))), periods.length ? rows : h(Empty, null, t("timetable.empty")))));
+  return h("div", { className: "space-y-6" }, h("div", null, h("h1", { className: "text-2xl font-bold" }, t("timetable.title")), h("p", { className: "mt-1 text-sm text-muted-foreground" }, t("timetable.description"))), h(Card, { className: "overflow-x-auto p-0" }, h("div", { className: "min-w-[760px]" }, h("div", { className: "grid grid-cols-7 border-b bg-muted/40 text-xs font-semibold uppercase text-muted-foreground" }, h("div", { className: "p-4" }, t("timetable.period")), days.map((day) => h("div", { key: day, className: "p-4" }, tDay(day.toLowerCase() as never)))), periods.length ? rows : h(Empty, null, t("timetable.empty")))));
 }
 
 function Results({ data, t }: { data: any; t: T }) {

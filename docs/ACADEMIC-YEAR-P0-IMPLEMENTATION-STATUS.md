@@ -1971,4 +1971,128 @@ content was altered by the commit (only the index was), and the full suite at HE
 `.gitignore` alongside `.claude/`, `.cursor/` and `.workbuddy-ai/`, so a local editor's settings do not
 become a repository artefact.
 
+## 22. Completing the remainings (Wave P2, items 17, 22, 26 — and one correction)
+
+### 22.1 The correction, which is the most important thing in this section
+
+§19.2 said the timetable was excluded from the copy because *"the timetable table has no unique key,
+so a copy cannot be made idempotent — a second run would duplicate the entire grid rather than update
+it."* That claim was **false**. `Timetable` has carried
+
+```
+@@unique([tenantId, academicYearId, classId, sectionId, dayOfWeek, periodNumber])
+```
+
+since before the rollover existed — it is present verbatim in the commit the whole module postdates.
+Items 17 and 26 were deferred on a schema fact that was never checked against the schema, and the false
+reason was written into this document with unusual confidence: *"a reason that can be checked against
+the schema rather than a judgement call."*
+
+It did not survive being checked. `git show 319a65d:src/prisma/schema.prisma` settles it, and that is
+the standard every "structural" claim in this document should have been held to.
+
+The exclusion list said the same false thing to the operator. Both are corrected here, and
+`rollover-plan.test.ts` now asserts the timetable is **not** on `NOT_COPIED_CONFIGURATION`, so the
+correction cannot quietly reverse.
+
+### 22.2 What a null section does to a match key
+
+Checking the match key properly found a second, subtler defect. `sectionId` is nullable, and Postgres
+treats NULLs as **distinct** in a unique index, so the constraint only enforces uniqueness for slots
+that have a section. Two unsectioned slots for the same class, day and period are both allowed — the
+key looks like a match key and is not one, for exactly the rows that have no section.
+
+Prisma 6.19 has no `nullsNotDistinct` argument to close this at the schema level (attempted; `P1012
+No such argument`), so it is handled in application code and **surfaced rather than hidden**:
+
+- the rollover's match key coalesces the section, so a copy is still one-to-one;
+- the plan raises `SOURCE_HAS_DUPLICATE_TIMETABLE_SLOTS` when the source grid already holds two slots
+  the database cannot tell apart — the school's own defect, reported rather than multiplied;
+- the roster writes an update through `updateMany`, because Prisma types a nullable column inside a
+  compound unique as non-nullable, which makes an unsectioned slot unaddressable that way.
+
+### 22.3 Item 17 and 26 — the timetable copy, arriving as a proposal
+
+`copy.timetables` is a third **required** copy flag, matching the existing two: a default would carry
+a grid nobody asked for. The diff reuses the one `buildDiff` implementation, generalised so each table
+supplies its own match key — the module's comment previously claimed all copyable tables were
+class-keyed, which was the same false premise.
+
+Copied slots arrive `needsReview: true` (item 26). The flag is **forced in the plan, not copied** — a
+source slot is `false` precisely because the source year confirmed it — and it is deliberately *not*
+in the compared field list, because comparing it would break re-run idempotency: after the first copy
+the target holds `true` while the source holds `false`, and a second run would report every slot as
+updated forever. Force without compare means the second run finds the slots identical and skips them.
+Both properties are asserted.
+
+The plan also names each slot by class, section, day and period — a new `rowLabel` on the diff row,
+because `className` alone would render twenty identical-looking rows for one class.
+
+### 22.4 Item 22 — the fee-balance policy, stated rather than inferred
+
+`FEE_BALANCE_POLICIES` is `CARRY_BALANCE | CARRY_UNPAID | ZERO`, required in the request, never
+defaulted. The schema gains `AcademicYear.feeBalancePolicy` (operative) and
+`AcademicYearRollover.feeBalancePolicy` (what was asked), for the same reason the copy flags are
+recorded twice: *"the operator was never asked"* and *"the operator chose ZERO"* must stay
+distinguishable.
+
+Two deliberate limits, stated rather than hidden:
+
+- **What ZERO does is derivable; what the two carry options do beyond "inherit" is not.** At the write
+  boundary both carry options behave identically — the roadmap's distinction between a net opening
+  balance and itemised unpaid dues is an accounting presentation question, and consolidating or
+  re-cutting financial records is not a decision this module makes silently. What the choice does
+  guarantee is that the operator saw the outstanding figure before choosing.
+- **The figure is reported, not buried.** `RolloverPlan.feeBalance` carries the student count and the
+  total, aggregated per *student* (a student with six unpaid months owes once, not six times), and the
+  panel renders it next to the selector.
+
+`ZERO` is enforced at the boundary that would otherwise silently undo it: the batch invoice arrears
+sweep, which previously reached back over *every* prior period regardless of year, now reaches back
+within the year only unless the target's stated policy says it may inherit. An **unstated** policy also
+restricts — never asked is not the same as says carry.
+
+A roll-into keeps an existing year's own policy, for the same reason it keeps its own working-day
+policy: invoices already issued under one policy must not change meaning retroactively.
+`TARGET_FEE_BALANCE_POLICY_KEPT` says so, and the run still records what was asked.
+
+### 22.5 The general template-key guard (the class, not the instances)
+
+`template-key-namespace.test.ts` walks every non-test source file, finds every `` t(`…${…}`) `` call
+site, attributes it to the namespace its *variable* was bound to, and asserts that container exists in
+`en`. Attribution is per variable rather than per file because a file routinely holds two translators.
+
+It found one more live defect on its first run: `portal-view.tsx` rendered `` t(`days.${day}`) ``
+against a `portal.days` namespace that exists in no locale — the student timetable's column headers
+have been showing raw key paths. Fixed by reusing the shared top-level `weekdays` namespace rather
+than authoring a second copy of six words.
+
+Four call sites are listed in `KNOWN_UNRESOLVABLE`, each with the reason static analysis cannot reach
+them — the first key segment is built from a value (`recurrence${…}`, `<moduleKey>.title`). The list
+is a review list with reasons, not a suppression list.
+
+### 22.6 Verification
+
+| Check | Result |
+|---|---|
+| Full suite | **110 files / 1288 tests, 0 failures** (was 109 / 1265) |
+| `tsc --noEmit` | clean |
+| `eslint` on the 13 touched files | **0 errors**, 42 warnings — all pre-existing `no-explicit-any` |
+| Locale byte format | CRLF, no BOM, no trailing newline, key order identical to `en` |
+
+New finding codes are covered by the same coverage-first table as the originals: every code in
+`ROLLOVER_FINDING_CODES` has a scenario that produces it, so the five new codes arrived with their
+scenarios rather than after them. The i18n guard failed twice during this increment for exactly the
+reasons it exists — a code authored without a translation, and a translation authored in the wrong
+position — and both were caught before any of it reached a screen.
+
+### 22.7 What is still outstanding
+
+- **Item 25**, the post-rollover verification checklist — buildable, unblocked, data source in place.
+- **Item 23**, the outstanding-fee write-off / waive sweep. The most invasive remaining item: it
+  writes financial records, and it wants a decision on whether a sweep is a write-off (accounting) or
+  a waiver (forgiveness, which `fees:waiver:approve` exists for) before the write is shaped.
+- The `sectionId` null-distinctness remains a database-level gap, as described in §22.2 — application
+  code compensates, the schema cannot express the fix.
+
 
