@@ -12,6 +12,7 @@ import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { triggerAbsenceAlert } from "@/lib/notifications/triggers/absence-alert";
 import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
+import { ATTENDANCE_STATUSES, isKnownAttendanceStatus } from "@/lib/attendance-rate";
 
 /**
  * GET /api/attendance
@@ -186,6 +187,51 @@ export async function POST(request: NextRequest) {
       const { date, records } = body;
       if (!date) return badRequest("Attendance date is required");
 
+      // ---------------------------------------------------------------------
+      // Validate before writing anything.
+      //
+      // This branch used to read `item.status || "PRESENT"` with no check at
+      // all, so any string the client sent was persisted verbatim. An
+      // unrecognised status is not inert: `attendanceRateFromCounts` scores
+      // anything that is neither attended nor non-teaching as a day of
+      // absence, so a typo silently becomes an absence in every denominator
+      // downstream — including the figure that decides whether a student is
+      // promoted. Refusing here is the only place the mistake is cheap.
+      // ---------------------------------------------------------------------
+      const malformed = records.filter(
+        (item: { studentProfileId?: unknown }) => !item?.studentProfileId
+      );
+      if (malformed.length > 0) {
+        return badRequest(
+          `${malformed.length} of ${records.length} attendance record(s) have no studentProfileId.`
+        );
+      }
+
+      const unrecognised = records
+        .map((item: { status?: unknown }, index: number): { status: unknown; index: number } => ({
+          status: item?.status,
+          index,
+        }))
+        .filter(
+          (entry: { status: unknown; index: number }) =>
+            entry.status !== undefined &&
+            entry.status !== null &&
+            !isKnownAttendanceStatus(entry.status)
+        );
+
+      if (unrecognised.length > 0) {
+        const shown = unrecognised
+          .slice(0, 5)
+          .map(
+            (entry: { status: unknown; index: number }) =>
+              `#${entry.index} '${String(entry.status)}'`
+          )
+          .join(", ");
+        return badRequest(
+          `Unrecognised attendance status on ${unrecognised.length} record(s): ${shown}. Allowed: ${ATTENDANCE_STATUSES.join(", ")}.`
+        );
+      }
+
       const attendanceDate = new Date(date);
       attendanceDate.setHours(0, 0, 0, 0);
       const nextDate = new Date(attendanceDate);
@@ -205,6 +251,8 @@ export async function POST(request: NextRequest) {
 
       await prisma.$transaction(async (tx) => {
         for (const item of records) {
+          // Only an *omitted* status defaults; a supplied one was validated
+          // against the shared vocabulary above and is written as given.
           const status = item.status || "PRESENT";
           if (status === "PRESENT") presentCount++;
           else if (status === "ABSENT") {

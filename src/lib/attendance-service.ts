@@ -1,12 +1,20 @@
 import { Prisma } from "@prisma/client";
+import type { AttendanceStatus } from "@/lib/attendance-rate";
+import {
+  enumerateWorkingDaysInMonth,
+  type Weekday,
+} from "@/lib/working-days";
 
-export type AttendanceStatusType =
-  | "PRESENT"
-  | "ABSENT"
-  | "LATE"
-  | "HALF_DAY"
-  | "EXCUSED"
-  | "HOLIDAY";
+/**
+ * The status vocabulary is declared once, in `attendance-rate.ts`.
+ *
+ * It used to be written out again here, which is how this file came to know six
+ * statuses while `createAttendanceSchema` knew a different four and the
+ * fast-grid knew a third set — three lists, none importing the others, and
+ * `LEAVE` in none of the domain ones. Aliased rather than re-exported so a
+ * reader looking for the definition is sent to the one place it lives.
+ */
+export type AttendanceStatusType = AttendanceStatus;
 
 export interface StudentAttendanceEntry {
   studentProfileId: string;
@@ -52,13 +60,27 @@ export interface StaffMonthlyPayrollAttendance {
   staffProfileId: string;
   monthYear: string; // e.g. "2026-09"
   totalCalendarDays: number;
+  /**
+   * Days off by the weekly schedule — every Sunday, for a six-day week.
+   *
+   * Exposed so the working-day figure can be reconciled on screen:
+   * `totalCalendarDays - weekendDays - holidayWorkingDays === totalWorkingDays`.
+   */
+  weekendDays: number;
+  /** Holiday dates in the month, deduplicated, whatever weekday they fall on. */
+  totalHolidays: number;
+  /**
+   * Of `totalHolidays`, the ones that fell on a working weekday and therefore
+   * reduced `totalWorkingDays`. The difference between the two is the holidays
+   * that landed on a weekly day off.
+   */
+  holidayWorkingDays: number;
   totalWorkingDays: number;
   presentDays: number;
   lateDays: number;
   halfDays: number;
   approvedLeaveDays: number;
   unexcusedAbsences: number;
-  totalHolidays: number;
   lopDays: number; // Loss of Pay Days
   payableDays: number;
 }
@@ -242,13 +264,22 @@ export async function getStaffMonthlyAttendanceSummary(
     staffProfileId: string;
     year: number;
     month: number; // 1-12
+    /**
+     * The institute's weekly days off, supplied by the caller.
+     *
+     * Required, and deliberately not defaulted to Saturday and Sunday. This
+     * figure is a denominator on a payslip, so a convention chosen silently is a
+     * wrong number with nothing to signal it. The arithmetic it replaces
+     * hardcoded `getDay() === 0`, which overstated the count for every school
+     * whose week runs Monday to Friday.
+     */
+    nonWorkingWeekdays: readonly Weekday[];
   }
 ): Promise<StaffMonthlyPayrollAttendance> {
-  const { tenantId, staffProfileId, year, month } = params;
+  const { tenantId, staffProfileId, year, month, nonWorkingWeekdays } = params;
 
   const startDate = new Date(Date.UTC(year, month - 1, 1));
   const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
-  const totalCalendarDays = new Date(year, month, 0).getDate();
 
   // 1. Fetch Attendance Records for the Month
   const records = await tx.attendance.findMany({
@@ -288,13 +319,13 @@ export async function getStaffMonthlyAttendanceSummary(
     },
   });
 
-  let totalHolidays = 0;
-  for (const h of holidays) {
-    const hStart = h.startDate < startDate ? startDate : h.startDate;
-    const hEnd = h.endDate > endDate ? endDate : h.endDate;
-    const days = Math.ceil((hEnd.getTime() - hStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    totalHolidays += Math.max(0, days);
-  }
+  // The holiday *count* is derived below, from the same enumeration that
+  // produces the working-day figure, so the two cannot disagree and overlapping
+  // holiday ranges cannot be counted twice.
+  //
+  // The previous loop summed each range's length, which double-counted any
+  // overlap and counted holidays that fell on a weekly day off as though they
+  // were teaching days removed from the month.
 
   let presentDays = 0;
   let lateDays = 0;
@@ -310,13 +341,25 @@ export async function getStaffMonthlyAttendanceSummary(
     else if (rec.status === "ABSENT") unexcusedAbsences++;
   }
 
-  // Working days (approx calendar days minus Sundays and holidays)
-  let sundaysCount = 0;
-  for (let d = 1; d <= totalCalendarDays; d++) {
-    const current = new Date(year, month - 1, d);
-    if (current.getDay() === 0) sundaysCount++;
-  }
-  const totalWorkingDays = Math.max(0, totalCalendarDays - sundaysCount - totalHolidays);
+  // Working days are enumerated as a set, never subtracted.
+  //
+  // This replaced `totalCalendarDays - sundaysCount - totalHolidays`, which was
+  // wrong twice: it hardcoded Sunday as the only weekly day off, and it removed
+  // a holiday that fell on a Sunday twice — once as a Sunday, once as a holiday.
+  // Enumerating and testing each date makes both impossible, because a date is
+  // either in the set or it is not.
+  const workingDays = enumerateWorkingDaysInMonth({
+    year,
+    month,
+    nonWorkingWeekdays,
+    holidays: holidays.map((holiday) => ({
+      startDate: holiday.startDate,
+      endDate: holiday.endDate,
+    })),
+  });
+
+  const totalCalendarDays = workingDays.totalCalendarDays;
+  const totalWorkingDays = workingDays.count;
 
 // Late penalty: Every 3 late days = 0.5 day LOP (rounded to 2dp for precision)
   const latePenaltyDays = Math.round((Math.floor(lateDays / 3) * 0.5 + Number.EPSILON) * 100) / 100;
@@ -333,13 +376,15 @@ export async function getStaffMonthlyAttendanceSummary(
     staffProfileId,
     monthYear: monthStr,
     totalCalendarDays,
+    weekendDays: workingDays.weekendDays,
+    totalHolidays: workingDays.holidayCalendarDays,
+    holidayWorkingDays: workingDays.holidayWorkingDays,
     totalWorkingDays,
     presentDays,
     lateDays,
     halfDays,
     approvedLeaveDays,
     unexcusedAbsences,
-    totalHolidays,
     lopDays,
     payableDays: Math.round(payableDays * 100) / 100,
   };

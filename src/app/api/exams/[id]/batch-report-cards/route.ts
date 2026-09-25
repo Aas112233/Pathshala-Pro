@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireApiAccess } from "@/lib/api-auth";
 import { errorResponse, successResponse } from "@/lib/api-response";
 import { calculateClassMeritRankings, calculateGradeFromPercentage } from "@/lib/grading";
-import { calculateAttendancePercentage, safePercentage } from "@/lib/math-utils";
+import { safePercentage } from "@/lib/math-utils";
+import { attendanceRateFromCounts } from "@/lib/attendance-rate";
 
 export async function GET(
   request: NextRequest,
@@ -130,18 +131,17 @@ export async function GET(
       },
     });
 
-    // Group attendance by student
-    const attendanceMap = new Map<string, { present: number; halfDays: number; total: number }>();
+    // Status counts per student. The attendance figure printed on the report
+    // card must be the one the promotion engine used, so it is derived from the
+    // shared module rather than a local formula. The previous local version
+    // scored a HALF_DAY as 0.5 of a day and left HOLIDAY rows in the denominator,
+    // which is why a printed card could disagree with the promotion sheet.
+    const attendanceCounts = new Map<string, Record<string, number>>();
     for (const att of attendanceRecords) {
       if (!att.studentProfileId) continue;
-      const curr = attendanceMap.get(att.studentProfileId) || { present: 0, halfDays: 0, total: 0 };
-      curr.total += 1;
-      if (att.status === "PRESENT" || att.status === "LATE") {
-        curr.present += 1;
-      } else if (att.status === "HALF_DAY") {
-        curr.halfDays += 1;
-      }
-      attendanceMap.set(att.studentProfileId, curr);
+      const counts = attendanceCounts.get(att.studentProfileId) ?? {};
+      counts[att.status] = (counts[att.status] ?? 0) + 1;
+      attendanceCounts.set(att.studentProfileId, counts);
     }
 
     // Group exam results by student
@@ -188,8 +188,7 @@ export async function GET(
     const formattedStudents = students.map((st) => {
       const rankInfo = rankMap.get(st.id);
       const stResults = resultsMap.get(st.id) || [];
-      const att = attendanceMap.get(st.id) || { present: 0, halfDays: 0, total: 0 };
-      const attPercentage = calculateAttendancePercentage({ presentDays: att.present, halfDays: att.halfDays, totalDays: att.total });
+      const attendance = attendanceRateFromCounts(attendanceCounts.get(st.id) ?? {});
 
       const subjects = exam.subjects.map((es) => {
         const found = stResults.find((r) => r.subjectId === es.subjectId);
@@ -244,9 +243,9 @@ export async function GET(
         totalStudentsInClass: students.length,
         passed,
         attendance: {
-          present: att.present,
-          total: att.total,
-          percentage: attPercentage,
+          present: attendance.presentDays,
+          total: attendance.totalDays,
+          percentage: attendance.rate,
         },
       };
     });

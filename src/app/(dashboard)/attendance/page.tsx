@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { dayAttendanceRate } from "@/lib/attendance-rate";
 import {
   CalendarCheck,
   Plus,
@@ -84,12 +85,18 @@ export default function AttendancePage() {
     });
   };
 
+  // One variant per status in `ATTENDANCE_STATUSES`. `HOLIDAY` is deliberately
+  // `outline` like `LEAVE`: neither is a judgement on the student, so neither
+  // should wear the red that means "absent".
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "PRESENT": return "default";
       case "ABSENT": return "destructive";
       case "LATE": return "secondary";
+      case "HALF_DAY": return "secondary";
+      case "EXCUSED": return "outline";
       case "LEAVE": return "outline";
+      case "HOLIDAY": return "outline";
       default: return "outline";
     }
   };
@@ -200,11 +207,17 @@ export default function AttendancePage() {
   // Calculate stats
   const today = new Date().toISOString().split('T')[0];
   const todayRecords = attendanceData.filter((r: any) => r.date.startsWith(today));
-  const presentCount = todayRecords.filter((r: any) => r.status === "PRESENT").length;
+  // The shared definition, so a closed day reports "—" instead of 0% and a late
+  // arrival counts as attended — the same rule the promotion engine applies.
+  // `presentCount` is therefore attended days, which keeps it consistent with the
+  // rate; it only diverges from a raw register count when half-days or excused
+  // leave are on file, and those count as not attended by the shared policy.
+  const todayAttendance = dayAttendanceRate(
+    todayRecords.map((r: any) => ({ status: r.status }))
+  );
+  const presentCount = todayAttendance.presentDays;
   const absentCount = todayRecords.filter((r: any) => r.status === "ABSENT").length;
-  const attendanceRate = todayRecords.length > 0 
-    ? Math.round((presentCount / todayRecords.length) * 100) 
-    : 0;
+  const attendanceRate = todayAttendance.rate;
 
   return (
     <div className="space-y-6">
@@ -315,7 +328,9 @@ export default function AttendancePage() {
                 {isLoading ? (
                   <Skeleton className="mb-1 h-8 w-14" />
                 ) : (
-                  <p className="text-2xl font-bold text-blue-600">{attendanceRate}%</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {attendanceRate === null ? "—" : `${attendanceRate}%`}
+                  </p>
                 )}
                 <p className="text-sm text-blue-600">{t('stats.attendanceRate')}</p>
               </div>
@@ -404,7 +419,10 @@ export default function AttendancePage() {
                       <SelectItem value="PRESENT">{t('filters.status.present')}</SelectItem>
                       <SelectItem value="ABSENT">{t('filters.status.absent')}</SelectItem>
                       <SelectItem value="LATE">{t('filters.status.late')}</SelectItem>
+                      <SelectItem value="HALF_DAY">{t('filters.status.halfDay')}</SelectItem>
+                      <SelectItem value="EXCUSED">{t('filters.status.excused')}</SelectItem>
                       <SelectItem value="LEAVE">{t('filters.status.leave')}</SelectItem>
+                      <SelectItem value="HOLIDAY">{t('filters.status.holiday')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

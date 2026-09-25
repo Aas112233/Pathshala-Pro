@@ -125,8 +125,13 @@ describe("Academic Calendar Holidays & Attendance Service", () => {
   });
 
   describe("getStaffMonthlyAttendanceSummary", () => {
-    it("computes monthly summary with late penalty deductions for payroll", async () => {
-      const mockTx = {
+    /**
+     * September 2026 starts on a Tuesday and has 30 days, so it contains four
+     * Sundays (6th, 13th, 20th, 27th) and four Saturdays (5th, 12th, 19th, 26th).
+     * Every expectation below is checkable by hand against that.
+     */
+    function payrollTx(holidays: Array<{ startDate: Date; endDate: Date }> = []) {
+      return {
         attendance: {
           findMany: vi.fn().mockResolvedValue([
             { status: "PRESENT" },
@@ -147,15 +152,22 @@ describe("Academic Calendar Holidays & Attendance Service", () => {
           ]),
         },
         academicHoliday: {
-          findMany: vi.fn().mockResolvedValue([]),
+          findMany: vi.fn().mockResolvedValue(holidays),
         },
       } as any;
+    }
 
-      const summary = await getStaffMonthlyAttendanceSummary(mockTx, {
-        tenantId: "tenant-1",
-        staffProfileId: "staff-1",
-        year: 2026,
-        month: 9, // September (30 days)
+    const baseParams = {
+      tenantId: "tenant-1",
+      staffProfileId: "staff-1",
+      year: 2026,
+      month: 9, // September (30 days)
+    };
+
+    it("computes monthly summary with late penalty deductions for payroll", async () => {
+      const summary = await getStaffMonthlyAttendanceSummary(payrollTx(), {
+        ...baseParams,
+        nonWorkingWeekdays: [0],
       });
 
       expect(summary.totalCalendarDays).toBe(30);
@@ -165,6 +177,79 @@ describe("Academic Calendar Holidays & Attendance Service", () => {
       expect(summary.approvedLeaveDays).toBe(2);
       expect(summary.lopDays).toBe(1.5); // 1 absent + 0.5 (3 late penalty)
       expect(summary.payableDays).toBe(28.5); // 30 - 1.5
+    });
+
+    it("counts working days from the supplied weekly days off, not a hardcoded Sunday", async () => {
+      const sixDayWeek = await getStaffMonthlyAttendanceSummary(payrollTx(), {
+        ...baseParams,
+        nonWorkingWeekdays: [0],
+      });
+      const fiveDayWeek = await getStaffMonthlyAttendanceSummary(payrollTx(), {
+        ...baseParams,
+        nonWorkingWeekdays: [0, 6],
+      });
+
+      expect(sixDayWeek.weekendDays).toBe(4);
+      expect(sixDayWeek.totalWorkingDays).toBe(26);
+
+      // The arithmetic this replaced counted Sundays only, so a Monday-Friday
+      // school was handed 26 and every Saturday was treated as a teaching day.
+      expect(fiveDayWeek.weekendDays).toBe(8);
+      expect(fiveDayWeek.totalWorkingDays).toBe(22);
+    });
+
+    it("excludes a holiday that spans a weekly day off exactly once", async () => {
+      // Saturday 5th, Sunday 6th, Monday 7th. The Sunday is already a weekly day
+      // off, so only the Saturday and the Monday reduce the working-day count.
+      const summary = await getStaffMonthlyAttendanceSummary(
+        payrollTx([{ startDate: new Date("2026-09-05"), endDate: new Date("2026-09-07") }]),
+        { ...baseParams, nonWorkingWeekdays: [0] }
+      );
+
+      expect(summary.weekendDays).toBe(4);
+      expect(summary.totalHolidays).toBe(3); // three holiday dates
+      expect(summary.holidayWorkingDays).toBe(2); // only two of them were teaching days
+      expect(summary.totalWorkingDays).toBe(24);
+
+      // The replaced arithmetic computed 30 - 4 - 3 = 23, removing the 6th twice.
+      expect(summary.totalWorkingDays).not.toBe(23);
+    });
+
+    it("keeps the working-day figure reconcilable from the returned counts", async () => {
+      const summary = await getStaffMonthlyAttendanceSummary(
+        payrollTx([{ startDate: new Date("2026-09-05"), endDate: new Date("2026-09-07") }]),
+        { ...baseParams, nonWorkingWeekdays: [0] }
+      );
+
+      expect(summary.totalWorkingDays).toBe(
+        summary.totalCalendarDays - summary.weekendDays - summary.holidayWorkingDays
+      );
+      expect(summary.totalHolidays).toBeGreaterThanOrEqual(summary.holidayWorkingDays);
+    });
+
+    it("does not double-count overlapping holiday ranges", async () => {
+      const summary = await getStaffMonthlyAttendanceSummary(
+        payrollTx([
+          { startDate: new Date("2026-09-02"), endDate: new Date("2026-09-04") },
+          { startDate: new Date("2026-09-04"), endDate: new Date("2026-09-06") },
+        ]),
+        { ...baseParams, nonWorkingWeekdays: [0] }
+      );
+
+      // The union is the 2nd to the 6th: five dates, not 3 + 3. One of them is
+      // the Sunday, so four of them were teaching days.
+      expect(summary.totalHolidays).toBe(5);
+      expect(summary.holidayWorkingDays).toBe(4);
+      expect(summary.totalWorkingDays).toBe(22);
+    });
+
+    it("refuses to guess a weekly schedule", async () => {
+      await expect(
+        getStaffMonthlyAttendanceSummary(payrollTx(), {
+          ...baseParams,
+          nonWorkingWeekdays: null as unknown as [],
+        })
+      ).rejects.toThrow(/requires an array/);
     });
   });
 });

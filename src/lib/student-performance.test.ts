@@ -143,12 +143,57 @@ describe("Student 360-Degree Performance Analytics Engine", () => {
     });
 
     expect(perf.attendance.totalDays).toBe(5);
-    expect(perf.attendance.presentDays).toBe(3);
+    expect(perf.attendance.presentDays).toBe(4); // 3 PRESENT + 1 LATE
     expect(perf.attendance.lateDays).toBe(1);
     expect(perf.attendance.absentDays).toBe(1);
-    // (3 present + 0.5 late) / 5 = 3.5 / 5 = 70%
-    expect(perf.attendance.attendanceRate).toBe(70);
-    expect(perf.attendance.status).toBe("AVERAGE");
+    // A LATE is a whole day attended, not half of one: 4 / 5 = 80%.
+    expect(perf.attendance.attendanceRate).toBe(80);
+    expect(perf.attendance.status).toBe("GOOD");
+    // Of the 4 days the child turned up, 3 were on time.
+    expect(perf.attendance.punctualityRate).toBe(75);
+  });
+
+  it("does not count holidays as absences", () => {
+    // The regression this guards: `POST /api/attendance` writes a HOLIDAY row for
+    // every student when the school is closed, so a year with a long break used
+    // to read as mass absenteeism and push real students onto a defaulter list.
+    const perf = calculateStudentPerformanceInsights({
+      student: mockStudent,
+      academicYear: mockAcademicYear,
+      examResults: mockExamResults,
+      classmateResults: mockClassmates,
+      attendances: [
+        ...Array.from({ length: 80 }, () => ({ status: "PRESENT" })),
+        ...Array.from({ length: 20 }, () => ({ status: "ABSENT" })),
+        ...Array.from({ length: 25 }, () => ({ status: "HOLIDAY" })),
+      ],
+      homeworkSubmissions: mockHomework,
+    });
+
+    expect(perf.attendance.holidayDays).toBe(25);
+    expect(perf.attendance.totalDays).toBe(100);
+    expect(perf.attendance.presentDays).toBe(80);
+    expect(perf.attendance.attendanceRate).toBe(80);
+    // 80% clears the 75% threshold, so no counselling note is raised.
+    expect(perf.insights.actionableRecommendations.join(" ")).not.toContain("Attendance is below");
+  });
+
+  it("reports attendance as untracked rather than 0% when nothing is on file", () => {
+    const perf = calculateStudentPerformanceInsights({
+      student: mockStudent,
+      academicYear: mockAcademicYear,
+      examResults: mockExamResults,
+      classmateResults: mockClassmates,
+      attendances: [],
+      homeworkSubmissions: mockHomework,
+    });
+
+    expect(perf.attendance.attendanceRate).toBeNull();
+    expect(perf.attendance.status).toBeNull();
+    expect(perf.attendance.punctualityRate).toBeNull();
+    // `null < 75` is `true` in JavaScript, so a bare comparison would read an
+    // empty register as a failing one and raise a counselling note on no data.
+    expect(perf.insights.actionableRecommendations.join(" ")).not.toContain("Attendance is below");
   });
 
   it("detects strengths and generates actionable academic guidance", () => {

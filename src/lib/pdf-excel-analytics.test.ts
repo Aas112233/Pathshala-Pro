@@ -170,11 +170,15 @@ describe("PDF Templates, Excel Exports & Analytics Engine", () => {
           attendance: {
             totalDays: 180,
             presentDays: 172,
-            absentDays: 5,
+            // `absentDays` is `totalDays - presentDays` under the shared
+            // definition, so it is 8 here, not 5: the LATE days are attended.
+            absentDays: 8,
             lateDays: 3,
             excusedDays: 0,
-            attendanceRate: 95.5,
-            punctualityRate: 98.3,
+            halfDayDays: 0,
+            holidayDays: 0,
+            attendanceRate: 95.56,
+            punctualityRate: 98.26,
             status: "EXCELLENT",
           },
           homework: {

@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { successResponse, handleApiError } from "@/lib/api-response";
 import { requireApiAccess, getSelfScopedStudentProfileIds } from "@/lib/api-auth";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
-import { roundCurrency, safePercentage } from "@/lib/math-utils";
+import { roundCurrency } from "@/lib/math-utils";
+import { dayAttendanceRateFromCounts } from "@/lib/attendance-rate";
 import { resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
 import { fastCache } from "@/lib/fast-memory-cache";
 
@@ -93,14 +94,15 @@ export async function GET(request: NextRequest) {
 
     const totalStudents = yearSessionCount > 0 ? yearSessionCount : rawTotalStudents;
 
-    let present = 0;
-    let absent = 0;
-    let attendanceTotal = 0;
-    for (const g of attendanceGroups) {
-      attendanceTotal += g._count;
-      if (g.status === "PRESENT") present += g._count;
-      else if (g.status === "ABSENT") absent += g._count;
+    // Today's register. The rate comes from the shared module so a day the school
+    // was closed reads as "no rate" rather than 0% — the previous formula put
+    // HOLIDAY rows in the denominator and counted only PRESENT, so every holiday
+    // showed up as a school-wide absence on the dashboard.
+    const attendanceCounts: Record<string, number> = {};
+    for (const group of attendanceGroups) {
+      attendanceCounts[group.status] = group._count;
     }
+    const dayAttendance = dayAttendanceRateFromCounts(attendanceCounts);
 
     const summaryData = {
       totalStudents,
@@ -112,10 +114,11 @@ export async function GET(request: NextRequest) {
         balance: roundCurrency(Number(feeAgg._sum.balance ?? 0)),
       },
       attendance: {
-        present,
-        absent,
-        total: attendanceTotal,
-        rate: safePercentage(present, attendanceTotal, 1),
+        present: dayAttendance.presentDays,
+        absent: attendanceCounts.ABSENT ?? 0,
+        total: dayAttendance.totalDays,
+        rate: dayAttendance.rate,
+        isHoliday: dayAttendance.isHoliday,
       },
     };
 

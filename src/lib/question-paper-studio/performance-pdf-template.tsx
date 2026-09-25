@@ -542,9 +542,15 @@ export function StudentPerformancePDF({
           {/* Attendance Rate */}
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>Attendance Rate</Text>
-            <Text style={styles.kpiValue}>{performance.attendance.attendanceRate}%</Text>
+            <Text style={styles.kpiValue}>
+              {performance.attendance.attendanceRate === null
+                ? "—"
+                : `${performance.attendance.attendanceRate}%`}
+            </Text>
             <Text style={styles.kpiSub}>
-              {performance.attendance.presentDays} / {performance.attendance.totalDays} Days ({performance.attendance.status})
+              {performance.attendance.attendanceRate === null
+                ? "Not tracked"
+                : `${performance.attendance.presentDays} / ${performance.attendance.totalDays} Days (${performance.attendance.status})`}
             </Text>
           </View>
 

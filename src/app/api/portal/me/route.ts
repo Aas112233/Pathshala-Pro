@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, forbidden, notFound, successResponse, handleApiError } from "@/lib/api-response";
 import { requirePortalAccess } from "@/lib/portal-auth";
+import { attendanceRateFromRecords } from "@/lib/attendance-rate";
 
 function dayName(date: Date) {
   return ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"][date.getDay()];
@@ -80,8 +81,10 @@ export async function GET(request: NextRequest) {
       prisma.examResult.findMany({ where: { tenantId, studentProfileId: student.id, exam: { isPublished: true } }, include: { exam: { select: { id: true, name: true, type: true, startDate: true, academicYearId: true } }, subject: { select: { id: true, name: true, code: true } }, academicYear: { select: { id: true, label: true } } }, orderBy: [{ exam: { startDate: "desc" } }, { subject: { name: "asc" } }], take: 200 }),
     ]);
 
-    const attended = attendance.filter((item) => ["PRESENT", "LATE", "HALF_DAY"].includes(item.status));
-    const attendancePercentage = attendance.length ? Math.round((attended.length / attendance.length) * 1000) / 10 : null;
+    // The same definition the promotion engine uses, so a parent cannot be told
+    // 78% by the app and 71% by the school's promotion sheet. Previously this
+    // counted a HALF_DAY as attended and left HOLIDAY rows in the denominator.
+    const attendancePercentage = attendanceRateFromRecords(attendance).rate;
     const today = dayName(now);
     const totalDue = fees.reduce((sum, fee) => sum + Number(fee.balance), 0);
 

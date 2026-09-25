@@ -37,8 +37,10 @@ interface AttendanceRecord {
   presentDays: number;
   absentDays: number;
   totalDays: number;
-  attendancePercentage: number;
-  status: "GOOD" | "AVERAGE" | "DEFICIT";
+  /** Null when nothing is on file for this student — not 0%, which is a real figure. */
+  attendancePercentage: number | null;
+  tracked: boolean;
+  status: "GOOD" | "AVERAGE" | "DEFICIT" | null;
 }
 
 interface AttendanceReportData {
@@ -257,8 +259,9 @@ export default function AttendanceReportPage() {
         presentDays: record.presentDays,
         absentDays: record.absentDays,
         totalDays: record.totalDays,
-        attendancePercentage: `${record.attendancePercentage}%`,
-        status: record.status,
+        attendancePercentage:
+          record.attendancePercentage === null ? "" : `${record.attendancePercentage}%`,
+        status: record.status ?? "",
       })),
     });
 
@@ -307,7 +310,12 @@ export default function AttendanceReportPage() {
       accessorKey: "attendancePercentage",
       header: tAttendance("attendancePercentage"),
       cell: ({ getValue }) => {
-        const percentage = getValue<number>();
+        const percentage = getValue<number | null>();
+        if (percentage === null) {
+          // Nothing on file is not 0%. Printing a figure here would name a
+          // student a defaulter because nobody has marked their class yet.
+          return <span className="text-muted-foreground">—</span>;
+        }
         let colorClass = "text-green-600";
         if (percentage < 75) colorClass = "text-red-600";
         else if (percentage < 85) colorClass = "text-yellow-600";
@@ -318,12 +326,14 @@ export default function AttendanceReportPage() {
     {
       accessorKey: "status",
       header: tAttendance("status"),
-      cell: ({ getValue }) => (
-        <StatusBadge
-          status={getValue<string>()}
-          domain="attendance"
-        />
-      ),
+      cell: ({ getValue }) => {
+        const status = getValue<string | null>();
+        return status ? (
+          <StatusBadge status={status} domain="attendance" />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
     },
   ];
 
@@ -403,7 +413,9 @@ export default function AttendanceReportPage() {
                   title={tCommon("lowestAttendanceStudents")}
                   data={defaulters.slice(0, 8).map((record) => ({
                     label: record.rollNumber || record.studentName,
-                    value: record.attendancePercentage,
+                    // Defaulters are DEFICIT by definition, so the figure is
+                    // never null here; the fallback only satisfies the type.
+                    value: record.attendancePercentage ?? 0,
                   }))}
                   height={200}
                 />
@@ -430,7 +442,7 @@ export default function AttendanceReportPage() {
                             </p>
                           </div>
                           <span className="font-bold text-red-600">
-                            {defaulter.attendancePercentage}%
+                            {defaulter.attendancePercentage ?? 0}%
                           </span>
                         </div>
                       ))}

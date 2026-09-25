@@ -38,7 +38,8 @@ export interface BatchStudentResult {
   attendance?: {
     present: number;
     total: number;
-    percentage: number;
+    /** `null` when no teaching days are on file — render "N/A", never "null%". */
+    percentage: number | null;
   };
   teacherRemarks?: string;
   principalRemarks?: string;
@@ -308,7 +309,9 @@ export const BatchReportCardDocument: React.FC<BatchReportCardProps> = ({
               <View style={styles.profileRow}>
                 <Text style={styles.profileLabel}>Attendance:</Text>
                 <Text style={styles.profileVal}>
-                  {data.attendance ? `${data.attendance.percentage}% (${data.attendance.present}/${data.attendance.total} Days)` : "N/A"}
+                  {data.attendance && data.attendance.percentage !== null
+                    ? `${data.attendance.percentage}% (${data.attendance.present}/${data.attendance.total} Days)`
+                    : "N/A"}
                 </Text>
               </View>
             </View>

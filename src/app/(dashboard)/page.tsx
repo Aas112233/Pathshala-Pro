@@ -145,8 +145,10 @@ export default function DashboardPage() {
 
   const presentCount = summary?.attendance.present ?? 0;
   const absentCount = summary?.attendance.absent ?? 0;
-  const attendanceTotal = summary?.attendance.total ?? 0;
-  const attendanceRate = attendanceTotal > 0 ? Number(summary?.attendance.rate ?? 0).toFixed(1) : null;
+  // `null` when the register is unmarked or the school was closed, so the card
+  // shows "—" rather than a 0.0% that reads as nobody having turned up.
+  const attendanceRate =
+    summary && summary.attendance.rate !== null ? summary.attendance.rate.toFixed(1) : null;
 
   // Derive current academic session (global selection)
   const academicSessionLabel = activeAcademicYear

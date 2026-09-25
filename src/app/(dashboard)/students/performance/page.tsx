@@ -445,8 +445,12 @@ export default function StudentPerformancePage() {
 
             <ERPMetricCard
               subtitle={t("attendanceRate")}
-              title={performance.attendance.status}
-              value={`${performance.attendance.attendanceRate}%`}
+              title={performance.attendance.status ?? t("attendanceNotTracked")}
+              value={
+                performance.attendance.attendanceRate === null
+                  ? "—"
+                  : `${performance.attendance.attendanceRate}%`
+              }
               icon={CalendarCheck}
               breakdowns={[
                 {
@@ -455,7 +459,12 @@ export default function StudentPerformancePage() {
                     total: performance.attendance.totalDays,
                   }),
                   count: `${performance.attendance.presentDays}d`,
-                  color: performance.attendance.attendanceRate >= 75 ? "emerald" : "rose",
+                  color:
+                    performance.attendance.attendanceRate === null
+                      ? "indigo"
+                      : performance.attendance.attendanceRate >= 75
+                        ? "emerald"
+                        : "rose",
                 },
               ]}
             />

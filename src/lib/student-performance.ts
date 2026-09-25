@@ -1,4 +1,5 @@
 import { safePercentage } from "@/lib/math-utils";
+import { attendanceRateFromCounts } from "@/lib/attendance-rate";
 import {
   calculateGradeFromPercentage,
   calculateClassMeritRankings,
@@ -44,14 +45,30 @@ export interface StudentPerformanceOverview {
     totalSubjectsFailed: number;
   };
   attendance: {
+    /** Teaching days on the register. Holidays are excluded from the denominator. */
     totalDays: number;
+    /** Days counted as attended — `PRESENT` plus `LATE`. */
     presentDays: number;
+    /** Teaching days not attended, i.e. `totalDays - presentDays`. */
     absentDays: number;
+    /** `LATE` days. Also counted inside `presentDays`; informational. */
     lateDays: number;
+    /** `EXCUSED` days. An excused absence is still an absence; informational. */
     excusedDays: number;
-    attendanceRate: number;
-    punctualityRate: number;
-    status: "EXCELLENT" | "GOOD" | "AVERAGE" | "POOR";
+    /** `HALF_DAY` days. A half day is not a full day; informational. */
+    halfDayDays: number;
+    /** `HOLIDAY` rows on file, excluded from every figure above; informational. */
+    holidayDays: number;
+    /**
+     * Percentage attended, or `null` when no teaching days are on file. Never 0
+     * for an untracked student — 0% is a real and very different verdict.
+     * Defined in `@/lib/attendance-rate`, shared with the promotion engine.
+     */
+    attendanceRate: number | null;
+    /** On-time days as a share of days present, or `null` when never present. */
+    punctualityRate: number | null;
+    /** `null` when attendance is untracked, so the UI shows no verdict. */
+    status: "EXCELLENT" | "GOOD" | "AVERAGE" | "POOR" | null;
   };
   homework: {
     totalAssigned: number;
@@ -320,19 +337,45 @@ export function calculateStudentPerformanceInsights(params: {
   const cumulativeGpa = overallGrade.gpa;
 
   // 4. Attendance Statistics
-  const totalDays = attendances.length;
-  const presentDays = attendances.filter((a) => a.status === "PRESENT").length;
-  const absentDays = attendances.filter((a) => a.status === "ABSENT").length;
-  const lateDays = attendances.filter((a) => a.status === "LATE").length;
-  const excusedDays = attendances.filter((a) => a.status === "EXCUSED").length;
-  const attendanceRate = safePercentage(presentDays + (lateDays * 0.5) + excusedDays, totalDays);
-  const punctualityRate = safePercentage(presentDays, Math.max(presentDays + lateDays, 1));
+  //
+  // Delegated to `@/lib/attendance-rate` so this figure is the one the promotion
+  // engine uses. The previous inline version disagreed with the register on
+  // three counts: it scored a LATE as half a day rather than a whole one, it
+  // counted an EXCUSED absence as a day attended, and it left HOLIDAY rows in
+  // the denominator. Since `POST /api/attendance` writes a HOLIDAY row for every
+  // student when the school is closed, that last one understated every
+  // student's attendance by the holiday share of the year.
+  const attendanceCounts: Record<string, number> = {};
+  for (const record of attendances) {
+    attendanceCounts[record.status] = (attendanceCounts[record.status] ?? 0) + 1;
+  }
 
-  let attStatus: StudentPerformanceOverview["attendance"]["status"] = "GOOD";
-  if (attendanceRate >= 90) attStatus = "EXCELLENT";
-  else if (attendanceRate >= 75) attStatus = "GOOD";
-  else if (attendanceRate >= 60) attStatus = "AVERAGE";
-  else attStatus = "POOR";
+  const attendance = attendanceRateFromCounts(attendanceCounts);
+  const attendanceRate = attendance.rate;
+
+  const totalDays = attendance.totalDays;
+  const presentDays = attendance.presentDays;
+  const absentDays = totalDays - presentDays;
+  const lateDays = attendanceCounts.LATE ?? 0;
+  const excusedDays = attendanceCounts.EXCUSED ?? 0;
+  const halfDayDays = attendanceCounts.HALF_DAY ?? 0;
+  const holidayDays = attendanceCounts.HOLIDAY ?? 0;
+
+  // Punctuality is a different question from attendance: of the days the child
+  // actually turned up, how many were on time? So the denominator is `PRESENT`
+  // plus `LATE` — the same two statuses `presentDays` counts — not `totalDays`.
+  const daysPresentAtAll = presentDays;
+  const punctualityRate = daysPresentAtAll > 0
+    ? Math.round((presentDays - lateDays) / daysPresentAtAll * 10000) / 100
+    : null;
+
+  let attStatus: StudentPerformanceOverview["attendance"]["status"] = null;
+  if (attendanceRate !== null) {
+    if (attendanceRate >= 90) attStatus = "EXCELLENT";
+    else if (attendanceRate >= 75) attStatus = "GOOD";
+    else if (attendanceRate >= 60) attStatus = "AVERAGE";
+    else attStatus = "POOR";
+  }
 
   // 5. Homework & Engagement Statistics
   const totalAssigned = Math.max(totalClassHomeworkCount, homeworkSubmissions.length);
@@ -361,7 +404,10 @@ export function calculateStudentPerformanceInsights(params: {
     .map((s) => `${s.subjectName} (${s.percentage}%) - Requires Practice`);
 
   const recommendations: string[] = [];
-  if (attendanceRate < 75) {
+  // Guarded on `!== null`, never on a bare comparison: `null < 75` is `true` in
+  // JavaScript, so an untracked student would otherwise be recommended for
+  // parental counselling on the strength of no data at all.
+  if (attendanceRate !== null && attendanceRate < 75) {
     recommendations.push("Attendance is below institutional 75% threshold. Recommend parental counseling and regular tracking.");
   }
   if (focusAreas.length > 0) {
@@ -378,9 +424,11 @@ export function calculateStudentPerformanceInsights(params: {
   }
 
   let riskLevel: "LOW" | "MODERATE" | "HIGH" = "LOW";
-  if (subjectsFailed >= 2 || overallPercentage < 40 || attendanceRate < 60) {
+  const attendanceIsLow = attendanceRate !== null && attendanceRate < 60;
+  const attendanceIsBorderline = attendanceRate !== null && attendanceRate < 75;
+  if (subjectsFailed >= 2 || overallPercentage < 40 || attendanceIsLow) {
     riskLevel = "HIGH";
-  } else if (subjectsFailed === 1 || overallPercentage < 55 || attendanceRate < 75) {
+  } else if (subjectsFailed === 1 || overallPercentage < 55 || attendanceIsBorderline) {
     riskLevel = "MODERATE";
   }
 
@@ -423,6 +471,8 @@ export function calculateStudentPerformanceInsights(params: {
       absentDays,
       lateDays,
       excusedDays,
+      halfDayDays,
+      holidayDays,
       attendanceRate,
       punctualityRate,
       status: attStatus,
