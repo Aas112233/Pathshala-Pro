@@ -193,7 +193,10 @@
     "paymentReference": "لین دین کا حوالہ (UTR)",
     "paymentReferencePlaceholder": "UTR / گیٹ وے آئی ڈی درج کریں",
     "referenceRequired": "{method} ادائیگیوں کے لیے بیرونی حوالہ (UTR/ٹرانزیکشن آئی ڈی) درکار ہے۔",
-    "chequeNumberRequired": "چیک ادائیگیوں کے لیے چیک نمبر درکار ہے۔"
+    "chequeNumberRequired": "چیک ادائیگیوں کے لیے چیک نمبر درکار ہے۔",
+    "selectMonthsPrompt": "کم از کم ایک مہینہ منتخب کریں۔",
+    "selectPaymentMethodError": "ادائیگی کا طریقہ منتخب کریں۔",
+    "selectPaymentMethodPrompt": "جاری رکھنے کے لیے ادائیگی کا طریقہ منتخب کریں۔"
   },
   "currencies": {
     "title": "کرنسی",
@@ -381,7 +384,12 @@
     "pillarMultiCampus": "ملٹی کیمپس انتظامیہ اور ٹرانسکرپٹس",
     "slaMetric": "99.99% اپ ٹائم SLA",
     "resetModalTitle": "پاس ورڈ ری سیٹ رہنمائی",
-    "resetModalClose": "بند کریں"
+    "resetModalClose": "بند کریں",
+    "idleTitle": "کیا آپ ابھی موجود ہیں؟",
+    "idleDescription": "آپ کچھ دیر سے غیر فعال ہیں۔ آپ کی حفاظت کے لیے جلد سائن آؤٹ کر دیا جائے گا۔",
+    "idleSignOut": "ابھی سائن آؤٹ کریں",
+    "idleStay": "سائن ان رہیں",
+    "idleCountdown": "{seconds} سیکنڈ میں سائن آؤٹ ہو جائے گا۔"
   },
   "academicSelector": {
     "classLabel": "کلاس",
@@ -731,7 +739,8 @@
     "idCards": "ID Cards",
     "admissionForm": "Admission Form",
     "createError": "طالب علم بنانے میں ناکامی",
-    "updateError": "طالب علم اپ ڈیٹ کرنے میں ناکامی"
+    "updateError": "طالب علم اپ ڈیٹ کرنے میں ناکامی",
+    "selectGender": "جنس منتخب کریں"
   },
   "fees": {
     "title": "فیس مینجمنٹ ہب",
@@ -1340,7 +1349,10 @@
         "present": "حاضر",
         "absent": "غیر حاضر",
         "late": "دیر سے",
-        "leave": "چھٹی"
+        "leave": "چھٹی",
+        "halfDay": "نصف دن",
+        "excused": "معذور",
+        "holiday": "تعطیل"
       },
       "clearFilters": "فلٹرز صاف کریں"
     },
@@ -1569,7 +1581,8 @@
     "promotionsExecuted": "ترقیات کامیابی سے لاگو ہو گئیں!",
     "error": "امتحان کی کارروائی میں ناکامی",
     "promotionRuleUpdated": "پروموشن رول کامیابی سے اپ ڈیٹ ہو گیا",
-    "promotionRuleDeleted": "پروموشن رول کامیابی سے حذف ہو گیا"
+    "promotionRuleDeleted": "پروموشن رول کامیابی سے حذف ہو گیا",
+    "selectExamType": "امتحان کی قسم منتخب کریں۔"
   },
   "results": {
     "marksLockedDuePromotion": "ترقی کی وجہ سے اس طالب علم کے نمبر لاک ہیں۔",
@@ -1732,7 +1745,13 @@
     "lifecycleDescription": "طے کریں کہ یہ تعلیمی سیشن فعال لین دین کے لیے کھلا ہے یا نہیں۔",
     "closedHelper": "اس سیشن کو آرکائیو شدہ قرار دیں۔ بند سیشن میں نئے داخلے یا فیس واؤچر قبول نہیں کیے جا سکتے۔",
     "cancel": "منسوخ",
-    "saving": "محفوظ کیا جا رہا ہے..."
+    "saving": "محفوظ کیا جا رہا ہے...",
+    "closeSuccessMissingResults": "تعلیمی سال بند کر دیا گیا۔ {finalised} طلبہ کا اختتامی ریکارڈ مکمل ہوا؛ {missing} کے نتائج موجود نہ تھے، اس لیے ان کا حتمی فیصد نہیں بن سکا۔",
+    "closeSuccess": "تعلیمی سال بند کر دیا گیا۔ {finalised} طلبہ کا اختتامی ریکارڈ مکمل ہوا۔",
+    "setCurrentSuccess": "{label} اب موجودہ تعلیمی سال ہے۔",
+    "setCurrentError": "موجودہ تعلیمی سال مقرر نہیں ہو سکا۔",
+    "operatingYear": "موجودہ سال",
+    "setAsCurrent": "موجودہ سال مقرر کریں"
   },
   "users": {
     "title": "صارفین",
@@ -2134,8 +2153,88 @@
       "status": {
         "promoted": "ترقی یافتہ",
         "retained": "روک دیا گیا",
-        "conditionalPromoted": "مشروط ترقی"
-      }
+        "conditionalPromoted": "مشروط ترقی",
+        "graduated": "فارغ التحصیل",
+        "demoted": "نیچے کیا گیا",
+        "transferred": "منتقل"
+      },
+      "selectDemotionTarget": "کلاس منتخب کریں",
+      "noStudentsSelected": "کم از کم ایک طالب علم منتخب کریں۔",
+      "overrideNotSelected": "{count} ایسے طلبہ کے لیے دستی کارروائی مقرر کی گئی جو موجودہ انتخاب میں شامل نہیں۔ انہیں انتخاب میں شامل کریں یا پہلے کارروائی ہٹا دیں۔",
+      "confirmExecuteWithExits": "{count} طلبہ کو {fromYear} سے {toYear} میں ترقی دی جائے؟ ان میں سے {exits} فہرست سے نکل رہے ہیں۔",
+      "confirmExecuteSelected": "{count} طلبہ کو {fromYear} سے {toYear} میں ترقی دی جائے؟",
+      "executeSuccess": "{count} طلبہ کو {year} میں ترقی دے دی گئی۔",
+      "transferCertificatePurpose": "منتقلی",
+      "certificatesIssued": "{count} اسناد جاری کی گئیں۔",
+      "certificatesSkipped": "{count} طلبہ کے پاس پہلے سے اس قسم کی فعال سند موجود تھی، اس لیے چھوڑ دیے گئے۔",
+      "attendanceNotTracked": "حاضری درج نہیں",
+      "leftSchool": "اسکول چھوڑ دیا",
+      "lowerClass": "نیچے کی کلاس",
+      "studentId": "طالب علم نمبر",
+      "attendance": "حاضری",
+      "closedYearOption": "{label} (بند)",
+      "manualOverride": "دستی تبدیلی",
+      "insufficientDataFlag": "نامکمل نتائج",
+      "legacyPlacementFlag": "درجہ طالب علم کے پروفائل سے لیا گیا — اس سال کا کوئی ریکارڈ موجود نہیں",
+      "manualAction": "دستی کارروائی",
+      "setActionFor": "{name} کے لیے کارروائی مقرر کریں",
+      "demoteAction": "نیچے کریں…",
+      "clearOverride": "دستی کارروائی ہٹائیں",
+      "executeSelected": "منتخب {count} کو ترقی دیں",
+      "searchClassPlaceholder": "کلاس تلاش کریں",
+      "noOptions": "کوئی نتیجہ نہیں",
+      "searchYearPlaceholder": "تعلیمی سال تلاش کریں",
+      "selectTargetYear": "ہدف تعلیمی سال",
+      "selectTargetYearDescription": "وہ سال جس میں ان طلبہ کو ترقی دی جائے گی۔ یہ ماخذ سال کے بعد شروع ہونا چاہیے۔",
+      "selectTargetYearPlaceholder": "ہدف سال منتخب کریں",
+      "noTargetYearOptions": "اس کے بعد کوئی سال نہیں",
+      "targetYearSuggested": "تجویز کردہ",
+      "noTargetYearTitle": "ہدف تعلیمی سال موجود نہیں",
+      "noTargetYearDescription": "اس کلاس کو ترقی دینے سے پہلے اگلا تعلیمی سال بنائیں۔ ترقی کا سال کی حد عبور کرنا لازمی ہے۔",
+      "goToAcademicYears": "تعلیمی سالوں پر جائیں",
+      "terminalClassTitle": "آخری کلاس",
+      "terminalClassDescription": "{className} درجوں کی آخری کلاس ہے، اس لیے اس کے طلبہ ترقی کے بجائے فارغ التحصیل ہوتے ہیں۔",
+      "warningsTitle": "جانچنے کی باتیں",
+      "legacyPlacementWarning": "{count} طلبہ کا اس سال کے لیے کوئی درجہ ریکارڈ موجود نہیں؛ ان کی کلاس ان کے پروفائل سے لی گئی۔",
+      "insufficientDataWarning": "{count} طلبہ کے نتائج نامکمل ہیں، اس لیے نمبر درج ہونے پر ان کا نتیجہ بدل سکتا ہے۔",
+      "exitDocumentsTitle": "روانگی کے کاغذات ({count})",
+      "exitDocumentsDescription": "سال {date} کو بند ہوا۔ {remaining} اسناد ابھی جاری کرنی ہیں۔",
+      "issueTransferCertificates": "منتقلی اسناد جاری کریں ({count})",
+      "issueCharacterCertificates": "کردار کی اسناد جاری کریں ({count})",
+      "printCertificate": "پرنٹ کریں",
+      "issueTransferCertificate": "منتقلی سند جاری کریں",
+      "issueCharacterCertificate": "کردار کی سند جاری کریں",
+      "certificateNotIssued": "جاری نہیں ہوئی",
+      "noCertificatePermissionHint": "آپ کو اسناد جاری کرنے کی اجازت نہیں۔",
+      "targetYear": "ہدف سال",
+      "readyToPromoteSelected": "{total} میں سے {count} طلبہ کو {year} میں ترقی دیں",
+      "graduating": "فارغ التحصیل ہو رہے ہیں",
+      "leavingRoster": "فہرست سے نکل رہے ہیں",
+      "transferredOut": "منتقل ہو گئے",
+      "yes": "ہاں",
+      "no": "نہیں",
+      "rollNumberPolicy": "رول نمبر پالیسی",
+      "rollNumberPolicyDescription": "ہدف سال میں طلبہ کو رول نمبر کیسے دیے جائیں۔",
+      "rollNumberPolicyPreserve": "موجودہ رول نمبر برقرار رکھیں",
+      "rollNumberPolicySequential": "ترتیب وار نئے نمبر دیں",
+      "searchStudents": "طلبہ تلاش کریں",
+      "rowsPerPage": "فی صفحہ قطاریں",
+      "rangeOf": "{total} میں سے {start}–{end}",
+      "previous": "پچھلا",
+      "next": "اگلا",
+      "selectAll": "سب منتخب کریں",
+      "clearSelection": "انتخاب صاف کریں",
+      "emptyRoster": "دکھانے کے لیے کوئی طالب علم نہیں",
+      "emptyRosterHint": "موجودہ فلٹرز سے کچھ مطابقت نہیں رکھتا۔",
+      "selectedCount": "{total} میں سے {selected} منتخب",
+      "summaryFooter": "{advancing} ترقی · {exiting} روانگی · {reExam} دوبارہ امتحان",
+      "demotionDialogTitle": "طالب علم کو نیچے کریں",
+      "demotionDialogDescription": "{name} کو {className} سے نیچے کی کلاس میں بھیجیں۔",
+      "demotionTargetClass": "ہدف کلاس",
+      "noLowerClasses": "اس طالب علم کو بھیجنے کے لیے کوئی نیچے کی کلاس نہیں۔",
+      "demotionHint": "نیچے کرنا ایک دستی فیصلہ ہے۔ طالب علم ہدف سال میں رہتا ہے مگر ایک کلاس نیچے چلا جاتا ہے۔",
+      "cancel": "منسوخ کریں",
+      "confirmDemotion": "نیچے کرنے کی تصدیق کریں"
     },
     "ruleManager": {
       "title": "ترقی کے قوانین",
@@ -2181,6 +2280,69 @@
       "saveChanges": "تبدیلیاں محفوظ کریں",
       "lockedBadge": "تاریخی ڈیٹا لاک ہے",
       "lockedTooltip": "لاک: اس جماعت اور سال کے لیے پہلے سے ہی {count} طلبہ کی ترقی کا ریکارڈ موجود ہے۔"
+    },
+    "preflight": {
+      "title": "ترقی سے پہلے جانچ",
+      "yearCloseTitle": "سال بند کرنے سے پہلے جانچ",
+      "description": "کلاس کو ترقی دینے سے پہلے کی جانچ۔",
+      "yearCloseDescription": "تعلیمی سال بند کرنے سے پہلے کی جانچ۔",
+      "blockersLabel": "رکاوٹیں",
+      "warningsLabel": "انتباہات",
+      "recheck": "دوبارہ جانچیں",
+      "studentsTruncated": "اسکول کا صرف ایک حصہ جانچا گیا، اس لیے یہ رپورٹ نامکمل ہو سکتی ہے۔",
+      "passed": "تمام جانچیں کامیاب رہیں۔",
+      "blocked": "یہ ابھی آگے نہیں بڑھ سکتا۔",
+      "resolveFirst": "نیچے دی گئی رکاوٹیں دور کریں، پھر دوبارہ جانچیں۔",
+      "truncatedNote": "{count} نتائج یہاں درج نہیں۔",
+      "studentsScanned": "{count} طلبہ جانچے گئے",
+      "codes": {
+        "SAME_ACADEMIC_YEAR": "“{targetYear}” اور “{sourceYear}” ایک ہی سال ہیں۔ ترقی کا عمل سال کی حد عبور کرنا ضروری ہے۔",
+        "TARGET_YEAR_NOT_AFTER_SOURCE": "“{targetYear}” {targetStartDate} سے شروع ہوتا ہے، جو “{sourceYear}” ({sourceStartDate}) کے بعد نہیں ہے۔",
+        "YEAR_ALREADY_CLOSED": "“{year}” بند اور صرف پڑھنے کے لیے ہے۔",
+        "NO_PROMOTION_RULE": "“{className}” کے لیے کوئی فعال ترقی کا قاعدہ ترتیب نہیں دیا گیا، اس لیے اہلیت کا جائزہ نہیں لیا جا سکتا۔",
+        "NEXT_CLASS_NOT_FOUND": "“{className}” کے ترقی کے قاعدے میں دی گئی اگلی جماعت موجود نہیں ہے۔",
+        "CLASS_WITHOUT_NEXT_CLASS": "“{className}” کے لیے اگلی جماعت مقرر نہیں، حالانکہ “{higherClassName}” اس سے اوپر موجود ہے۔ “{className}” کے تمام طلبہ کو فارغ قرار دیا جائے گا۔",
+        "EMPTY_COHORT": "“{className}” کے کوئی فعال طلبہ “{year}” میں داخل نہیں ہیں۔",
+        "STUDENT_WITHOUT_SESSION": "{studentName} کا “{year}” کے لیے کوئی داخلہ ریکارڈ نہیں؛ ان کی جماعت طالب علم پروفائل سے لی گئی ہے۔",
+        "STUDENT_WITHOUT_RESULTS": "{studentName} کے اس سال کے امتحانی نتائج موجود نہیں، اس لیے ان کا فیصلہ غیر موجود ڈیٹا پر مبنی ہے۔",
+        "MISSING_ROLL_NUMBER": "{studentName} کا رول نمبر موجود نہیں۔ رول اوور اس خلا کو اگلے سال میں منتقل کر دے گا۔",
+        "MISSING_DEMOGRAPHICS": "{studentName} کے ریکارڈ میں {fields} موجود نہیں۔",
+        "DUPLICATE_ENROLLMENT": "{studentName} کے پاس پہلے ہی {count} داخلہ ریکارڈ “{year}” میں موجود ہیں۔",
+        "DUPLICATE_ROLL_NUMBER": "رول نمبر “{rollNumber}” {count} طلبہ کے پاس “{className}” میں ہے۔",
+        "UNPROMOTED_STUDENT": "{studentName} ابھی بھی “{year}” میں داخل ہیں اور ان کا کوئی ترقی کا ریکارڈ نہیں۔",
+        "UNISSUED_EXIT_DOCUMENT": "{studentName} {action} کے طور پر رخصت ہوئے مگر {expectedDocuments} سرٹیفکیٹ جاری نہیں ہوا۔",
+        "ATTENDANCE_BELOW_REQUIREMENT": "{studentName} کی حاضری {actual}% رہی “{year}” میں، جو مطلوبہ {required}% سے کم ہے۔"
+      },
+      "fixes": {
+        "SAME_ACADEMIC_YEAR": "وہ سال منتخب کریں جو اس کے بعد آتا ہے۔",
+        "TARGET_YEAR_NOT_AFTER_SOURCE": "ایسا سال منتخب کریں جس کی شروعات کی تاریخ بعد کی ہو۔",
+        "YEAR_ALREADY_CLOSED": "سال دوبارہ کھولیں، یا کوئی کھلا ہوا سال منتخب کریں۔",
+        "NO_PROMOTION_RULE": "اس جماعت کے لیے ترقی کا قاعدہ ترتیب دیں۔",
+        "NEXT_CLASS_NOT_FOUND": "قاعدے کو موجود جماعت کی طرف دوبارہ اشارہ کریں۔",
+        "CLASS_WITHOUT_NEXT_CLASS": "اگلی جماعت مقرر کریں، یا تصدیق کریں کہ یہ آخری جماعت ہے۔",
+        "EMPTY_COHORT": "جانچیں کہ اس سال میں جماعت کے فعال طلبہ موجود ہیں۔",
+        "STUDENT_WITHOUT_SESSION": "طالب علم کو اس سال میں داخل کریں، یا ان کی پروفائل جماعت کی تصدیق کریں۔",
+        "STUDENT_WITHOUT_RESULTS": "امتحانی نتائج درج کریں، یا فیصلہ خود کریں۔",
+        "MISSING_ROLL_NUMBER": "رول اوور سے پہلے رول نمبر تفویض کریں۔",
+        "MISSING_DEMOGRAPHICS": "طالب علم کا پروفائل مکمل کریں۔",
+        "DUPLICATE_ENROLLMENT": "دوبارہ ترقی دینے سے پہلے دوہرے داخلے کو حل کریں۔",
+        "DUPLICATE_ROLL_NUMBER": "جماعت کے ہر طالب علم کو الگ رول نمبر دیں۔",
+        "UNPROMOTED_STUDENT": "بند کرنے سے پہلے سال کے اختتام کی ترقی چلائیں۔",
+        "UNISSUED_EXIT_DOCUMENT": "سرٹیفکیٹ جاری کریں، یا یہ قبول کریں کہ یہ بندش کے بعد پرنٹ ہوگا۔",
+        "ATTENDANCE_BELOW_REQUIREMENT": "سال منجمد ہونے سے پہلے حاضری رجسٹر کا جائزہ لیں۔"
+      }
+    },
+    "reasons": {
+      "MEETS_CRITERIA": "تمام ترقی کے معیار {overall}% کے ساتھ پورے ہوئے۔",
+      "FAILED_SUBJECTS": "{count} مضامین میں ناکام: {subjects}۔",
+      "LOW_OVERALL": "مجموعی {actual}% مطلوبہ {required}% سے کم ہے۔",
+      "LOW_ATTENDANCE": "حاضری {actual}% مطلوبہ {required}% سے کم ہے۔",
+      "NO_EXAM_RESULTS": "اس تعلیمی سال کے لیے کوئی امتحانی نتائج درج نہیں ہیں۔",
+      "CONDITIONAL_ELIGIBLE": "دوبارہ امتحان کے بعد مشروط ترقی کے لیے اہل۔",
+      "GRADUATED_FINAL_CLASS": "آخری کلاس — طالب علم فارغ التحصیل ہو گیا۔",
+      "RETAINED_FINAL_CLASS": "آخری کلاس — معیار پورے نہیں ہوئے، طالب علم سال دھرائے گا۔",
+      "MANUAL_OVERRIDE": "آپریٹر نے دستی طور پر تبدیل کیا۔",
+      "TRANSFERRED_OUT": "اسکول سے منتقل ہو گیا۔"
     }
   },
   "classes": {
@@ -2398,7 +2560,15 @@
       "dangerZoneTitle": "خطرناک زون",
       "dangerZoneDescription": "3 مرحلوں کی تصدیق کے بعد {name} اور اس کا تمام ڈیٹا ناقابل واپسی طور پر حذف کریں۔",
       "dangerZoneButton": "ٹیننٹ مکمل حذف کریں"
-    }
+    },
+    "sessionPolicySaveFailed": "سیشن پالیسی محفوظ نہیں ہو سکی۔",
+    "sessionPolicySaved": "سیشن پالیسی محفوظ ہو گئی۔",
+    "sessionPolicyTitle": "سیشن پالیسی",
+    "sessionPolicyDescription": "یہ طے کریں کہ صارف ایک وقت میں ایک سے زیادہ آلات پر سائن ان رہ سکتا ہے یا نہیں۔",
+    "sessionPolicyAllowLabel": "بیک وقت سیشنز کی اجازت دیں",
+    "sessionPolicyAllowHint": "صارف ایک وقت میں کئی آلات پر سائن ان رہ سکتا ہے۔",
+    "sessionPolicySingleHint": "نئے آلے پر سائن ان کرنے سے صارف باقی ہر جگہ سے سائن آؤٹ ہو جائے گا۔",
+    "sessionPolicySave": "محفوظ کریں"
   },
   "sections": {
     "title": "سیکشنز",
@@ -3034,7 +3204,35 @@
       "totalCollected": "کل وصول شدہ",
       "totalDeposits": "کل جمع رقوم",
       "totalDisbursed": "کل تقسیم شدہ",
-      "totalOutflow": "کل اخراجی رقم"
+      "totalOutflow": "کل اخراجی رقم",
+      "selectEntityRequired": "پہلے کوئی طالب علم، عملہ یا کلاس منتخب کریں۔",
+      "summaryCopied": "خلاصہ کلپ بورڈ پر نقل کر دیا گیا۔",
+      "transactionDetails": "لین دین کی تفصیلات",
+      "shareStatement": "گوشوارہ شیئر کریں",
+      "copySummary": "خلاصہ نقل کریں",
+      "whatsappShare": "واٹس ایپ پر شیئر کریں",
+      "academicYear": "تعلیمی سال",
+      "allAcademicYears": "تمام تعلیمی سال",
+      "generating": "تیار ہو رہا ہے…",
+      "generateStatement": "گوشوارہ بنائیں",
+      "agingAnalysis": "عمر بندی کا تجزیہ",
+      "totalOverdue": "کل واجب الادا",
+      "agingCurrent": "موجودہ",
+      "aging30Days": "1 تا 30 دن",
+      "aging60Days": "31 تا 60 دن",
+      "aging90Plus": "90 دن سے زیادہ",
+      "close": "بند کریں",
+      "voucherDetails": "واؤچر کی تفصیلات",
+      "billingPeriod": "بلنگ کی مدت",
+      "dueDate": "آخری تاریخ",
+      "baseAmount": "بنیادی رقم",
+      "discountAmount": "رعایت",
+      "arrears": "بقایا جات",
+      "receiptDetails": "رسید کی تفصیلات",
+      "collectedBy": "وصول کنندہ",
+      "paymentReference": "ادائیگی کا حوالہ",
+      "salaryDetails": "تنخواہ کی تفصیلات",
+      "journalDetails": "جرنل کی تفصیلات"
     },
     "feeHeads": {
       "title": "فیس ہیڈ اکاؤنٹنگ",
@@ -4140,7 +4338,8 @@
     "admitCardDownloaded": "داخلہ کارڈ PDF ڈاؤن لوڈ ہو گیا",
     "createSuccess": "سرٹیفکیٹ کامیابی سے جاری کر دیا گیا!",
     "updateSuccess": "سرٹیفکیٹ کامیابی سے اپ ڈیٹ ہو گیا!",
-    "error": "سرٹیفکیٹ پروسیس کرنے میں ناکامی"
+    "error": "سرٹیفکیٹ پروسیس کرنے میں ناکامی",
+    "bulkIssueFailed": "اسناد جاری نہیں ہو سکیں۔"
   },
   "health": {
     "title": "صحت ریکارڈز",
@@ -5235,7 +5434,8 @@
     "academicYear": {
       "title": "تعلیمی سال",
       "searchPlaceholder": "سال تلاش کریں...",
-      "closedSuffix": "(بند)"
+      "closedSuffix": "(بند)",
+      "currentSuffix": "موجودہ"
     }
   },
   "pdfDocs": {
@@ -5474,7 +5674,8 @@
     "officialTranscript": "سرکاری تعلیمی کارکردگی کی رپورٹ",
     "generatedOn": "تیاری کی تاریخ: {date}",
     "authorizedSignatory": "مجاز دستخط کنندہ / پرنسپل",
-    "viewPerformance": "کارکردگی دیکھیں"
+    "viewPerformance": "کارکردگی دیکھیں",
+    "attendanceNotTracked": "حاضری درج نہیں"
   },
   "tenantModules": {
     "academics": {
@@ -5593,5 +5794,168 @@
     "errorOccurred": "کارروائی مکمل کرنے میں ناکامی",
     "noRecordsFound": "معیار کے مطابق کوئی تاریخی ریکارڈ نہیں ملا۔",
     "selectDomainFirst": "تاریخی ریکارڈز کا معائنہ کرنے کے لیے اوپر ایک ڈومین منتخب کریں۔"
+  },
+  "weekdays": {
+    "sunday": "اتوار",
+    "monday": "پیر",
+    "tuesday": "منگل",
+    "wednesday": "بدھ",
+    "thursday": "جمعرات",
+    "friday": "جمعہ",
+    "saturday": "ہفتہ"
+  },
+  "rollover": {
+    "title": "تعلیمی سال کا رول اوور",
+    "description": "اگلا تعلیمی سال کھولیں اور وہ ترتیبات منتقل کریں جو کسی سال سے تعلق رکھتی ہیں۔",
+    "sourceYearLabel": "ماخذ سال",
+    "sourceYearHint": "وہ سال جس کا رول اوور کیا جا رہا ہے۔ اسی کے ترقی کے قواعد اور فیس کا ڈھانچہ منتقل ہوگا۔",
+    "modeLabel": "ہدف",
+    "modeCreate": "نیا سال کھولیں",
+    "modeCreateHint": "اگلا تعلیمی سال بنائیں اور ترتیبات اس میں منتقل کریں۔",
+    "modeExisting": "موجودہ سال میں منتقل کریں",
+    "modeExistingHint": "ترتیبات ایسے سال میں منتقل کریں جو پہلے سے موجود ہے۔",
+    "targetYearLabel": "ہدف سال",
+    "targetYearHint": "وہ سال جس میں ترتیبات لکھی جائیں گی۔",
+    "copyTitle": "منتقلی کے لیے ترتیبات",
+    "copyDescription": "صرف وہ ترتیبات منتقل ہوتی ہیں جو کسی سال سے تعلق رکھتی ہیں اور کسی جماعت سے منسلک کی جا سکتی ہیں۔",
+    "copyPromotionRules": "ترقی کے قواعد",
+    "copyPromotionRulesHint": "ہر جماعت کے لیے ایک قاعدہ، جو سال کے اختتام پر فیصلہ کرتا ہے کہ کون ترقی پائے گا۔",
+    "copyFeeStructures": "جماعت وار فیس کا ڈھانچہ",
+    "copyFeeStructuresHint": "ہر جماعت کے لیے ماہانہ فیس کی تفصیل۔",
+    "nothingSelected": "کچھ منتخب نہیں، اس لیے ہدف سال صرف وہی رکھے گا جو اس کے پاس پہلے سے موجود ہے۔",
+    "preview": "جائزہ",
+    "previewing": "جائزہ تیار ہو رہا ہے...",
+    "apply": "سال کھولیں",
+    "applying": "سال کھولا جا رہا ہے...",
+    "recheck": "جائزہ دوبارہ حاصل کریں",
+    "cancel": "منسوخ",
+    "previewTitle": "جائزہ",
+    "previewDescription": "سال کھولنے تک کچھ نہیں لکھا جائے گا۔",
+    "blockersLabel": "رکاوٹیں",
+    "warningsLabel": "انتباہات",
+    "ready": "سال کھولنے کے لیے تیار ہے۔",
+    "blocked": "یہ رول اوور آگے نہیں بڑھ سکتا۔",
+    "resolveFirst": "نیچے دی گئی رکاوٹیں دور کریں، پھر جائزہ دوبارہ حاصل کریں۔",
+    "previewNotice": "یہ صرف جائزہ ہے۔ کوئی ترتیب محفوظ نہیں کی گئی۔",
+    "createdLabel": "نئے بنیں گے",
+    "updatedLabel": "تبدیل ہوں گے",
+    "skippedLabel": "چھوڑ دیے جائیں گے",
+    "rowsUnit": "{count} قطاریں",
+    "changedFields": "تبدیلیاں: {fields}",
+    "notRequested": "درخواست نہیں کی گئی۔",
+    "classLabel": "جماعت",
+    "reasonLabel": "وجہ",
+    "emptyCreated": "بنانے کے لیے کچھ نیا نہیں۔",
+    "emptyUpdated": "تبدیل کرنے کے لیے کچھ نہیں۔",
+    "emptySkipped": "کچھ چھوڑا نہیں گیا۔",
+    "notCopiedTitle": "یہ رول اوور کیا منتقل نہیں کرتا",
+    "notCopiedDescription": "یہاں درج ہے تاکہ بعد میں پتہ لگانے کی ضرورت نہ پڑے۔",
+    "workingDayPolicyLabel": "کام کے دنوں کی پالیسی",
+    "workingDayPolicyCarried": "ماخذ سال سے منتقل: {days}۔",
+    "workingDayPolicyKept": "ہدف سال اپنی پالیسی برقرار رکھے گا: {days}۔",
+    "workingDayPolicyUndeclared": "کوئی بھی سال یہ واضح نہیں کرتا کہ کون سے دن غیر کاری ہیں۔",
+    "successOpened": "“{targetLabel}” کو “{sourceLabel}” سے کھول دیا گیا۔",
+    "successRolledInto": "“{targetLabel}” میں “{sourceLabel}” سے ترتیبات منتقل کر دی گئیں۔",
+    "createdDetail": "{count} قطاریں بنائی گئیں",
+    "updatedDetail": "{count} قطاریں تبدیل کی گئیں",
+    "nothingCarried": "کوئی ترتیب منتقل نہیں کی گئی۔",
+    "forbidden": "اگلا تعلیمی سال کھولنے کے لیے تعلیمی رول اوور کا اختیار درکار ہے۔",
+    "codes": {
+      "TARGET_IS_SOURCE": "“{year}” کا رول اوور اسی سال میں نہیں کیا جا سکتا۔",
+      "TARGET_YEAR_NOT_AFTER_SOURCE": "ہدف سال کا آغاز “{sourceLabel}” ({sourceStart}) کے بعد ہونا چاہیے، مگر “{targetLabel}” {targetStart} سے شروع ہوتا ہے۔",
+      "TARGET_YEAR_CLOSED": "“{targetLabel}” بند اور صرف پڑھنے کے لیے ہے، اس لیے اس میں کچھ منتقل نہیں کیا جا سکتا۔",
+      "TARGET_DATES_INVALID": "“{targetLabel}” {endDate} پر ختم ہوتا ہے، یعنی {startDate} سے شروع ہونے سے پہلے۔",
+      "DUPLICATE_YEAR_ID": "سیشن کوڈ “{yearId}” پہلے ہی استعمال میں ہے۔",
+      "TARGET_WILL_HAVE_NO_PROMOTION_RULES": "اس رول اوور کے بعد “{targetLabel}” میں کوئی فعال ترقی کا قاعدہ نہیں ہوگا، اس لیے وہاں کسی جماعت کی ترقی نہیں ہو سکے گی۔",
+      "SOURCE_YEAR_STILL_OPEN": "“{sourceLabel}” ابھی کھلا ہے، اس لیے اس کے ریکارڈ اس رول اوور کے بعد بھی بدل سکتے ہیں۔",
+      "TARGET_YEAR_HAS_STUDENTS": "“{targetLabel}” میں پہلے ہی {count} طلبہ داخل ہیں۔ اس میں منتقل کی گئی ترتیبات ان ریکارڈز پر لاگو ہوں گی جو پہلے سے موجود ہیں۔",
+      "NOTHING_REQUESTED": "کوئی ترتیب منتقل نہیں کی جا رہی، اس لیے “{targetLabel}” صرف وہی رکھے گا جو اس کے پاس پہلے سے ہے۔",
+      "WORKING_DAY_POLICY_UNDECLARED": "نہ “{sourceLabel}” اور نہ “{targetLabel}” یہ واضح کرتا ہے کہ کون سے دن غیر کاری ہیں، اس لیے پالیسی مقرر ہونے تک کام کے دنوں کی گنتی نہیں دی جا سکتی۔",
+      "TARGET_WORKING_DAY_POLICY_KEPT": "“{targetLabel}” اپنی کام کے دنوں کی پالیسی برقرار رکھے گا ({targetPolicy})؛ “{sourceLabel}” یہ بتاتا ہے ({sourcePolicy})۔ ماخذ کی پالیسی لاگو نہیں کی گئی۔",
+      "SOURCE_HAS_NO_FEE_STRUCTURES": "“{sourceLabel}” میں جماعت وار فیس کا کوئی ڈھانچہ نہیں، اس لیے منتقل کرنے کے لیے کچھ نہ تھا۔",
+      "DANGLING_NEXT_CLASS": "{className} کے ترقی کے قاعدے میں دی گئی اگلی جماعت موجود نہیں ہے۔ قاعدہ جیسا تھا ویسا ہی منتقل کر دیا گیا۔",
+      "ORPHAN_RULE_CLASS": "“{sourceLabel}” میں ایسی جماعت کا ترقی کا قاعدہ موجود ہے جو اب نہیں رہی، اس لیے اسے منتقل نہیں کیا گیا۔"
+    },
+    "fixes": {
+      "TARGET_IS_SOURCE": "کوئی دوسرا ہدف سال منتخب کریں۔",
+      "TARGET_YEAR_NOT_AFTER_SOURCE": "ایسا سال منتخب کریں جو ماخذ کے بعد شروع ہو۔",
+      "TARGET_YEAR_CLOSED": "ایسا سال منتخب کریں جو ابھی کھلا ہو۔",
+      "TARGET_DATES_INVALID": "ہدف سال کی تاریخیں درست کریں۔",
+      "DUPLICATE_YEAR_ID": "ایسا سیشن کوڈ منتخب کریں جو پہلے سے استعمال میں نہ ہو۔",
+      "TARGET_WILL_HAVE_NO_PROMOTION_RULES": "ماخذ کے ترقی کے قواعد منتقل کریں، یا پہلے ہدف سال میں وہ ترتیب دیں۔",
+      "SOURCE_YEAR_STILL_OPEN": "اگر ماخذ سال کے نتائج حتمی ہیں تو پہلے اسے بند کریں۔",
+      "TARGET_YEAR_HAS_STUDENTS": "تصدیق کریں کہ یہی ہدف سال آپ کا مطلوب تھا۔",
+      "NOTHING_REQUESTED": "منتقلی کے لیے کم از کم ایک قسم کی ترتیب منتخب کریں، یا سال کو جیسا ہے ویسا کھولیں۔",
+      "WORKING_DAY_POLICY_UNDECLARED": "دونوں میں سے کسی ایک سال کے لیے کام کے دنوں کی پالیسی واضح کریں۔",
+      "TARGET_WORKING_DAY_POLICY_KEPT": "اگر ماخذ کی پالیسی لاگو ہونی چاہیے تو ہدف سال کی پالیسی تبدیل کریں۔",
+      "SOURCE_HAS_NO_FEE_STRUCTURES": "اگر فیس کا ڈھانچہ غائب ہے تو پہلے ماخذ سال میں اسے ترتیب دیں۔",
+      "DANGLING_NEXT_CLASS": "قاعدے کو ماخذ سال میں موجود جماعت کی طرف دوبارہ اشارہ کریں۔",
+      "ORPHAN_RULE_CLASS": "بے بنیاد قاعدے کو ماخذ سال سے حذف کریں۔"
+    },
+    "skipReasons": {
+      "CLASS_MISSING": "یہ جماعت اب کلاسوں کی فہرست میں موجود نہیں۔",
+      "ALREADY_IDENTICAL": "ہدف سال میں پہلے ہی ایسی ہی قطار موجود ہے۔"
+    },
+    "notCopied": {
+      "terms": {
+        "title": "ٹرم اور سمسٹر",
+        "reason": "نظام میں ٹرم یا سمسٹر کا کوئی ماڈل موجود نہیں۔ ٹرم اس لیے منتقل نہیں ہوتے کہ وہ کہیں محفوظ ہی نہیں ہوتے۔"
+      },
+      "holidays": {
+        "title": "تعطیلات",
+        "reason": "تعطیل کی تاریخیں اسی سال سے تعلق رکھتی ہیں جس میں وہ آتی ہیں۔ پچھلے سال کی چھٹیاں منتقل کرنے سے وہ غلط مہینے میں چلی جائیں گی، اس لیے تعطیلات ہر سال کھلنے کے بعد ترتیب دی جاتی ہیں۔"
+      },
+      "students": {
+        "title": "طلبہ اور داخلے",
+        "reason": "طلبہ ترقی پا کر سال بدلتے ہیں، نقل ہو کر نہیں۔ داخلے نقل کرنے سے ہر طالب علم ایک ہی وقت میں دو سالوں میں شمار ہوگا۔"
+      },
+      "examSessions": {
+        "title": "امتحانات اور نمبر",
+        "reason": "نئے سال میں امتحانات نہیں ہوتے، اور پچھلے سال کے امتحانی سیشنز اور نمبر اسی سال سے تعلق رکھتے ہیں جس نے وہ درج کیے۔"
+      },
+      "feeVouchers": {
+        "title": "فیس واؤچر، رسیدیں اور ادائیگیاں",
+        "reason": "واؤچر، رسیدیں اور ادائیگیاں اسی سال کے مالی ریکارڈ ہیں جس میں وہ بنے۔ انہیں آگے منتقل کرنے سے آمدنی دوگنی گنی جائے گی۔"
+      },
+      "timetables": {
+        "title": "ٹائم ٹیبل",
+        "reason": "ٹائم ٹیبل کی کوئی منفرد کلید نہیں، اس لیے اس کی نقل محفوظ طریقے سے دہرائی نہیں جا سکتی — دوسری بار چلانے پر پورا ٹائم ٹیبل دہر جائے گا، تبدیل نہیں ہوگا۔ جب تک کلید موجود نہ ہو، یہ خارج ہے۔"
+      },
+      "attendance": {
+        "title": "حاضری",
+        "reason": "حاضری اس بات کا ریکارڈ ہے جو واقع ہوا — ہر طالب علم کے لیے ہر دن ایک قطار۔ نئے سال میں ابھی کوئی دن واقع نہیں ہوا۔"
+      },
+      "certificates": {
+        "title": "سرٹیفکیٹ",
+        "reason": "سرٹیفکیٹ ایک جاری شدہ دستاویز ہے جس کا اپنا نمبر ہوتا ہے۔ نئے سال میں دوبارہ جاری کرنے سے اسی واقعے کے لیے دوسری دستاویز بن جائے گی۔"
+      },
+      "feeBalancePolicy": {
+        "title": "واجب الادا فیس کا بیلنس",
+        "reason": "طالب علم کا غیر ادا شدہ بیلنس منتقل ہوگا، جزوی طور پر منتقل ہوگا یا ختم ہوگا — یہ مالی پالیسی کا فیصلہ ہے جو اسکول کو کرنا ہے، نظام اس کا اندازہ نہیں لگا سکتا۔"
+      }
+    },
+    "fields": {
+      "minimumAttendance": "کم از کم حاضری",
+      "minimumOverallPercentage": "کم از کم مجموعی فیصد",
+      "minimumPerSubject": "فی مضمون کم از کم",
+      "maxFailedSubjects": "زیادہ سے زیادہ فیل مضامین",
+      "allowConditionalPromotion": "مشروط ترقی",
+      "autoPromote": "خودکار ترقی",
+      "nextClassId": "اگلی جماعت",
+      "isActive": "فعال",
+      "tuitionFee": "ٹیوشن فیس",
+      "labFee": "لیبارٹری فیس",
+      "computerFee": "کمپیوٹر فیس",
+      "examFee": "امتحانی فیس",
+      "sportsFee": "کھیلوں کی فیس",
+      "libraryFee": "لائبریری فیس",
+      "otherFee": "دیگر فیس",
+      "totalMonthlyFee": "کل ماہانہ فیس",
+      "billingCycle": "بلنگ سائیکل",
+      "notes": "نوٹس"
+    },
+    "selectSourceYear": "وہ سال منتخب کریں جس کا رول اوور کرنا ہے۔",
+    "selectTargetYear": "وہ سال منتخب کریں جس میں ترتیبات منتقل کی جائیں گی۔",
+    "fillTargetDetails": "سیشن کوڈ، نام اور دونوں تاریخیں مکمل کریں۔"
   }
 }

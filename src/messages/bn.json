@@ -193,7 +193,10 @@
     "paymentReference": "লেনদেন রেফারেন্স (UTR)",
     "paymentReferencePlaceholder": "UTR / গেটওয়ে আইডি লিখুন",
     "referenceRequired": "{method} পেমেন্টের জন্য এক্সটার্নাল রেফারেন্স (UTR/লেনদেন আইডি) প্রয়োজন।",
-    "chequeNumberRequired": "চেক পেমেন্টের জন্য চেক নম্বর প্রয়োজন।"
+    "chequeNumberRequired": "চেক পেমেন্টের জন্য চেক নম্বর প্রয়োজন।",
+    "selectMonthsPrompt": "অন্তত একটি মাস নির্বাচন করুন।",
+    "selectPaymentMethodError": "পরিশোধের পদ্ধতি নির্বাচন করুন।",
+    "selectPaymentMethodPrompt": "চালিয়ে যেতে পরিশোধের পদ্ধতি নির্বাচন করুন।"
   },
   "currencies": {
     "title": "মুদ্রা",
@@ -381,7 +384,12 @@
     "pillarMultiCampus": "মাল্টি-ক্যাম্পাস প্রশাসন ও ট্রান্সক্রিপ্ট",
     "slaMetric": "৯৯.৯৯% আপটাইম SLA",
     "resetModalTitle": "পাসওয়ার্ড রিসেট নির্দেশনা",
-    "resetModalClose": "বন্ধ করুন"
+    "resetModalClose": "বন্ধ করুন",
+    "idleTitle": "আপনি কি এখনও আছেন?",
+    "idleDescription": "আপনি কিছুক্ষণ নিষ্ক্রিয় ছিলেন। নিরাপত্তার জন্য শীঘ্রই সাইন আউট করা হবে।",
+    "idleSignOut": "এখনই সাইন আউট করুন",
+    "idleStay": "সাইন ইন থাকুন",
+    "idleCountdown": "{seconds} সেকেন্ডে সাইন আউট হয়ে যাবে।"
   },
   "academicSelector": {
     "classLabel": "শ্রেণি",
@@ -731,7 +739,8 @@
     "idCards": "ID Cards",
     "admissionForm": "Admission Form",
     "createError": "শিক্ষার্থী তৈরি করতে ব্যর্থ",
-    "updateError": "শিক্ষার্থী আপডেট করতে ব্যর্থ"
+    "updateError": "শিক্ষার্থী আপডেট করতে ব্যর্থ",
+    "selectGender": "লিঙ্গ নির্বাচন করুন"
   },
   "fees": {
     "title": "ফি ব্যবস্থাপনা কেন্দ্র",
@@ -1340,7 +1349,10 @@
         "present": "উপস্থিত",
         "absent": "অনুপস্থিত",
         "late": "বিলম্বে",
-        "leave": "ছুটি"
+        "leave": "ছুটি",
+        "halfDay": "অর্ধ দিন",
+        "excused": "অনুমোদিত অনুপস্থিত",
+        "holiday": "ছুটি"
       },
       "clearFilters": "ফিল্টার মুছুন"
     },
@@ -1569,7 +1581,8 @@
     "promotionsExecuted": "পদোন্নতি সফলভাবে সম্পন্ন হয়েছে!",
     "error": "পরীক্ষা কার্যক্রমে ব্যর্থ হয়েছে",
     "promotionRuleUpdated": "প্রমোশন রুল সফলভাবে আপডেট হয়েছে",
-    "promotionRuleDeleted": "প্রমোশন রুল সফলভাবে মুছে ফেলা হয়েছে"
+    "promotionRuleDeleted": "প্রমোশন রুল সফলভাবে মুছে ফেলা হয়েছে",
+    "selectExamType": "পরীক্ষার ধরন নির্বাচন করুন।"
   },
   "results": {
     "marksLockedDuePromotion": "শিক্ষার্থীর পদোন্নতির কারণে তার নম্বর লক করা হয়েছে।",
@@ -1732,7 +1745,13 @@
     "lifecycleDescription": "এই শিক্ষাবর্ষ সক্রিয় লেনদেনের জন্য খোলা থাকবে কি না তা নিয়ন্ত্রণ করুন।",
     "closedHelper": "এই সেশনটি আর্কাইভ হিসেবে চিহ্নিত করুন। বন্ধ সেশনে নতুন ভর্তি বা ফি ভাউচার গ্রহণ করা যায় না।",
     "cancel": "বাতিল",
-    "saving": "সংরক্ষণ হচ্ছে..."
+    "saving": "সংরক্ষণ হচ্ছে...",
+    "closeSuccessMissingResults": "শিক্ষাবর্ষ বন্ধ করা হয়েছে। {finalised} শিক্ষার্থীর চূড়ান্ত রেকর্ড সম্পন্ন হয়েছে; {missing} জনার ফলাফল ছিল না, তাই তাদের চূড়ান্ত শতাংশ তৈরি হয়নি।",
+    "closeSuccess": "শিক্ষাবর্ষ বন্ধ করা হয়েছে। {finalised} শিক্ষার্থীর চূড়ান্ত রেকর্ড সম্পন্ন হয়েছে।",
+    "setCurrentSuccess": "{label} এখন চলতি শিক্ষাবর্ষ।",
+    "setCurrentError": "চলতি শিক্ষাবর্ষ নির্ধারণ করা যায়নি।",
+    "operatingYear": "চলতি বছর",
+    "setAsCurrent": "চলতি বছর হিসেবে নির্ধারণ করুন"
   },
   "users": {
     "title": "ব্যবহারকারী",
@@ -2221,8 +2240,88 @@
       "status": {
         "promoted": "পদোন্নতি প্রাপ্ত",
         "retained": "পুনরাবৃত্তি",
-        "conditionalPromoted": "শর্তসাপেক্ষ পদোন্নতি"
-      }
+        "conditionalPromoted": "শর্তসাপেক্ষ পদোন্নতি",
+        "graduated": "উত্তীর্ণ",
+        "demoted": "অবনমিত",
+        "transferred": "স্থানান্তরিত"
+      },
+      "selectDemotionTarget": "শ্রেণি নির্বাচন করুন",
+      "noStudentsSelected": "অন্তত একজন শিক্ষার্থী নির্বাচন করুন।",
+      "overrideNotSelected": "{count} জন এমন শিক্ষার্থীর জন্য ম্যানুয়াল ব্যবস্থা নেওয়া হয়েছে যারা বর্তমান নির্বাচনে নেই। তাদের নির্বাচনে যোগ করুন, নয়তো আগে ব্যবস্থাটি মুছে ফেলুন।",
+      "confirmExecuteWithExits": "{count} শিক্ষার্থীকে {fromYear} থেকে {toYear} এ পদোন্নতি দেওয়া হবে? তাদের মধ্যে {exits} জন তালিকা থেকে বেরিয়ে যাচ্ছে।",
+      "confirmExecuteSelected": "{count} শিক্ষার্থীকে {fromYear} থেকে {toYear} এ পদোন্নতি দেওয়া হবে?",
+      "executeSuccess": "{count} শিক্ষার্থীকে {year} এ পদোন্নতি দেওয়া হয়েছে।",
+      "transferCertificatePurpose": "স্থানান্তর",
+      "certificatesIssued": "{count} টি সার্টিফিকেট ইস্যু করা হয়েছে।",
+      "certificatesSkipped": "{count} শিক্ষার্থীর কাছে ইতিমধ্যে এই ধরনের সক্রিয় সার্টিফিকেট আছে, তাই বাদ দেওয়া হয়েছে।",
+      "attendanceNotTracked": "উপস্থিতি নথিভুক্ত নয়",
+      "leftSchool": "স্কুল ছেড়ে দিয়েছে",
+      "lowerClass": "নিচের শ্রেণি",
+      "studentId": "শিক্ষার্থী আইডি",
+      "attendance": "উপস্থিতি",
+      "closedYearOption": "{label} (বন্ধ)",
+      "manualOverride": "ম্যানুয়াল পরিবর্তন",
+      "insufficientDataFlag": "অসম্পূর্ণ ফলাফল",
+      "legacyPlacementFlag": "শ্রেণি শিক্ষার্থীর প্রোফাইল থেকে নেওয়া — এই বছরের কোনো রেকর্ড নেই",
+      "manualAction": "ম্যানুয়াল ব্যবস্থা",
+      "setActionFor": "{name} এর জন্য ব্যবস্থা নির্ধারণ করুন",
+      "demoteAction": "অবনমন করুন…",
+      "clearOverride": "ম্যানুয়াল ব্যবস্থা মুছুন",
+      "executeSelected": "নির্বাচিত {count} জনকে পদোন্নতি দিন",
+      "searchClassPlaceholder": "শ্রেণি খুঁজুন",
+      "noOptions": "কিছু মেলেনি",
+      "searchYearPlaceholder": "শিক্ষাবর্ষ খুঁজুন",
+      "selectTargetYear": "লক্ষ্য শিক্ষাবর্ষ",
+      "selectTargetYearDescription": "যে বছরটিতে এই শিক্ষার্থীদের পদোন্নতি দেওয়া হবে। এটি উৎস বছরের পরে শুরু হতে হবে।",
+      "selectTargetYearPlaceholder": "লক্ষ্য বছর নির্বাচন করুন",
+      "noTargetYearOptions": "এর পরে কোনো বছর নেই",
+      "targetYearSuggested": "প্রস্তাবিত",
+      "noTargetYearTitle": "কোনো লক্ষ্য শিক্ষাবর্ষ নেই",
+      "noTargetYearDescription": "এই শ্রেণির পদোন্নতির আগে পরবর্তী শিক্ষাবর্ষ তৈরি করুন। পদোন্নতিকে বছরের সীমা অতিক্রম করতেই হবে।",
+      "goToAcademicYears": "শিক্ষাবর্ষে যান",
+      "terminalClassTitle": "শেষ শ্রেণি",
+      "terminalClassDescription": "{className} ধারাক্রমের শেষ শ্রেণি, তাই এর শিক্ষার্থীরা এগোনোর বদলে উত্তীর্ণ হয়।",
+      "warningsTitle": "যাচাই করার বিষয়",
+      "legacyPlacementWarning": "{count} শিক্ষার্থীর এই বছরের কোনো শ্রেণি রেকর্ড নেই; তাদের শ্রেণি প্রোফাইল থেকে নেওয়া হয়েছে।",
+      "insufficientDataWarning": "{count} শিক্ষার্থীর ফলাফল অসম্পূর্ণ, তাই নম্বর এন্ট্রি হলে তাদের ফলাফল বদলাতে পারে।",
+      "exitDocumentsTitle": "বহির্গমন নথি ({count})",
+      "exitDocumentsDescription": "বর্ষটি {date} এ বন্ধ হয়েছে। {remaining} টি সার্টিফিকেট এখনও ইস্যু করতে হবে।",
+      "issueTransferCertificates": "স্থানান্তর সার্টিফিকেট ইস্যু করুন ({count})",
+      "issueCharacterCertificates": "চরিত্র সার্টিফিকেট ইস্যু করুন ({count})",
+      "printCertificate": "প্রিন্ট করুন",
+      "issueTransferCertificate": "স্থানান্তর সার্টিফিকেট ইস্যু করুন",
+      "issueCharacterCertificate": "চরিত্র সার্টিফিকেট ইস্যু করুন",
+      "certificateNotIssued": "ইস্যু হয়নি",
+      "noCertificatePermissionHint": "সার্টিফিকেট ইস্যু করার অনুমতি আপনার নেই।",
+      "targetYear": "লক্ষ্য বছর",
+      "readyToPromoteSelected": "{total} জনের মধ্যে {count} জনকে {year} এ পদোন্নতি দিন",
+      "graduating": "উত্তীর্ণ হচ্ছে",
+      "leavingRoster": "তালিকা থেকে বেরিয়ে যাচ্ছে",
+      "transferredOut": "স্থানান্তরিত",
+      "yes": "হ্যাঁ",
+      "no": "না",
+      "rollNumberPolicy": "রোল নম্বর নীতি",
+      "rollNumberPolicyDescription": "লক্ষ্য বছরে শিক্ষার্থীদের রোল নম্বর কীভাবে দেওয়া হবে।",
+      "rollNumberPolicyPreserve": "বর্তমান রোল নম্বর রাখুন",
+      "rollNumberPolicySequential": "ক্রম অনুসারে নতুন নম্বর দিন",
+      "searchStudents": "শিক্ষার্থী খুঁজুন",
+      "rowsPerPage": "প্রতি পাতায় সারি",
+      "rangeOf": "{total} এর মধ্যে {start}–{end}",
+      "previous": "পূর্ববর্তী",
+      "next": "পরবর্তী",
+      "selectAll": "সব নির্বাচন করুন",
+      "clearSelection": "নির্বাচন মুছুন",
+      "emptyRoster": "দেখানোর মতো কোনো শিক্ষার্থী নেই",
+      "emptyRosterHint": "বর্তমান ফিল্টারের সাথে কিছু মেলে না।",
+      "selectedCount": "{total} এর মধ্যে {selected} নির্বাচিত",
+      "summaryFooter": "{advancing} পদোন্নতি · {exiting} বহির্গমন · {reExam} পুনঃপরীক্ষা",
+      "demotionDialogTitle": "শিক্ষার্থীকে অবনমন করুন",
+      "demotionDialogDescription": "{name} কে {className} থেকে নিচের শ্রেণিতে পাঠান।",
+      "demotionTargetClass": "লক্ষ্য শ্রেণি",
+      "noLowerClasses": "এই শিক্ষার্থীকে পাঠানোর মতো নিচের কোনো শ্রেণি নেই।",
+      "demotionHint": "অবনমন একটি ম্যানুয়াল সিদ্ধান্ত। শিক্ষার্থী লক্ষ্য বছরে থাকে কিন্তু এক শ্রেণি নিচে নেমে যায়।",
+      "cancel": "বাতিল করুন",
+      "confirmDemotion": "অবনমন নিশ্চিত করুন"
     },
     "ruleManager": {
       "title": "পদোন্নতির নিয়ম",
@@ -2268,6 +2367,69 @@
       "saveChanges": "পরিবর্তন সংরক্ষণ করুন",
       "lockedBadge": "ঐতিহাসিক রেকর্ডের কারণে লক করা",
       "lockedTooltip": "লক করা: এই শ্রেণী ও শিক্ষাবর্ষের জন্য ইতিমধ্যে {count} জন শিক্ষার্থীর পদোন্নতি রেকর্ড সংরক্ষিত রয়েছে।"
+    },
+    "preflight": {
+      "title": "পদোন্নতি পূর্ব-যাচাই",
+      "yearCloseTitle": "বর্ষ বন্ধের পূর্ব-যাচাই",
+      "description": "শ্রেণির পদোন্নতির আগে চালানো যাচাই।",
+      "yearCloseDescription": "শিক্ষাবর্ষ বন্ধ করার আগে চালানো যাচাই।",
+      "blockersLabel": "বাধা",
+      "warningsLabel": "সতর্কতা",
+      "recheck": "আবার যাচাই করুন",
+      "studentsTruncated": "স্কুলের কেবল একটি অংশ যাচাই করা হয়েছে, তাই এই প্রতিবেদন অসম্পূর্ণ হতে পারে।",
+      "passed": "সব পূর্ব-যাচাই সফল হয়েছে।",
+      "blocked": "এটি এখনই এগোতে পারবে না।",
+      "resolveFirst": "নিচের বাধাগুলো দূর করুন, তারপর আবার যাচাই করুন।",
+      "truncatedNote": "{count} টি ফলাফল এখানে তালিকাভুক্ত নয়।",
+      "studentsScanned": "{count} শিক্ষার্থী যাচাই করা হয়েছে",
+      "codes": {
+        "SAME_ACADEMIC_YEAR": "“{targetYear}” এবং “{sourceYear}” একই বছর। পদোন্নতির জন্য বছরের সীমা অতিক্রম করা আবশ্যক।",
+        "TARGET_YEAR_NOT_AFTER_SOURCE": "“{targetYear}” {targetStartDate} তারিখে শুরু হয়, যা “{sourceYear}” ({sourceStartDate}) এর পরে নয়।",
+        "YEAR_ALREADY_CLOSED": "“{year}” বন্ধ এবং শুধুমাত্র পাঠযোগ্য।",
+        "NO_PROMOTION_RULE": "“{className}” এর জন্য কোনো সক্রিয় পদোন্নতি নিয়ম কনফিগার করা নেই, তাই যোগ্যতা যাচাই করা যাবে না।",
+        "NEXT_CLASS_NOT_FOUND": "“{className}” এর পদোন্নতি নিয়মে উল্লিখিত পরবর্তী শ্রেণিটি আর নেই।",
+        "CLASS_WITHOUT_NEXT_CLASS": "“{className}” এর জন্য পরবর্তী শ্রেণি কনফিগার করা নেই, অথচ “{higherClassName}” তার উপরে রয়েছে। “{className}” এর সব শিক্ষার্থীকে উত্তীর্ণ চিহ্নিত করা হবে।",
+        "EMPTY_COHORT": "“{className}” এর কোনো সক্রিয় শিক্ষার্থী “{year}” এ ভর্তি নেই।",
+        "STUDENT_WITHOUT_SESSION": "{studentName} এর “{year}” এর জন্য কোনো ভর্তি রেকর্ড নেই; তাদের শ্রেণি শিক্ষার্থী প্রোফাইল থেকে নেওয়া হয়েছে।",
+        "STUDENT_WITHOUT_RESULTS": "{studentName} এর এই বছরের পরীক্ষার ফলাফল নেই, তাই তাদের সিদ্ধান্ত অনুপস্থিত তথ্যের উপর নির্ভর করছে।",
+        "MISSING_ROLL_NUMBER": "{studentName} এর রোল নম্বর নেই। রোলওভার এই শূন্যস্থান পরের বছরে বহন করবে।",
+        "MISSING_DEMOGRAPHICS": "{studentName} এর রেকর্ডে {fields} নেই।",
+        "DUPLICATE_ENROLLMENT": "{studentName} এর ইতিমধ্যে {count} টি ভর্তি রেকর্ড “{year}” এ আছে।",
+        "DUPLICATE_ROLL_NUMBER": "রোল নম্বর “{rollNumber}” {count} জন শিক্ষার্থীর কাছে “{className}” এ আছে।",
+        "UNPROMOTED_STUDENT": "{studentName} এখনও “{year}” এ ভর্তি এবং তাদের কোনো পদোন্নতির রেকর্ড নেই।",
+        "UNISSUED_EXIT_DOCUMENT": "{studentName} {action} হিসেবে চলে গেছেন কিন্তু {expectedDocuments} সার্টিফিকেট ইস্যু হয়নি।",
+        "ATTENDANCE_BELOW_REQUIREMENT": "{studentName} এর উপস্থিতি {actual}% ছিল “{year}” এ, যা প্রয়োজনীয় {required}% এর কম।"
+      },
+      "fixes": {
+        "SAME_ACADEMIC_YEAR": "যে বছরটি এর পরে আসে সেটি বেছে নিন।",
+        "TARGET_YEAR_NOT_AFTER_SOURCE": "এমন বছর বেছে নিন যার শুরুর তারিখ পরে।",
+        "YEAR_ALREADY_CLOSED": "বছরটি আবার খুলুন, বা খোলা থাকা কোনো বছর বেছে নিন।",
+        "NO_PROMOTION_RULE": "এই শ্রেণির জন্য পদোন্নতি নিয়ম কনফিগার করুন।",
+        "NEXT_CLASS_NOT_FOUND": "নিয়মটি বিদ্যমান কোনো শ্রেণির দিকে আবার নির্দেশ করুন।",
+        "CLASS_WITHOUT_NEXT_CLASS": "পরবর্তী শ্রেণি নির্ধারণ করুন, বা নিশ্চিত করুন এটি শেষ শ্রেণি।",
+        "EMPTY_COHORT": "এই বছরে শ্রেণিটির সক্রিয় শিক্ষার্থী আছে কিনা যাচাই করুন।",
+        "STUDENT_WITHOUT_SESSION": "শিক্ষার্থীকে এই বছরে ভর্তি করুন, বা তাদের প্রোফাইল শ্রেণি নিশ্চিত করুন।",
+        "STUDENT_WITHOUT_RESULTS": "পরীক্ষার ফলাফল লিখুন, বা নিজে সিদ্ধান্ত নিন।",
+        "MISSING_ROLL_NUMBER": "রোলওভারের আগে রোল নম্বর দিন।",
+        "MISSING_DEMOGRAPHICS": "শিক্ষার্থীর প্রোফাইল সম্পূর্ণ করুন।",
+        "DUPLICATE_ENROLLMENT": "আবার পদোন্নতির আগে দ্বৈত ভর্তি সমাধান করুন।",
+        "DUPLICATE_ROLL_NUMBER": "শ্রেণির প্রত্যেক শিক্ষার্থীকে আলাদা রোল নম্বর দিন।",
+        "UNPROMOTED_STUDENT": "বন্ধ করার আগে বছর-শেষ পদোন্নতি চালান।",
+        "UNISSUED_EXIT_DOCUMENT": "সার্টিফিকেট ইস্যু করুন, বা মেনে নিন এটি বন্ধের পরে ছাপা হবে।",
+        "ATTENDANCE_BELOW_REQUIREMENT": "বছর ফ্রিজ হওয়ার আগে উপস্থিতি রেজিস্টার পর্যালোচনা করুন।"
+      }
+    },
+    "reasons": {
+      "MEETS_CRITERIA": "সব পদোন্নতির মানদণ্ড {overall}% সহ পূরণ হয়েছে।",
+      "FAILED_SUBJECTS": "{count} বিষয়ে অকৃতকার্য: {subjects}।",
+      "LOW_OVERALL": "সামগ্রিক {actual}% প্রয়োজনীয় {required}% এর কম।",
+      "LOW_ATTENDANCE": "উপস্থিতি {actual}% প্রয়োজনীয় {required}% এর কম।",
+      "NO_EXAM_RESULTS": "এই শিক্ষাবর্ষের জন্য কোনো পরীক্ষার ফলাফল নথিভুক্ত নেই।",
+      "CONDITIONAL_ELIGIBLE": "পুনঃপরীক্ষার পর শর্তসাপেক্ষ পদোন্নতির জন্য যোগ্য।",
+      "GRADUATED_FINAL_CLASS": "শেষ শ্রেণি — শিক্ষার্থী স্নাতক হয়েছে।",
+      "RETAINED_FINAL_CLASS": "শেষ শ্রেণি — মানদণ্ড পূরণ হয়নি, শিক্ষার্থী বছরটি পুনরাবৃত্তি করবে।",
+      "MANUAL_OVERRIDE": "অপারেটর দ্বারা ম্যানুয়ালি পরিবর্তিত।",
+      "TRANSFERRED_OUT": "বিদ্যালয় থেকে স্থানান্তরিত।"
     }
   },
   "groups": {
@@ -2398,7 +2560,15 @@
       "dangerZoneTitle": "বিপজ্জনক অঞ্চল",
       "dangerZoneDescription": "৩ ধাপের নিশ্চিতকরণের পর {name} এবং এর সমস্ত ডেটা অপরিবর্তনীয়ভাবে মুছুন।",
       "dangerZoneButton": "টেন্যান্ট স্থায়ীভাবে মুছুন"
-    }
+    },
+    "sessionPolicySaveFailed": "সেশন নীতি সংরক্ষণ করা যায়নি।",
+    "sessionPolicySaved": "সেশন নীতি সংরক্ষণ করা হয়েছে।",
+    "sessionPolicyTitle": "সেশন নীতি",
+    "sessionPolicyDescription": "একজন ব্যবহারকারী একই সাথে একাধিক ডিভাইসে সাইন ইন থাকতে পারবেন কি না তা নিয়ন্ত্রণ করুন।",
+    "sessionPolicyAllowLabel": "সমকালীন সেশনের অনুমতি দিন",
+    "sessionPolicyAllowHint": "ব্যবহারকারী একই সাথে কয়েকটি ডিভাইসে সাইন ইন থাকতে পারেন।",
+    "sessionPolicySingleHint": "নতুন ডিভাইসে সাইন ইন করলে ব্যবহারকারী বাকি সব জায়গা থেকে সাইন আউট হয়ে যাবেন।",
+    "sessionPolicySave": "সংরক্ষণ করুন"
   },
   "sections": {
     "title": "শাখাসমূহ",
@@ -3034,7 +3204,35 @@
       "totalCollected": "মোট আদায়",
       "totalDeposits": "মোট জমা",
       "totalDisbursed": "মোট বিতরণ",
-      "totalOutflow": "মোট বহির্গমন"
+      "totalOutflow": "মোট বহির্গমন",
+      "selectEntityRequired": "প্রথমে একজন শিক্ষার্থী, কর্মী বা শ্রেণি নির্বাচন করুন।",
+      "summaryCopied": "সারসংক্ষেপ ক্লিপবোর্ডে কপি করা হয়েছে।",
+      "transactionDetails": "লেনদেনের বিবরণ",
+      "shareStatement": "বিবরণ শেয়ার করুন",
+      "copySummary": "সারসংক্ষেপ কপি করুন",
+      "whatsappShare": "হোয়াটসঅ্যাপে শেয়ার করুন",
+      "academicYear": "শিক্ষাবর্ষ",
+      "allAcademicYears": "সব শিক্ষাবর্ষ",
+      "generating": "তৈরি হচ্ছে…",
+      "generateStatement": "বিবরণ তৈরি করুন",
+      "agingAnalysis": "বয়সভিত্তিক বিশ্লেষণ",
+      "totalOverdue": "মোট বকেয়া",
+      "agingCurrent": "চলতি",
+      "aging30Days": "১–৩০ দিন",
+      "aging60Days": "৩১–৬০ দিন",
+      "aging90Plus": "৯০+ দিন",
+      "close": "বন্ধ করুন",
+      "voucherDetails": "ভাউচারের বিবরণ",
+      "billingPeriod": "বিলিং সময়কাল",
+      "dueDate": "নির্ধারিত তারিখ",
+      "baseAmount": "মূল পরিমাণ",
+      "discountAmount": "ছাড়",
+      "arrears": "বকেয়া",
+      "receiptDetails": "রসিদের বিবরণ",
+      "collectedBy": "আদায়কারী",
+      "paymentReference": "পরিশোধের রেফারেন্স",
+      "salaryDetails": "বেতনের বিবরণ",
+      "journalDetails": "জার্নালের বিবরণ"
     },
     "feeHeads": {
       "title": "ফি হেড অ্যাকাউন্টিং",
@@ -4140,7 +4338,8 @@
     "admitCardDownloaded": "প্রবেশপত্র PDF ডাউনলোড হয়েছে",
     "createSuccess": "সার্টিফিকেট সফলভাবে প্রদান করা হয়েছে!",
     "updateSuccess": "সার্টিফিকেট সফলভাবে আপডেট করা হয়েছে!",
-    "error": "সার্টিফিকেট প্রক্রিয়া করতে ব্যর্থ হয়েছে"
+    "error": "সার্টিফিকেট প্রক্রিয়া করতে ব্যর্থ হয়েছে",
+    "bulkIssueFailed": "সার্টিফিকেট ইস্যু করা যায়নি।"
   },
   "health": {
     "title": "স্বাস্থ্য রেকর্ড",
@@ -5235,7 +5434,8 @@
     "academicYear": {
       "title": "শিক্ষাবর্ষ",
       "searchPlaceholder": "বছর খুঁজুন...",
-      "closedSuffix": "(বন্ধ)"
+      "closedSuffix": "(বন্ধ)",
+      "currentSuffix": "চলতি"
     }
   },
   "pdfDocs": {
@@ -5474,7 +5674,8 @@
     "officialTranscript": "অফিসিয়াল একাডেমিক পারফরম্যান্স রিপোর্ট",
     "generatedOn": "তৈরির তারিখ: {date}",
     "authorizedSignatory": "অনুমোদিত স্বাক্ষরকারী / প্রধান শিক্ষক",
-    "viewPerformance": "পারফরম্যান্স দেখুন"
+    "viewPerformance": "পারফরম্যান্স দেখুন",
+    "attendanceNotTracked": "উপস্থিতি নথিভুক্ত নয়"
   },
   "tenantModules": {
     "academics": {
@@ -5593,5 +5794,168 @@
     "errorOccurred": "কার্যক্রম সম্পন্ন করতে ব্যর্থ হয়েছে",
     "noRecordsFound": "প্রদত্ত শর্তের সাথে মেলে এমন কোনো ঐতিহাসিক রেকর্ড পাওয়া যায়নি।",
     "selectDomainFirst": "ঐতিহাসিক রেকর্ড পরিদর্শন ও পরিচালনা করতে উপরে একটি বিভাগ নির্বাচন করুন।"
+  },
+  "weekdays": {
+    "sunday": "রবিবার",
+    "monday": "সোমবার",
+    "tuesday": "মঙ্গলবার",
+    "wednesday": "বুধবার",
+    "thursday": "বৃহস্পতিবার",
+    "friday": "শুক্রবার",
+    "saturday": "শনিবার"
+  },
+  "rollover": {
+    "title": "শিক্ষাবর্ষ রোলওভার",
+    "description": "পরবর্তী শিক্ষাবর্ষ খুলুন এবং বছরের সঙ্গে সম্পর্কিত কনফিগারেশন পরের বছরে নিয়ে যান।",
+    "sourceYearLabel": "উৎস বছর",
+    "sourceYearHint": "যে বছরটি রোলওভার করা হচ্ছে। এর পদোন্নতি নিয়ম ও ফি কাঠামোই পরের বছরে যাবে।",
+    "modeLabel": "লক্ষ্য",
+    "modeCreate": "নতুন বছর খুলুন",
+    "modeCreateHint": "পরবর্তী শিক্ষাবর্ষ তৈরি করুন এবং কনফিগারেশন সেখানে লিখুন।",
+    "modeExisting": "বিদ্যমান বছরে নিয়ে যান",
+    "modeExistingHint": "কনফিগারেশন এমন বছরে লিখুন যা আগেই আছে।",
+    "targetYearLabel": "লক্ষ্য বছর",
+    "targetYearHint": "যে বছরে কনফিগারেশন লেখা হবে।",
+    "copyTitle": "যে কনফিগারেশন নিয়ে যাওয়া হবে",
+    "copyDescription": "কেবল সেই কনফিগারেশন নিয়ে যাওয়া হয় যা বছরের সঙ্গে সম্পর্কিত এবং শ্রেণির সঙ্গে মেলানো যায়।",
+    "copyPromotionRules": "পদোন্নতি নিয়ম",
+    "copyPromotionRulesHint": "প্রতিটি শ্রেণির জন্য একটি নিয়ম, যা বছরের শেষে ঠিক করে কে পদোন্নতি পাবে।",
+    "copyFeeStructures": "শ্রেণিভিত্তিক ফি কাঠামো",
+    "copyFeeStructuresHint": "প্রতিটি শ্রেণির মাসিক ফি-র বিবরণ।",
+    "nothingSelected": "কিছু নির্বাচন করা হয়নি, তাই লক্ষ্য বছর কেবল যা আগে থেকেই আছে তা রাখবে।",
+    "preview": "প্রিভিউ",
+    "previewing": "প্রিভিউ তৈরি হচ্ছে...",
+    "apply": "বছর খুলুন",
+    "applying": "বছর খোলা হচ্ছে...",
+    "recheck": "প্রিভিউ রিফ্রেশ করুন",
+    "cancel": "বাতিল",
+    "previewTitle": "প্রিভিউ",
+    "previewDescription": "বছর খোলার আগে কিছুই লেখা হবে না।",
+    "blockersLabel": "প্রতিবন্ধকতা",
+    "warningsLabel": "সতর্কতা",
+    "ready": "বছর খোলার জন্য প্রস্তুত।",
+    "blocked": "এই রোলওভার এগোতে পারবে না।",
+    "resolveFirst": "নিচের প্রতিবন্ধকতাগুলো দূর করুন, তারপর প্রিভিউ রিফ্রেশ করুন।",
+    "previewNotice": "এটি কেবল প্রিভিউ। কোনো কনফিগারেশন লেখা হয়নি।",
+    "createdLabel": "তৈরি হবে",
+    "updatedLabel": "হালনাগাদ হবে",
+    "skippedLabel": "বাদ যাবে",
+    "rowsUnit": "{count} টি সারি",
+    "changedFields": "পরিবর্তন: {fields}",
+    "notRequested": "অনুরোধ করা হয়নি।",
+    "classLabel": "শ্রেণি",
+    "reasonLabel": "কারণ",
+    "emptyCreated": "তৈরি করার মতো নতুন কিছু নেই।",
+    "emptyUpdated": "হালনাগাদ করার কিছু নেই।",
+    "emptySkipped": "কিছু বাদ যায়নি।",
+    "notCopiedTitle": "এই রোলওভার যা নিয়ে যায় না",
+    "notCopiedDescription": "এখানে তালিকাভুক্ত, যাতে পরে খুঁজে বের করতে না হয়।",
+    "workingDayPolicyLabel": "কর্মদিবস নীতি",
+    "workingDayPolicyCarried": "উৎস বছর থেকে নেওয়া: {days}।",
+    "workingDayPolicyKept": "লক্ষ্য বছর নিজের নীতি রাখবে: {days}।",
+    "workingDayPolicyUndeclared": "কোনো বছরই স্পষ্ট করেনি কোন দিনগুলো কর্মদিবস নয়।",
+    "successOpened": "“{targetLabel}” কে “{sourceLabel}” থেকে খোলা হয়েছে।",
+    "successRolledInto": "“{targetLabel}” এ “{sourceLabel}” থেকে কনফিগারেশন নিয়ে যাওয়া হয়েছে।",
+    "createdDetail": "{count} টি সারি তৈরি হয়েছে",
+    "updatedDetail": "{count} টি সারি হালনাগাদ হয়েছে",
+    "nothingCarried": "কোনো কনফিগারেশন নিয়ে যাওয়া হয়নি।",
+    "forbidden": "পরবর্তী শিক্ষাবর্ষ খুলতে শিক্ষা রোলওভারের অনুমতি প্রয়োজন।",
+    "codes": {
+      "TARGET_IS_SOURCE": "“{year}” এর রোলওভার একই বছরে করা যায় না।",
+      "TARGET_YEAR_NOT_AFTER_SOURCE": "লক্ষ্য বছর শুরু হতে হবে “{sourceLabel}” ({sourceStart}) এর পরে, কিন্তু “{targetLabel}” শুরু হয় {targetStart} এ।",
+      "TARGET_YEAR_CLOSED": "“{targetLabel}” বন্ধ এবং শুধুমাত্র পাঠযোগ্য, তাই সেখানে কিছু নিয়ে যাওয়া যায় না।",
+      "TARGET_DATES_INVALID": "“{targetLabel}” {endDate} এ শেষ হয়, অর্থাৎ {startDate} এ শুরুর আগেই।",
+      "DUPLICATE_YEAR_ID": "সেশন কোড “{yearId}” আগেই ব্যবহৃত হয়েছে।",
+      "TARGET_WILL_HAVE_NO_PROMOTION_RULES": "এই রোলওভারের পরে “{targetLabel}” এ কোনো সক্রিয় পদোন্নতি নিয়ম থাকবে না, তাই সেখানে কোনো শ্রেণির পদোন্নতি সম্ভব হবে না।",
+      "SOURCE_YEAR_STILL_OPEN": "“{sourceLabel}” এখনও খোলা, তাই এই রোলওভারের পরেও এর রেকর্ড বদলাতে পারে।",
+      "TARGET_YEAR_HAS_STUDENTS": "“{targetLabel}” এ ইতিমধ্যে {count} জন শিক্ষার্থী ভর্তি আছে। এতে নিয়ে যাওয়া কনফিগারেশন সেই রেকর্ডগুলোতে প্রযোজ্য হবে যা আগেই আছে।",
+      "NOTHING_REQUESTED": "কোনো কনফিগারেশন নিয়ে যাওয়া হচ্ছে না, তাই “{targetLabel}” কেবল যা আগে থেকেই আছে তা রাখবে।",
+      "WORKING_DAY_POLICY_UNDECLARED": "“{sourceLabel}” বা “{targetLabel}” কোনোটিই স্পষ্ট করেনি কোন দিনগুলো কর্মদিবস নয়, তাই নীতি নির্ধারিত না হওয়া পর্যন্ত কর্মদিবস গণনা দেওয়া যাবে না।",
+      "TARGET_WORKING_DAY_POLICY_KEPT": "“{targetLabel}” নিজের কর্মদিবস নীতি রাখবে ({targetPolicy}); “{sourceLabel}” যা বলে তা হলো ({sourcePolicy})। উৎসের নীতি প্রয়োগ করা হয়নি।",
+      "SOURCE_HAS_NO_FEE_STRUCTURES": "“{sourceLabel}” এ শ্রেণিভিত্তিক ফি কাঠামো নেই, তাই নিয়ে যাওয়ার কিছু ছিল না।",
+      "DANGLING_NEXT_CLASS": "{className} এর পদোন্নতি নিয়মে উল্লিখিত পরবর্তী শ্রেণিটি আর নেই। নিয়মটি যেমন ছিল তেমনই নিয়ে যাওয়া হয়েছে।",
+      "ORPHAN_RULE_CLASS": "“{sourceLabel}” এ এমন শ্রেণির পদোন্নতি নিয়ম আছে যা আর নেই, তাই সেটি নিয়ে যাওয়া হয়নি।"
+    },
+    "fixes": {
+      "TARGET_IS_SOURCE": "অন্য কোনো লক্ষ্য বছর বেছে নিন।",
+      "TARGET_YEAR_NOT_AFTER_SOURCE": "এমন বছর বেছে নিন যা উৎসের পরে শুরু হয়।",
+      "TARGET_YEAR_CLOSED": "এমন বছর বেছে নিন যা এখনও খোলা।",
+      "TARGET_DATES_INVALID": "লক্ষ্য বছরের তারিখগুলো ঠিক করুন।",
+      "DUPLICATE_YEAR_ID": "এমন সেশন কোড বেছে নিন যা আগে ব্যবহৃত হয়নি।",
+      "TARGET_WILL_HAVE_NO_PROMOTION_RULES": "উৎসের পদোন্নতি নিয়ম নিয়ে যান, বা আগে লক্ষ্য বছরে সেগুলো কনফিগার করুন।",
+      "SOURCE_YEAR_STILL_OPEN": "উৎস বছরের ফলাফল চূড়ান্ত হলে আগে সেটি বন্ধ করুন।",
+      "TARGET_YEAR_HAS_STUDENTS": "নিশ্চিত করুন যে এটিই আপনার কাঙ্ক্ষিত লক্ষ্য বছর।",
+      "NOTHING_REQUESTED": "নিয়ে যাওয়ার জন্য অন্তত এক ধরনের কনফিগারেশন বেছে নিন, বা বছরটি যেমন আছে তেমনই খুলুন।",
+      "WORKING_DAY_POLICY_UNDECLARED": "দুই বছরের যেকোনো একটির জন্য কর্মদিবস নীতি স্পষ্ট করুন।",
+      "TARGET_WORKING_DAY_POLICY_KEPT": "উৎসের নীতি প্রয়োগ করতে হলে লক্ষ্য বছরের নীতি বদলান।",
+      "SOURCE_HAS_NO_FEE_STRUCTURES": "ফি কাঠামো অনুপস্থিত থাকলে আগে উৎস বছরে সেটি কনফিগার করুন।",
+      "DANGLING_NEXT_CLASS": "নিয়মটি উৎস বছরে বিদ্যমান কোনো শ্রেণির দিকে আবার নির্দেশ করুন।",
+      "ORPHAN_RULE_CLASS": "অনাথ নিয়মটি উৎস বছর থেকে মুছে ফেলুন।"
+    },
+    "skipReasons": {
+      "CLASS_MISSING": "এই শ্রেণিটি এখন শ্রেণিতালিকায় নেই।",
+      "ALREADY_IDENTICAL": "লক্ষ্য বছরে ইতিমধ্যে অনুরূপ সারি আছে।"
+    },
+    "notCopied": {
+      "terms": {
+        "title": "টার্ম ও সেমিস্টার",
+        "reason": "সিস্টেমে টার্ম বা সেমিস্টারের কোনো মডেল নেই। টার্ম নিয়ে যাওয়া হয় না কারণ সেগুলো কোথাও সংরক্ষিতই থাকে না।"
+      },
+      "holidays": {
+        "title": "ছুটি",
+        "reason": "ছুটির তারিখ সেই বছরের সঙ্গে সম্পর্কিত যেখানে সেগুলো পড়ে। গত বছরের ছুটি নিয়ে গেলে তা ভুল মাসে পড়বে, তাই ছুটি প্রতি বছর খোলার পরে কনফিগার করা হয়।"
+      },
+      "students": {
+        "title": "শিক্ষার্থী ও ভর্তি",
+        "reason": "শিক্ষার্থীরা পদোন্নতি পেয়ে বছর বদলায়, কপি হয়ে নয়। ভর্তি নিয়ে গেলে প্রত্যেক শিক্ষার্থী একইসঙ্গে দুটি বছরে গণ্য হবে।"
+      },
+      "examSessions": {
+        "title": "পরীক্ষা ও নম্বর",
+        "reason": "নতুন বছরে পরীক্ষা থাকে না, আর গত বছরের পরীক্ষা সেশন ও নম্বর সেই বছরেরই যা সেগুলো লিপিবদ্ধ করেছিল।"
+      },
+      "feeVouchers": {
+        "title": "ফি ভাউচার, ইনভয়েস ও পরিশোধ",
+        "reason": "ভাউচার, ইনভয়েস ও পরিশোধ সেই বছরের আর্থিক রেকর্ড যেখানে সেগুলো তৈরি হয়েছিল। এগুলো নিয়ে গেলে আয় দ্বিগুণ গণ্য হবে।"
+      },
+      "timetables": {
+        "title": "রুটিন",
+        "reason": "রুটিনের কোনো অনন্য কী নেই, তাই এর কপি নিরাপদে পুনরাবৃত্তি করা যায় না — দ্বিতীয়বার চালালে পুরো রুটিন পুনরাবৃত্তি হবে, হালনাগাদ হবে না। কী তৈরি না হওয়া পর্যন্ত এটি বাদ।"
+      },
+      "attendance": {
+        "title": "উপস্থিতি",
+        "reason": "উপস্থিতি হলো যা ঘটেছে তার রেকর্ড — প্রত্যেক শিক্ষার্থীর জন্য প্রতিদিন একটি সারি। নতুন বছরে এখনও কোনো দিন ঘটেনি।"
+      },
+      "certificates": {
+        "title": "সার্টিফিকেট",
+        "reason": "সার্টিফিকেট একটি ইস্যু করা দলিল যার নিজস্ব নম্বর থাকে। নতুন বছরে আবার ইস্যু করলে একই ঘটনার জন্য দ্বিতীয় দলিল তৈরি হবে।"
+      },
+      "feeBalancePolicy": {
+        "title": "বকেয়া ফি",
+        "reason": "শিক্ষার্থীর বকেয়া নিয়ে যাওয়া হবে, আংশিক নিয়ে যাওয়া হবে, নাকি মাফ করা হবে — এটি অর্থনীতির সিদ্ধান্ত যা বিদ্যালয়কে নিতে হবে, সিস্টেম তা অনুমান করতে পারে না।"
+      }
+    },
+    "fields": {
+      "minimumAttendance": "সর্বনিম্ন উপস্থিতি",
+      "minimumOverallPercentage": "সর্বনিম্ন সামগ্রিক শতাংশ",
+      "minimumPerSubject": "প্রতি বিষয়ে সর্বনিম্ন",
+      "maxFailedSubjects": "সর্বোচ্চ অনুত্তীর্ণ বিষয়",
+      "allowConditionalPromotion": "শর্তসাপেক্ষ পদোন্নতি",
+      "autoPromote": "স্বয়ংক্রিয় পদোন্নতি",
+      "nextClassId": "পরবর্তী শ্রেণি",
+      "isActive": "সক্রিয়",
+      "tuitionFee": "টিউশন ফি",
+      "labFee": "ল্যাব ফি",
+      "computerFee": "কম্পিউটার ফি",
+      "examFee": "পরীক্ষার ফি",
+      "sportsFee": "খেলাধুলার ফি",
+      "libraryFee": "লাইব্রেরি ফি",
+      "otherFee": "অন্যান্য ফি",
+      "totalMonthlyFee": "মোট মাসিক ফি",
+      "billingCycle": "বিলিং চক্র",
+      "notes": "মন্তব্য"
+    },
+    "selectSourceYear": "যে বছরটি রোলওভার করতে হবে সেটি বেছে নিন।",
+    "selectTargetYear": "যে বছরে কনফিগারেশন লেখা হবে সেটি বেছে নিন।",
+    "fillTargetDetails": "সেশন কোড, নাম এবং দুটি তারিখ পূরণ করুন।"
   }
 }

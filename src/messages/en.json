@@ -193,7 +193,10 @@
     "paymentReference": "Transaction reference (UTR)",
     "paymentReferencePlaceholder": "Enter UTR / gateway id",
     "referenceRequired": "External reference (UTR/transaction id) is required for {method} payments.",
-    "chequeNumberRequired": "Cheque number is required for CHEQUE payments."
+    "chequeNumberRequired": "Cheque number is required for CHEQUE payments.",
+    "selectMonthsPrompt": "Select at least one month.",
+    "selectPaymentMethodError": "Select a payment method.",
+    "selectPaymentMethodPrompt": "Select a payment method to continue."
   },
   "currencies": {
     "title": "Currency",
@@ -381,7 +384,12 @@
     "pillarMultiCampus": "Multi-Campus Administration & Transcripts",
     "slaMetric": "99.99% Uptime SLA",
     "resetModalTitle": "Reset Password Guidance",
-    "resetModalClose": "Close"
+    "resetModalClose": "Close",
+    "idleTitle": "Are you still there?",
+    "idleDescription": "You have been inactive for a while. For your security you will be signed out shortly.",
+    "idleSignOut": "Sign out now",
+    "idleStay": "Stay signed in",
+    "idleCountdown": "Signing you out in {seconds} seconds."
   },
   "academicSelector": {
     "classLabel": "Class",
@@ -731,7 +739,8 @@
     "idCards": "ID Cards",
     "admissionForm": "Admission Form",
     "createError": "Failed to create student",
-    "updateError": "Failed to update student"
+    "updateError": "Failed to update student",
+    "selectGender": "Select gender"
   },
   "fees": {
     "title": "Fee Management Hub",
@@ -1128,7 +1137,8 @@
     "promotionsExecuted": "Promotions executed successfully!",
     "error": "Failed to process examination action",
     "promotionRuleUpdated": "Promotion rule updated successfully",
-    "promotionRuleDeleted": "Promotion rule deleted successfully"
+    "promotionRuleDeleted": "Promotion rule deleted successfully",
+    "selectExamType": "Select an exam type."
   },
   "results": {
     "marksLockedDuePromotion": "Marks for this student are locked due to promotion.",
@@ -1565,7 +1575,10 @@
         "present": "Present",
         "absent": "Absent",
         "late": "Late",
-        "leave": "Leave"
+        "leave": "Leave",
+        "halfDay": "Half day",
+        "excused": "Excused",
+        "holiday": "Holiday"
       },
       "clearFilters": "Clear Filters"
     },
@@ -1656,7 +1669,13 @@
     "lifecycleDescription": "Control whether this academic session is open for active transactions.",
     "closedHelper": "Mark this session as archived. Closed sessions cannot accept new admissions or fee vouchers.",
     "cancel": "Cancel",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "closeSuccessMissingResults": "Academic year closed. {finalised} student(s) were finalised; {missing} had no results and were left without a final percentage.",
+    "closeSuccess": "Academic year closed. {finalised} student(s) were finalised.",
+    "setCurrentSuccess": "{label} is now the current academic year.",
+    "setCurrentError": "Could not set the current academic year.",
+    "operatingYear": "Current year",
+    "setAsCurrent": "Set as current year"
   },
   "users": {
     "title": "Users",
@@ -2218,8 +2237,88 @@
       "status": {
         "promoted": "Promoted",
         "retained": "Retained",
-        "conditionalPromoted": "Conditional Promoted"
-      }
+        "conditionalPromoted": "Conditional Promoted",
+        "graduated": "Graduated",
+        "demoted": "Demoted",
+        "transferred": "Transferred"
+      },
+      "selectDemotionTarget": "Select a class",
+      "noStudentsSelected": "Select at least one student.",
+      "overrideNotSelected": "A manual action was set for {count} student(s) who are not in the current selection. Include them in the selection, or clear the action first.",
+      "confirmExecuteWithExits": "Promote {count} student(s) from {fromYear} to {toYear}? {exits} of them are leaving the roster.",
+      "confirmExecuteSelected": "Promote {count} student(s) from {fromYear} to {toYear}?",
+      "executeSuccess": "{count} student(s) promoted into {year}.",
+      "transferCertificatePurpose": "Transfer",
+      "certificatesIssued": "{count} certificate(s) issued.",
+      "certificatesSkipped": "{count} student(s) already hold an active certificate of this type and were skipped.",
+      "attendanceNotTracked": "Not tracked",
+      "leftSchool": "Left school",
+      "lowerClass": "A lower class",
+      "studentId": "Student ID",
+      "attendance": "Attendance",
+      "closedYearOption": "{label} (closed)",
+      "manualOverride": "Manual override",
+      "insufficientDataFlag": "Incomplete results",
+      "legacyPlacementFlag": "Placement taken from the student's profile — no record for this year",
+      "manualAction": "Manual action",
+      "setActionFor": "Set action for {name}",
+      "demoteAction": "Demote…",
+      "clearOverride": "Clear manual action",
+      "executeSelected": "Promote {count} selected",
+      "searchClassPlaceholder": "Search classes",
+      "noOptions": "No matches",
+      "searchYearPlaceholder": "Search academic years",
+      "selectTargetYear": "Target academic year",
+      "selectTargetYearDescription": "The year these students are promoted into. It must start after the source year.",
+      "selectTargetYearPlaceholder": "Select the target year",
+      "noTargetYearOptions": "No year can follow this one",
+      "targetYearSuggested": "Suggested",
+      "noTargetYearTitle": "No target academic year",
+      "noTargetYearDescription": "Create the next academic year before promoting this class. A promotion has to cross a year boundary.",
+      "goToAcademicYears": "Go to academic years",
+      "terminalClassTitle": "Final class",
+      "terminalClassDescription": "{className} is the last class in the ladder, so its students graduate rather than advance.",
+      "warningsTitle": "Things to check",
+      "legacyPlacementWarning": "{count} student(s) have no placement record for this year; their class was taken from their profile.",
+      "insufficientDataWarning": "{count} student(s) have incomplete results, so their outcome may change once the marks are entered.",
+      "exitDocumentsTitle": "Exit documents ({count})",
+      "exitDocumentsDescription": "The year was closed on {date}. {remaining} certificate(s) are still to be issued.",
+      "issueTransferCertificates": "Issue transfer certificates ({count})",
+      "issueCharacterCertificates": "Issue character certificates ({count})",
+      "printCertificate": "Print",
+      "issueTransferCertificate": "Issue transfer certificate",
+      "issueCharacterCertificate": "Issue character certificate",
+      "certificateNotIssued": "Not issued",
+      "noCertificatePermissionHint": "You do not have permission to issue certificates.",
+      "targetYear": "Target year",
+      "readyToPromoteSelected": "Promote {count} of {total} students into {year}",
+      "graduating": "Graduating",
+      "leavingRoster": "Leaving the roster",
+      "transferredOut": "Transferred out",
+      "yes": "Yes",
+      "no": "No",
+      "rollNumberPolicy": "Roll number policy",
+      "rollNumberPolicyDescription": "How roll numbers are assigned to students in the target year.",
+      "rollNumberPolicyPreserve": "Keep the current roll numbers",
+      "rollNumberPolicySequential": "Renumber sequentially",
+      "searchStudents": "Search students",
+      "rowsPerPage": "Rows per page",
+      "rangeOf": "{start}–{end} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "selectAll": "Select all",
+      "clearSelection": "Clear selection",
+      "emptyRoster": "No students to show",
+      "emptyRosterHint": "Nothing matches the current filters.",
+      "selectedCount": "{selected} of {total} selected",
+      "summaryFooter": "{advancing} advancing · {exiting} leaving · {reExam} re-exam",
+      "demotionDialogTitle": "Demote student",
+      "demotionDialogDescription": "Move {name} down from {className} to a lower class.",
+      "demotionTargetClass": "Target class",
+      "noLowerClasses": "There is no lower class to move this student into.",
+      "demotionHint": "A demotion is a manual decision. The student stays in the target year but moves down a class.",
+      "cancel": "Cancel",
+      "confirmDemotion": "Confirm demotion"
     },
     "ruleManager": {
       "title": "Promotion Rules",
@@ -2265,6 +2364,69 @@
       "saveChanges": "Save Changes",
       "lockedBadge": "Historical Data Locked",
       "lockedTooltip": "Locked: {count} historical student promotion records already exist for this class & year."
+    },
+    "preflight": {
+      "title": "Promotion pre-flight",
+      "yearCloseTitle": "Year close pre-flight",
+      "description": "Checks run before a class is promoted.",
+      "yearCloseDescription": "Checks run before the academic year is closed.",
+      "blockersLabel": "Blockers",
+      "warningsLabel": "Warnings",
+      "recheck": "Re-check",
+      "studentsTruncated": "Only part of the school was scanned, so this report may be incomplete.",
+      "passed": "All pre-flight checks passed.",
+      "blocked": "This cannot proceed yet.",
+      "resolveFirst": "Resolve the blockers below, then re-check.",
+      "truncatedNote": "{count} finding(s) are not listed here.",
+      "studentsScanned": "{count} student(s) scanned",
+      "codes": {
+        "SAME_ACADEMIC_YEAR": "“{targetYear}” is the same year as “{sourceYear}”. A promotion must cross a year boundary.",
+        "TARGET_YEAR_NOT_AFTER_SOURCE": "“{targetYear}” starts on {targetStartDate}, which is not after “{sourceYear}” ({sourceStartDate}).",
+        "YEAR_ALREADY_CLOSED": "“{year}” is closed and read-only.",
+        "NO_PROMOTION_RULE": "No active promotion rule is configured for “{className}”, so eligibility cannot be evaluated.",
+        "NEXT_CLASS_NOT_FOUND": "The promotion rule for “{className}” points at a next class that no longer exists.",
+        "CLASS_WITHOUT_NEXT_CLASS": "“{className}” has no next class configured, but “{higherClassName}” exists above it. Every student in “{className}” would be marked as graduated.",
+        "EMPTY_COHORT": "No active students are enrolled in “{className}” for “{year}”.",
+        "STUDENT_WITHOUT_SESSION": "{studentName} has no enrollment record for “{year}”; their placement is taken from the student profile.",
+        "STUDENT_WITHOUT_RESULTS": "{studentName} has no examination results for this year, so their outcome rests on absent data.",
+        "MISSING_ROLL_NUMBER": "{studentName} has no roll number. A rollover would carry the blank into the next year.",
+        "MISSING_DEMOGRAPHICS": "{studentName} is missing {fields}.",
+        "DUPLICATE_ENROLLMENT": "{studentName} already has {count} enrollment record(s) in “{year}”.",
+        "DUPLICATE_ROLL_NUMBER": "Roll number “{rollNumber}” is held by {count} students in “{className}”.",
+        "UNPROMOTED_STUDENT": "{studentName} is still enrolled in “{year}” with no promotion record.",
+        "UNISSUED_EXIT_DOCUMENT": "{studentName} left as {action} without a {expectedDocuments} certificate.",
+        "ATTENDANCE_BELOW_REQUIREMENT": "{studentName} attended {actual}% of “{year}”, below the {required}% required."
+      },
+      "fixes": {
+        "SAME_ACADEMIC_YEAR": "Choose the year that follows this one.",
+        "TARGET_YEAR_NOT_AFTER_SOURCE": "Choose a year whose start date is later.",
+        "YEAR_ALREADY_CLOSED": "Reopen the year, or choose a year that is still open.",
+        "NO_PROMOTION_RULE": "Configure a promotion rule for this class.",
+        "NEXT_CLASS_NOT_FOUND": "Repoint the rule at a class that exists.",
+        "CLASS_WITHOUT_NEXT_CLASS": "Set the next class, or confirm this is the final class.",
+        "EMPTY_COHORT": "Check that the class has active students in this year.",
+        "STUDENT_WITHOUT_SESSION": "Enroll the student in this year, or confirm their profile placement.",
+        "STUDENT_WITHOUT_RESULTS": "Record the examination results, or decide the outcome manually.",
+        "MISSING_ROLL_NUMBER": "Assign a roll number before the year is rolled over.",
+        "MISSING_DEMOGRAPHICS": "Complete the student's profile.",
+        "DUPLICATE_ENROLLMENT": "Resolve the duplicate enrollment before promoting again.",
+        "DUPLICATE_ROLL_NUMBER": "Give each student in the class a distinct roll number.",
+        "UNPROMOTED_STUDENT": "Run the year-end promotion before closing.",
+        "UNISSUED_EXIT_DOCUMENT": "Issue the certificate, or accept that it is printed after the close.",
+        "ATTENDANCE_BELOW_REQUIREMENT": "Review the register before the year is frozen."
+      }
+    },
+    "reasons": {
+      "MEETS_CRITERIA": "Met all promotion criteria with {overall}%.",
+      "FAILED_SUBJECTS": "Failed {count} subject(s): {subjects}.",
+      "LOW_OVERALL": "Overall {actual}% is below the required {required}%.",
+      "LOW_ATTENDANCE": "Attendance {actual}% is below the required {required}%.",
+      "NO_EXAM_RESULTS": "No examination results recorded for this academic year.",
+      "CONDITIONAL_ELIGIBLE": "Eligible for conditional promotion pending a re-examination.",
+      "GRADUATED_FINAL_CLASS": "Final class — the student graduates.",
+      "RETAINED_FINAL_CLASS": "Final class — criteria not met, the student repeats the year.",
+      "MANUAL_OVERRIDE": "Manually overridden by an operator.",
+      "TRANSFERRED_OUT": "Transferred out of the school."
     }
   },
   "groups": {
@@ -2451,7 +2613,15 @@
       "dangerZoneTitle": "Danger Zone",
       "dangerZoneDescription": "Irreversibly delete {name} and all of its data after a 3-step confirmation.",
       "dangerZoneButton": "Force Delete Tenant"
-    }
+    },
+    "sessionPolicySaveFailed": "Could not save the session policy.",
+    "sessionPolicySaved": "Session policy saved.",
+    "sessionPolicyTitle": "Session policy",
+    "sessionPolicyDescription": "Control whether a user may be signed in on more than one device at a time.",
+    "sessionPolicyAllowLabel": "Allow concurrent sessions",
+    "sessionPolicyAllowHint": "A user may stay signed in on several devices at once.",
+    "sessionPolicySingleHint": "Signing in on a new device signs the user out everywhere else.",
+    "sessionPolicySave": "Save"
   },
   "reports": {
     "title": "Reports & Analytics Hub",
@@ -3034,7 +3204,35 @@
       "totalCollected": "Total Collected",
       "totalDeposits": "Total Deposits",
       "totalDisbursed": "Total Disbursed",
-      "totalOutflow": "Total Outflow"
+      "totalOutflow": "Total Outflow",
+      "selectEntityRequired": "Select a student, a staff member or a class first.",
+      "summaryCopied": "Summary copied to the clipboard.",
+      "transactionDetails": "Transaction details",
+      "shareStatement": "Share statement",
+      "copySummary": "Copy summary",
+      "whatsappShare": "Share on WhatsApp",
+      "academicYear": "Academic year",
+      "allAcademicYears": "All academic years",
+      "generating": "Generating…",
+      "generateStatement": "Generate statement",
+      "agingAnalysis": "Aging analysis",
+      "totalOverdue": "Total overdue",
+      "agingCurrent": "Current",
+      "aging30Days": "1–30 days",
+      "aging60Days": "31–60 days",
+      "aging90Plus": "90+ days",
+      "close": "Close",
+      "voucherDetails": "Voucher details",
+      "billingPeriod": "Billing period",
+      "dueDate": "Due date",
+      "baseAmount": "Base amount",
+      "discountAmount": "Discount",
+      "arrears": "Arrears",
+      "receiptDetails": "Receipt details",
+      "collectedBy": "Collected by",
+      "paymentReference": "Payment reference",
+      "salaryDetails": "Salary details",
+      "journalDetails": "Journal details"
     },
     "feeHeads": {
       "title": "Fee Head Accounting",
@@ -4140,7 +4338,8 @@
     "admitCardDownloaded": "Admit card PDF downloaded",
     "createSuccess": "Certificate issued successfully!",
     "updateSuccess": "Certificate updated successfully!",
-    "error": "Failed to process certificate"
+    "error": "Failed to process certificate",
+    "bulkIssueFailed": "Could not issue the certificates."
   },
   "health": {
     "title": "Health Records",
@@ -5235,7 +5434,8 @@
     "academicYear": {
       "title": "Academic Year",
       "searchPlaceholder": "Search year...",
-      "closedSuffix": "(Closed)"
+      "closedSuffix": "(Closed)",
+      "currentSuffix": "Current"
     }
   },
   "pdfDocs": {
@@ -5474,7 +5674,8 @@
     "officialTranscript": "Official Academic Performance Report",
     "generatedOn": "Generated on: {date}",
     "authorizedSignatory": "Authorized Signature / Principal",
-    "viewPerformance": "View Performance"
+    "viewPerformance": "View Performance",
+    "attendanceNotTracked": "Attendance not tracked"
   },
   "tenantModules": {
     "academics": {
@@ -5593,5 +5794,168 @@
     "errorOccurred": "Failed to complete operation",
     "noRecordsFound": "No historical records found matching the criteria.",
     "selectDomainFirst": "Select a domain above to inspect and manage historical records."
+  },
+  "weekdays": {
+    "sunday": "Sunday",
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday"
+  },
+  "rollover": {
+    "title": "Roll over the academic year",
+    "description": "Open the next academic year and carry forward the configuration that belongs to a year.",
+    "sourceYearLabel": "Source year",
+    "sourceYearHint": "The year being rolled over. Its promotion rules and fee structures are the ones carried forward.",
+    "modeLabel": "Target",
+    "modeCreate": "Open a new year",
+    "modeCreateHint": "Create the next academic year and write the configuration into it.",
+    "modeExisting": "Roll into an existing year",
+    "modeExistingHint": "Write the configuration into a year that already exists.",
+    "targetYearLabel": "Target year",
+    "targetYearHint": "The year the configuration is written into.",
+    "copyTitle": "Configuration to carry",
+    "copyDescription": "Only configuration that belongs to a year and can be matched to a class is carried.",
+    "copyPromotionRules": "Promotion rules",
+    "copyPromotionRulesHint": "One rule per class, deciding who is promoted at the end of the year.",
+    "copyFeeStructures": "Class fee structures",
+    "copyFeeStructuresHint": "The monthly fee breakdown per class.",
+    "nothingSelected": "Nothing is selected, so the target year will keep only what it already has.",
+    "preview": "Preview",
+    "previewing": "Building the preview...",
+    "apply": "Open the year",
+    "applying": "Opening the year...",
+    "recheck": "Refresh preview",
+    "cancel": "Cancel",
+    "previewTitle": "Preview",
+    "previewDescription": "Nothing is written until the year is opened.",
+    "blockersLabel": "Blockers",
+    "warningsLabel": "Warnings",
+    "ready": "Ready to open the year.",
+    "blocked": "This rollover cannot proceed.",
+    "resolveFirst": "Resolve the blockers below, then refresh the preview.",
+    "previewNotice": "This is a preview. No configuration has been written.",
+    "createdLabel": "Will be created",
+    "updatedLabel": "Will be updated",
+    "skippedLabel": "Will be skipped",
+    "rowsUnit": "{count} row(s)",
+    "changedFields": "Changes: {fields}",
+    "notRequested": "Not requested.",
+    "classLabel": "Class",
+    "reasonLabel": "Reason",
+    "emptyCreated": "Nothing new to create.",
+    "emptyUpdated": "Nothing to update.",
+    "emptySkipped": "Nothing skipped.",
+    "notCopiedTitle": "What this rollover does not carry",
+    "notCopiedDescription": "Listed here so it is not discovered later.",
+    "workingDayPolicyLabel": "Working-day policy",
+    "workingDayPolicyCarried": "Carried from the source year: {days}.",
+    "workingDayPolicyKept": "The target year keeps its own policy: {days}.",
+    "workingDayPolicyUndeclared": "Neither year declares which weekdays are non-working.",
+    "successOpened": "Opened “{targetLabel}” from “{sourceLabel}”.",
+    "successRolledInto": "Rolled into “{targetLabel}” from “{sourceLabel}”.",
+    "createdDetail": "{count} row(s) created",
+    "updatedDetail": "{count} row(s) updated",
+    "nothingCarried": "No configuration was carried.",
+    "forbidden": "Opening the next academic year requires the academic rollover capability.",
+    "codes": {
+      "TARGET_IS_SOURCE": "“{year}” cannot be rolled over into itself.",
+      "TARGET_YEAR_NOT_AFTER_SOURCE": "The target year must start after “{sourceLabel}” ({sourceStart}), but “{targetLabel}” starts {targetStart}.",
+      "TARGET_YEAR_CLOSED": "“{targetLabel}” is closed and read-only, so nothing can be rolled into it.",
+      "TARGET_DATES_INVALID": "“{targetLabel}” ends on {endDate}, before it starts on {startDate}.",
+      "DUPLICATE_YEAR_ID": "The session code “{yearId}” is already in use.",
+      "TARGET_WILL_HAVE_NO_PROMOTION_RULES": "After this rollover “{targetLabel}” would hold no active promotion rule, so no class could be promoted in it.",
+      "SOURCE_YEAR_STILL_OPEN": "“{sourceLabel}” is still open, so its records can still change after this rollover.",
+      "TARGET_YEAR_HAS_STUDENTS": "“{targetLabel}” already holds {count} student(s). Configuration carried into it applies to records that already exist.",
+      "NOTHING_REQUESTED": "No configuration is being carried, so “{targetLabel}” will keep only what it already has.",
+      "WORKING_DAY_POLICY_UNDECLARED": "Neither “{sourceLabel}” nor “{targetLabel}” declares which weekdays are non-working, so no working-day count can be reported until one is set.",
+      "TARGET_WORKING_DAY_POLICY_KEPT": "“{targetLabel}” keeps its own working-day policy ({targetPolicy}); “{sourceLabel}” declares ({sourcePolicy}). The source's policy was not applied.",
+      "SOURCE_HAS_NO_FEE_STRUCTURES": "“{sourceLabel}” has no class fee structures, so there was nothing to carry.",
+      "DANGLING_NEXT_CLASS": "{className}”s promotion rule names a next class that does not exist. The rule was carried as it stands.",
+      "ORPHAN_RULE_CLASS": "“{sourceLabel}” holds a promotion rule for a class that no longer exists, so it was not carried."
+    },
+    "fixes": {
+      "TARGET_IS_SOURCE": "Choose a different target year.",
+      "TARGET_YEAR_NOT_AFTER_SOURCE": "Choose a year that starts later than the source.",
+      "TARGET_YEAR_CLOSED": "Choose a year that is still open.",
+      "TARGET_DATES_INVALID": "Correct the target year's dates.",
+      "DUPLICATE_YEAR_ID": "Choose a session code that is not already in use.",
+      "TARGET_WILL_HAVE_NO_PROMOTION_RULES": "Carry the source's promotion rules, or configure them in the target year first.",
+      "SOURCE_YEAR_STILL_OPEN": "Close the source year first if its results are final.",
+      "TARGET_YEAR_HAS_STUDENTS": "Confirm the target year is the one you meant.",
+      "NOTHING_REQUESTED": "Select at least one kind of configuration to carry, or open the year as it is.",
+      "WORKING_DAY_POLICY_UNDECLARED": "Declare the working-day policy for one of the two years.",
+      "TARGET_WORKING_DAY_POLICY_KEPT": "Change the target year's policy if the source's should apply.",
+      "SOURCE_HAS_NO_FEE_STRUCTURES": "Configure the source year's fee structures first, if they are missing.",
+      "DANGLING_NEXT_CLASS": "Repoint the rule at a class that exists in the source year.",
+      "ORPHAN_RULE_CLASS": "Delete the orphaned rule from the source year."
+    },
+    "skipReasons": {
+      "CLASS_MISSING": "The class no longer exists in the class ladder.",
+      "ALREADY_IDENTICAL": "The target year already holds an identical row."
+    },
+    "notCopied": {
+      "terms": {
+        "title": "Terms and semesters",
+        "reason": "There is no term or semester model. Nothing in the system copies terms because nothing stores them."
+      },
+      "holidays": {
+        "title": "Holidays",
+        "reason": "A holiday's dates belong to the year they fall in. Copying last year's break would place it in the wrong month, so holidays are configured per year after it opens."
+      },
+      "students": {
+        "title": "Students and enrollments",
+        "reason": "Students change year by being promoted, not by being copied. Copying enrollments would place every student in two years at once."
+      },
+      "examSessions": {
+        "title": "Exams and marks",
+        "reason": "A new year has no exams, and last year's exam sessions and marks belong to the year that recorded them."
+      },
+      "feeVouchers": {
+        "title": "Fee vouchers, invoices and payments",
+        "reason": "Vouchers, invoices and payments are financial records of the year that raised them. Carrying them forward would double-count revenue."
+      },
+      "timetables": {
+        "title": "Timetables",
+        "reason": "The timetable has no unique key, so a copy cannot be repeated safely — a second run would duplicate the whole grid rather than update it. It is excluded until a match key exists."
+      },
+      "attendance": {
+        "title": "Attendance",
+        "reason": "Attendance is a record of what happened, one row per student per day. A new year has no days that have happened yet."
+      },
+      "certificates": {
+        "title": "Certificates",
+        "reason": "A certificate is an issued document with its own number. Issuing it again in the new year would create a second document for the same event."
+      },
+      "feeBalancePolicy": {
+        "title": "Unpaid fee balances",
+        "reason": "Whether a student's unpaid balance is carried, partly carried or cleared is a money policy the school must decide, not one this system can infer."
+      }
+    },
+    "fields": {
+      "minimumAttendance": "Minimum attendance",
+      "minimumOverallPercentage": "Minimum overall",
+      "minimumPerSubject": "Minimum per subject",
+      "maxFailedSubjects": "Maximum failed subjects",
+      "allowConditionalPromotion": "Conditional promotion",
+      "autoPromote": "Auto promote",
+      "nextClassId": "Next class",
+      "isActive": "Active",
+      "tuitionFee": "Tuition fee",
+      "labFee": "Laboratory fee",
+      "computerFee": "Computer fee",
+      "examFee": "Examination fee",
+      "sportsFee": "Sports fee",
+      "libraryFee": "Library fee",
+      "otherFee": "Other fee",
+      "totalMonthlyFee": "Total monthly fee",
+      "billingCycle": "Billing cycle",
+      "notes": "Notes"
+    },
+    "selectSourceYear": "Select the year being rolled over.",
+    "selectTargetYear": "Select the year the configuration is written into.",
+    "fillTargetDetails": "Complete the session code, the label and both dates."
   }
 }
