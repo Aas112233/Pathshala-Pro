@@ -422,6 +422,15 @@ export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
 /**
+ * Ceiling on one bulk certificate issue.
+ *
+ * A year-end exit batch is bounded by a class, so 200 covers the realistic
+ * worst case with room to spare while keeping a single transaction — and the
+ * numbering run it allocates — comfortably inside the 120s transaction budget.
+ */
+export const MAX_BULK_CERTIFICATE_ISSUE = 200;
+
+/**
  * System GL account codes. Single source of truth for the seeded chart
  * (`tenant-provisioning.ts`): method→account fallbacks, wallet/receivable
  * legs and reporting buckets must reference these, never literals.

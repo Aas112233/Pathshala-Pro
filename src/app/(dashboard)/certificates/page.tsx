@@ -18,7 +18,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { hasPermission, getEffectivePermissions } from "@/lib/permissions";
 import { useTenantSettings } from "@/components/providers/tenant-settings-provider";
 import { formatDateWithSettings } from "@/lib/tenant-settings";
-import { usePDFExport } from "@/hooks/use-pdf-export";
+import { useCertificatePrinter } from "@/hooks/use-certificate-printer";
 import { toast } from "sonner";
 
 import { Award, Plus, Pencil, Trash2, Search, Printer, Ban, Eye } from "lucide-react";
@@ -43,11 +43,9 @@ export default function CertificatesPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [formData, setFormData] = useState({ studentProfileId: "", certificateType: "BONAFIDE", certificateNumber: "", issueDate: new Date().toISOString().slice(0, 10), validUntil: "", purpose: "", remarks: "" });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [printingId, setPrintingId] = useState<string | null>(null);
 
   const { certificates, pagination, isLoading, createCertificate, updateCertificate, deleteCertificate, revokeCertificate, isMutating } = useCertificatesViewModel(search, typeFilter, statusFilter, page);
   const { settings } = useTenantSettings();
-  const { exportTransferCertificatePDF, exportCharacterCertificatePDF, exportBonafideCertificatePDF } = usePDFExport();
 
   const { data: studentsData } = useQuery({
     queryKey: ["students", "certificates"],
@@ -58,6 +56,10 @@ export default function CertificatesPage() {
     },
   });
   const students = (studentsData as any)?.data ?? [];
+
+  // The printer is shared with the promotion exit workflow so a template change
+  // cannot land in one surface and miss the other.
+  const { printCertificate, printingId } = useCertificatePrinter({ students });
 
   const openAdd = () => {
     setEditing(null);
@@ -111,80 +113,6 @@ export default function CertificatesPage() {
     if (!confirm(t("confirmRevoke"))) return;
     try { await revokeCertificate(id); } catch {}
   };
-  const handlePrint = async (cert: any) => {
-    // Resolve enriched student if needed
-    const s = cert.studentProfile || {};
-    const student = students.find((x: any) => x.id === cert.studentProfileId) || {};
-    const school = {
-      name: settings.name || "Pathshala Pro School",
-      address: settings.address || "",
-      phone: settings.phone || "",
-      email: settings.email || "",
-      logoUrl: settings.logoUrl,
-    };
-    const verificationUrl = typeof window !== "undefined" ? `${window.location.origin}/verify/certificate/${cert.id || cert.certificateNumber}` : undefined;
-    const studentName = `${s.firstName || student.firstName || ""} ${s.lastName || student.lastName || ""}`.trim() || t("defaultStudent");
-    const base = {
-      certificateNumber: cert.certificateNumber,
-      issueDate: cert.issueDate ? formatDateWithSettings(cert.issueDate, settings) : formatDateWithSettings(new Date(), settings),
-      validUntil: cert.validUntil ? formatDateWithSettings(cert.validUntil, settings) : undefined,
-      studentName,
-      fatherName: s.fatherName || student.fatherName || student.guardianName || s.guardianName || undefined,
-      admissionNumber: s.studentId || student.studentId || s.admissionNumber || cert.studentProfileId?.slice(0, 8) || "—",
-      rollNumber: s.rollNumber || student.rollNumber || "—",
-      className: s.class?.name || student.class?.name || s.className || "—",
-      section: s.section?.name || student.section?.name || undefined,
-      academicYear: cert.academicYear || (cert.issueDate ? String(new Date(cert.issueDate).getFullYear()) : String(new Date().getFullYear())),
-      purpose: cert.purpose || cert.remarks || t("generalPurpose"),
-      remarks: cert.remarks || undefined,
-    };
-    setPrintingId(cert.id);
-    try {
-      let result: any = null;
-      const type = String(cert.certificateType || "BONAFIDE").toUpperCase();
-      if (type === "TRANSFER") {
-        const tcData: any = {
-          ...base,
-          admissionDate: student.admissionDate ? formatDateWithSettings(student.admissionDate, settings) : base.issueDate,
-          leavingDate: base.validUntil || formatDateWithSettings(new Date(), settings),
-          lastClassAttended: base.className,
-          dateOfBirth: student.dateOfBirth ? formatDateWithSettings(student.dateOfBirth, settings) : undefined,
-          reasonForLeaving: cert.purpose || cert.remarks || t("transferReason"),
-          conduct: cert.remarks ? t("defaultConduct") : t("defaultConduct"),
-          guardianName: student.guardianName || undefined,
-        };
-        result = await exportTransferCertificatePDF(school, tcData, verificationUrl);
-      } else if (type === "CHARACTER") {
-        const ccData: any = {
-          ...base,
-          sessionFrom: student.admissionDate ? formatDateWithSettings(student.admissionDate, settings) : base.academicYear,
-          sessionTo: base.issueDate,
-          conduct: cert.remarks?.split(",")[0] || t("defaultConduct"),
-          characterRating: t("defaultCharacterRating"),
-          attendancePercentage: undefined,
-          achievements: cert.remarks || undefined,
-        };
-        result = await exportCharacterCertificatePDF(school, ccData, verificationUrl);
-      } else {
-        // BONAFIDE, STUDY, OTHER, MARKSHEET fallback to bonafide
-        const bcData: any = {
-          ...base,
-          dateOfBirth: student.dateOfBirth ? formatDateWithSettings(student.dateOfBirth, settings) : undefined,
-          guardianName: student.guardianName || s.guardianName || undefined,
-          purpose: cert.purpose || t("defaultPurpose"),
-        };
-        result = await exportBonafideCertificatePDF(school, bcData, verificationUrl);
-      }
-      if (result?.success) toast.success(t("printSuccess"));
-      else toast.error(t("printFailed"));
-    } catch (e) {
-      console.error(e);
-      toast.error(t("printFailed"));
-    } finally {
-      setPrintingId(null);
-    }
-  };
-
   const columns: ERPColumnDef<any>[] = [
     {
       key: "certificateNumber",
@@ -223,7 +151,7 @@ export default function CertificatesPage() {
       header: t("actions"),
       cell: (row) => (
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrint(row)} title={t("print")} disabled={printingId === row.id}><Printer className="h-3.5 w-3.5" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { void printCertificate(row); }} title={t("print")} disabled={printingId === row.id}><Printer className="h-3.5 w-3.5" /></Button>
           {canManage && row.status === "ISSUED" && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600" onClick={() => handleRevoke(row.id)} title={t("revoke")}><Ban className="h-3.5 w-3.5" /></Button>
           )}
