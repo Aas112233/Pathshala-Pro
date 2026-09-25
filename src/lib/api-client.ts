@@ -223,6 +223,17 @@ export const academicYearsApi = {
 
   delete: (id: string) =>
     api.delete<any>(`/api/academic-years/${id}`),
+
+  /**
+   * The rollover wizard's one endpoint. `dryRun` selects the read: the server
+   * runs the same plan either way, so the preview and the commit cannot
+   * describe different things.
+   */
+  rollover: (data: any) =>
+    api.post<any>("/api/academic-years/rollover", data),
+
+  rolloverPreview: (data: any) =>
+    api.post<any>("/api/academic-years/rollover", { ...data, dryRun: true }),
 };
 
 // Fees API

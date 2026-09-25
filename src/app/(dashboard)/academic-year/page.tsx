@@ -20,6 +20,8 @@ import {
   CheckCircle2,
   Archive,
   Layers,
+  Star,
+  CalendarPlus,
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -27,7 +29,11 @@ import {
   useCreateAcademicYear,
   useUpdateAcademicYear,
   useDeleteAcademicYear,
+  useSetCurrentAcademicYear,
 } from "@/hooks/use-queries";
+import { useYearClosePreflight } from "@/hooks/use-exams";
+import { RolloverPreflightPanel } from "@/components/shared/rollover-preflight-panel";
+import { RolloverWizard } from "@/components/shared/rollover-wizard";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
@@ -52,6 +58,8 @@ const INITIAL_FORM: AcademicYearFormData = {
 
 export default function AcademicYearPage() {
   const t = useTranslations("academicYear");
+  const tPreflight = useTranslations("promotions.preflight");
+  const tRollover = useTranslations("rollover");
   const common = useTranslations("common");
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const perms = getEffectivePermissions(authUser?.role as string, (authUser as any)?.permissions, (authUser as any)?.accessLevel);
@@ -64,6 +72,7 @@ export default function AcademicYearPage() {
 
   // TopSheet Drawer State
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isRolloverOpen, setIsRolloverOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<AcademicYearFormData>(INITIAL_FORM);
 
@@ -76,17 +85,35 @@ export default function AcademicYearPage() {
   const createMutation = useCreateAcademicYear();
   const updateMutation = useUpdateAcademicYear(editingId || "");
   const deleteMutation = useDeleteAcademicYear();
+  const setCurrentMutation = useSetCurrentAcademicYear();
+
+  // Whether the year being edited was already closed when the sheet opened.
+  // Without it the readiness panel would appear for a year that is already
+  // frozen, and "resolve these blockers first" would be advice nobody can take.
+  const [editingWasClosed, setEditingWasClosed] = useState(false);
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
+  /**
+   * Year-close readiness.
+   *
+   * Only fetched once the operator actually ticks "closed": the report is a
+   * whole-year scan, and running it on every visit to the edit sheet would be
+   * a lot of work for a question nobody asked.
+   */
+  const closingNow = Boolean(editingId) && formData.isClosed && !editingWasClosed;
+  const closePreflight = useYearClosePreflight(closingNow ? editingId! : undefined);
+
   const handleOpenCreate = () => {
     setEditingId(null);
+    setEditingWasClosed(false);
     setFormData(INITIAL_FORM);
     setIsSheetOpen(true);
   };
 
   const handleOpenEdit = (year: any) => {
     setEditingId(year.id);
+    setEditingWasClosed(Boolean(year.isClosed));
     setFormData({
       yearId: year.yearId || "",
       label: year.label || "",
@@ -104,6 +131,7 @@ export default function AcademicYearPage() {
   const handleCloseSheet = () => {
     setIsSheetOpen(false);
     setEditingId(null);
+    setEditingWasClosed(false);
     setFormData(INITIAL_FORM);
   };
 
@@ -135,8 +163,24 @@ export default function AcademicYearPage() {
           isClosed: formData.isClosed,
         },
         {
-          onSuccess: () => {
-            toast.success(t("updateSuccess"));
+          onSuccess: (response) => {
+            const finalisation = response?.data?.finalisation;
+            if (finalisation) {
+              // A close freezes the year and there is no undo, so the counts are
+              // shown rather than swallowed. A student with no results is left
+              // without a final percentage, and this is the office's last chance
+              // to notice before the year is out of reach.
+              toast.success(
+                finalisation.withoutResults > 0
+                  ? t("closeSuccessMissingResults", {
+                      finalised: finalisation.withResults,
+                      missing: finalisation.withoutResults,
+                    })
+                  : t("closeSuccess", { finalised: finalisation.withResults })
+              );
+            } else {
+              toast.success(t("updateSuccess"));
+            }
             handleCloseSheet();
           },
           onError: (err: any) => {
@@ -178,13 +222,28 @@ export default function AcademicYearPage() {
     });
   };
 
+  const handleSetCurrent = (year: any) => {
+    setCurrentMutation.mutate(year.id, {
+      onSuccess: () => {
+        toast.success(t("setCurrentSuccess", { label: year.label }));
+      },
+      onError: (err: any) => {
+        toast.error(err.message || t("setCurrentError"));
+      },
+    });
+  };
+
   const rawData: any[] = "data" in (data || {}) ? (data as any).data : [];
   const pagination = "pagination" in (data || {}) ? (data as any).pagination : undefined;
 
   // Calculate metrics
   const totalSessions = rawData.length;
   const closedSessions = rawData.filter((y) => y.isClosed).length;
-  const currentActive = rawData.find((y) => !y.isClosed)?.label || "None";
+  // The operating year is the one the institute stated, not the first
+  // non-closed row — those differ as soon as a second year is opened before the
+  // current one is closed, which is the normal way a school rolls over.
+  const flaggedCurrent = rawData.find((y) => y.isCurrent && !y.isClosed);
+  const currentActive = flaggedCurrent?.label || rawData.find((y) => !y.isClosed)?.label || "None";
 
   const columns: ColumnDef<any>[] = [
     {
@@ -229,14 +288,23 @@ export default function AcademicYearPage() {
     {
       accessorKey: "isClosed",
       header: t("tableColumns.status"),
-      cell: ({ getValue }) => {
-        const isClosed = getValue<boolean>();
+      cell: ({ row }) => {
+        const isClosed = Boolean(row.original.isClosed);
+        const isCurrent = Boolean(row.original.isCurrent) && !isClosed;
         return (
-          <StatusBadge
-            status={isClosed}
-            domain="academicYear"
-            label={isClosed ? t("status.closed") : t("status.active")}
-          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge
+              status={isClosed}
+              domain="academicYear"
+              label={isClosed ? t("status.closed") : t("status.active")}
+            />
+            {isCurrent && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                <Star className="h-3 w-3" />
+                {t("operatingYear")}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -245,6 +313,18 @@ export default function AcademicYearPage() {
       header: t("tableColumns.actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
+          {canWrite && !row.original.isClosed && !row.original.isCurrent && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleSetCurrent(row.original)}
+              disabled={setCurrentMutation.isPending}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+              title={t("setAsCurrent")}
+            >
+              <Star className="h-4 w-4" />
+            </Button>
+          )}
           {canWrite && (
             <Button
               variant="ghost"
@@ -279,6 +359,12 @@ export default function AcademicYearPage() {
         description={t("description")}
         icon={CalendarRange}
       >
+        {canManage && (
+          <Button variant="outline" onClick={() => setIsRolloverOpen(true)}>
+            <CalendarPlus className="mr-2 h-4 w-4" />
+            {tRollover("title")}
+          </Button>
+        )}
         {canWrite && (
           <Button onClick={handleOpenCreate}>
             <Plus className="mr-2 h-4 w-4" />
@@ -464,10 +550,46 @@ export default function AcademicYearPage() {
                   </span>
                 </Label>
               </div>
+
+              {closingNow && (
+                <RolloverPreflightPanel
+                  report={closePreflight.data}
+                  isChecking={closePreflight.isFetching}
+                  onRecheck={() => closePreflight.refetch()}
+                  scope="yearClose"
+                  scanTruncated={closePreflight.data?.scan.truncated}
+                  contextNote={
+                    closePreflight.data
+                      ? tPreflight("studentsScanned", {
+                          count: closePreflight.data.scan.students,
+                        })
+                      : null
+                  }
+                />
+              )}
             </ERPFormSection>
           )}
         </form>
       </TopSheet>
+
+      {/* The rollover wizard. Mounted only for an operator holding the
+          capability, and never pre-selected: which year is the source is a
+          decision the operator makes, not a default the page guesses. */}
+      {canManage && (
+        <RolloverWizard
+          isOpen={isRolloverOpen}
+          onClose={() => setIsRolloverOpen(false)}
+          years={rawData.map((year) => ({
+            id: year.id,
+            yearId: year.yearId ?? "",
+            label: year.label ?? "",
+            startDate: year.startDate ?? "",
+            endDate: year.endDate ?? "",
+            isClosed: Boolean(year.isClosed),
+          }))}
+          canExecute={canManage}
+        />
+      )}
     </div>
   );
 }
