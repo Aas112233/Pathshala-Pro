@@ -195,6 +195,22 @@ export async function GET(
         const maxMarks = es.maxMarks || 100;
         const passMarks = es.passMarks || 33;
         const obtained = found ? found.obtainedMarks : 0;
+        // Stored rows are canonical (graded server-side via gradeExamResult):
+        // recomputing here with a different scale made the card disagree with
+        // the persisted result. Only missing rows fall back to display math.
+        if (found) {
+          return {
+            subjectName: es.subject?.name || "Subject",
+            subjectCode: es.subject?.code || "SUB",
+            maxMarks,
+            passMarks,
+            obtainedMarks: found.obtainedMarks,
+            grade: found.grade,
+            gradePoint: found.gradePoint,
+            status: found.status,
+            remarks: found.remarks || (found.status === "PASS" ? "Pass" : found.status === "ABSENT" ? "Absent" : "Fail"),
+          };
+        }
         const subPercentage = safePercentage(obtained, maxMarks);
         const { letterGrade, gpa } = calculateGradeFromPercentage(subPercentage);
 
@@ -204,9 +220,10 @@ export async function GET(
           maxMarks,
           passMarks,
           obtainedMarks: obtained,
-          grade: found?.grade || letterGrade,
-          gradePoint: found?.gradePoint || gpa,
-          remarks: found?.remarks || (obtained >= passMarks ? "Pass" : "Fail"),
+          grade: letterGrade,
+          gradePoint: gpa,
+          status: obtained >= passMarks ? "PASS" : "FAIL",
+          remarks: obtained >= passMarks ? "Pass" : "Fail",
         };
       });
 
@@ -214,7 +231,9 @@ export async function GET(
       const totalObtained = subjects.reduce((sum, s) => sum + s.obtainedMarks, 0);
       const percentage = totalMax > 0 ? Number(((totalObtained / totalMax) * 100).toFixed(2)) : 0;
       const { letterGrade, gpa } = calculateGradeFromPercentage(percentage);
-      const passed = !subjects.some((s) => s.obtainedMarks < s.passMarks);
+      // Stored statuses are canonical; missing rows carry the display
+      // comparison as their status (matching what is shown above for them).
+      const passed = !subjects.some((s) => s.status !== "PASS");
 
       if (passed) passedCount += 1;
       totalCohortPercentage += percentage;

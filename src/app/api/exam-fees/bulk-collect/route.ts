@@ -33,6 +33,9 @@ const bulkExamFeeSchema = z.object({
       z.object({
         studentProfileId: z.string().min(1),
         amountPaid: z.number().finite().positive("Amount paid must be greater than 0"),
+        // Client-generated key per pay-button click. Replays with the same
+        // key return the original receipt instead of double-charging.
+        key: z.string().trim().max(100).optional(),
       })
     )
     .min(1, "Select at least one student to collect from")
@@ -119,7 +122,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const requestKey = `EXAM_FEE_BULK_${tenantId}_${user.id}_${data.examId}_${data.classId}_${data.payments.length}_${data.payments.map((p) => p.studentProfileId).join(",")}`;
+    const requestKey = `EXAM_FEE_BULK_${tenantId}_${user.id}_${data.examId}_${data.classId}_${data.payments.map((p) => `${p.studentProfileId}:${p.amountPaid}`).join(",")}`;
     if (!(await dedupeRequestAsync(requestKey, 5000))) {
       return badRequest("Duplicate bulk submission detected. Please wait a moment.");
     }
@@ -169,6 +172,7 @@ export async function POST(request: NextRequest) {
             note: data.note,
             executedById: user.id,
             allowAdvanceToWallet: data.allowAdvanceToWallet,
+            idempotencyKey: payment.key?.trim() || undefined,
           })
         );
         successes.push(result);

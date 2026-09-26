@@ -262,6 +262,7 @@ export async function POST(request: NextRequest) {
                 subjectId: row.subjectId,
                 maxMarks: row.maxMarks,
                 obtainedMarks: row.obtainedMarks,
+                originalObtained: row.originalObtained ?? null,
                 percentage: row.percentage,
                 grade: row.grade,
                 gradePoint: row.gradePoint,
@@ -318,6 +319,7 @@ export async function PUT(request: NextRequest) {
             const data = {
               maxMarks: row.maxMarks,
               obtainedMarks: row.obtainedMarks,
+              originalObtained: row.originalObtained ?? null,
               percentage: row.percentage,
               grade: row.grade,
               gradePoint: row.gradePoint,

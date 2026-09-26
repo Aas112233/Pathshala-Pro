@@ -25,6 +25,12 @@ export interface ValidatedExamResultRow {
   reExamAllowed: boolean;
   /** Only set for mode "upsert": id of the existing row to update. */
   existingResultId?: string;
+  /**
+   * Raw submitted marks when the grader clamped them into [0, maxMarks]
+   * (reachable only via a payload maxMarks above the mapping's). Null when
+   * nothing was clamped — the audit column, not a display field.
+   */
+  originalObtained?: number | null;
 }
 
 /**
@@ -242,6 +248,10 @@ export async function validateExamResultBatch(
       passMarks: examSubject.passMarks,
       status: row.absent ? "ABSENT" : null,
     });
+    // Clamp audit: the API boundary already caps obtainedMarks at the
+    // payload's maxMarks, so the grader only clamps when the payload's
+    // maxMarks exceeds the mapping's. Persist the raw figure then.
+    const clampedMarks = Math.min(Math.max(obtainedMarks, 0), examSubject.maxMarks);
 
     validRows.push({
       studentProfileId: row.studentProfileId,
@@ -249,7 +259,10 @@ export async function validateExamResultBatch(
       examId: row.examId,
       subjectId: row.subjectId,
       maxMarks: examSubject.maxMarks,
-      obtainedMarks,
+      // Persist the clamped figure (what counts) and keep the raw submit in
+      // originalObtained — never the reverse.
+      obtainedMarks: clampedMarks,
+      originalObtained: clampedMarks !== obtainedMarks ? obtainedMarks : null,
       percentage: graded.percentage,
       grade: graded.grade,
       gradePoint: graded.gradePoint,

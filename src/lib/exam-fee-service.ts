@@ -452,6 +452,8 @@ export async function collectExamFeePayment(
     executedById: string;
     /** Route an overpayment to the advance wallet instead of rejecting it. */
     allowAdvanceToWallet?: boolean;
+    /** Client-generated key per pay intent; replay returns the original receipt. */
+    idempotencyKey?: string;
   }
 ): Promise<{
   feeVoucherId: string;
@@ -549,6 +551,7 @@ export async function collectExamFeePayment(
     paymentMethod: params.paymentMethod,
     receiptNumber,
     executedById,
+    idempotencyKey: params.idempotencyKey,
     note: params.note
       ? `${params.note} (Exam: ${examId})`
       : `Exam fee collection (Exam: ${examId})`,

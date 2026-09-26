@@ -1,4 +1,5 @@
 import { safePercentage } from "@/lib/math-utils";
+import type { GradeBand } from "@/lib/grading";
 
 /**
  * Exam-result grading — the single server-authoritative source of truth.
@@ -34,12 +35,17 @@ const GRADING_SCALE = [
  *   percentage above 100.
  * - `status: "ABSENT"` bypasses marks entirely and is passed through so an
  *   absent student can be recorded explicitly instead of as a silent zero.
+ * - `bands` overrides the canonical NCTB table (e.g. a tenant board scale
+ *   from grading.ts). Omitted means NCTB, which is what all historical rows
+ *   were graded with — pass a scale explicitly rather than changing this
+ *   default, or history and new rows will disagree.
  */
 export function gradeExamResult(input: {
   obtainedMarks: number;
   maxMarks: number;
   passMarks?: number | null;
   status?: string | null;
+  bands?: GradeBand[];
 }): GradedResult {
   if (input.status === "ABSENT") {
     return { percentage: 0, grade: "F", gradePoint: 0, status: "ABSENT" };
@@ -56,7 +62,17 @@ export function gradeExamResult(input: {
     typeof input.passMarks === "number" && input.passMarks > 0
       ? input.passMarks
       : (maxMarks * 33) / 100;
-  const band = GRADING_SCALE.find((g) => percentage >= g.minPercentage) ?? GRADING_SCALE[GRADING_SCALE.length - 1];
+  const bands = input.bands ?? GRADING_SCALE;
+  // Canonical table keys on minPercentage, grading.ts tables on min —
+  // normalise so either shape works, and sort defensively since a
+  // tenant-supplied table may not arrive pre-sorted (same rule as grading.ts).
+  const table = bands.map((g: any) => ({
+    min: (g.minPercentage ?? g.min) as number,
+    grade: g.grade as string,
+    point: g.point as number,
+  }));
+  const sorted = table.sort((a, b) => b.min - a.min);
+  const band = sorted.find((g) => percentage >= g.min) ?? sorted[sorted.length - 1];
 
   return {
     percentage,

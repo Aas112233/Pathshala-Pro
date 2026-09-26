@@ -413,6 +413,8 @@ export async function postLegacyFeeInvoiceAccrual(
   }
 
   const net = gross.minus(discount);
+  const postingDate = params.dueDate || new Date();
+  const period = await resolveOpenPeriod(tx, { tenantId: params.tenantId, postingDate });
   const voucherNumber = await getNextVoucherNumber(tx, params.tenantId, "SALES_FEE");
   const lineItems = [];
   if (net.greaterThan(0)) {
@@ -449,13 +451,15 @@ export async function postLegacyFeeInvoiceAccrual(
       tenantId: params.tenantId,
       entryNumber: voucherNumber,
       voucherType: "SALES_FEE",
-      postingDate: params.dueDate || new Date(),
+      postingDate,
       postingStatus: "POSTED",
       narration: `Fee Voucher Accrual - ${params.reference}`,
       reference: params.reference,
       totalDebit: gross,
       totalCredit: gross,
       createdById: params.executedById,
+      ...(period.fiscalYearId ? { fiscalYearId: period.fiscalYearId } : {}),
+      ...(period.financialPeriodId ? { financialPeriodId: period.financialPeriodId } : {}),
       lineItems: { create: lineItems },
     },
   });
@@ -471,6 +475,13 @@ export async function getWalletBalance(
   tx: Prisma.TransactionClient,
   params: { tenantId: string; studentProfileId: string },
 ): Promise<Prisma.Decimal> {
+  const agg = await (tx as any).studentWalletLedger?.aggregate?.({
+    where: { tenantId: params.tenantId, studentProfileId: params.studentProfileId },
+    _sum: { amount: true },
+  });
+  if (agg?._sum?.amount !== undefined && agg?._sum?.amount !== null) {
+    return new Prisma.Decimal(agg._sum.amount);
+  }
   const last = await (tx as any).studentWalletLedger?.findFirst?.({
     where: { tenantId: params.tenantId, studentProfileId: params.studentProfileId },
     orderBy: { createdAt: "desc" },
@@ -496,6 +507,8 @@ export async function applyWalletDebit(
     receiptNumber: string;
     transactionId?: string;
     note?: string;
+    /** Same intent-key contract as postFeeReceipt: replay returns the original journal. */
+    idempotencyKey?: string;
   }
 ): Promise<{ journalEntryId: string; voucherNumber: string }> {
   const amount = new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
@@ -503,8 +516,28 @@ export async function applyWalletDebit(
     throw ApiError.internal("Wallet debit amount must be positive.");
   }
 
+  const walletReference = params.idempotencyKey?.trim() || params.receiptNumber;
+  const existingWalletJournal = await (tx as any).journalEntry?.findFirst?.({
+    where: { tenantId: params.tenantId, reference: walletReference },
+    select: { id: true, entryNumber: true },
+  });
+  if (existingWalletJournal) {
+    return { journalEntryId: existingWalletJournal.id, voucherNumber: existingWalletJournal.entryNumber };
+  }
+
   // Serialize against concurrent wallet debits/credits on the same student.
   await tx.$queryRaw`SELECT id FROM "StudentProfile" WHERE id = ${params.studentProfileId} AND "tenantId" = ${params.tenantId} FOR UPDATE`;
+
+  const voucher = await (tx as any).feeVoucher?.findUnique?.({
+    where: { id: params.feeVoucherId },
+    select: { studentProfileId: true },
+  });
+  if (voucher && voucher.studentProfileId && voucher.studentProfileId !== params.studentProfileId) {
+    throw ApiError.badRequest(
+      `Fee voucher ${params.feeVoucherId} belongs to student ${voucher.studentProfileId}, not ${params.studentProfileId}. Cannot debit another student's wallet.`
+    );
+  }
+
   const balance = await getWalletBalance(tx, { tenantId: params.tenantId, studentProfileId: params.studentProfileId });
   if (balance.lessThan(amount)) {
     throw ApiError.badRequest(`Insufficient wallet balance (${balance.toFixed(2)}) for debit ${amount.toFixed(2)}.`);
@@ -528,7 +561,7 @@ export async function applyWalletDebit(
       postingDate: new Date(),
       postingStatus: "POSTED",
       narration: `Wallet Applied - ${params.receiptNumber} (Voucher: ${params.feeVoucherId})${params.note ? ` | ${params.note}` : ""}`,
-      reference: params.receiptNumber,
+      reference: walletReference,
       totalDebit: amount,
       totalCredit: amount,
       createdById: params.executedById,
@@ -641,9 +674,20 @@ export async function postCashDeposit(
     note?: string;
     bankReference?: string;
     receiptRefs?: string;
+    postingDate?: Date;
+    idempotencyKey?: string;
   }
 ): Promise<{ journalEntryId: string; voucherNumber: string }> {
   const { tenantId, fromCode = GL_CODES.CASH, toCode, executedById } = params;
+
+  if (params.idempotencyKey) {
+    const existing = await (tx as any).journalEntry?.findFirst?.({
+      where: { tenantId, reference: params.idempotencyKey },
+    });
+    if (existing) {
+      return { journalEntryId: existing.id, voucherNumber: existing.entryNumber };
+    }
+  }
   const amount = new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
   if (amount.lessThanOrEqualTo(0)) {
     throw ApiError.badRequest("Deposit amount must be positive.");
@@ -660,7 +704,8 @@ export async function postCashDeposit(
   if (!accountMap.has(fromCode) || !accountMap.has(toCode)) {
     throw ApiError.internal(`Deposit accounts (${fromCode} → ${toCode}) not configured.`);
   }
-  const period = await resolveOpenPeriod(tx, { tenantId });
+  const postingDate = params.postingDate ?? new Date();
+  const period = await resolveOpenPeriod(tx, { tenantId, postingDate });
   const voucherNumber = await getNextVoucherNumber(tx, tenantId, "CONTRA");
   const narrationParts = [`Cash Deposit ${fromCode} → ${toCode}`];
   if (bankReference) narrationParts.push(`Bank ref: ${bankReference}`);
@@ -671,7 +716,7 @@ export async function postCashDeposit(
       tenantId,
       entryNumber: voucherNumber,
       voucherType: "CONTRA",
-      postingDate: new Date(),
+      postingDate,
       postingStatus: "POSTED",
       narration: narrationParts.join(" | "),
       reference: bankReference || voucherNumber,
@@ -714,6 +759,13 @@ export async function postFeeReceipt(
     note?: string;
     transactionId?: string;
     bankAccountCode?: string;
+    /**
+     * Idempotency key for this exact payment intent (e.g. client-generated
+     * per pay-button click). A replay with the same key returns the original
+     * receipt journal instead of posting — and incrementing the voucher for —
+     * a duplicate payment. Falls back to receiptNumber when omitted.
+     */
+    idempotencyKey?: string;
   }
 ): Promise<{ journalEntryId: string; voucherNumber: string }> {
   const payment = new Prisma.Decimal(params.amount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
@@ -721,6 +773,23 @@ export async function postFeeReceipt(
   const excess = new Prisma.Decimal(params.excessToWallet || 0).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
   if (payment.lessThanOrEqualTo(0) || !applied.plus(excess).equals(payment)) {
     throw ApiError.internal("Invalid fee payment journal amounts.");
+  }
+
+  const reference = params.idempotencyKey?.trim() || params.receiptNumber;
+  const existing = await (tx as any).journalEntry?.findFirst?.({
+    where: { tenantId: params.tenantId, reference },
+    select: { id: true, entryNumber: true },
+  });
+  if (existing) return { journalEntryId: existing.id, voucherNumber: existing.entryNumber };
+
+  if (params.feeVoucherId) {
+    const voucher = await (tx as any).feeVoucher?.findUnique?.({
+      where: { id: params.feeVoucherId },
+      select: { studentProfileId: true },
+    });
+    if (voucher?.studentProfileId && params.studentProfileId && voucher.studentProfileId !== params.studentProfileId) {
+      throw ApiError.badRequest(`Fee voucher ${params.feeVoucherId} belongs to student ${voucher.studentProfileId}, not ${params.studentProfileId}.`);
+    }
   }
 
   let bankCode = params.bankAccountCode
@@ -788,7 +857,7 @@ export async function postFeeReceipt(
       postingDate: new Date(),
       postingStatus: "POSTED",
       narration: `Fee Collection Receipt - ${params.receiptNumber}${params.note ? ` | ${params.note}` : ""}`,
-      reference: params.receiptNumber,
+      reference,
       totalDebit: payment,
       totalCredit: payment,
       createdById: params.executedById,
@@ -854,12 +923,16 @@ export async function postCollectionJournal(
     executedById: string;
     note?: string;
     transactionId?: string;
+    /** Forwarded to the receipt/wallet poster for replay protection. */
+    idempotencyKey?: string;
   }
 ): Promise<{ journalEntryId: string; voucherNumber: string }> {
   if (params.paymentMethod === "WALLET_CREDIT") {
+    const amountDec = new Prisma.Decimal(params.amount);
+    const appliedDec = new Prisma.Decimal(params.appliedToInvoice);
     const excess = new Prisma.Decimal(params.excessToWallet || 0);
-    if (excess.greaterThan(0)) {
-      throw ApiError.badRequest("Wallet payments cannot exceed the voucher balance due.");
+    if (excess.greaterThan(0) || !amountDec.equals(appliedDec)) {
+      throw ApiError.badRequest("Wallet payments cannot exceed the voucher balance due or leave unallocated funds.");
     }
     return applyWalletDebit(tx, {
       tenantId: params.tenantId,
@@ -870,9 +943,10 @@ export async function postCollectionJournal(
       receiptNumber: params.receiptNumber,
       transactionId: params.transactionId,
       note: params.note,
+      idempotencyKey: params.idempotencyKey,
     });
   }
-  return postFeeReceipt(tx, params);
+  return postFeeReceipt(tx, { ...params, idempotencyKey: params.idempotencyKey });
 }
 
 /**
@@ -1033,9 +1107,9 @@ export async function collectFeePayment(
   // schema) so concurrent payments against the same voucher can't read the
   // same stale remaining-due figure.
   const lockedRows = await tx.$queryRaw<
-    Array<{ id: string; totalDue: Prisma.Decimal; amountPaid: Prisma.Decimal }>
+    Array<{ id: string; studentProfileId?: string; totalDue: Prisma.Decimal; amountPaid: Prisma.Decimal }>
   >`
-    SELECT id, "totalDue", "amountPaid"
+    SELECT id, "studentProfileId", "totalDue", "amountPaid"
     FROM "FeeVoucher"
     WHERE id = ${feeVoucherId} AND "tenantId" = ${tenantId}
     FOR UPDATE
@@ -1061,12 +1135,18 @@ export async function collectFeePayment(
   }
 
   // Resolve student once for the wallet ledger link.
-  const voucherForWallet = await (tx as any).feeVoucher?.findUnique?.({ where: { id: feeVoucherId }, select: { studentProfileId: true } });
-  const studentProfileId = (voucherForWallet as any)?.studentProfileId;
+  let studentProfileId = voucherRow.studentProfileId;
+  if (!studentProfileId) {
+    const voucherForWallet = await (tx as any).feeVoucher?.findUnique?.({ where: { id: feeVoucherId }, select: { studentProfileId: true } });
+    studentProfileId = (voucherForWallet as any)?.studentProfileId;
+  }
+  if (!studentProfileId) {
+    throw new Error(`Fee voucher ${feeVoucherId} has no associated student profile`);
+  }
 
   const { journalEntryId } = await postFeeReceipt(tx, {
     tenantId,
-    studentProfileId: studentProfileId ?? feeVoucherId,
+    studentProfileId,
     feeVoucherId,
     amount: payment,
     appliedToInvoice,
