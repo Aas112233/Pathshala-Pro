@@ -437,6 +437,43 @@ export const profitLossApi = {
     api.get<any>("/api/accounting/profit-loss", year ? { year: year.toString() } : undefined),
 };
 
+// Journals API (Manual JVs & General Ledger)
+export const journalsApi = {
+  list: (params?: SearchParams) =>
+    api.get<any[]>("/api/accounting/journals", params),
+
+  get: (id: string) =>
+    api.get<any>(`/api/accounting/journals/${id}`),
+
+  create: (data: {
+    voucherType?: string;
+    postingDate?: string;
+    reference?: string;
+    narration: string;
+    lines: Array<{
+      accountCode: string;
+      side: "DEBIT" | "CREDIT";
+      amount: number;
+      narration?: string;
+      studentId?: string;
+      staffId?: string;
+    }>;
+    idempotencyKey?: string;
+  }) => api.post<any>("/api/accounting/journals", data),
+};
+
+// Financial Reports API (Trial Balance, Balance Sheet, Profit & Loss)
+export const accountingReportsApi = {
+  trialBalance: (params?: { startDate?: string; endDate?: string; asOfDate?: string }) =>
+    api.get<any>("/api/accounting/trial-balance", params as any),
+
+  balanceSheet: (params?: { asOfDate?: string; fiscalYearStartDate?: string }) =>
+    api.get<any>("/api/accounting/balance-sheet", params as any),
+
+  profitLoss: (year?: number) =>
+    api.get<any>("/api/accounting/profit-loss", year ? { year: year.toString() } : undefined),
+};
+
 // Enquiries API
 export const enquiriesApi = {
   list: (params?: Record<string, string>) => {

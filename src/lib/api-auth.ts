@@ -19,6 +19,15 @@ type AccessResult =
 
 const tenantModulesCache = new Map<string, { modules: Record<string, boolean>; expiresAt: number }>();
 
+/** Evicts cached module entitlements for a tenant (or all) when licensing / overrides change. */
+export function invalidateTenantModulesCache(tenantId?: string): void {
+  if (tenantId) {
+    tenantModulesCache.delete(tenantId);
+  } else {
+    tenantModulesCache.clear();
+  }
+}
+
 const API_PREFIX = "/api/";
 
 function getApiPathSegments(pathname: string): string[] {

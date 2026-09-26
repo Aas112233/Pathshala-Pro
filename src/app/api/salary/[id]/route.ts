@@ -10,6 +10,8 @@ import {
 } from "@/lib/api-response";
 import { updateSalaryLedgerSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
+import { Prisma } from "@prisma/client";
+import { disburseSalaryLedger } from "@/lib/salary-payslip";
 import {
   integrityViolation,
   lockedDeleteMessage,
@@ -77,7 +79,7 @@ export async function PUT(
     const access = await requireApiAccess(request, { permission: "payroll:process" });
     if ("response" in access) return access.response;
 
-    const { tenantId } = access.authContext;
+    const { tenantId, user } = access.authContext as any;
     const { id } = await params;
 
     const body = await request.json();
@@ -102,6 +104,42 @@ export async function PUT(
       return notFound("Salary ledger not found");
     }
 
+    // Payment intent (paidAmount increased) goes through the disbursement
+    // engine — it validates against the outstanding balance, posts the Stage 2
+    // journal (debit payable / credit bank), and advances PAID/PARTIAL. The
+    // old path wrote paidAmount directly with no journal.
+    const nextPaid = (data as any).paidAmount;
+    const alreadyPaid = new Prisma.Decimal(existingLedger.paidAmount ?? 0);
+    if (nextPaid != null && new Prisma.Decimal(nextPaid).greaterThan(alreadyPaid)) {
+      if (existingLedger.status === 'PENDING' || existingLedger.status === 'PENDING_APPROVAL') {
+        return badRequest(`Cannot record payment on a ${existingLedger.status} ledger — approve it first`);
+      }
+      if (existingLedger.status === 'REJECTED') {
+        return badRequest('Cannot record payment on a REJECTED ledger');
+      }
+      const delta = new Prisma.Decimal(nextPaid).sub(alreadyPaid);
+      await disburseSalaryLedger({
+        tenantId,
+        salaryLedgerId: id,
+        amount: delta,
+        executedById: user?.id,
+      });
+      const paid = await prisma.salaryLedger.findUnique({
+        where: { id },
+        include: {
+          staffProfile: {
+            select: {
+              staffId: true,
+              firstName: true,
+              lastName: true,
+              designation: true,
+            },
+          },
+        },
+      });
+      return successResponse(paid, "Salary payment recorded successfully");
+    }
+
     if (existingLedger.paidAmount > 0 || ["PAID", "PARTIAL", "APPROVED"].includes(existingLedger.status)) {
       return integrityViolation(
         lockedUpdateMessage("Salary ledger", existingLedger.status === "APPROVED" ? "record is already approved" : "payment activity already exists"),
@@ -118,11 +156,13 @@ export async function PUT(
       );
     }
 
-    // Calculate net payable if amounts are being updated
+    // Calculate net payable if amounts are being updated (Decimal precision)
     const baseSalary = data.baseSalary ?? existingLedger.baseSalary;
     const deductions = data.deductions ?? existingLedger.deductions;
     const advances = data.advances ?? existingLedger.advances;
-    const netPayable = baseSalary - deductions - advances;
+    const netPayable = new Prisma.Decimal(baseSalary)
+      .sub(new Prisma.Decimal(deductions))
+      .sub(new Prisma.Decimal(advances));
 
     const updatedLedger = await prisma.salaryLedger.update({
       where: { id },

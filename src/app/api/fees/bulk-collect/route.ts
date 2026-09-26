@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       return badRequest("Each student may appear only once and every payment must target the selected class and section");
     }
     const studentMap = new Map(studentsInScope.map((s) => [s.id, s]));
-    const academicYear = await prisma.academicYear.findUnique({ where: { id: data.academicYearId, tenantId } });
+    const academicYear = await prisma.academicYear.findFirst({ where: { id: data.academicYearId, tenantId } });
     if (!academicYear) return badRequest("Selected academic year not found");
 
     const classStructure = await prisma.classFeeStructure.findFirst({

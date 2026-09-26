@@ -80,6 +80,9 @@ describe("Staff Payroll & Monthly Payslip Suite", () => {
         transaction: {
           findFirst: async () => ({ id: "tx-accrual-1" }),
         },
+        journalEntry: {
+          findFirst: async () => ({ id: "jv-accrual-1" }),
+        },
       };
 
       const result = await approveSalaryLedger(mockTx, {

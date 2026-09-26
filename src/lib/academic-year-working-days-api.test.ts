@@ -18,7 +18,7 @@ import { NextRequest } from "next/server";
  */
 
 const db = vi.hoisted(() => ({
-  academicYear: { findFirst: vi.fn(), update: vi.fn() },
+  academicYear: { findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
   academicHoliday: { findMany: vi.fn() },
   tenant: { findUnique: vi.fn() },
 }));
@@ -103,10 +103,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   setYear();
   db.academicYear.findFirst.mockImplementation(async () => stored);
-  db.academicYear.update.mockImplementation(
+  db.academicYear.updateMany.mockImplementation(
     async ({ data }: { data: Record<string, unknown> }) => {
       stored = { ...stored, ...data };
-      return stored;
+      return { count: 1 };
     }
   );
   db.academicHoliday.findMany.mockResolvedValue([]);
@@ -373,8 +373,8 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
     const res = await PUT(put({ nonWorkingWeekdays: [6, 0, 0] }), ctx());
 
     expect(res.status).toBe(200);
-    expect(db.academicYear.update).toHaveBeenCalledWith({
-      where: { id: "ay-1" },
+    expect(db.academicYear.updateMany).toHaveBeenCalledWith({
+      where: { id: "ay-1", tenantId: "tenant-1" },
       data: { nonWorkingWeekdays: [0, 6] },
     });
   });
@@ -405,8 +405,8 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(db.academicYear.update).toHaveBeenCalledWith({
-      where: { id: "ay-1" },
+    expect(db.academicYear.updateMany).toHaveBeenCalledWith({
+      where: { id: "ay-1", tenantId: "tenant-1" },
       data: { nonWorkingWeekdays: [] },
     });
     // No weekly days off, no holidays: every calendar day is a working day.
@@ -447,7 +447,7 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
     expect(json.error).toBe(true);
     expect(json.details[0].field).toBe("nonWorkingWeekdays");
     expect(json.details[0].code).toBe("INVALID_WORKING_DAY_POLICY");
-    expect(db.academicYear.update).not.toHaveBeenCalled();
+    expect(db.academicYear.updateMany).not.toHaveBeenCalled();
   });
 
   it("refuses an all-seven policy as an unusable year, not as a valid one", async () => {
@@ -458,7 +458,7 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
     // weekday, and the list as a whole is still refused.
     expect(res.status).toBe(400);
     expect(json.details[0].code).toBe("INVALID_WORKING_DAY_POLICY");
-    expect(db.academicYear.update).not.toHaveBeenCalled();
+    expect(db.academicYear.updateMany).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -470,7 +470,7 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
 
     expect(res.status).toBe(400);
     expect(json.details[0].code).toBe("MISSING_BODY");
-    expect(db.academicYear.update).not.toHaveBeenCalled();
+    expect(db.academicYear.updateMany).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------------------
@@ -485,7 +485,7 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
     // The body was valid, so the refusal can only be the guard.
     expect(res.status).toBe(409);
     expect(json.details[0].code).toBe("ACADEMIC_YEAR_CLOSED");
-    expect(db.academicYear.update).not.toHaveBeenCalled();
+    expect(db.academicYear.updateMany).not.toHaveBeenCalled();
   });
 
   it("checks the closed year before it tries to read the stored policy", async () => {
@@ -499,7 +499,7 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
 
     expect(res.status).toBe(409);
     expect(json.details[0].code).toBe("ACADEMIC_YEAR_CLOSED");
-    expect(db.academicYear.update).not.toHaveBeenCalled();
+    expect(db.academicYear.updateMany).not.toHaveBeenCalled();
   });
 
   it("lets a valid save repair a year whose stored policy is corrupt", async () => {
@@ -522,6 +522,6 @@ describe("PUT /api/academic-years/[id]/working-days", () => {
     const res = await PUT(put({ nonWorkingWeekdays: [0] }, "ay-missing"), ctx("ay-missing"));
 
     expect(res.status).toBe(404);
-    expect(db.academicYear.update).not.toHaveBeenCalled();
+    expect(db.academicYear.updateMany).not.toHaveBeenCalled();
   });
 });

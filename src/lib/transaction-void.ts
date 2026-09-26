@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
-import { syncBankBalance } from "@/lib/fee-service";
+import { syncBankBalance, getWalletBalance } from "@/lib/fee-service";
 
 /**
  * Shared reversal for voided / bounced fee receipts. Flips the original
@@ -69,26 +69,40 @@ export async function reverseTransaction(
     reversalId = rev.id;
 
     if (excess.greaterThan(0)) {
-      try {
-        const studentId = (voucher as any).studentProfileId;
-        const last = await (tx as any).studentWalletLedger.findFirst({
-          where: { tenantId, studentProfileId: studentId },
-          orderBy: { createdAt: "desc" },
-        });
-        const prevBal = last ? new Prisma.Decimal(last.balanceAfter) : new Prisma.Decimal(0);
+      const studentId = (voucher as any).studentProfileId;
+      if (studentId) {
+        if (typeof (tx as any).$queryRaw === "function") {
+          await tx.$queryRaw`SELECT id FROM "StudentProfile" WHERE id = ${studentId} AND "tenantId" = ${tenantId} FOR UPDATE`;
+        }
+        const prevBal = await getWalletBalance(tx as any, { tenantId, studentProfileId: studentId });
         const newBal = prevBal.minus(excess);
-        await (tx as any).studentWalletLedger.create({
-          data: {
-            tenantId,
-            studentProfileId: studentId,
-            journalEntryId: rev.id,
-            transactionId: trx.id,
-            amount: excess.mul(-1),
-            balanceAfter: newBal,
-            reason: `Void reversal — ${reason}`,
-          },
-        });
-      } catch {}
+        if (newBal.lessThan(0)) {
+          // Deliberately not wrapped in a best-effort catch: the advance was
+          // already spent on a later voucher, so this reversal cannot be
+          // funded from the wallet. Writing a negative running balance would
+          // silently corrupt the ledger; the shortfall is a real receivable
+          // that must be settled in cash before the void is allowed.
+          throw new Error(
+            `Cannot void transaction ${trx.id}: wallet balance ${prevBal.toFixed(2)} is below the ${excess.toFixed(2)} excess being reversed. ` +
+              `The advance was already applied to another voucher — recover that amount or write it off before voiding this receipt.`
+          );
+        }
+        // Delegate-optional only (test/mocked transactions may not expose it);
+        // a missing delegate is tolerated, a business failure is not.
+        if (typeof (tx as any).studentWalletLedger?.create === "function") {
+          await (tx as any).studentWalletLedger.create({
+            data: {
+              tenantId,
+              studentProfileId: studentId,
+              journalEntryId: rev.id,
+              transactionId: trx.id,
+              amount: excess.mul(-1),
+              balanceAfter: newBal,
+              reason: `Void reversal — ${reason}`,
+            },
+          });
+        }
+      }
     }
   } else {
     reversalId = null;

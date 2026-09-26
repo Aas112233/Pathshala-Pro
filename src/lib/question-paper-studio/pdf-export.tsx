@@ -1,9 +1,11 @@
 import { createElement } from "react";
-import { pdf } from "@react-pdf/renderer";
 import type { ExamPaperStudioModel as ExamPaper } from "@/types/exam-studio";
-import { ExamPaperPDF } from "./exam-paper-pdf-template";
 import { adaptPaperForPdf } from "./exam-paper-adapter";
 import { downloadBlob } from "@/lib/download-blob";
+
+// ponytail: @react-pdf/renderer stays out of the page bundle until first export
+let rendererPromise: Promise<typeof import("@react-pdf/renderer")> | null = null;
+const loadPdfRenderer = () => (rendererPromise ??= import("@react-pdf/renderer"));
 
 /**
  * Exam paper PDF exporter using @react-pdf/renderer.
@@ -30,6 +32,10 @@ export async function exportElementToHighResPDF(
         ? { ...paper, layout: { ...(paper as any).layout, ...layoutOverrides } }
         : paper
     );
+    const [{ pdf }, { ExamPaperPDF }] = await Promise.all([
+      loadPdfRenderer(),
+      import("./exam-paper-pdf-template"),
+    ]);
     const blob = await pdf(createElement(ExamPaperPDF, { paper: studioPaper }) as any).toBlob();
     downloadBlob(blob, fileName);
     return { success: true };

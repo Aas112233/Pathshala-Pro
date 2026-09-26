@@ -30,25 +30,47 @@ export async function getNextVoucherNumber(
   tx: Prisma.TransactionClient,
   tenantId: string,
   voucherType: VoucherTypeEnum,
-  fiscalYear: number = new Date().getFullYear()
+  fiscalYear?: number
 ): Promise<string> {
-  const prefix = VOUCHER_PREFIX_MAP[voucherType] || "JV";
+  const defaultPrefix = VOUCHER_PREFIX_MAP[voucherType] || "JV";
+
+  let year = fiscalYear;
+  if (year === undefined || year === null) {
+    const now = new Date();
+    year = now.getFullYear();
+    try {
+      const tenant = await (tx as any).tenant?.findUnique?.({
+        where: { tenantId },
+        select: { fiscalYearStart: true },
+      });
+      if (tenant?.fiscalYearStart && tenant.fiscalYearStart > 1) {
+        const currentMonth = now.getMonth() + 1;
+        if (currentMonth < tenant.fiscalYearStart) {
+          year = now.getFullYear() - 1;
+        }
+      }
+    } catch {}
+  }
 
   try {
-    const lockedRows = await tx.$queryRaw<Array<{ id: string; current_number: number }>>`
-      SELECT id, current_number 
+    const lockedRows = await tx.$queryRaw<Array<{ id: string; current_number: number; prefix: string | null }>>`
+      SELECT id, current_number, prefix 
       FROM "TenantVoucherSequence"
       WHERE "tenantId" = ${tenantId}
         AND "voucherType" = ${voucherType}::"VoucherType"
-        AND "fiscalYear" = ${fiscalYear}
+        AND "fiscalYear" = ${year}
       FOR UPDATE
     `;
 
     let nextVal: number;
+    let sequencePrefix = defaultPrefix;
 
     if (lockedRows && lockedRows.length > 0) {
       const sequenceRow = lockedRows[0];
       nextVal = Number(sequenceRow.current_number) + 1;
+      if (sequenceRow.prefix) {
+        sequencePrefix = sequenceRow.prefix;
+      }
 
       await tx.$executeRaw`
         UPDATE "TenantVoucherSequence"
@@ -57,17 +79,21 @@ export async function getNextVoucherNumber(
         WHERE id = ${sequenceRow.id}
       `;
     } else {
-      nextVal = 1;
-      await tx.$executeRaw`
+      const inserted = await tx.$queryRaw<Array<{ current_number: number; prefix: string | null }>>`
         INSERT INTO "TenantVoucherSequence" ("id", "tenantId", "voucherType", "prefix", "fiscalYear", "current_number", "createdAt", "updatedAt")
-        VALUES (gen_random_uuid()::text, ${tenantId}, ${voucherType}::"VoucherType", ${prefix}, ${fiscalYear}, ${nextVal}, NOW(), NOW())
+        VALUES (gen_random_uuid()::text, ${tenantId}, ${voucherType}::"VoucherType", ${defaultPrefix}, ${year}, 1, NOW(), NOW())
         ON CONFLICT ("tenantId", "voucherType", "fiscalYear")
         DO UPDATE SET "current_number" = "TenantVoucherSequence"."current_number" + 1, "updatedAt" = NOW()
+        RETURNING "current_number", "prefix"
       `;
+      nextVal = Number(inserted && inserted[0] ? inserted[0].current_number : 1);
+      if (inserted && inserted[0]?.prefix) {
+        sequencePrefix = inserted[0].prefix;
+      }
     }
 
     const paddedSequence = String(nextVal).padStart(6, "0");
-    return `${prefix}-${fiscalYear}-${paddedSequence}`;
+    return `${sequencePrefix}-${year}-${paddedSequence}`;
   } catch (error) {
     // Only a client that cannot execute raw SQL at all (a mocked / in-memory
     // TransactionClient in unit tests) may fall back to a random suffix. A real
@@ -79,7 +105,7 @@ export async function getNextVoucherNumber(
     // and surfaced to users as a generic 500 "Internal server error".
     if (typeof (tx as any)?.$queryRaw !== "function" || typeof (tx as any)?.$executeRaw !== "function") {
       const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-      return `${prefix}-${fiscalYear}-${randomSuffix}`;
+      return `${defaultPrefix}-${year}-${randomSuffix}`;
     }
     throw error;
   }

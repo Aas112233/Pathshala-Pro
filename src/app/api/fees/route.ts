@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify student exists
-    const student = await prisma.studentProfile.findUnique({
+    const student = await prisma.studentProfile.findFirst({
       where: { id: data.studentProfileId, tenantId },
     });
 
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify academic year exists
-    const academicYear = await prisma.academicYear.findUnique({
+    const academicYear = await prisma.academicYear.findFirst({
       where: { id: data.academicYearId, tenantId },
     });
 

@@ -148,7 +148,8 @@ export async function getAuthContext(
 }
 
 /**
- * Get tenant ID from request (for public endpoints)
+ * @deprecated Unused. Production endpoints must never trust raw request headers for tenant context.
+ * Always authenticate and derive tenantId from cryptographically verified JWT claims via requireApiAccess().
  */
 export async function getTenantFromRequest(request: NextRequest): Promise<string | null> {
   const tenantId = request.headers.get("x-tenant-id");

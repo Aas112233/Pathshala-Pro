@@ -46,6 +46,21 @@ export async function POST(request: NextRequest) {
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
 
+    // A linked code must resolve to an active ASSET account, otherwise the GL
+    // mirror syncs into a void and reconciliation drifts with no error.
+    if ((data as any).accountCode) {
+      const linked = await prisma.chartOfAccount.findFirst({
+        where: { tenantId, code: (data as any).accountCode, isActive: true },
+        select: { code: true, name: true, accountType: true },
+      });
+      if (!linked) {
+        return badRequest(`GL account ${(data as any).accountCode} is not configured. Create it under Accounting > Chart of Accounts first.`);
+      }
+      if (linked.accountType !== "ASSET") {
+        return badRequest(`GL account ${linked.code} (${linked.name}) is a ${linked.accountType} account — bank/cash mirrors must link to an ASSET account.`);
+      }
+    }
+
     const account = await prisma.bankAccount.create({
       data: {
         tenantId,

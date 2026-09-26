@@ -4,10 +4,12 @@ import {
   successResponse,
   paginatedResponse,
   badRequest,
+  errorResponse,
   handleApiError,
   safeParseBody,
 } from "@/lib/api-response";
 import { requireApiAccess } from "@/lib/api-auth";
+import { dedupeRequestAsync } from "@/lib/rate-limit";
 import { postCashDeposit } from "@/lib/fee-service";
 import { GL_CODES, MAX_PAGE_SIZE } from "@/lib/constants";
 import { z } from "zod";
@@ -19,6 +21,8 @@ const depositSchema = z.object({
   note: z.string().max(500).optional(),
   bankReference: z.string().trim().max(100).optional(),
   receiptRefs: z.string().trim().max(1000).optional(),
+  postingDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional(),
+  idempotencyKey: z.string().trim().max(100).optional(),
 });
 
 /**
@@ -75,6 +79,15 @@ export async function POST(request: NextRequest) {
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
 
+    // Short-window double-submit guard (double-click / network retry). The
+    // engine's reference pre-check covers longer-window replays.
+    const dedupeKey = data.idempotencyKey?.trim() || (data.bankReference?.trim()
+      ? `DEPOSIT_${tenantId}_${data.bankReference.trim()}`
+      : `DEPOSIT_${tenantId}_${data.fromCode}_${data.toCode}_${data.amount}`);
+    if (!(await dedupeRequestAsync(dedupeKey, 10000))) {
+      return errorResponse("Duplicate deposit request detected. Please wait a moment.", 409);
+    }
+
     const result = await prisma.$transaction(async (tx) =>
       postCashDeposit(tx as any, {
         tenantId,
@@ -85,6 +98,8 @@ export async function POST(request: NextRequest) {
         note: data.note,
         bankReference: data.bankReference,
         receiptRefs: data.receiptRefs,
+        postingDate: data.postingDate ? new Date(data.postingDate) : undefined,
+        idempotencyKey: data.idempotencyKey?.trim() || undefined,
       })
     );
 

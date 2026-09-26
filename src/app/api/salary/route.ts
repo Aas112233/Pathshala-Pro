@@ -13,6 +13,7 @@ import { requireApiAccess } from "@/lib/api-auth";
 import { smartRateLimitAsync, dedupeRequestAsync } from "@/lib/rate-limit";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 import { assertAcademicYearOpen, resolveRequestAcademicYearId } from "@/lib/academic-year-guards";
+import { calculateEmployeePayroll, postPayrollAccrual } from "@/lib/salary-payslip";
 import { Prisma } from "@prisma/client";
 
 /**
@@ -181,28 +182,88 @@ export async function POST(request: NextRequest) {
       ]);
     }
 
-// Calculate net payable using Decimal precision to avoid floating-point drift
-    const netPayable = new Prisma.Decimal(data.baseSalary)
-      .sub(new Prisma.Decimal(data.deductions))
-      .sub(new Prisma.Decimal(data.advances));
-
-    const salaryLedger = await prisma.salaryLedger.create({
-      data: {
-        tenantId,
-        ...data,
-        netPayable,
-      },
-      include: {
-        staffProfile: {
-          select: {
-            staffId: true,
-            firstName: true,
-            lastName: true,
-            designation: true,
+// Single Decimal engine: run the payroll calculation (attendance/LOP aware)
+// so the ledger carries the full breakdown and the accrual journal is
+// posted atomically — the same path bulk and batch use.
+    const salaryLedger = await prisma.$transaction(async (tx) => {
+      const calc = await calculateEmployeePayroll(
+        {
+          tenantId,
+          staffProfileId: data.staffProfileId,
+          year: data.year,
+          month: data.month,
+          academicYearId: data.academicYearId,
+          baseSalaryOverride: data.baseSalary,
+          deductionsConfig: {
+            taxAmount: data.deductions,
+            loanInstallment: data.advances,
           },
         },
-      },
-    });
+        tx as any
+      );
+
+      const ledger = await tx.salaryLedger.create({
+        data: {
+          tenantId,
+          staffProfileId: data.staffProfileId,
+          academicYearId: data.academicYearId,
+          month: data.month,
+          year: data.year,
+          baseSalary: calc.earnings.baseSalary.toNumber(), // legacy Float
+          deductions: calc.deductions.totalDeductions.toNumber(),
+          advances: calc.deductions.loanRecovery.toNumber(),
+          netPayable: calc.netPayable.toNumber(),
+          grossSalary: calc.earnings.grossSalary,
+          totalEarnings: calc.earnings.grossSalary,
+          totalDeductions: calc.deductions.totalDeductions,
+          lopDays: calc.deductions.lopDays,
+          lopAmount: calc.deductions.lopAmount,
+          pfAmount: calc.deductions.pfAmount,
+          taxAmount: calc.deductions.taxAmount,
+          loanRecovery: calc.deductions.loanRecovery,
+          daysInMonth: calc.daysInMonth,
+          payableDays: calc.payableDays,
+          isProrated: calc.isProrated,
+          earningsBreakdown: {
+            baseSalary: calc.earnings.baseSalary.toFixed(2),
+            hra: calc.earnings.hra.toFixed(2),
+            medical: calc.earnings.medical.toFixed(2),
+            transport: calc.earnings.transport.toFixed(2),
+            special: calc.earnings.special.toFixed(2),
+            other: calc.earnings.other.toFixed(2),
+            grossSalary: calc.earnings.grossSalary.toFixed(2),
+            dailyRate: calc.dailyRate.toFixed(2),
+          },
+          deductionsBreakdown: {
+            lopDays: calc.deductions.lopDays,
+            lopAmount: calc.deductions.lopAmount.toFixed(2),
+            pfAmount: calc.deductions.pfAmount.toFixed(2),
+            taxAmount: calc.deductions.taxAmount.toFixed(2),
+            loanRecovery: calc.deductions.loanRecovery.toFixed(2),
+            totalDeductions: calc.deductions.totalDeductions.toFixed(2),
+            attendance: calc.attendance,
+            shortfall: calc.shortfall.toFixed(2),
+          },
+          status: (data as any).status ?? 'PENDING_APPROVAL',
+          paidAmount: (data as any).paidAmount ?? 0,
+          paidAt: (data as any).paidAt ? new Date((data as any).paidAt) : null,
+          rejectionReason: (data as any).rejectionReason ?? null,
+        },
+        include: {
+          staffProfile: {
+            select: {
+              staffId: true,
+              firstName: true,
+              lastName: true,
+              designation: true,
+            },
+          },
+        },
+      });
+
+      await postPayrollAccrual(tx as any, calc, ledger.id, user?.id);
+      return ledger;
+    }, { maxWait: 10000, timeout: 30000 });
 
     return successResponse(salaryLedger, "Salary ledger created successfully", 201);
   } catch (error) {

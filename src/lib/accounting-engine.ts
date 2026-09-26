@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getNextVoucherNumber } from '@/lib/accounting-sequence';
+import { getNextVoucherNumber, VoucherTypeEnum } from '@/lib/accounting-sequence';
+import { resolveOpenPeriod } from '@/lib/period-closing';
 
 export type JournalSide = 'DEBIT' | 'CREDIT';
 
@@ -15,7 +16,7 @@ export interface JournalLineInput {
 
 export interface PostJournalParams {
   tenantId: string;
-  voucherType: 'PAYROLL_ACCRUAL' | 'PAYROLL_DISBURSEMENT' | 'RECEIPT' | 'JOURNAL';
+  voucherType: 'PAYROLL_ACCRUAL' | 'PAYROLL_DISBURSEMENT' | 'RECEIPT' | 'JOURNAL' | 'PAYMENT' | 'SALARY' | 'SALES_FEE' | 'PURCHASE' | 'CONTRA' | 'CLOSING';
   reference: string;
   narration: string;
   postingDate?: Date;
@@ -24,11 +25,17 @@ export interface PostJournalParams {
   idempotencyKey?: string;
 }
 
-const VOUCHER_TYPE_MAP: Record<PostJournalParams['voucherType'], 'JOURNAL' | 'PAYMENT' | 'RECEIPT' | 'SALARY'> = {
+const VOUCHER_TYPE_MAP: Record<PostJournalParams['voucherType'], VoucherTypeEnum> = {
   PAYROLL_ACCRUAL: 'SALARY',
   PAYROLL_DISBURSEMENT: 'PAYMENT',
   RECEIPT: 'RECEIPT',
   JOURNAL: 'JOURNAL',
+  PAYMENT: 'PAYMENT',
+  SALARY: 'SALARY',
+  SALES_FEE: 'SALES_FEE',
+  PURCHASE: 'PURCHASE',
+  CONTRA: 'CONTRA',
+  CLOSING: 'CLOSING',
 };
 
 export async function postDoubleEntryJournal(
@@ -58,7 +65,7 @@ export async function postDoubleEntryJournal(
       );
     }
     return { ...l, amount: l.amount.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP) };
-  });
+  }).filter((l) => !l.amount.isZero());
 
   const totalDebit = roundedLines.filter(l => l.side === 'DEBIT').reduce((acc, l) => acc.add(l.amount), new Prisma.Decimal(0));
   const totalCredit = roundedLines.filter(l => l.side === 'CREDIT').reduce((acc, l) => acc.add(l.amount), new Prisma.Decimal(0));
@@ -70,7 +77,13 @@ export async function postDoubleEntryJournal(
 
   if (idempotencyKey) {
     const existing = await (tx as any).journalEntry?.findFirst?.({
-      where: { tenantId, reference: idempotencyKey },
+      where: {
+        tenantId,
+        OR: [
+          { reference: idempotencyKey },
+          ...(reference ? [{ reference }] : []),
+        ],
+      },
     });
     if (existing) {
       return { journalId: existing.id, entryNumber: existing.entryNumber };
@@ -79,12 +92,15 @@ export async function postDoubleEntryJournal(
       where: { tenantId, action: 'JOURNAL_POST', entity: 'Journal', entityId: idempotencyKey },
     });
     if (audit) {
-      return { journalId: audit.entityId ?? idempotencyKey, entryNumber: audit.details?.entryNumber ?? idempotencyKey };
+      return {
+        journalId: audit.details?.journalId ?? audit.entityId ?? idempotencyKey,
+        entryNumber: audit.details?.entryNumber ?? idempotencyKey,
+      };
     }
   }
 
   // Resolve account codes to IDs
-  const codes = Array.from(new Set(lines.map(l => l.accountCode)));
+  const codes = Array.from(new Set(roundedLines.map(l => l.accountCode)));
   const accounts = await (tx as any).chartOfAccount.findMany({
     where: { tenantId, code: { in: codes }, isActive: true },
   });
@@ -92,6 +108,12 @@ export async function postDoubleEntryJournal(
   for (const code of codes) {
     if (!accountMap.has(code)) throw new Error(`ChartOfAccount ${code} not configured for tenant ${tenantId}`);
   }
+
+  const postingDate = params.postingDate ?? new Date();
+  const period = await resolveOpenPeriod(tx as Prisma.TransactionClient, {
+    tenantId,
+    postingDate,
+  });
 
   const mappedVoucherType = VOUCHER_TYPE_MAP[voucherType] as any;
   const entryNumber = await getNextVoucherNumber(tx as Prisma.TransactionClient, tenantId, mappedVoucherType as any);
@@ -101,13 +123,15 @@ export async function postDoubleEntryJournal(
       tenantId,
       entryNumber,
       voucherType: mappedVoucherType,
-      postingDate: params.postingDate ?? new Date(),
+      postingDate,
       postingStatus: "POSTED",
       narration,
-      reference: idempotencyKey ?? reference,
+      reference: reference || idempotencyKey || null,
       totalDebit,
       totalCredit,
       createdById: params.createdById ?? "system",
+      ...(period.fiscalYearId ? { fiscalYearId: period.fiscalYearId } : {}),
+      ...(period.financialPeriodId ? { financialPeriodId: period.financialPeriodId } : {}),
       lineItems: {
         create: roundedLines.map(l => ({
           tenantId,
@@ -132,16 +156,19 @@ export async function postDoubleEntryJournal(
         entity: 'Journal',
         entityId: idempotencyKey ?? journal.id,
         details: {
+          journalId: journal.id,
           entryNumber: journal.entryNumber,
           voucherType,
-          reference: idempotencyKey ?? reference,
+          reference: reference || idempotencyKey || null,
           narration,
           totalDebit: totalDebit.toFixed(2),
           totalCredit: totalCredit.toFixed(2),
         },
       },
     });
-  } catch {}
+  } catch (auditErr) {
+    console.warn(`[postDoubleEntryJournal] Failed to record audit log for journal ${journal.id}:`, auditErr);
+  }
 
   return { journalId: journal.id, entryNumber: journal.entryNumber };
 }

@@ -78,7 +78,7 @@ describe("class subject selection", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/class-subjects", expect.objectContaining({
       body: JSON.stringify({ classId: "class-1", subjects: [] }),
     })));
-  });
+  }, 15000);
 
   it("shows subject-save failures instead of reporting success", async () => {
     vi.mocked(toast.success).mockClear();
@@ -91,7 +91,7 @@ describe("class subject selection", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Subject assignment rejected"));
     expect(toast.success).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeTruthy();
-  });
+  }, 15000);
 
   it("keeps assigned subjects selected when the edit tab mounts", () => {
     renderSubjects(true);

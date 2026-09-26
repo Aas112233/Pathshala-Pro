@@ -34,7 +34,7 @@ export async function GET(
     const { tenantId } = access.authContext;
     const { id } = await params;
 
-    const feeVoucher = await prisma.feeVoucher.findUnique({
+    const feeVoucher = await prisma.feeVoucher.findFirst({
       where: { id, tenantId },
       include: {
         studentProfile: {
@@ -111,7 +111,7 @@ export async function PUT(
     const data = validation.data;
 
     // Check if fee voucher exists
-    const existingVoucher = await prisma.feeVoucher.findUnique({
+    const existingVoucher = await prisma.feeVoucher.findFirst({
       where: { id, tenantId },
     });
 
@@ -220,7 +220,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if fee voucher exists
-    const existingVoucher = await prisma.feeVoucher.findUnique({
+    const existingVoucher = await prisma.feeVoucher.findFirst({
       where: { id, tenantId },
     });
 

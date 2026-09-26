@@ -5,6 +5,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { postDoubleEntryJournal } from '@/lib/accounting-engine';
+import { resolveOpenPeriod } from '@/lib/fee-service';
+import { resolveMethodAccountCode } from '@/lib/payment-method-routing';
+import { GL_CODES } from '@/lib/constants';
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -60,6 +63,8 @@ export interface PayrollCalculation {
   tenantId: string;
   staffProfileId: string;
   staffName?: string;
+  /** Free-text department from StaffProfile — drives the 5010/5020 expense account mapping. */
+  department?: string | null;
   year: number;
   month: number;
   daysInMonth: number;
@@ -191,7 +196,7 @@ export async function calculateEmployeePayroll(
 
   const staff = await (tx as any).staffProfile.findUnique({
     where: { id: staffProfileId },
-    select: { id: true, tenantId: true, firstName: true, lastName: true, baseSalary: true, hireDate: true, joiningDate: true, isActive: true },
+    select: { id: true, tenantId: true, firstName: true, lastName: true, department: true, baseSalary: true, hireDate: true, joiningDate: true, isActive: true },
   });
   if (!staff) throw new Error('StaffProfile not found');
   if (staff.tenantId !== tenantId) throw new Error('Tenant mismatch for staff');
@@ -243,7 +248,10 @@ export async function calculateEmployeePayroll(
   const pfFlat = deductionsConfig.pfFlat != null ? D(deductionsConfig.pfFlat) : null;
   // PF (Provident Fund) is computed on Basic Salary per Bangladeshi labor law,
   // not on Gross Salary (which includes exempt allowances like HRA, medical, etc.)
-  const baseSalaryForPF = baseSalary; // already Decimal from line 175
+  const baseSalaryForPF = baseSalary; // already Decimal above
+  if (deductionsConfig.pfRate != null && (deductionsConfig.pfRate < 0 || deductionsConfig.pfRate > 1)) {
+    throw new Error('pfRate must be between 0 and 1 (e.g. 0.0833 for 8.33%)');
+  }
   const pfRate = deductionsConfig.pfRate != null ? D(deductionsConfig.pfRate) : new Prisma.Decimal(0.0833); // 8.33% as Decimal
   const configuredPfAmount = pfFlat != null ? pfFlat : baseSalaryForPF.mul(pfRate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
   const configuredTaxAmount = D(deductionsConfig.taxAmount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
@@ -275,6 +283,7 @@ export async function calculateEmployeePayroll(
     tenantId,
     staffProfileId,
     staffName: `${staff.firstName} ${staff.lastName}`.trim(),
+    department: staff.department ?? null,
     year,
     month,
     daysInMonth,
@@ -300,21 +309,34 @@ export function assertNotPaid(ledger: { status: string } | null, action: string)
 
 // ── Stage 1: Accrual — debit salaries, credit payables ─────────────────
 
+/** Map a free-text department to the seeded salary expense account. */
+export function resolveSalaryExpenseAccount(department?: string | null): string {
+  const dept = (department ?? '').toLowerCase();
+  if (/admin|support|account|hr|human resource|office|clerk|finance|maint|driver|guard|peon|security/.test(dept)) {
+    return '5020'; // Admin & Support Staff Salaries
+  }
+  return '5010'; // Academic Staff Salaries (default)
+}
+
 export async function postPayrollAccrual(
   tx: Prisma.TransactionClient | typeof prisma,
   calc: PayrollCalculation,
   salaryLedgerId: string,
   executedById?: string
 ) {
-  // Academic vs Admin salary account split — heuristic by department; default 5010
-  // Caller can override via StaffProfile.department mapping; here we use generic 5010 Academic Staff Salaries
-  const salaryAccount = '5010'; // Academic Staff Salaries
+  // Nothing to accrue (e.g. fully unpaid month on zero base) — no journal.
+  if (calc.earnings.grossSalary.isZero()) return null;
+
+  const salaryAccount = resolveSalaryExpenseAccount(calc.department);
   const lines: import('./accounting-engine').JournalLineInput[] = [
     // Debit: Gross Salary expense
     { accountCode: salaryAccount, side: 'DEBIT', amount: calc.earnings.grossSalary, narration: `Payroll accrual ${calc.year}-${String(calc.month).padStart(2,'0')} Gross`, staffId: calc.staffProfileId },
-    // Credit: Payable (Net)
-    { accountCode: '2020', side: 'CREDIT', amount: calc.netPayable, narration: `Salary & Wages Payable`, staffId: calc.staffProfileId },
   ];
+  // Omit the payable line when fully deducted — a zero-amount credit line is
+  // noise, and the journal still balances (gross == pf+tax+loan+lop).
+  if (!calc.netPayable.isZero()) {
+    lines.push({ accountCode: '2020', side: 'CREDIT', amount: calc.netPayable, narration: `Salary & Wages Payable`, staffId: calc.staffProfileId });
+  }
   if (!calc.deductions.pfAmount.isZero()) {
     lines.push({ accountCode: '2030', side: 'CREDIT', amount: calc.deductions.pfAmount, narration: `PF Payable` });
   }
@@ -331,6 +353,25 @@ export async function postPayrollAccrual(
     // But we already debited gross; crediting lop + payable + pf... must balance: gross == payable+pf+tax+loan+lop
     // Verify: payable = gross - lop - pf - tax - loan → gross == payable+lop+pf+tax+loan
   }
+
+  // Upfront COA check with a payroll-specific message (postDoubleEntryJournal
+  // re-validates; this surfaces the missing code before a voucher number is
+  // consumed and the batch aborts mid-loop).
+  const requiredCodes = Array.from(new Set(lines.map((l) => l.accountCode)));
+  const existing = await (tx as any).chartOfAccount.findMany({
+    where: { tenantId: calc.tenantId, code: { in: requiredCodes }, isActive: true },
+    select: { code: true },
+  });
+  const have = new Set((existing as Array<{ code: string }>).map((a) => a.code));
+  const missing = requiredCodes.filter((c) => !have.has(c));
+  if (missing.length > 0) {
+    throw new Error(
+      `Payroll accounts (${missing.join(', ')}) not configured for tenant. Seed the chart of accounts under Accounting > Chart of Accounts.`
+    );
+  }
+
+  // Never accrue into a closed fiscal year/period.
+  await resolveOpenPeriod(tx as Prisma.TransactionClient, { tenantId: calc.tenantId });
 
   return postDoubleEntryJournal(tx, {
     tenantId: calc.tenantId,
@@ -352,6 +393,8 @@ export async function postSalaryDisbursement(
     salaryLedgerId: string;
     amount: Prisma.Decimal | number | string;
     bankAccountCode?: string;
+    /** Collection method (CASH, BANK_TRANSFER, ...) — resolved via tenant routing when bankAccountCode is omitted. */
+    paymentMethod?: string;
     executedById?: string;
     /**
      * Distinguishes this disbursement from any other disbursement against the
@@ -362,14 +405,56 @@ export async function postSalaryDisbursement(
      * disbursement's journal and silently skips posting the second one.
      */
     idempotencySuffix?: string;
+    /**
+     * Caller-supplied idempotency key for this exact disbursement intent
+     * (e.g. a client-generated UUID per pay button click). When given it
+     * overrides the suffix-derived key, so a network retry of the same intent
+     * reuses the key even after the ledger's paidAmount has advanced — the
+     * suffix form alone cannot do that because it is derived from mutable
+     * server state.
+     */
+    idempotencyKey?: string;
   }
 ) {
   const amount = D(params.amount);
   if (amount.lessThanOrEqualTo(0)) throw new Error('Disbursement amount must be >0');
 
-  const idempotencyKey = params.idempotencySuffix
-    ? `payroll-pay-${params.salaryLedgerId}-${params.idempotencySuffix}`
-    : `payroll-pay-${params.salaryLedgerId}`;
+  const idempotencyKey =
+    params.idempotencyKey ??
+    (params.idempotencySuffix
+      ? `payroll-pay-${params.salaryLedgerId}-${params.idempotencySuffix}`
+      : `payroll-pay-${params.salaryLedgerId}`);
+
+  let bankAccountCode = params.bankAccountCode;
+  if (!bankAccountCode) {
+    try {
+      const tenant = await (tx as any).tenant?.findUnique?.({
+        where: { tenantId: params.tenantId },
+        select: { featureFlags: true },
+      });
+      const flags = (tenant?.featureFlags as any) || {};
+      const methods = Array.isArray(flags.paymentMethods) ? flags.paymentMethods : undefined;
+      bankAccountCode = resolveMethodAccountCode(methods, params.paymentMethod ?? 'BANK_TRANSFER');
+    } catch {
+      bankAccountCode = params.paymentMethod === 'CASH' ? GL_CODES.CASH : GL_CODES.BANK;
+    }
+  }
+
+  const requiredCodes = ['2020', bankAccountCode];
+  const existing = await (tx as any).chartOfAccount.findMany({
+    where: { tenantId: params.tenantId, code: { in: requiredCodes }, isActive: true },
+    select: { code: true },
+  });
+  const have = new Set((existing as Array<{ code: string }>).map((a) => a.code));
+  const missing = requiredCodes.filter((c) => !have.has(c));
+  if (missing.length > 0) {
+    throw new Error(
+      `Payroll disbursement accounts (${missing.join(', ')}) not configured for tenant. Seed the chart of accounts under Accounting > Chart of Accounts.`
+    );
+  }
+
+  // Never disburse out of a closed fiscal year/period.
+  await resolveOpenPeriod(tx as Prisma.TransactionClient, { tenantId: params.tenantId });
 
   return postDoubleEntryJournal(tx, {
     tenantId: params.tenantId,
@@ -379,7 +464,7 @@ export async function postSalaryDisbursement(
     createdById: params.executedById,
     lines: [
       { accountCode: '2020', side: 'DEBIT', amount, narration: `Salary Payable` },
-      { accountCode: params.bankAccountCode ?? '1010', side: 'CREDIT', amount, narration: `Bank/Cash` },
+      { accountCode: bankAccountCode, side: 'CREDIT', amount, narration: `Bank/Cash` },
     ],
     idempotencyKey,
   });
@@ -393,6 +478,8 @@ export interface BatchPayrollResult {
   netPayable: string; // Decimal string 2dp
   status: string;
   isNew: boolean;
+  /** Set when this staff member's payroll failed; siblings still commit. */
+  error?: string;
 }
 
 export async function executeBatchMonthlyPayroll(params: {
@@ -407,116 +494,133 @@ export async function executeBatchMonthlyPayroll(params: {
 }): Promise<BatchPayrollResult[]> {
   const { tenantId, year, month, academicYearId, executedById, staffIds, allowancesMap = {}, deductionsMap = {} } = params;
 
-  // Validate academic year not closed
+  // Validate academic year not closed (outside any payroll tx)
   const ay = await prisma.academicYear.findFirst({ where: { id: academicYearId, tenantId } });
   if (!ay) throw new Error('AcademicYear not found');
   if (ay.isClosed) throw new Error('AcademicYear is closed — payroll is read-only');
 
-  return prisma.$transaction(async (tx) => {
-    const where: any = { tenantId, isActive: true };
-    if (staffIds?.length) where.id = { in: staffIds };
+  // Staff list is read once, outside any transaction. Each staff member is
+  // then processed in their own short transaction (ledger read → calc →
+  // ledger create → accrual post), so a 500-staff batch cannot exceed the
+  // Accelerate interactive-transaction lifetime the way one giant tx does,
+  // and one staff member's failure (bad config, closed period) does not roll
+  // back every sibling already processed.
+  const where: any = { tenantId, isActive: true };
+  if (staffIds?.length) where.id = { in: staffIds };
 
-    const staffList = await tx.staffProfile.findMany({ where, select: { id: true } });
-    const results: BatchPayrollResult[] = [];
+  const staffList = await prisma.staffProfile.findMany({ where, select: { id: true } });
+  const results: BatchPayrollResult[] = [];
 
-    for (const { id: staffProfileId } of staffList) {
-      // Idempotency: skip if ledger already exists for tenant+staff+year+month
-      const existing = await tx.salaryLedger.findFirst({
-        where: { tenantId, staffProfileId, year, month },
-        select: { id: true, status: true, netPayable: true },
-      });
-      if (existing) {
-        results.push({
-          staffProfileId,
-          salaryLedgerId: existing.id,
-          netPayable: new Prisma.Decimal(existing.netPayable).toFixed(2),
-          status: existing.status,
-          isNew: false,
+  for (const { id: staffProfileId } of staffList) {
+    try {
+      const row = await prisma.$transaction(async (tx) => {
+        // Idempotency: skip if ledger already exists for tenant+staff+year+month
+        const existing = await tx.salaryLedger.findFirst({
+          where: { tenantId, staffProfileId, year, month },
+          select: { id: true, status: true, netPayable: true },
         });
-        continue;
-      }
+        if (existing) {
+          return {
+            staffProfileId,
+            salaryLedgerId: existing.id,
+            netPayable: new Prisma.Decimal(existing.netPayable).toFixed(2),
+            status: existing.status,
+            isNew: false as const,
+          };
+        }
 
-      const calc = await calculateEmployeePayroll(
-        {
-          tenantId,
-          staffProfileId,
-          year,
-          month,
-          academicYearId,
-          allowances: allowancesMap[staffProfileId],
-          deductionsConfig: deductionsMap[staffProfileId],
-        },
-        tx as any
-      );
-
-      // Snapshot itemized details — store Decimal as string via toFixed(2) for Float legacy compat + Decimal fields
-      const ledger = await tx.salaryLedger.create({
-        data: {
-          tenantId,
-          staffProfileId,
-          academicYearId,
-          month,
-          year,
-          baseSalary: calc.earnings.baseSalary.toNumber(), // legacy Float
-          deductions: calc.deductions.totalDeductions.toNumber(),
-          advances: calc.deductions.loanRecovery.toNumber(),
-          netPayable: calc.netPayable.toNumber(),
-          // Decimal-precise
-          grossSalary: calc.earnings.grossSalary,
-          totalEarnings: calc.earnings.grossSalary,
-          totalDeductions: calc.deductions.totalDeductions,
-          lopDays: calc.deductions.lopDays,
-          lopAmount: calc.deductions.lopAmount,
-          pfAmount: calc.deductions.pfAmount,
-          taxAmount: calc.deductions.taxAmount,
-          loanRecovery: calc.deductions.loanRecovery,
-          daysInMonth: calc.daysInMonth,
-          payableDays: calc.payableDays,
-          isProrated: calc.isProrated,
-          earningsBreakdown: {
-            baseSalary: calc.earnings.baseSalary.toFixed(2),
-            hra: calc.earnings.hra.toFixed(2),
-            medical: calc.earnings.medical.toFixed(2),
-            transport: calc.earnings.transport.toFixed(2),
-            special: calc.earnings.special.toFixed(2),
-            other: calc.earnings.other.toFixed(2),
-            grossSalary: calc.earnings.grossSalary.toFixed(2),
-            dailyRate: calc.dailyRate.toFixed(2),
+        const calc = await calculateEmployeePayroll(
+          {
+            tenantId,
+            staffProfileId,
+            year,
+            month,
+            academicYearId,
+            allowances: allowancesMap[staffProfileId],
+            deductionsConfig: deductionsMap[staffProfileId],
           },
-          deductionsBreakdown: {
+          tx as any
+        );
+
+        // Snapshot itemized details — store Decimal as string via toFixed(2) for Float legacy compat + Decimal fields
+        const ledger = await tx.salaryLedger.create({
+          data: {
+            tenantId,
+            staffProfileId,
+            academicYearId,
+            month,
+            year,
+            baseSalary: calc.earnings.baseSalary.toNumber(), // legacy Float
+            deductions: calc.deductions.totalDeductions.toNumber(),
+            advances: calc.deductions.loanRecovery.toNumber(),
+            netPayable: calc.netPayable.toNumber(),
+            // Decimal-precise
+            grossSalary: calc.earnings.grossSalary,
+            totalEarnings: calc.earnings.grossSalary,
+            totalDeductions: calc.deductions.totalDeductions,
             lopDays: calc.deductions.lopDays,
-            lopAmount: calc.deductions.lopAmount.toFixed(2),
-            pfAmount: calc.deductions.pfAmount.toFixed(2),
-            taxAmount: calc.deductions.taxAmount.toFixed(2),
-            loanRecovery: calc.deductions.loanRecovery.toFixed(2),
-            totalDeductions: calc.deductions.totalDeductions.toFixed(2),
-            attendance: calc.attendance,
-            // Uncollected amount, if configured pf/tax/loan exceeded what remained
-            // of gross after higher-priority deductions. Always 0.00 unless the
-            // employee's deductions were mis-configured relative to their gross
-            // this period — surfaced here rather than silently discarded so it
-            // can be reviewed and carried forward.
-            shortfall: calc.shortfall.toFixed(2),
+            lopAmount: calc.deductions.lopAmount,
+            pfAmount: calc.deductions.pfAmount,
+            taxAmount: calc.deductions.taxAmount,
+            loanRecovery: calc.deductions.loanRecovery,
+            daysInMonth: calc.daysInMonth,
+            payableDays: calc.payableDays,
+            isProrated: calc.isProrated,
+            earningsBreakdown: {
+              baseSalary: calc.earnings.baseSalary.toFixed(2),
+              hra: calc.earnings.hra.toFixed(2),
+              medical: calc.earnings.medical.toFixed(2),
+              transport: calc.earnings.transport.toFixed(2),
+              special: calc.earnings.special.toFixed(2),
+              other: calc.earnings.other.toFixed(2),
+              grossSalary: calc.earnings.grossSalary.toFixed(2),
+              dailyRate: calc.dailyRate.toFixed(2),
+            },
+            deductionsBreakdown: {
+              lopDays: calc.deductions.lopDays,
+              lopAmount: calc.deductions.lopAmount.toFixed(2),
+              pfAmount: calc.deductions.pfAmount.toFixed(2),
+              taxAmount: calc.deductions.taxAmount.toFixed(2),
+              loanRecovery: calc.deductions.loanRecovery.toFixed(2),
+              totalDeductions: calc.deductions.totalDeductions.toFixed(2),
+              attendance: calc.attendance,
+              // Uncollected amount, if configured pf/tax/loan exceeded what remained
+              // of gross after higher-priority deductions. Always 0.00 unless the
+              // employee's deductions were mis-configured relative to their gross
+              // this period — surfaced here rather than silently discarded so it
+              // can be reviewed and carried forward.
+              shortfall: calc.shortfall.toFixed(2),
+            },
+            status: 'PENDING',
           },
-          status: 'PENDING',
-        },
-        select: { id: true, netPayable: true, status: true },
-      });
+          select: { id: true, netPayable: true, status: true },
+        });
 
-      // Stage 1 GL Accrual — uses same tx for atomicity
-      await postPayrollAccrual(tx as any, calc, ledger.id, executedById);
+        // Stage 1 GL Accrual — same per-staff tx for atomicity
+        await postPayrollAccrual(tx as any, calc, ledger.id, executedById);
 
+        return {
+          staffProfileId,
+          salaryLedgerId: ledger.id,
+          netPayable: calc.netPayable.toFixed(2),
+          status: 'PENDING' as const,
+          isNew: true as const,
+        };
+      }, { maxWait: 10000, timeout: 30000 });
+      results.push(row);
+    } catch (error: any) {
       results.push({
         staffProfileId,
-        salaryLedgerId: ledger.id,
-        netPayable: calc.netPayable.toFixed(2),
-        status: 'PENDING',
-        isNew: true,
+        salaryLedgerId: '',
+        netPayable: '0.00',
+        status: 'FAILED',
+        isNew: false,
+        error: error?.message ?? 'Payroll failed',
       });
     }
+  }
 
-    return results;
-  }, { maxWait: 10000, timeout: 60000 });
+  return results;
 }
 
 // ── Disbursement helper — marks PAID and posts Stage 2 ─────────────────
@@ -526,6 +630,9 @@ export async function disburseSalaryLedger(params: {
   salaryLedgerId: string;
   amount?: Prisma.Decimal | number | string; // default full netPayable
   bankAccountCode?: string;
+  paymentMethod?: string;
+  /** Client-generated key for this exact disbursement intent (safe network retry). */
+  idempotencyKey?: string;
   executedById: string;
 }): Promise<{ ledgerId: string; paidAmount: string }> {
   return prisma.$transaction(async (tx) => {
@@ -534,6 +641,13 @@ export async function disburseSalaryLedger(params: {
     });
     if (!ledger) throw new Error('SalaryLedger not found');
     assertNotPaid(ledger, 'disburse');
+    // Disbursement is stage 2 of the approve→pay workflow: only APPROVED
+    // ledgers (or PARTIAL ones continuing to full payment) may pay out.
+    // PENDING/PENDING_APPROVAL must be approved first; REJECTED never pays.
+    if (ledger.status === 'REJECTED') throw new Error('Cannot disburse a REJECTED salary ledger');
+    if (ledger.status === 'PENDING' || ledger.status === 'PENDING_APPROVAL') {
+      throw new Error(`Cannot disburse a ${ledger.status} salary ledger — approve it first`);
+    }
 
     const net = D(ledger.netPayable);
     // Accumulate against whatever has already been disbursed, rather than
@@ -560,9 +674,17 @@ export async function disburseSalaryLedger(params: {
       salaryLedgerId: ledger.id,
       amount,
       bankAccountCode: params.bankAccountCode,
+      paymentMethod: params.paymentMethod,
       executedById: params.executedById,
-      idempotencySuffix: newPaidAmount.toFixed(2),
+      idempotencyKey: params.idempotencyKey,
+      idempotencySuffix: params.idempotencyKey ? undefined : newPaidAmount.toFixed(2),
     });
+
+    // paidAmount stays a legacy Float column for API/report wire-compat (see
+    // math-audit-followup test: JSON number). The value written is the 2dp
+    // Decimal rounded above, so binary-float drift is bounded to the display
+    // rounding already applied — never compare with exact float equality;
+    // read it back through D() / toFixed(2).
 
     const updated: any = await tx.salaryLedger.update({
       where: { id: ledger.id },
@@ -604,51 +726,71 @@ export async function approveSalaryLedger(
     throw new Error("Cannot approve an already paid salary ledger");
   }
 
-  // Ensure accrual journal is posted if missing
+  // Ensure accrual journal is posted if missing (idempotencyKey in
+  // postDoubleEntryJournal makes a re-post a no-op returning the original).
   const accrualRef = `PAYROLL-ACCRUAL-${ledger.id}`;
-  const existingJournal = await tx.transaction.findFirst({
+  const existingJournal = await (tx as any).journalEntry?.findFirst?.({
     where: { tenantId: params.tenantId, reference: accrualRef },
   });
 
   if (!existingJournal) {
-    const grossSalary = ledger.grossSalary ?? new Prisma.Decimal(ledger.baseSalary);
-    const netPayable = ledger.netPayable;
-    const pfAmount = ledger.pfAmount ?? new Prisma.Decimal(0);
-    const taxAmount = ledger.taxAmount ?? new Prisma.Decimal(0);
-    const loanRecovery = ledger.loanRecovery ?? new Prisma.Decimal(ledger.advances);
-    const lopAmount = ledger.lopAmount ?? new Prisma.Decimal(0);
+    // Rebuild the calculation from the stored breakdown — never from zeroed
+    // allowances. Ledgers written by the batch engine carry full
+    // earningsBreakdown/deductionsBreakdown JSON plus Decimal columns; legacy
+    // float-only ledgers (pre-breakdown) fall back to the old heuristic.
+    const earnJson = (ledger.earningsBreakdown ?? {}) as Record<string, any>;
+    const dedJson = (ledger.deductionsBreakdown ?? {}) as Record<string, any>;
+    const dec = (v: unknown, fallback: Prisma.Decimal | number): Prisma.Decimal => {
+      try {
+        if (v instanceof Prisma.Decimal) return v;
+        if (v != null && v !== '') return new Prisma.Decimal(v as any);
+      } catch { /* fall through */ }
+      return new Prisma.Decimal(fallback as any);
+    };
+    const grossSalary = ledger.grossSalary ?? dec(earnJson.grossSalary, ledger.baseSalary);
+    const pfAmount = ledger.pfAmount ?? dec(dedJson.pfAmount, 0);
+    const taxAmount = ledger.taxAmount ?? dec(dedJson.taxAmount, 0);
+    const loanRecovery = ledger.loanRecovery ?? dec(dedJson.loanRecovery, ledger.advances);
+    const lopAmount = ledger.lopAmount ?? dec(dedJson.lopAmount, 0);
+    const attendance = (dedJson.attendance as any) ?? { present: 0, absent: 0, leaveUnpaid: 0, unpaidDays: 0 };
 
     const calc: PayrollCalculation = {
       tenantId: params.tenantId,
       staffProfileId: ledger.staffProfileId,
       staffName: ledger.staffProfile ? `${ledger.staffProfile.firstName} ${ledger.staffProfile.lastName}` : undefined,
+      department: (ledger.staffProfile as any)?.department ?? null,
       year: ledger.year,
       month: ledger.month,
       daysInMonth: ledger.daysInMonth ?? 30,
       payableDays: ledger.payableDays ?? 30,
       isProrated: ledger.isProrated,
       proratedUnpaidDays: 0,
-      attendance: { present: 0, absent: 0, leaveUnpaid: 0, unpaidDays: 0 },
+      attendance: {
+        present: Number(attendance.present ?? 0),
+        absent: Number(attendance.absent ?? 0),
+        leaveUnpaid: Number(attendance.leaveUnpaid ?? 0),
+        unpaidDays: Number(attendance.unpaidDays ?? 0),
+      },
       earnings: {
-        baseSalary: new Prisma.Decimal(ledger.baseSalary),
-        hra: new Prisma.Decimal(0),
-        medical: new Prisma.Decimal(0),
-        transport: new Prisma.Decimal(0),
-        special: new Prisma.Decimal(0),
-        other: new Prisma.Decimal(0),
+        baseSalary: dec(earnJson.baseSalary, ledger.baseSalary),
+        hra: dec(earnJson.hra, 0),
+        medical: dec(earnJson.medical, 0),
+        transport: dec(earnJson.transport, 0),
+        special: dec(earnJson.special, 0),
+        other: dec(earnJson.other, 0),
         grossSalary,
       },
       deductions: {
-        lopDays: ledger.lopDays ?? 0,
+        lopDays: Number(ledger.lopDays ?? dedJson.lopDays ?? 0),
         lopAmount,
         pfAmount,
         taxAmount,
         loanRecovery,
-        totalDeductions: new Prisma.Decimal(ledger.deductions),
+        totalDeductions: ledger.totalDeductions ?? dec(dedJson.totalDeductions, ledger.deductions),
       },
-      netPayable,
-      dailyRate: new Prisma.Decimal(0),
-      shortfall: new Prisma.Decimal(0),
+      netPayable: ledger.netPayable,
+      dailyRate: dec(earnJson.dailyRate, 0),
+      shortfall: dec(dedJson.shortfall, 0),
     };
 
     await postPayrollAccrual(tx, calc, ledger.id, params.approvedById);

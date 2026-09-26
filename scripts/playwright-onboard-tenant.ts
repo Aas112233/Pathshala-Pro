@@ -405,7 +405,7 @@ async function runCompleteSchoolAutomation(config: AutomationConfig = {}) {
       }
 
       const studentsDataset: StudentItem[] = [];
-      const excelFilePath = path.resolve(process.cwd(), "Pathshala_Pro_1_Year_Institution_Test_Dataset.xlsx");
+      const excelFilePath = path.resolve(process.cwd(), "docs/test-datasets/Pathshala_Pro_1_Year_Institution_Test_Dataset.xlsx");
 
       if (fs.existsSync(excelFilePath)) {
         try {
@@ -542,7 +542,7 @@ async function runCompleteSchoolAutomation(config: AutomationConfig = {}) {
       await page.goto(`${baseUrl}/staff`, { waitUntil: "networkidle" });
       await page.waitForTimeout(1000);
 
-      const excelFilePath = path.resolve(process.cwd(), "Pathshala_Pro_1_Year_Institution_Test_Dataset.xlsx");
+      const excelFilePath = path.resolve(process.cwd(), "docs/test-datasets/Pathshala_Pro_1_Year_Institution_Test_Dataset.xlsx");
 
       // 1. Attempt to load staff from generated Excel dataset, fallback to synthetic generation
       interface StaffItem {

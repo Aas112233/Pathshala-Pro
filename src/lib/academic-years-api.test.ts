@@ -42,8 +42,13 @@ const tx = vi.hoisted(() => ({
     update: vi.fn(),
     updateMany: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
   auditLog: { create: vi.fn() },
+  // The lifecycle switches serialise on a transaction-scoped Postgres advisory
+  // lock; the mock stands in for it so the clear-then-set ordering is still
+  // exercised against the transaction delegate.
+  $queryRaw: vi.fn(),
   // Closing finalises the year inside the same transaction, so these live on
   // `tx` rather than on `db`.
   studentAcademicSession: { findMany: vi.fn(), update: vi.fn() },
@@ -63,7 +68,33 @@ vi.mock("@/lib/api-auth", () => ({
 
 vi.mock("@/lib/data-integrity", () => ({
   getAcademicYearUsageCounts: vi.fn().mockResolvedValue({}),
-  integrityViolation: vi.fn(),
+  // Same operational/config split the real helper implements, so the frozen
+  // fields keep ignoring fee structures while DELETE still counts everything.
+  // Mirrors the real helper's key set: configuration (fee structures) and
+  // provenance (rollovers, clones) never freeze the identity fields.
+  hasAcademicYearOperationalUsage: (counts: Record<string, number>) =>
+    [
+      "feeVouchers",
+      "salaryLedgers",
+      "examResults",
+      "exams",
+      "promotionRules",
+      "promotions",
+      "sessions",
+      "timetables",
+      "questionPapers",
+      "holidays",
+      "substitutions",
+      "admissions",
+      "attendances",
+    ].some((key) => (counts[key] ?? 0) > 0),
+  integrityViolation: vi.fn(
+    (message: string, details: Array<{ field?: string; code: string; message: string }>) =>
+      new Response(JSON.stringify({ message, details }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+  ),
   lockedUpdateMessage: vi.fn(),
   lockedDeleteMessage: vi.fn(),
   buildLockedFieldsDetails: vi.fn(),
@@ -75,6 +106,7 @@ import {
   DELETE as deleteAcademicYearRoute,
 } from "@/app/api/academic-years/[id]/route";
 import { requireApiAccess } from "@/lib/api-auth";
+import { getAcademicYearUsageCounts } from "@/lib/data-integrity";
 
 /**
  * `requireApiAccess` can short-circuit, so each handler is inferred as
@@ -138,10 +170,21 @@ beforeEach(() => {
     ...OPEN_YEAR,
     ...data,
   }));
-  tx.academicYear.findFirst.mockResolvedValue(null);
+  // All lifecycle writes go through scoped `updateMany`/`deleteMany` and check
+  // the affected-row count, so the default must report one row written.
+  tx.academicYear.updateMany.mockResolvedValue({ count: 1 });
+  tx.academicYear.deleteMany.mockResolvedValue({ count: 1 });
+  tx.academicYear.findFirst.mockImplementation(async (args: any) => {
+    const where = args?.where ?? {};
+    // "Is another year flagged current?" lookups: no current year by default.
+    if (where.isCurrent === true) return null;
+    // Target lookups (setCurrent) and the post-write re-read return the year.
+    return { ...OPEN_YEAR };
+  });
+  tx.auditLog.create.mockResolvedValue({ id: "audit-1" });
+
   db.academicYear.findFirst.mockResolvedValue(null);
   db.academicYear.findUnique.mockResolvedValue(OPEN_YEAR);
-  tx.auditLog.create.mockResolvedValue({ id: "audit-1" });
 
   // A close runs the pre-flight gate, which reads the year's cohort. Primed to
   // an empty, healthy year so that only the tests that care see a blocker.
@@ -231,9 +274,11 @@ describe("POST /api/academic-years", () => {
     );
 
     expect(res.status).toBe(201);
-    expect(tx.academicYear.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { isCurrent: true } })
-    );
+    // The auto-current write is tenant-scoped, not write-by-id.
+    expect(tx.academicYear.updateMany).toHaveBeenCalledWith({
+      where: { id: "ay-2027", tenantId: "mhs" },
+      data: { isCurrent: true },
+    });
     const json = await res.json();
     expect(json.data.isCurrent).toBe(true);
   });
@@ -251,7 +296,7 @@ describe("POST /api/academic-years", () => {
     );
 
     expect(res.status).toBe(201);
-    expect(tx.academicYear.update).not.toHaveBeenCalled();
+    expect(tx.academicYear.updateMany).not.toHaveBeenCalled();
     const json = await res.json();
     expect(json.data.isCurrent).toBe(false);
   });
@@ -290,8 +335,8 @@ describe("PUT /api/academic-years/[id]", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(tx.academicYear.update).toHaveBeenCalledTimes(1);
-    const { data } = tx.academicYear.update.mock.calls[0][0];
+    expect(tx.academicYear.updateMany).toHaveBeenCalledTimes(1);
+    const { data } = tx.academicYear.updateMany.mock.calls[0][0];
     expect(data.startDate).toBeInstanceOf(Date);
     expect(data.endDate).toBeInstanceOf(Date);
   });
@@ -307,13 +352,14 @@ describe("PUT /api/academic-years/[id]", () => {
     expect(res.status).toBe(200);
 
     // Cleared first, then set — the other order would briefly leave two
-    // current years, which is the state the flag exists to prevent.
+    // current years, which is the state the flag exists to prevent. Both writes
+    // are tenant-scoped, and the set refuses a year that closed concurrently.
     expect(tx.academicYear.updateMany).toHaveBeenCalledWith({
       where: { tenantId: "mhs", isCurrent: true, id: { not: "ay-2027" } },
       data: { isCurrent: false },
     });
-    expect(tx.academicYear.update).toHaveBeenCalledWith({
-      where: { id: "ay-2027" },
+    expect(tx.academicYear.updateMany).toHaveBeenCalledWith({
+      where: { id: "ay-2027", tenantId: "mhs", isClosed: false },
       data: { isCurrent: true },
     });
   });
@@ -736,9 +782,90 @@ describe("DELETE /api/academic-years/[id]", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(tx.academicYear.delete).toHaveBeenCalledWith({ where: { id: "ay-2027" } });
+    // The delete is tenant-scoped, not delete-by-id.
+    expect(tx.academicYear.deleteMany).toHaveBeenCalledWith({ where: { id: "ay-2027", tenantId: "mhs" } });
     const { data } = tx.auditLog.create.mock.calls[0][0];
     expect(data).toMatchObject({ action: "DELETE", entity: "AcademicYear", entityId: "ay-2027" });
+  });
+
+  it("refuses to delete a closed year, mirroring the PUT read-only boundary", async () => {
+    db.academicYear.findUnique.mockResolvedValue({ ...OPEN_YEAR, isClosed: true });
+
+    const res = await deleteAcademicYear(
+      new NextRequest("http://localhost:3000/api/academic-years/ay-2027", { method: "DELETE" }),
+      putParams("ay-2027")
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.details[0].code).toBe("locked");
+    // Nothing may be written against a frozen year — not even its deletion.
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses to delete a year whose only content is fee structures", async () => {
+    // Fee structures carry a restricting FK: without this count the delete
+    // would pass the guard and die as a raw constraint error (or, for rollover
+    // lineage, silently cascade the provenance away).
+    vi.mocked(getAcademicYearUsageCounts).mockResolvedValueOnce({
+      feeVouchers: 0,
+      salaryLedgers: 0,
+      examResults: 0,
+      exams: 0,
+      promotionRules: 0,
+      promotions: 0,
+      sessions: 0,
+      timetables: 0,
+      questionPapers: 0,
+      holidays: 0,
+      substitutions: 0,
+      admissions: 0,
+      attendances: 0,
+      classFeeStructures: 12,
+      rollovers: 0,
+      clonedYears: 0,
+    });
+
+    const res = await deleteAcademicYear(
+      new NextRequest("http://localhost:3000/api/academic-years/ay-2027", { method: "DELETE" }),
+      putParams("ay-2027")
+    );
+
+    expect(res.status).toBe(400);
+    expect(tx.academicYear.deleteMany).not.toHaveBeenCalled();
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("does not let fee structures alone freeze a still-empty year's identity fields", async () => {
+    // The PUT frozen-field guard counts operational history only: a year with
+    // copied fee structures but no sessions, attendance or results can still be
+    // renamed or have its dates corrected.
+    vi.mocked(getAcademicYearUsageCounts).mockResolvedValueOnce({
+      feeVouchers: 0,
+      salaryLedgers: 0,
+      examResults: 0,
+      exams: 0,
+      promotionRules: 0,
+      promotions: 0,
+      sessions: 0,
+      timetables: 0,
+      questionPapers: 0,
+      holidays: 0,
+      substitutions: 0,
+      admissions: 0,
+      attendances: 0,
+      classFeeStructures: 12,
+      rollovers: 0,
+      clonedYears: 0,
+    });
+
+    const res = await updateAcademicYear(
+      putRequest("ay-2027", { label: "2027-2028 Renamed" }),
+      putParams("ay-2027")
+    );
+
+    expect(res.status).toBe(200);
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
   });
 });
 

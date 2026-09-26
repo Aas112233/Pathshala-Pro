@@ -37,7 +37,7 @@ export async function POST(
     if (!bodyResult.success) return bodyResult.errorResponse;
     const data = bodyResult.data;
 
-    const voucher = await prisma.feeVoucher.findUnique({
+    const voucher = await prisma.feeVoucher.findFirst({
       where: { id, tenantId },
       select: { id: true, studentProfileId: true },
     });

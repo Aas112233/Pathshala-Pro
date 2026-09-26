@@ -185,21 +185,35 @@ export async function resolveRequestAcademicYearId(
 }
 
 /**
- * Make `academicYearId` the current year, clearing the flag from every other
- * year for the tenant in the same transaction.
+ * Serialise year-lifecycle flag changes for one tenant.
  *
  * There is no database-level guarantee that at most one row per tenant holds
  * `isCurrent`: the constraint that would express it is a *partial* unique index
  * (`(tenantId) WHERE "isCurrent"`), which Prisma's schema language cannot
- * declare and which this project's `db push` workflow would not maintain. So
- * the invariant is upheld here instead, and this is the only place that writes
- * the flag to `true`.
+ * declare and which this project's `db push` workflow would not maintain (an
+ * out-of-band index is dropped on the next push). So the invariant is upheld
+ * in the application — and because two concurrent check-then-set transactions
+ * under READ COMMITTED can both observe "no current year" and both set the
+ * flag, the check-then-set is serialised with a transaction-scoped Postgres
+ * advisory lock keyed by tenant. The lock releases at commit/rollback and is
+ * safe under pgbouncer transaction pooling because it lives inside the
+ * transaction's own server connection. `setCurrentAcademicYear` is the only
+ * place that writes the flag to `true`.
  */
+export async function lockAcademicYearSwitch(
+  tx: Prisma.TransactionClient,
+  tenantId: string
+): Promise<void> {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
+}
+
 export async function setCurrentAcademicYear(
   tx: Prisma.TransactionClient,
   tenantId: string,
   academicYearId: string
 ): Promise<{ label: string }> {
+  await lockAcademicYearSwitch(tx, tenantId);
+
   const target = await tx.academicYear.findFirst({
     where: { id: academicYearId, tenantId },
     select: { id: true, label: true, isClosed: true },
@@ -226,7 +240,15 @@ export async function setCurrentAcademicYear(
     where: { tenantId, isCurrent: true, id: { not: academicYearId } },
     data: { isCurrent: false },
   });
-  await tx.academicYear.update({ where: { id: academicYearId }, data: { isCurrent: true } });
+  // The write itself is tenant-scoped (and refuses a year that closed while
+  // this transaction was waiting on the lock), not just the read above.
+  const written = await tx.academicYear.updateMany({
+    where: { id: academicYearId, tenantId, isClosed: false },
+    data: { isCurrent: true },
+  });
+  if (written.count === 0) {
+    throw ApiError.notFound("Academic year not found");
+  }
 
   return { label: target.label };
 }

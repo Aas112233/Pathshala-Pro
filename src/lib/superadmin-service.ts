@@ -2,6 +2,7 @@ import type { AcceleratePrismaClient } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { signJwtToken } from "@/lib/jwt";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
+import { invalidateTenantModulesCache } from "@/lib/api-auth";
 
 export type TenantStatusEnum = "TRIAL" | "ACTIVE" | "SUSPENDED" | "EXPIRED" | "ARCHIVED";
 export type SuperAdminActionTypeEnum =
@@ -145,6 +146,7 @@ export async function updateTenantStatus(
     },
   });
 
+  invalidateTenantModulesCache(tenantId);
   return updatedTenant;
 }
 
@@ -245,6 +247,7 @@ export async function updateTenantFeatureOverrides(
     },
   });
 
+  invalidateTenantModulesCache(tenantId);
   return override;
 }
 
@@ -318,6 +321,30 @@ export async function generateTenantImpersonationToken(
       role,
     },
   });
+
+  // 5. Record tenant-visible audit log for school leadership transparency
+  try {
+    await (tx as any).auditLog?.create?.({
+      data: {
+        tenantId: targetTenantId,
+        userId: context.adminUserId,
+        userEmail: context.adminEmail,
+        action: "IMPERSONATION_SESSION_STARTED",
+        entity: "Tenant",
+        entityId: targetTenantId,
+        ipAddress: context.ipAddress ?? null,
+        details: {
+          platformAdminEmail: context.adminEmail,
+          impersonatedEmail,
+          role,
+          sessionDuration: "2h",
+          note: "Platform staff initiated customer support impersonation session",
+        },
+      },
+    });
+  } catch (auditErr) {
+    console.warn("[generateTenantImpersonationToken] Failed to record tenant audit log:", auditErr);
+  }
 
   return {
     token,

@@ -332,7 +332,10 @@ export default function AcademicYearPage() {
       header: t("tableColumns.actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
-          {canWrite && !row.original.isClosed && !row.original.isCurrent && (
+          {/* The server re-checks this write against the rollover capability
+              (`academic:rollover:execute` = `academic-years/manage`), so gating
+              on `canWrite` here offered a button that could only ever 403. */}
+          {canManage && !row.original.isClosed && !row.original.isCurrent && (
             <Button
               variant="ghost"
               size="icon"

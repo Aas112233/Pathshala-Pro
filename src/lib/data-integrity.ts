@@ -104,24 +104,103 @@ export async function getSubjectUsageCounts(tenantId: string, subjectId: string)
   return { examResults, examMappings, classMappings };
 }
 
-export async function getAcademicYearUsageCounts(tenantId: string, academicYearId: string) {
-  const [feeVouchers, salaryLedgers, examResults, exams, promotionRules, fromPromotions, toPromotions, sessions, timetables, questionPapers, holidays, substitutions, admissions, attendances] =
-    await Promise.all([
-      prisma.feeVoucher.count({ where: { tenantId, academicYearId } }),
-      prisma.salaryLedger.count({ where: { tenantId, academicYearId } }),
-      prisma.examResult.count({ where: { tenantId, academicYearId } }),
-      prisma.exam.count({ where: { tenantId, academicYearId } }),
-      prisma.promotionRule.count({ where: { tenantId, academicYearId } }),
-      prisma.classPromotion.count({ where: { tenantId, fromAcademicYearId: academicYearId } }),
-      prisma.classPromotion.count({ where: { tenantId, toAcademicYearId: academicYearId } }),
-      prisma.studentAcademicSession.count({ where: { tenantId, academicYearId } }),
-      prisma.timetable.count({ where: { tenantId, academicYearId } }),
-      prisma.questionPaper.count({ where: { tenantId, academicYearId } }),
-      prisma.academicHoliday.count({ where: { tenantId, academicYearId } }),
-      prisma.teacherSubstitution.count({ where: { tenantId, academicYearId } }),
-      prisma.admissionApplication.count({ where: { tenantId, academicYearId } }),
-      prisma.attendance.count({ where: { tenantId, academicYearId } }),
-    ]);
+export type AcademicYearUsageCounts = {
+  feeVouchers: number;
+  salaryLedgers: number;
+  examResults: number;
+  exams: number;
+  promotionRules: number;
+  promotions: number;
+  sessions: number;
+  timetables: number;
+  questionPapers: number;
+  holidays: number;
+  substitutions: number;
+  admissions: number;
+  attendances: number;
+  classFeeStructures: number;
+  rollovers: number;
+  clonedYears: number;
+};
+
+/**
+ * The counts that mean "history has been written into this year". Fee
+ * structures, rollover records and clone lineage are configuration and
+ * provenance, not records of what happened to a student — so they must block
+ * deletion (see the FK consequences below) but must not freeze a year's
+ * identity fields against a legitimate rename or a date correction while the
+ * year is still empty of history.
+ */
+const ACADEMIC_YEAR_OPERATIONAL_USAGE_KEYS = [
+  "feeVouchers",
+  "salaryLedgers",
+  "examResults",
+  "exams",
+  "promotionRules",
+  "promotions",
+  "sessions",
+  "timetables",
+  "questionPapers",
+  "holidays",
+  "substitutions",
+  "admissions",
+  "attendances",
+] as const satisfies readonly (keyof AcademicYearUsageCounts)[];
+
+export function hasAcademicYearOperationalUsage(counts: AcademicYearUsageCounts): boolean {
+  return ACADEMIC_YEAR_OPERATIONAL_USAGE_KEYS.some((key) => counts[key] > 0);
+}
+
+export async function getAcademicYearUsageCounts(
+  tenantId: string,
+  academicYearId: string
+): Promise<AcademicYearUsageCounts> {
+  const [
+    feeVouchers,
+    salaryLedgers,
+    examResults,
+    exams,
+    promotionRules,
+    fromPromotions,
+    toPromotions,
+    sessions,
+    timetables,
+    questionPapers,
+    holidays,
+    substitutions,
+    admissions,
+    attendances,
+    classFeeStructures,
+    rolloversAsSource,
+    rolloversAsTarget,
+    clonedYears,
+  ] = await Promise.all([
+    prisma.feeVoucher.count({ where: { tenantId, academicYearId } }),
+    prisma.salaryLedger.count({ where: { tenantId, academicYearId } }),
+    prisma.examResult.count({ where: { tenantId, academicYearId } }),
+    prisma.exam.count({ where: { tenantId, academicYearId } }),
+    prisma.promotionRule.count({ where: { tenantId, academicYearId } }),
+    prisma.classPromotion.count({ where: { tenantId, fromAcademicYearId: academicYearId } }),
+    prisma.classPromotion.count({ where: { tenantId, toAcademicYearId: academicYearId } }),
+    prisma.studentAcademicSession.count({ where: { tenantId, academicYearId } }),
+    prisma.timetable.count({ where: { tenantId, academicYearId } }),
+    prisma.questionPaper.count({ where: { tenantId, academicYearId } }),
+    prisma.academicHoliday.count({ where: { tenantId, academicYearId } }),
+    prisma.teacherSubstitution.count({ where: { tenantId, academicYearId } }),
+    prisma.admissionApplication.count({ where: { tenantId, academicYearId } }),
+    prisma.attendance.count({ where: { tenantId, academicYearId } }),
+    // Year-scoped configuration (`@@unique([tenantId, academicYearId, classId])`).
+    // Its FK restricts the delete, so a year holding it otherwise dies as a raw
+    // constraint error instead of this clean refusal.
+    prisma.classFeeStructure.count({ where: { tenantId, academicYearId } }),
+    // Rollover lineage: `AcademicYearRollover.source/target` cascade on delete,
+    // so deleting a year that anchors a rollover would silently destroy the
+    // provenance record of how the neighbouring year came to exist.
+    prisma.academicYearRollover.count({ where: { tenantId, sourceAcademicYearId: academicYearId } }),
+    prisma.academicYearRollover.count({ where: { tenantId, targetAcademicYearId: academicYearId } }),
+    // Years the rollover wizard cloned from this one.
+    prisma.academicYear.count({ where: { tenantId, clonedFromId: academicYearId } }),
+  ]);
 
   return {
     feeVouchers,
@@ -137,6 +216,9 @@ export async function getAcademicYearUsageCounts(tenantId: string, academicYearI
     substitutions,
     admissions,
     attendances,
+    classFeeStructures,
+    rollovers: rolloversAsSource + rolloversAsTarget,
+    clonedYears,
   };
 }
 

@@ -175,7 +175,7 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
       // instead of the old (nonexistent) netAmount/paidAmount shape.
       const mockTx: any = {
         $queryRaw: async () => [
-          { id: "INV-101", totalDue: 5000, amountPaid: 0 },
+          { id: "INV-101", studentProfileId: "student-101", totalDue: 5000, amountPaid: 0 },
         ],
         $executeRaw: async () => 1,
         chartOfAccount: {
@@ -249,7 +249,9 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
         },
         auditLog: { create: async (payload: any) => { auditCreates.push(payload.data); return payload.data; } },
         $queryRaw: async () => [{ id: "st-303" }],
-        studentWalletLedger: { findFirst: async () => null, create: async (payload: any) => { walletCreates.push(payload.data); return payload.data; } },
+        // getWalletBalance reads SUM(amount) (order-independent), not the last
+        // row's balanceAfter, so the mock exposes the aggregate lane.
+        studentWalletLedger: { aggregate: async () => ({ _sum: { amount: null } }), create: async (payload: any) => { walletCreates.push(payload.data); return payload.data; } },
       };
 
       const result = await postFeeReceipt(mockTx, {
@@ -298,7 +300,7 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
             },
           },
           studentWalletLedger: {
-            findFirst: async () => ({ balanceAfter: balance }),
+            aggregate: async () => ({ _sum: { amount: balance } }),
             create: async (payload: any) => { ledgers.push(payload.data); return payload.data; },
           },
         } as any,
@@ -359,6 +361,8 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
           },
         },
         bankAccount: {
+          // Single active linked account per code → mirror sync proceeds.
+          findMany: async () => [{ id: "b1" }],
           updateMany: async (payload: any) => { synced.push(payload); return { count: 1 }; },
         },
         $queryRaw: async () => [{ id: "seq-1", current_number: 7 }],
@@ -491,6 +495,97 @@ describe("Student Fee Invoicing & Double-Entry Collection Engine", () => {
           amount: 500, executedById: "u1",
         })
       ).rejects.toThrow(/within 0 and outstanding fine/);
+    });
+  });
+
+  describe("wallet invariants", () => {
+    const walletGuardTx = (voucherStudentId: string | null) => {
+      const ledgers: any[] = [];
+      const journals: any[] = [];
+      return {
+        ledgers,
+        journals,
+        tx: {
+          $queryRaw: async () => [{ id: "st-1" }],
+          feeVoucher: {
+            findUnique: async () =>
+              voucherStudentId === null ? null : { studentProfileId: voucherStudentId },
+          },
+          chartOfAccount: {
+            findMany: async () => [
+              { id: "acc-wallet", code: "2050", isActive: true },
+              { id: "acc-ar", code: "1030", isActive: true },
+            ],
+          },
+          journalEntry: {
+            create: async (payload: any) => {
+              journals.push(payload.data);
+              return { id: "jv-1", ...payload.data };
+            },
+          },
+          studentWalletLedger: {
+            aggregate: async () => ({ _sum: { amount: 5000 } }),
+            create: async (payload: any) => { ledgers.push(payload.data); return payload.data; },
+          },
+          auditLog: { create: async () => ({}) },
+        } as any,
+      };
+    };
+
+    it("rejects a wallet debit paired with another student's voucher", async () => {
+      // Without this guard the wallet of st-attacker was debited while
+      // Accounts Receivable was credited against st-victim's invoice.
+      const { tx, ledgers, journals } = walletGuardTx("st-victim");
+      await expect(
+        applyWalletDebit(tx, {
+          tenantId: "t1",
+          studentProfileId: "st-attacker",
+          feeVoucherId: "INV-victim",
+          amount: 1000,
+          executedById: "u1",
+          receiptNumber: "REC-1",
+        })
+      ).rejects.toThrow(/belongs to student st-victim/);
+      expect(ledgers).toHaveLength(0);
+      expect(journals).toHaveLength(0);
+    });
+
+    it("allows the debit when the voucher belongs to the same student", async () => {
+      const { tx, ledgers } = walletGuardTx("st-1");
+      await applyWalletDebit(tx, {
+        tenantId: "t1",
+        studentProfileId: "st-1",
+        feeVoucherId: "INV-1",
+        amount: 1000,
+        executedById: "u1",
+        receiptNumber: "REC-2",
+      });
+      expect(ledgers).toHaveLength(1);
+      expect(ledgers[0].amount.toString()).toBe("-1000");
+      expect(ledgers[0].balanceAfter.toString()).toBe("4000");
+    });
+
+    it("derives balance by summing the ledger, ignoring row order", async () => {
+      // Regression: the wallet once read the newest row's balanceAfter ordered
+      // by createdAt alone. Rows written in one transaction share a
+      // createdAt (CURRENT_TIMESTAMP = transaction start), so that ordering was
+      // undefined. SUM is order-independent.
+      const tx: any = {
+        studentWalletLedger: {
+          aggregate: async (args: any) => {
+            expect(args.where).toEqual({ tenantId: "t1", studentProfileId: "st-1" });
+            return { _sum: { amount: new Prisma.Decimal("1234.56") } };
+          },
+        },
+      };
+      const bal = await getWalletBalance(tx, { tenantId: "t1", studentProfileId: "st-1" });
+      expect(bal.toFixed(2)).toBe("1234.56");
+    });
+
+    it("returns a zero balance for a student with no wallet rows", async () => {
+      const tx: any = { studentWalletLedger: { aggregate: async () => ({ _sum: { amount: null } }) } };
+      const bal = await getWalletBalance(tx, { tenantId: "t1", studentProfileId: "st-none" });
+      expect(bal.toFixed(2)).toBe("0.00");
     });
   });
 });

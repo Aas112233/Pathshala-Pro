@@ -639,7 +639,7 @@ export async function POST(request: NextRequest) {
         // exit date is recorded rather than left to be guessed from updatedAt.
         for (const [status, ids] of exitsByStatus) {
           await tx.studentProfile.updateMany({
-            where: { id: { in: ids } },
+            where: { id: { in: ids }, tenantId },
             data: {
               status,
               classId: null,

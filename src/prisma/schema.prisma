@@ -370,6 +370,7 @@ model AcademicYear {
   @@unique([tenantId, yearId])
   @@index([tenantId])
   @@index([tenantId, isCurrent])
+  @@index([tenantId, isClosed])
 }
 
 model FeeVoucher {
@@ -423,6 +424,7 @@ model FeeVoucher {
   @@index([tenantId, createdAt])
   @@index([tenantId, dueDate]) // Added for fee reminder queries
   @@index([tenantId, studentProfileId, status])
+  @@index([tenantId, studentProfileId, academicYearId])
 }
 
 model Transaction {
@@ -512,6 +514,7 @@ model StudentFeeConcession {
   @@unique([tenantId, studentProfileId, concessionType])
   @@index([tenantId])
   @@index([tenantId, concessionType])
+  @@index([tenantId, studentProfileId, isActive])
 }
 
 model StaffProfile {
@@ -996,6 +999,7 @@ model ClassPromotion {
   @@index([tenantId, studentProfileId])
   @@index([tenantId, fromAcademicYearId])
   @@index([tenantId, toAcademicYearId])
+  @@index([tenantId, decidedAt])
   @@index([tenantId, decidedBy]) // Added for audit queries
 }
 

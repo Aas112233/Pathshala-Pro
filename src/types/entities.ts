@@ -1,7 +1,8 @@
 // Core entity interfaces for the Pathshala Pro School Management ERP.
 // All entities include tenantId for multi-tenant data isolation.
 
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "TEACHER" | "CLERK";
+import type { UserRole } from "@/lib/permissions";
+export type { UserRole };
 
 export type PaymentMethod = "CASH" | "DIGITAL";
 

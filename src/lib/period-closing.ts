@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { getNextVoucherNumber } from "@/lib/accounting-sequence";
+import { ApiError } from "@/lib/api-error";
 
 export interface CloseFiscalPeriodParams {
   tenantId: string;
@@ -63,6 +64,48 @@ export async function validateFiscalPeriodOpen(
       `Cannot post transactions into closed financial period '${closedPeriod.name}' (Date: ${postingDate.toISOString().slice(0, 10)})`
     );
   }
+}
+
+/**
+ * Resolves the open fiscal year and financial period for an accounting transaction.
+ * Throws ApiError.badRequest if the posting date falls inside a closed fiscal year or period.
+ * Returns {} when the tenant has no fiscal year setup.
+ */
+export async function resolveOpenPeriod(
+  tx: Prisma.TransactionClient,
+  params: { tenantId: string; postingDate?: Date }
+): Promise<{ fiscalYearId?: string; financialPeriodId?: string }> {
+  const postingDate = params.postingDate ?? new Date();
+  const fiscalYear = await (tx as any).fiscalYear?.findFirst?.({
+    where: {
+      tenantId: params.tenantId,
+      startDate: { lte: postingDate },
+      endDate: { gte: postingDate },
+    },
+    select: { id: true, isClosed: true },
+  });
+  if (!fiscalYear) return {};
+  if (fiscalYear.isClosed) {
+    throw ApiError.badRequest(
+      "Fiscal year is closed for this posting date. Post into the open year."
+    );
+  }
+  const period = await (tx as any).financialPeriod?.findFirst?.({
+    where: {
+      tenantId: params.tenantId,
+      fiscalYearId: fiscalYear.id,
+      startDate: { lte: postingDate },
+      endDate: { gte: postingDate },
+    },
+    select: { id: true, isClosed: true },
+  });
+  if (period) {
+    if (period.isClosed) {
+      throw ApiError.badRequest("Financial period is closed for this posting date.");
+    }
+    return { fiscalYearId: fiscalYear.id, financialPeriodId: period.id };
+  }
+  return { fiscalYearId: fiscalYear.id };
 }
 
 /**

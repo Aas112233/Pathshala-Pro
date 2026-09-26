@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { faker } from "@faker-js/faker";
+import { mkdirSync } from "fs";
 import path from "path";
 
 // Seed faker for reproducibility if desired
@@ -742,15 +743,16 @@ async function generateInstitutionDataset() {
   // ==========================================
   // WRITE TO DISK
   // ==========================================
-  const defaultPath = path.resolve(process.cwd(), "Pathshala_Pro_1_Year_Institution_Test_Dataset.xlsx");
+  const defaultPath = path.resolve(process.cwd(), "docs/test-datasets/Pathshala_Pro_1_Year_Institution_Test_Dataset.xlsx");
   try {
+    mkdirSync(path.dirname(defaultPath), { recursive: true });
     console.log(`Writing workbook to: ${defaultPath}...`);
     await workbook.xlsx.writeFile(defaultPath);
     console.log("Workbook generated successfully with 9 sheets!");
     console.log(`File saved at: ${defaultPath}`);
   } catch (err: any) {
     if (err?.code === "EBUSY") {
-      const fallbackPath = path.resolve(process.cwd(), `Pathshala_Pro_1_Year_Institution_Test_Dataset_${Date.now()}.xlsx`);
+      const fallbackPath = path.resolve(process.cwd(), `docs/test-datasets/Pathshala_Pro_1_Year_Institution_Test_Dataset_${Date.now()}.xlsx`);
       console.warn(`Primary file was locked (likely open in Excel). Writing to: ${fallbackPath}`);
       await workbook.xlsx.writeFile(fallbackPath);
       console.log(`File saved successfully at: ${fallbackPath}`);

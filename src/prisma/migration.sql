@@ -1,6 +1,24 @@
 -- Pathshala-Pro — Core Academic Engine — Integrity DDL
 -- Prisma 6 + PostgreSQL — multi-tenant composite, component sum, grace caps, read-only lockdown
 -- Apply: npx prisma migrate dev --name academic_engine  (this file appended to generated migration.sql)
+--
+-- STATUS: NOT APPLIED BY ANY PIPELINE.
+--
+-- This project syncs schema with `prisma db push` (see package.json: `build` is
+-- `next build`, `postinstall` is `prisma generate`, the only DB script is
+-- `prisma:push`). Nothing here — the checks, the triggers, the partial indexes —
+-- ever reaches a real database. The application layer (`src/lib/*`, route
+-- handlers) is the ONLY enforcement of the rules below.
+--
+-- Known gaps if it were applied out-of-band: the closed-year lockdown covers
+-- UPDATE/DELETE only, on ExamResult / StudentAcademicSession / Attendance only
+-- (no INSERT, and no coverage for FeeVoucher, SalaryLedger, Exam, PromotionRule,
+-- ClassPromotion, Timetable, QuestionPaper, AcademicHoliday,
+-- TeacherSubstitution, AdmissionApplication, ClassFeeStructure); unattributed
+-- attendance rows (academicYearId NULL) bypass the lock. Treat this file as a
+-- design reference, not a control — or wire it into a real migration workflow
+-- and complete it before relying on it. See
+-- docs/MATH-AUDIT-FOLLOWUP-2026-08-31.md.
 
 -- 1. Tenant grace caps — ensure sane bounds
 ALTER TABLE "Tenant" ADD CONSTRAINT chk_tenant_grace CHECK ("maxGracePerSubject" BETWEEN 0 AND 20 AND "maxGracePerStudent" BETWEEN 0 AND 50);

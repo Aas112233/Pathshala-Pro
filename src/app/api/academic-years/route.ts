@@ -12,7 +12,8 @@ import {
 } from "@/lib/api-response";
 import { createAcademicYearSchema, updateAcademicYearSchema } from "@/lib/schemas";
 import { requireApiAccess } from "@/lib/api-auth";
-import { clearAcademicYearCache } from "@/lib/academic-year-guards";
+import { clearAcademicYearCache, lockAcademicYearSwitch } from "@/lib/academic-year-guards";
+import { ApiError } from "@/lib/api-error";
 import { logAuditEvent } from "@/lib/audit-logger";
 import { MAX_PAGE_SIZE } from "@/lib/constants";
 
@@ -176,13 +177,24 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Serialised against concurrent switches/creates: two transactions that
+      // both observe "no current year" would otherwise both set the flag.
+      await lockAcademicYearSwitch(tx, tenantId);
+
       const existingCurrent = await tx.academicYear.findFirst({
         where: { tenantId, isCurrent: true, isClosed: false },
         select: { id: true },
       });
 
       if (!existingCurrent) {
-        await tx.academicYear.update({ where: { id: created.id }, data: { isCurrent: true } });
+        // Tenant-scoped write, not write-by-id.
+        const written = await tx.academicYear.updateMany({
+          where: { id: created.id, tenantId },
+          data: { isCurrent: true },
+        });
+        if (written.count === 0) {
+          throw ApiError.notFound("Academic year not found");
+        }
         created.isCurrent = true;
       }
 

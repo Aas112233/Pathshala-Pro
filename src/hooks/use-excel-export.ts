@@ -3,7 +3,11 @@
 import { useCallback } from "react";
 import { useTenantFormatting } from "@/components/providers/tenant-settings-provider";
 import { downloadBlob } from "@/lib/download-blob";
-import { exportToExcel, ReportTemplates, type ExcelExportOptions, type ExcelColumn } from "@/lib/excel-exporter";
+import type { ExcelExportOptions, ExcelColumn } from "@/lib/excel-exporter";
+
+// ponytail: exceljs (~300KB) stays out of the page bundle until first export
+let exporterPromise: Promise<typeof import("@/lib/excel-exporter")> | null = null;
+const loadExporter = () => (exporterPromise ??= import("@/lib/excel-exporter"));
 
 interface UseExcelExportOptions {
   fileName?: string;
@@ -49,6 +53,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
         showLogo: true,
       };
 
+      const { exportToExcel } = await loadExporter();
       const buffer = await exportToExcel(exportOptions);
       const blob = new Blob([new Uint8Array(buffer)], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -68,6 +73,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     data: any[],
     dateRange?: { from: string; to: string }
   ) => {
+    const { ReportTemplates } = await loadExporter();
     const template = ReportTemplates.feeReport(data, {
       schoolName,
       schoolAddress,
@@ -91,6 +97,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     data: any[],
     dateRange?: { from: string; to: string }
   ) => {
+    const { ReportTemplates } = await loadExporter();
     const template = ReportTemplates.attendanceReport(data, {
       schoolName,
       schoolAddress,
@@ -114,6 +121,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     data: any[],
     dateRange?: { from: string; to: string }
   ) => {
+    const { ReportTemplates } = await loadExporter();
     const template = ReportTemplates.studentReport(data, {
       schoolName,
       schoolAddress,
@@ -137,6 +145,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     data: any[],
     dateRange?: { from: string; to: string }
   ) => {
+    const { ReportTemplates } = await loadExporter();
     const template = ReportTemplates.examReport(data, {
       schoolName,
       schoolAddress,
@@ -160,6 +169,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     data: any[],
     dateRange?: { from: string; to: string }
   ) => {
+    const { ReportTemplates } = await loadExporter();
     const template = ReportTemplates.salaryReport(data, {
       schoolName,
       schoolAddress,
@@ -183,6 +193,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     data: any[],
     dateRange?: { from: string; to: string }
   ) => {
+    const { ReportTemplates } = await loadExporter();
     const template = ReportTemplates.financialReport(data, {
       schoolName,
       schoolAddress,
@@ -206,6 +217,7 @@ export function useExcelExport(options: UseExcelExportOptions = {}) {
     data: any[],
     dateRange?: { from: string; to: string }
   ) => {
+    const { ReportTemplates } = await loadExporter();
     const template = ReportTemplates.admissionsReport(data, {
       schoolName,
       schoolAddress,

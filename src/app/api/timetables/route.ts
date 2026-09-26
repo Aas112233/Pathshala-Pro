@@ -142,15 +142,61 @@ export async function POST(request: NextRequest) {
         await assertAcademicYearsOpen(tenantId, batchYearIds);
       }
 
-      // Validate section ownership and clashes before writing
+      // Validate section ownership and clashes before writing — batched.
+      // The old loop ran one section lookup and one clash query per entry
+      // (2N+ round trips); both tables are small and index-backed, so two
+      // bulk reads plus in-memory checks replace them while keeping the
+      // exact same validation semantics and error messages.
+      const sectionIds = Array.from(
+        new Set(parsed.data.entries.map((e) => e.sectionId).filter((id): id is string => Boolean(id)))
+      );
+      const sectionRows = sectionIds.length
+        ? await prisma.section.findMany({
+            where: { id: { in: sectionIds }, tenantId },
+            select: { id: true, classId: true },
+          })
+        : [];
+      const sectionClassById = new Map(sectionRows.map((s) => [s.id, s.classId]));
+
+      const staffIds = Array.from(
+        new Set(parsed.data.entries.map((e) => e.staffProfileId).filter((id): id is string => Boolean(id)))
+      );
+      // Fetched without a year filter on purpose: an entry whose resolved
+      // academicYearId is null must clash against *any* year (the same
+      // semantics checkTeacherClash applies with a null academicYearId);
+      // the per-entry year match happens in memory below.
+      const bookedRows = staffIds.length
+        ? await prisma.timetable.findMany({
+            where: {
+              tenantId,
+              staffProfileId: { in: staffIds },
+              dayOfWeek: { in: Array.from(new Set(parsed.data.entries.map((e) => e.dayOfWeek))) },
+              periodNumber: { in: Array.from(new Set(parsed.data.entries.map((e) => e.periodNumber))) },
+            },
+            select: {
+              staffProfileId: true,
+              dayOfWeek: true,
+              periodNumber: true,
+              academicYearId: true,
+              class: { select: { name: true } },
+              section: { select: { name: true } },
+            },
+          })
+        : [];
+      const bookedBySlot = new Map<string, typeof bookedRows>();
+      for (const row of bookedRows) {
+        const key = `${row.staffProfileId}|${row.dayOfWeek}|${row.periodNumber}`;
+        const list = bookedBySlot.get(key);
+        if (list) list.push(row);
+        else bookedBySlot.set(key, [row]);
+      }
+
       for (const e of parsed.data.entries) {
         const targetYearId = e.academicYearId || defaultAcademicYearId || null;
         if (e.sectionId) {
-          const section = await prisma.section.findFirst({
-            where: { id: e.sectionId, tenantId, classId: e.classId },
-            select: { id: true },
-          });
-          if (!section) {
+          // Equivalent to the old per-entry findFirst({ id, tenantId, classId })
+          const sectionClassId = sectionClassById.get(e.sectionId);
+          if (sectionClassId !== e.classId) {
             return badRequest("Section does not belong to the selected class", [
               { field: "sectionId", code: "invalid", message: "Select a section from the selected class" },
             ]);
@@ -158,7 +204,10 @@ export async function POST(request: NextRequest) {
         }
 
         if (e.staffProfileId) {
-          const clash = await checkTeacherClash(tenantId, e.staffProfileId, e.dayOfWeek, e.periodNumber, targetYearId);
+          const candidates = bookedBySlot.get(`${e.staffProfileId}|${e.dayOfWeek}|${e.periodNumber}`) || [];
+          const clash = candidates.find(
+            (row) => !targetYearId || row.academicYearId === targetYearId
+          );
           if (clash) {
             return badRequest(
               `Teacher clash: already assigned to ${clash.class.name}${clash.section ? ` - ${clash.section.name}` : ""} on ${e.dayOfWeek} period ${e.periodNumber}`,

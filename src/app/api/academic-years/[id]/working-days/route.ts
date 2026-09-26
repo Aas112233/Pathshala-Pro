@@ -285,10 +285,15 @@ export async function PUT(
     // it after the close would silently move figures the close declared frozen.
     await assertAcademicYearOpen(tenantId, id);
 
-    await prisma.academicYear.update({
-      where: { id },
+    // Tenant-scoped write, not write-by-id: the check above and the write must
+    // not be able to act on different rows.
+    const written = await prisma.academicYear.updateMany({
+      where: { id, tenantId },
       data: { nonWorkingWeekdays },
     });
+    if (written.count === 0) {
+      throw ApiError.notFound("Academic year not found");
+    }
 
     const report = await loadYearReport(tenantId, id);
 

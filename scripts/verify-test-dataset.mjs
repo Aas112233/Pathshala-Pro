@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 
 const wb = new ExcelJS.Workbook();
-await wb.xlsx.readFile("Pathshala_Pro_Test_Dataset_2026-2028.xlsx");
+await wb.xlsx.readFile("docs/test-datasets/Pathshala_Pro_Test_Dataset_2026-2028.xlsx");
 
 function rows(name) {
   const ws = wb.getWorksheet(name);

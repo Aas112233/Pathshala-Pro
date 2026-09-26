@@ -62,10 +62,11 @@ export function getMethodPostingRules(
   };
 }
 
-/** GL code a receipt debits for this method (tenant mapping wins). */
 export function resolveMethodAccountCode(methods: unknown, code: string): string {
   const method = resolveTenantMethod(methods, code);
-  return method?.accountCode || (code === "CASH" ? GL_CODES.CASH : GL_CODES.BANK);
+  if (method?.accountCode) return method.accountCode;
+  const isCash = method?.type === "CASH" || code.toUpperCase() === "CASH";
+  return isCash ? GL_CODES.CASH : GL_CODES.BANK;
 }
 
 export type MethodValidationError = "unknown" | "inactive";

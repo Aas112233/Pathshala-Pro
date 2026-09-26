@@ -466,16 +466,37 @@ export async function collectExamFeePayment(
 }> {
   const { tenantId, examId, studentProfileId, academicYearId, executedById } = params;
 
-  const payment = new Prisma.Decimal(params.amountPaid);
+  const payment = new Prisma.Decimal(params.amountPaid).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
   if (payment.lessThanOrEqualTo(0)) {
     throw ApiError.badRequest(`Payment amount must be greater than 0. Received ${payment.toString()}.`);
   }
-  payment.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
-  let voucher = await tx.feeVoucher.findFirst({
-    where: { tenantId, studentProfileId, examId },
-    select: { id: true, voucherId: true, balance: true, status: true },
-  });
+  if (params.paymentMethod === "CHEQUE" && !params.chequeNumber) {
+    throw ApiError.badRequest("Cheque number is required for CHEQUE payments.");
+  }
+
+  let voucher: { id: string; voucherId: string; balance: Prisma.Decimal | string | number; status: string } | null = null;
+  if (typeof (tx as any).$queryRaw === "function") {
+    const lockedRows = await tx.$queryRaw<
+      Array<{ id: string; voucherId: string; balance: Prisma.Decimal; status: string }>
+    >`
+      SELECT id, "voucherId", balance, status
+      FROM "FeeVoucher"
+      WHERE "tenantId" = ${tenantId}
+        AND "studentProfileId" = ${studentProfileId}
+        AND "examId" = ${examId}
+      FOR UPDATE
+    `;
+    if (lockedRows && lockedRows.length > 0) {
+      voucher = lockedRows[0];
+    }
+  }
+  if (!voucher) {
+    voucher = await tx.feeVoucher.findFirst({
+      where: { tenantId, studentProfileId, examId },
+      select: { id: true, voucherId: true, balance: true, status: true },
+    });
+  }
 
   let voucherCreated = false;
   if (!voucher) {
@@ -488,10 +509,12 @@ export async function collectExamFeePayment(
       note: params.note,
     });
     voucherCreated = true;
-    voucher = await tx.feeVoucher.findFirst({
-      where: { id: created.feeVoucherId },
-      select: { id: true, voucherId: true, balance: true, status: true },
-    });
+    voucher = {
+      id: created.feeVoucherId,
+      voucherId: created.voucherId,
+      balance: new Prisma.Decimal(created.balance),
+      status: created.status,
+    };
   }
   if (!voucher) {
     throw ApiError.internal("Exam fee voucher could not be created.");
@@ -514,7 +537,7 @@ export async function collectExamFeePayment(
   const applied = Prisma.Decimal.min(payment, remainingDue);
   const excess = payment.minus(applied);
 
-  const receiptNumber = params.receiptNumber || `EXAM-RCPT-${Date.now()}`;
+  const receiptNumber = params.receiptNumber || (await getNextVoucherNumber(tx, tenantId, "RECEIPT"));
 
   await postCollectionJournal(tx, {
     tenantId,

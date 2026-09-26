@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const student = await prisma.studentProfile.findUnique({
+    const student = await prisma.studentProfile.findFirst({
       where: { id: data.studentProfileId, tenantId },
       include: { class: true, section: true },
     });
@@ -142,12 +142,15 @@ export async function POST(request: NextRequest) {
     // Auto-apply: cover as much of this payment from the wallet as possible.
     let walletBudget = new Prisma.Decimal(data.walletAmount || 0);
     if (data.autoApplyWallet && walletBudget.isZero() && data.paymentMethod !== "WALLET_CREDIT") {
-      const lastLedger = await prisma.studentWalletLedger.findFirst({
+      // Sum, not "newest row's balanceAfter" — see getWalletBalance: rows
+      // written in one transaction share createdAt, so ordering is undefined.
+      // This is advisory only; the authoritative check happens under lock
+      // inside applyWalletDebit.
+      const walletAgg = await prisma.studentWalletLedger.aggregate({
         where: { tenantId, studentProfileId: student.id },
-        orderBy: { createdAt: "desc" },
-        select: { balanceAfter: true },
+        _sum: { amount: true },
       });
-      const walletBal = new Prisma.Decimal((lastLedger as any)?.balanceAfter ?? 0);
+      const walletBal = new Prisma.Decimal((walletAgg as any)?._sum?.amount ?? 0);
       if (walletBal.greaterThan(0)) {
         walletBudget = Prisma.Decimal.min(walletBal, paymentDecimal);
         if (walletBudget.greaterThanOrEqualTo(paymentDecimal)) {
@@ -222,10 +225,8 @@ export async function POST(request: NextRequest) {
       let monthlyDiscount = new Prisma.Decimal(0);
       if (concessions.length > 0) {
         let tuitionMonthly = monthlyBaseFee;
-        if (student.classId) {
-          const struct = await prisma.classFeeStructure.findFirst({ where: { tenantId, classId: student.classId, academicYearId, isActive: true } });
-          if (struct) tuitionMonthly = new Prisma.Decimal((struct as any).tuitionFee ?? monthlyBaseFee);
-        }
+        // ponytail: reuse classStructure fetched above instead of re-querying
+        if (classStructure) tuitionMonthly = new Prisma.Decimal((classStructure as any).tuitionFee ?? monthlyBaseFee);
         monthlyDiscount = computeStackedConcession(tuitionMonthly, concessions.map(c=>({
           discountType: c.discountType,
           discountValue: new Prisma.Decimal(c.discountValue as any),
@@ -420,7 +421,7 @@ export async function POST(request: NextRequest) {
     let targetVoucherId = data.feeVoucherId;
 
     if (targetVoucherId) {
-      const explicitVoucher = await prisma.feeVoucher.findUnique({
+      const explicitVoucher = await prisma.feeVoucher.findFirst({
         where: { id: targetVoucherId, tenantId },
         select: { id: true, voucherId: true, status: true, balance: true, totalDue: true, feeType: true, billingMonth: true, billingYear: true },
       });
@@ -591,6 +592,12 @@ export async function POST(request: NextRequest) {
           const bankApplied = appliedToInvoice.minus(walletLeg);
           const bankAmount = bankApplied.plus(excessToWallet);
           if (walletLeg.greaterThan(0)) {
+            // Each leg needs its OWN receipt number: Transaction carries
+            // @@unique([tenantId, receiptNumber]), so reusing `rcpt` for both
+            // the wallet and bank leg fails with P2002 on every split tender.
+            // The bank leg keeps the customer-facing receipt; the wallet leg
+            // gets a deterministic derivative so the two stay linkable.
+            const walletRcpt = `${rcpt}-WLT`;
             const wTxn = await tx.transaction.create({
               data: {
                 tenantId,
@@ -600,7 +607,7 @@ export async function POST(request: NextRequest) {
                 appliedToInvoice: walletLeg.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
                 excessToWallet: new Prisma.Decimal(0),
                 paymentMethod: "WALLET_CREDIT",
-                receiptNumber: rcpt,
+                receiptNumber: walletRcpt,
                 collectedById: user.id,
                 note: data.note || defaultNote,
               },
@@ -614,7 +621,7 @@ export async function POST(request: NextRequest) {
               appliedToInvoice: walletLeg,
               excessToWallet: new Prisma.Decimal(0),
               paymentMethod: "WALLET_CREDIT",
-              receiptNumber: rcpt,
+              receiptNumber: walletRcpt,
               executedById: user.id,
               note: data.note,
               transactionId: wTxn.id,
@@ -774,6 +781,9 @@ export async function POST(request: NextRequest) {
       const bankAmount = bankApplied.plus(excessToWallet);
       const legTransactions: any[] = [];
       if (walletLeg.greaterThan(0)) {
+        // Distinct receipt per leg — see the split-tender note above:
+        // Transaction.receiptNumber is unique per tenant.
+        const walletRcpt = `${rcpt}-WLT`;
         const wTxn = await tx.transaction.create({
           data: {
             tenantId,
@@ -783,7 +793,7 @@ export async function POST(request: NextRequest) {
             appliedToInvoice: walletLeg.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
             excessToWallet: new Prisma.Decimal(0),
             paymentMethod: "WALLET_CREDIT",
-            receiptNumber: rcpt,
+            receiptNumber: walletRcpt,
             collectedById: user.id,
             note: data.note || `Monthly Fee Payment for ${monthName} ${targetYear} (WALLET_CREDIT)`,
           },
@@ -796,7 +806,7 @@ export async function POST(request: NextRequest) {
           appliedToInvoice: walletLeg,
           excessToWallet: new Prisma.Decimal(0),
           paymentMethod: "WALLET_CREDIT",
-          receiptNumber: rcpt,
+          receiptNumber: walletRcpt,
           executedById: user.id,
           note: data.note,
           transactionId: wTxn.id,

@@ -4,12 +4,12 @@ import { POST as postCollectDirect } from "@/app/api/fees/collect-direct/route";
 import { POST as postBulkCollect } from "@/app/api/fees/bulk-collect/route";
 
 const db = vi.hoisted(() => ({
-  studentProfile: { findUnique: vi.fn(), findMany: vi.fn() },
+  studentProfile: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
   academicYear: { findFirst: vi.fn(), findUnique: vi.fn() },
   class: { findFirst: vi.fn() },
   section: { findFirst: vi.fn() },
   feeVoucher: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
-  studentWalletLedger: { findFirst: vi.fn(), create: vi.fn() },
+  studentWalletLedger: { aggregate: vi.fn(), create: vi.fn() },
   classFeeStructure: { findFirst: vi.fn() },
   studentFeeConcession: { findMany: vi.fn() },
   transaction: { create: vi.fn() },
@@ -48,6 +48,12 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       lastName: "Uddin",
       classId: "class-9",
     });
+    db.studentProfile.findFirst.mockResolvedValue({
+      id: "student-1",
+      firstName: "Rahim",
+      lastName: "Uddin",
+      classId: "class-9",
+    });
     db.classFeeStructure.findFirst.mockResolvedValue({
       tuitionFee: 1000,
       totalMonthlyFee: 1000,
@@ -69,14 +75,14 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       balance: 0,
     });
     db.tenant.findUnique.mockResolvedValue({ featureFlags: {} });
-    db.studentWalletLedger.findFirst.mockResolvedValue(null);
+    db.studentWalletLedger.aggregate.mockResolvedValue({ _sum: { amount: null } });
     db.studentWalletLedger.create.mockResolvedValue({ id: "wl-1" });
     db.$transaction.mockImplementation(async (cb: any) => cb(db));
   });
 
   describe("POST /api/fees/collect-direct (POS Cashier)", () => {
     it("rejects payment when an explicit feeVoucherId is already PAID", async () => {
-      db.feeVoucher.findUnique.mockResolvedValueOnce({
+      db.feeVoucher.findFirst.mockResolvedValueOnce({
         id: "vouch-paid",
         voucherId: "VOUCH-PAID-01",
         status: "PAID",
@@ -131,7 +137,7 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
     });
 
     it("rejects overpayment beyond voucher balance unless allowAdvanceToWallet is enabled", async () => {
-      db.feeVoucher.findUnique.mockResolvedValueOnce({
+      db.feeVoucher.findFirst.mockResolvedValueOnce({
         id: "vouch-part",
         voucherId: "VOUCH-PART-01",
         status: "PARTIAL",
@@ -158,7 +164,7 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
     });
 
     it("allows paying remaining balance on a PARTIAL voucher and marks it PAID", async () => {
-      db.feeVoucher.findUnique.mockResolvedValueOnce({
+      db.feeVoucher.findFirst.mockResolvedValueOnce({
         id: "vouch-partial",
         voucherId: "SAL-2026-PART",
         status: "PARTIAL",
@@ -399,7 +405,7 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
     });
 
     it("redirects to WALLET_CREDIT when auto-apply covers the payment in full", async () => {
-      db.studentWalletLedger.findFirst.mockResolvedValueOnce({ balanceAfter: 5000 });
+      db.studentWalletLedger.aggregate.mockResolvedValueOnce({ _sum: { amount: 5000 } });
 
       const req = new NextRequest("http://localhost:3000/api/fees/collect-direct", {
         method: "POST",
@@ -419,8 +425,8 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       expect(json.message).toContain("WALLET_CREDIT");
     });
 
-    it("splits tender across wallet + cash legs with one receipt", async () => {
-      db.feeVoucher.findUnique.mockResolvedValueOnce({
+    it("splits tender across wallet + cash legs with DISTINCT receipt numbers", async () => {
+      db.feeVoucher.findFirst.mockResolvedValueOnce({
         id: "vouch-split",
         voucherId: "SAL-2026-SPLIT",
         status: "PENDING",
@@ -433,7 +439,7 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       db.$queryRaw.mockResolvedValueOnce([
         { id: "vouch-split", totalDue: 1000, amountPaid: 0, voucherId: "SAL-2026-SPLIT", feeType: "TUITION", billingMonth: 9, billingYear: 2026 },
       ]);
-      db.studentWalletLedger.findFirst.mockResolvedValue({ balanceAfter: 1000 });
+      db.studentWalletLedger.aggregate.mockResolvedValue({ _sum: { amount: 1000 } });
       db.chartOfAccount.findMany.mockResolvedValue([
         { id: "acc-cash", code: "1020", isActive: true },
         { id: "acc-ar", code: "1030", isActive: true },
@@ -457,13 +463,24 @@ describe("Fee Collection & POS Duplicate Prevention Audit Suite", () => {
       expect(res.status).toBe(201);
       const json = await res.json();
       expect(json.success).toBe(true);
-      // Two legs, one receipt number.
+      // Two legs, two receipts.
       expect(db.transaction.create).toHaveBeenCalledTimes(2);
       const methods = (db.transaction.create as any).mock.calls.map((c: any) => c[0].data.paymentMethod);
       expect(methods).toContain("WALLET_CREDIT");
       expect(methods).toContain("CASH");
       const amounts = (db.transaction.create as any).mock.calls.map((c: any) => Number(c[0].data.amountPaid));
       expect(amounts.sort()).toEqual([300, 700]);
+
+      // Transaction carries @@unique([tenantId, receiptNumber]). Reusing one
+      // receipt number across both legs raised P2002 and aborted the whole
+      // collection on a real database — mocks never enforced it, so the
+      // regression test now asserts uniqueness explicitly.
+      const receipts = (db.transaction.create as any).mock.calls.map((c: any) => c[0].data.receiptNumber);
+      expect(receipts).toHaveLength(2);
+      expect(new Set(receipts).size).toBe(2);
+
+      const txnIds = (db.transaction.create as any).mock.calls.map((c: any) => c[0].data.transactionId);
+      expect(new Set(txnIds).size).toBe(2);
     });
   });
 });

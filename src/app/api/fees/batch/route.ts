@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const normalizedFeeType = (data.feeType || "TUITION").toUpperCase();
     const feeHeadCode = ["TUITION", "ADMISSION", "EXAM", "TRANSPORT", "HOSTEL", "LAB"]
       .find((code) => normalizedFeeType.includes(code)) || "TUITION";
-    const academicYear = await prisma.academicYear.findUnique({
+    const academicYear = await prisma.academicYear.findFirst({
       where: { id: data.academicYearId, tenantId },
     });
 
@@ -130,8 +130,8 @@ export async function POST(request: NextRequest) {
       // would silently undo a write-off the operator chose at rollover.
       // `null` means the operator was never asked, which also restricts — a
       // policy that was never stated is not the same as one that says carry.
-      const currentYearPolicy = await prisma.academicYear.findUnique({
-        where: { id: data.academicYearId },
+      const currentYearPolicy = await prisma.academicYear.findFirst({
+        where: { id: data.academicYearId, tenantId },
         select: { feeBalancePolicy: true },
       });
       const inheritsFromEarlierYears =

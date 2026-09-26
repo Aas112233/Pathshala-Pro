@@ -71,14 +71,22 @@ export async function GET(request: NextRequest) {
         ok: difference.isZero(),
       });
     } else {
-      const bank = await prisma.bankAccount.findFirst({
-        where: { tenantId, accountCode },
+      // A tenant may link several physical bank/cash accounts to one GL code
+      // (e.g. two checking accounts on 1010). The mirror sync credits exactly
+      // one account per code and skips ambiguous ones, so the check aggregates
+      // every linked account instead of trusting the first row.
+      const banks = await prisma.bankAccount.findMany({
+        where: { tenantId, accountCode, isActive: true },
         select: { accountName: true, openingBalance: true, currentBalance: true },
       });
-      if (bank) {
-        subledger = `bank account ${bank.accountName}`;
-        expected = dec(bank.openingBalance).plus(glNet);
-        subledgerValue = dec(bank.currentBalance);
+      if (banks.length > 0) {
+        const opening = banks.reduce((sum, b) => sum.plus(dec(b.openingBalance)), new Prisma.Decimal(0));
+        const current = banks.reduce((sum, b) => sum.plus(dec(b.currentBalance)), new Prisma.Decimal(0));
+        subledger = banks.length === 1
+          ? `bank account ${banks[0].accountName}`
+          : `${banks.length} bank accounts on ${accountCode} (${banks.map((b) => b.accountName).join(', ')})`;
+        expected = opening.plus(glNet);
+        subledgerValue = current;
       }
     }
 

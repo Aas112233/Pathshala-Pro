@@ -3,7 +3,7 @@
  *
  * Run:  node scripts/generate-test-dataset.mjs
  *
- * Produces `Pathshala_Pro_Test_Dataset_2026-2028.xlsx` in the repository root.
+ * Produces `docs/test-datasets/Pathshala_Pro_Test_Dataset_2026-2028.xlsx`.
  *
  * The dataset spans TWO academic years on purpose: with a single year you can
  * test admission, fees and exams, but you cannot test the thing that breaks —
@@ -25,7 +25,7 @@ import bcrypt from "bcryptjs";
 faker.seed(2026);
 
 const TENANT_ID = "tenant_test_school";
-const OUTPUT_FILE = "Pathshala_Pro_Test_Dataset_2026-2028.xlsx";
+const OUTPUT_FILE = "docs/test-datasets/Pathshala_Pro_Test_Dataset_2026-2028.xlsx";
 
 const STAFF_COUNT = 50;
 const STUDENT_COUNT = 200;
@@ -842,9 +842,12 @@ async function main() {
     if (count !== undefined) row.getCell(2).value = count;
   });
 
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
   await workbook.xlsx.writeFile(OUTPUT_FILE);
 
-  const bytes = (await import("node:fs")).statSync(OUTPUT_FILE).size;
+  const bytes = fs.statSync(OUTPUT_FILE).size;
   console.log(`Written: ${OUTPUT_FILE} (${(bytes / 1024 / 1024).toFixed(2)} MB)`);
   console.log(`  students          ${STUDENTS.length}`);
   console.log(`  staff             ${STAFF.length}`);

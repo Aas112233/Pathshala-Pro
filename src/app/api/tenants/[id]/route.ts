@@ -3,18 +3,20 @@ import { prisma } from "@/lib/prisma";
 import {
   successResponse,
   unauthorized,
+  forbidden,
   notFound,
   badRequest,
   handleApiError,
   safeParseBody,
 } from "@/lib/api-response";
-import { requireApiAccess } from "@/lib/api-auth";
+import { requireApiAccess, invalidateTenantModulesCache } from "@/lib/api-auth";
 import { logAuditEvent } from "@/lib/audit-logger";
 import { isPlatformOwnerEmail } from "@/lib/platform-owner";
 import { getTenantSubscription } from "@/lib/subscription-service";
 import { resolveTenantModules } from "@/lib/tenant-modules";
 import { forceDeleteTenantSchema } from "@/lib/schemas";
 import { forceDeleteTenant, isProtectedTenantId } from "@/lib/superadmin-service";
+import { resolveActiveAcademicYear } from "@/lib/academic-year-guards";
 
 /**
  * GET /api/tenants/[id]
@@ -65,10 +67,18 @@ export async function GET(
         },
         orderBy: { createdAt: "asc" },
       }),
-      prisma.academicYear.findFirst({
-        where: { tenantId: tenant.tenantId, isClosed: false },
-        orderBy: { startDate: "desc" },
-      }),
+      // Resolved through the same hierarchy every other surface uses
+      // (`isCurrent` first), not "newest open year by startDate": during a
+      // normal rollover the next year is opened before the current one closes,
+      // and both cover today — the newest-open guess names a different year
+      // than the one the institute is actually operating in.
+      (async () => {
+        const resolution = await resolveActiveAcademicYear(tenant.tenantId);
+        if (!resolution.id) return null;
+        return prisma.academicYear.findFirst({
+          where: { tenantId: tenant.tenantId, id: resolution.id },
+        });
+      })(),
       prisma.studentProfile.count({ where: { tenantId: tenant.tenantId } }),
       prisma.staffProfile.count({ where: { tenantId: tenant.tenantId } }),
       prisma.feeVoucher.count({ where: { tenantId: tenant.tenantId } }),
@@ -161,6 +171,10 @@ export async function PUT(
       return notFound("Tenant was not found.");
     }
 
+    if (isProtectedTenantId(existingTenant.tenantId) && !isPlatformOwnerEmail(user.email)) {
+      return forbidden("Protected system tenant presets can only be modified by the platform owner.");
+    }
+
     let updatedFeatureFlags = undefined;
     if (isPlatformAdmin && body.featureFlags && typeof body.featureFlags === "object") {
       updatedFeatureFlags = {
@@ -208,6 +222,8 @@ export async function PUT(
         },
       });
     }
+
+    invalidateTenantModulesCache(existingTenant.tenantId);
 
     await logAuditEvent({
       tenantId: existingTenant.tenantId,

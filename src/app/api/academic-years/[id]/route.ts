@@ -24,10 +24,12 @@ import { finaliseAcademicYearSessions } from "@/lib/academic-year-finalisation-r
 import {
   buildLockedFieldsDetails,
   getAcademicYearUsageCounts,
+  hasAcademicYearOperationalUsage,
   integrityViolation,
   lockedDeleteMessage,
   lockedUpdateMessage,
 } from "@/lib/data-integrity";
+import { ApiError } from "@/lib/api-error";
 
 /**
  * GET /api/academic-years/[id]
@@ -168,7 +170,10 @@ export async function PUT(
     }
 
     const usageCounts = await getAcademicYearUsageCounts(tenantId, id);
-    const hasUsage = Object.values(usageCounts).some((count) => count > 0);
+    // Fee structures, rollover lineage and clone provenance are configuration,
+    // not history: they must block deletion but must not freeze a still-empty
+    // year's identity fields against a rename or date correction.
+    const hasUsage = hasAcademicYearOperationalUsage(usageCounts);
     const attemptedFrozenFields = ["yearId", "label", "startDate", "endDate"].filter((field) =>
       Object.prototype.hasOwnProperty.call(body, field)
     );
@@ -240,7 +245,15 @@ export async function PUT(
       ]);
     }
 
-    const updatePayload: Record<string, unknown> = {};
+    type YearUpdatePayload = {
+      yearId?: string;
+      label?: string;
+      startDate?: Date;
+      endDate?: Date;
+      isClosed?: boolean;
+    };
+
+    const updatePayload: YearUpdatePayload = {};
     if (data.yearId !== undefined) updatePayload.yearId = data.yearId;
     if (data.label !== undefined) updatePayload.label = data.label;
     if (startDate !== undefined) updatePayload.startDate = startDate;
@@ -300,9 +313,24 @@ export async function PUT(
           })
         : null;
 
-      const updated = await tx.academicYear.update({
-        where: { id },
-        data: updatePayload,
+      // The write itself is tenant-scoped, not just the pre-transaction check:
+      // a row deleted after the check would otherwise be resurrected by id.
+      if (Object.keys(updatePayload).length > 0) {
+        const written = await tx.academicYear.updateMany({
+          where: { id, tenantId },
+          data: updatePayload,
+        });
+        if (written.count === 0) {
+          // Throwing rolls the transaction back, so no partial lifecycle write
+          // can survive a year that vanished mid-request.
+          throw ApiError.notFound("Academic year not found");
+        }
+      }
+
+      // Re-read inside the transaction so the response describes what this
+      // request actually wrote, not a stale pre-transaction snapshot.
+      const updated = await tx.academicYear.findFirst({
+        where: { id, tenantId },
         select: {
           id: true,
           yearId: true,
@@ -314,6 +342,9 @@ export async function PUT(
           updatedAt: true,
         },
       });
+      if (!updated) {
+        throw ApiError.notFound("Academic year not found");
+      }
 
       if (makingCurrent) {
         await setCurrentAcademicYear(tx, tenantId, id);
@@ -438,6 +469,25 @@ export async function DELETE(
       return notFound("Academic year not found");
     }
 
+    // PUT refuses every edit to a closed year; DELETE must refuse too, or the
+    // close ceremony's "irreversible" becomes quietly upgradeable to "deleted".
+    // Deleting the current year stays possible (a just-created mistake year can
+    // be current with zero history); resolution falls through to the next tier
+    // and the cache is cleared below.
+    if (existingYear.isClosed) {
+      return integrityViolation(
+        lockedUpdateMessage("Academic year", "it has already been closed and its history is frozen"),
+        [
+          {
+            field: "isClosed",
+            code: "locked",
+            message:
+              "Closed academic years are read-only and cannot be deleted. Reopen support would be a separate controlled workflow.",
+          },
+        ]
+      );
+    }
+
     const usageCounts = await getAcademicYearUsageCounts(tenantId, id);
     if (Object.values(usageCounts).some((count) => count > 0)) {
       return integrityViolation(lockedDeleteMessage("Academic year", usageCounts), [
@@ -451,7 +501,12 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.academicYear.delete({ where: { id } });
+      // Tenant-scoped delete, not delete-by-id: the existence check above and
+      // the write must not be able to act on different rows.
+      const deleted = await tx.academicYear.deleteMany({ where: { id, tenantId } });
+      if (deleted.count === 0) {
+        throw ApiError.notFound("Academic year not found");
+      }
 
       // Deleting a year is a lifecycle event like any other; the audit row has
       // to outlive the row it describes, so it is written in the same

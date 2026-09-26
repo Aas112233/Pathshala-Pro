@@ -470,18 +470,54 @@ export async function GET(req: NextRequest) {
           select: { id: true, code: true, name: true },
         });
         if (glAccount) {
+          const toNum = (v: unknown) => Number((v as any)?.toString?.() ?? v ?? 0);
+          // Date windowing: push the requested range into SQL so the ledger
+          // scan is bounded by the period, not the account's whole history.
+          // The pre-window opening balance is aggregated in the database —
+          // never by replaying rows in JS.
+          const postingDateFilter: { gte?: Date; lte?: Date } = {};
+          if (startDate) postingDateFilter.gte = startDate;
+          if (endDate) postingDateFilter.lte = endDate;
+          const hasWindow = Boolean(startDate || endDate);
+
+          const preWindowAggregate = startDate
+            ? await prisma.journalLineItem.aggregate({
+                _sum: { debitAmount: true, creditAmount: true },
+                where: {
+                  tenantId,
+                  accountId: glAccount.id,
+                  journalEntry: { postingDate: { lt: startDate } },
+                },
+              })
+            : null;
+          const preWindowNet = preWindowAggregate
+            ? toNum(preWindowAggregate._sum.debitAmount) - toNum(preWindowAggregate._sum.creditAmount)
+            : 0;
+
           const glLines = await prisma.journalLineItem.findMany({
-            where: { tenantId, accountId: glAccount.id },
-            include: {
+            where: {
+              tenantId,
+              accountId: glAccount.id,
+              ...(hasWindow ? { journalEntry: { postingDate: postingDateFilter } } : {}),
+            },
+            select: {
+              id: true,
+              debitAmount: true,
+              creditAmount: true,
+              narration: true,
+              createdAt: true,
               journalEntry: { select: { entryNumber: true, voucherType: true, postingDate: true, narration: true, reference: true } },
             },
             orderBy: { journalEntry: { postingDate: "asc" } },
           });
 
-          const toNum = (v: unknown) => Number((v as any)?.toString?.() ?? v ?? 0);
-          let runningBalance = account.openingBalance || 0;
-          const allEntries: any[] = [
-            {
+          let runningBalance = (account.openingBalance || 0) + preWindowNet;
+          const allEntries: any[] = [];
+          // "All Records" keeps the synthetic opening row as its display
+          // anchor; a dated window reports the anchor via openingBalance
+          // instead, so it is not double-counted as a period movement.
+          if (!hasWindow) {
+            allEntries.push({
               id: `open-${account.id}`,
               date: account.createdAt,
               refId: "OPENING-BAL",
@@ -493,8 +529,8 @@ export async function GET(req: NextRequest) {
               runningBalance: account.openingBalance,
               status: "CLEARED",
               paymentMethod: account.accountType,
-            },
-          ];
+            });
+          }
           for (const line of glLines) {
             const debit = toNum((line as any).debitAmount);
             const credit = toNum((line as any).creditAmount);
@@ -515,22 +551,17 @@ export async function GET(req: NextRequest) {
             });
           }
 
-          let filteredEntries = allEntries;
-          let openingBalance = 0;
-          if (startDate) {
-            const priorEntries = allEntries.filter((e) => new Date(e.date) < startDate);
-            if (priorEntries.length > 0) {
-              openingBalance = priorEntries[priorEntries.length - 1].runningBalance;
-            }
-            filteredEntries = filteredEntries.filter((e) => new Date(e.date) >= startDate);
-          }
-          if (endDate) {
-            filteredEntries = filteredEntries.filter((e) => new Date(e.date) <= endDate);
-          }
-          const periodDebit = filteredEntries.reduce((sum, e) => sum + e.debit, 0);
-          const periodCredit = filteredEntries.reduce((sum, e) => sum + e.credit, 0);
+          // Period sums come straight from the selected GL lines; the
+          // synthetic opening row is never counted as a movement.
+          const openingBalance = (account.openingBalance || 0) + preWindowNet;
+          const periodDebit = glLines.reduce((s, l) => s + toNum((l as any).debitAmount), 0);
+          const periodCredit = glLines.reduce((s, l) => s + toNum((l as any).creditAmount), 0);
           const closingBalance = openingBalance + periodDebit - periodCredit;
-          const expectedClosing = (account.openingBalance || 0) + glLines.reduce((s, l) => s + toNum((l as any).debitAmount) - toNum((l as any).creditAmount), 0);
+          // GL closing (opening + every ledger movement) vs the synced bank
+          // balance. Any non-zero difference means a journal bypassed the
+          // posters. Equivalent to the old full-ledger replay, computed
+          // without touching rows outside the window.
+          const expectedClosing = closingBalance;
 
           return successResponse({
             type: "ACCOUNT",
@@ -541,7 +572,7 @@ export async function GET(req: NextRequest) {
               totalDebit: periodDebit,
               totalCredit: periodCredit,
               closingBalance,
-              entries: filteredEntries,
+              entries: allEntries,
               glLinked: true,
               glCode,
               // Live currentBalance is synced on every post; any non-zero

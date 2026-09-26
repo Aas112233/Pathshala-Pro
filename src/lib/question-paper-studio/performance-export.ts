@@ -1,8 +1,11 @@
 import React from "react";
-import { pdf } from "@react-pdf/renderer";
-import { StudentPerformanceOverview } from "@/lib/student-performance";
-import { StudentPerformancePDF, PerformancePDFSchoolInfo } from "./performance-pdf-template";
+import type { StudentPerformanceOverview } from "@/lib/student-performance";
+import type { PerformancePDFSchoolInfo } from "./performance-pdf-template";
 import { downloadBlob } from "@/lib/download-blob";
+
+// ponytail: @react-pdf/renderer stays out of the page bundle until first export
+let rendererPromise: Promise<typeof import("@react-pdf/renderer")> | null = null;
+const loadPdfRenderer = () => (rendererPromise ??= import("@react-pdf/renderer"));
 
 /**
  * Student Performance PDF Exporter using @react-pdf/renderer.
@@ -24,6 +27,10 @@ export async function exportStudentPerformancePDF(
   const studentRollNumber = performance.student.rollNumber || "N/A";
 
   try {
+    const [{ pdf }, { StudentPerformancePDF }] = await Promise.all([
+      loadPdfRenderer(),
+      import("./performance-pdf-template"),
+    ]);
     const element = React.createElement(StudentPerformancePDF, {
       performance,
       studentName,
